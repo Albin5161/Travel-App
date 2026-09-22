@@ -55,6 +55,9 @@ export default function CityScreen() {
   const sectionYsRef = useRef<number[]>([]);
   const [active, setActive] = useState(0);
   const [barOn, setBarOn] = useState(false);
+  // The safety bar fills the first time Good to know becomes the active tab.
+  const [seenSafety, setSeenSafety] = useState(false);
+  if (active === 3 && !seenSafety) setSeenSafety(true);
 
   useFocusEffect(
     useCallback(() => {
@@ -181,7 +184,12 @@ export default function CityScreen() {
           <OverviewSection cityName={city.name} info={info} onLayout={(e) => setSectionY(0, e.nativeEvent.layout.y)} />
           <PlacesSection places={collected} cityId={id} onLayout={(e) => setSectionY(1, e.nativeEvent.layout.y)} />
           <PlanSection plan={plan} planned={planned} onLayout={(e) => setSectionY(2, e.nativeEvent.layout.y)} />
-          <GoodToKnowSection info={info} onLayout={(e) => setSectionY(3, e.nativeEvent.layout.y)} />
+          <GoodToKnowSection
+            cityName={city.name}
+            info={info}
+            play={seenSafety}
+            onLayout={(e) => setSectionY(3, e.nativeEvent.layout.y)}
+          />
         </View>
       </Animated.ScrollView>
 

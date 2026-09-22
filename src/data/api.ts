@@ -19,10 +19,11 @@ function hash(s: string) {
 
 function reelForLink(url: string): Reel {
   const u = url.toLowerCase();
+  if (u.includes('kottayam')) return reels['reel-kottayam'];
   if (u.includes('kochi')) return reels['reel-kochi'];
   if (u.includes('meghalaya') || u.includes('shillong') || u.includes('dawki')) return reels['reel-meghalaya'];
   if (u.includes('gokarna')) return reels['reel-gokarna'];
-  const order = ['reel-gokarna', 'reel-kochi', 'reel-meghalaya'];
+  const order = ['reel-kottayam', 'reel-gokarna', 'reel-kochi', 'reel-meghalaya'];
   return reels[order[hash(url) % order.length]];
 }
 
@@ -43,6 +44,14 @@ export async function extractPlaces(url: string): Promise<Extraction> {
 }
 
 export const getCity = (id: string): City | undefined => cities[id];
+
+/**
+ * The line under a city's name. District and state, minus whichever of them just repeats the name
+ * (Meghalaya is both a state and, here, the city).
+ */
+export function cityPlaceLine(city: City): string {
+  return [city.district, city.state].filter((part, i, all) => part !== city.name && all.indexOf(part) === i).join(' · ');
+}
 export const getPlace = (id: string): Place | undefined => places[id];
 export const getReel = (id: string): Reel | undefined => reels[id];
 export const getLocalPicks = (cityId: string): Place[] => (localPicks[cityId] ?? []).map((id) => places[id]);

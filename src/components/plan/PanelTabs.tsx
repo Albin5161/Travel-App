@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Animated, { css } from 'react-native-reanimated';
 
 import { Tone } from '@/theme/tone';
 import { fonts, light } from '@/theme/tokens';
@@ -48,7 +48,7 @@ export function PanelTabs({ active, onTab }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = css.create({
   header: {
     height: PANEL_HEADER_H,
     backgroundColor: light.panel,

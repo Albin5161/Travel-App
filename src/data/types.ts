@@ -3,6 +3,8 @@ import type { ImageSourcePropType } from 'react-native';
 import type { LatLng, Point } from '@/lib/geo';
 
 export type PlaceType = 'food' | 'stay' | 'sight' | 'experience';
+/** Where a saved spot stands with you. Everything starts as 'want'. */
+export type SpotStatus = 'want' | 'been';
 export type DayPart = 'morning' | 'afternoon' | 'evening';
 export type Platform = 'instagram' | 'youtube';
 
@@ -25,6 +27,11 @@ export interface Place {
   coords: LatLng;
   /** Position on the city's stylised map, in world units. */
   map: Point;
+  /**
+   * Position on the region map (see `src/data/regions.ts`), for spots inside a
+   * mapped region. Places outside every mapped region simply don't have one.
+   */
+  regionPoint?: Point;
   /** Order within its part of the day. */
   order: number;
 }
@@ -56,7 +63,34 @@ export interface City {
   id: string;
   name: string;
   state: string;
+  /**
+   * The admin area one level below the state — a district in India, a regency in
+   * Bali, a province elsewhere. Derived, never typed by anyone: it is the index
+   * that answers "am I in Ernakulam" and "is this near home".
+   */
+  district: string;
+  /** The region map this city's spots are drawn on, if any. See `src/data/regions.ts`. */
+  regionId?: string;
   hero: ImageSourcePropType;
+  map: CityMapArt;
+}
+
+/** A district, as the app indexes it: a name plus a circle to test arrival against. */
+export interface District {
+  id: string;
+  name: string;
+  state: string;
+  centre: LatLng;
+  /** Radius in km of the circle used for the arrival geofence. */
+  radiusKm: number;
+}
+
+/** A stylised multi-district map, drawn with the same art vocabulary as a city map. */
+export interface Region {
+  id: string;
+  name: string;
+  world: { x0: number; y0: number; w: number; h: number };
+  districts: District[];
   map: CityMapArt;
 }
 

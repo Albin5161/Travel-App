@@ -36,6 +36,21 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Raahi uses your location to show how far your saved spots are from you.",
+          "locationAlwaysAndWhenInUsePermission": "Raahi checks when you arrive in a district you've saved spots in, so it can remind you they're nearby.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#E2763C"
+        }
       ]
     ],
     "experiments": {

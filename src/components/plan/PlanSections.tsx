@@ -92,7 +92,7 @@ export function PlacesSection({ places, cityId, onLayout }: SectionProps & { pla
         kind="secondary"
         compact
         label="Open the map"
-        onPress={() => router.push({ pathname: '/map/[id]', params: { id: cityId } })}
+        onPress={() => router.push({ pathname: '/citymap/[id]', params: { id: cityId } })}
         style={styles.mapButton}
       />
       <View style={styles.places}>

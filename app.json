@@ -6,8 +6,8 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "raahi",
-    "userInterfaceStyle": "dark",
-    "backgroundColor": "#0D0F0E",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F5F4F1",
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
@@ -32,9 +32,24 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0D0F0E",
-          "image": "./assets/images/splash-icon.png",
+          "backgroundColor": "#F5F4F1",
+          "image": "./assets/images/splash-icon-ink.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Raahi uses your location to show how far your saved spots are from you.",
+          "locationAlwaysAndWhenInUsePermission": "Raahi checks when you arrive in a district you've saved spots in, so it can remind you they're nearby.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#E2763C"
         }
       ]
     ],

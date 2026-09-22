@@ -16,15 +16,16 @@ import Animated, {
 import Svg, { Ellipse, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import type { City, Place } from '@/data/types';
+import type { City, CityMapArt, Place } from '@/data/types';
 import { smoothPath, type Point } from '@/lib/geo';
 import { EASE_IN_OUT, EASE_OUT, SPRING_LAND, SPRING_SETTLE } from '@/lib/motion';
 import { fonts, light, shadows } from '@/theme/tokens';
 
 import { Text } from './Text';
 
-// Map world, in stylised map units.
+// Map world, in stylised map units. A region map (see `src/data/regions.ts`) passes its own.
 export const WORLD = { x0: -150, y0: -350, w: 1350, h: 2100 };
+export type World = typeof WORLD;
 const DEFAULT_PIN = 44;
 
 export type Camera = { x: SharedValue<number>; y: SharedValue<number>; s: SharedValue<number> };
@@ -73,10 +74,17 @@ export function flyTo(camera: Camera, target: CameraValue, duration = 450) {
   camera.s.set(withTiming(target.s, cfg));
 }
 
-export type MapPin = { id: string; place: Place; number?: number };
+export type MapPin = {
+  id: string;
+  place: Place;
+  number?: number;
+  /** Where to draw it, when not the place's own city position (e.g. its spot on a region map). */
+  point?: Point;
+};
 
 type Props = {
-  city: City;
+  /** The art to draw. A region reuses the same shape, so it can be passed here too. */
+  city: Pick<City, 'map'>;
   pins: MapPin[];
   width: number;
   height: number;
@@ -92,6 +100,8 @@ type Props = {
   pinSize?: number;
   /** Extra layers drawn inside the map art, in world units (e.g. a route). */
   artChildren?: ReactNode;
+  /** The world the art is drawn in. Defaults to the city world. */
+  world?: World;
 };
 
 export function CityMap({
@@ -109,6 +119,7 @@ export function CityMap({
   interactive = true,
   pinSize = DEFAULT_PIN,
   artChildren,
+  world = WORLD,
 }: Props) {
   const r = maxScale;
 
@@ -116,8 +127,8 @@ export function CityMap({
     const s = camera.s.get();
     return {
       transform: [
-        { translateX: width / 2 - (camera.x.get() - WORLD.x0) * s },
-        { translateY: height / 2 - (camera.y.get() - WORLD.y0) * s },
+        { translateX: width / 2 - (camera.x.get() - world.x0) * s },
+        { translateY: height / 2 - (camera.y.get() - world.y0) * s },
         { scale: s / r },
       ],
     };
@@ -161,8 +172,8 @@ export function CityMap({
         style={[styles.root, { width, height, backgroundColor: city.map.coast ? light.mapSea : light.mapLand }]}
         collapsable={false}
       >
-        <Animated.View style={[styles.world, { width: WORLD.w * r, height: WORLD.h * r }, worldStyle]}>
-          <MapArt city={city} r={r}>
+        <Animated.View style={[styles.world, { width: world.w * r, height: world.h * r }, worldStyle]}>
+          <MapArt art={city.map} r={r} world={world}>
             {artChildren}
           </MapArt>
         </Animated.View>
@@ -188,8 +199,17 @@ export function CityMap({
   );
 }
 
-const MapArt = memo(function MapArt({ city, r, children }: { city: City; r: number; children?: ReactNode }) {
-  const art = city.map;
+const MapArt = memo(function MapArt({
+  art,
+  r,
+  world,
+  children,
+}: {
+  art: CityMapArt;
+  r: number;
+  world: World;
+  children?: ReactNode;
+}) {
   const land = useMemo(() => {
     if (!art.coast) return null;
     const first = art.coast[0];
@@ -199,11 +219,11 @@ const MapArt = memo(function MapArt({ city, r, children }: { city: City; r: numb
 
   return (
     <Svg
-      width={WORLD.w * r}
-      height={WORLD.h * r}
-      viewBox={`${WORLD.x0} ${WORLD.y0} ${WORLD.w} ${WORLD.h}`}
+      width={world.w * r}
+      height={world.h * r}
+      viewBox={`${world.x0} ${world.y0} ${world.w} ${world.h}`}
     >
-      <Rect x={WORLD.x0} y={WORLD.y0} width={WORLD.w} height={WORLD.h} fill={land ? light.mapSea : light.mapLand} />
+      <Rect x={world.x0} y={world.y0} width={world.w} height={world.h} fill={land ? light.mapSea : light.mapLand} />
       {land ? <Path d={land} fill={light.mapLand} stroke={light.mapCoast} strokeWidth={3} /> : null}
       {art.water?.map((w, i) => (
         <Ellipse key={`w${i}`} cx={w.cx} cy={w.cy} rx={w.rx} ry={w.ry} fill={light.mapSea} stroke={light.mapCoast} strokeWidth={3} />
@@ -319,8 +339,9 @@ function MapPinView({ pin, index, camera, width, height, activeId, reveal, revea
   const style = useAnimatedStyle(() => {
     const s = camera.s.get();
     const p = drop.get();
-    const x = width / 2 + (pin.place.map[0] - camera.x.get()) * s - size / 2;
-    const y = height / 2 + (pin.place.map[1] - camera.y.get()) * s - size / 2;
+    const at = pin.point ?? pin.place.map;
+    const x = width / 2 + (at[0] - camera.x.get()) * s - size / 2;
+    const y = height / 2 + (at[1] - camera.y.get()) * s - size / 2;
     const lift = reduced ? 0 : (1 - p) * -24;
     return {
       opacity: Math.min(1, p * 1.4),

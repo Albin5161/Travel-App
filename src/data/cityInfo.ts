@@ -265,9 +265,134 @@ export const cityInfo: Record<string, CityInfo> = {
       'Taxis charge by the day, so share one with other travellers.',
     ],
   },
+  kottayam: {
+    summary:
+      'Home. A district of rubber hills, the Meenachil river and the top end of Vembanad, with a town in the middle of it all. Nothing here needs a trip — most of it is a morning and back.',
+    bestTime: 'Sep – Feb',
+    idealStay: 'A day at a time',
+    costPerDay: { low: 700, high: 1600 },
+    costBreakdown: [
+      { label: 'Food', amount: 500 },
+      { label: 'Fuel', amount: 400 },
+      { label: 'Entry & extras', amount: 250 },
+      { label: 'Boat or guide', amount: 450 },
+    ],
+    safety: [
+      {
+        icon: 'slippery-path',
+        title: 'Marmala is slippery after rain',
+        detail: 'The last stretch is bare rock. Skip it the day after heavy rain.',
+      },
+      {
+        icon: 'patchy-network',
+        title: 'No signal past Teekoy',
+        detail: 'Download the route before you leave town.',
+      },
+      {
+        icon: 'crowded-weekends',
+        title: 'Illickal Kallu fills up on Sundays',
+        detail: 'Parking runs out by 9 am. Go on a weekday morning.',
+      },
+      {
+        icon: 'well-lit-at-night',
+        title: 'The town is lit and busy till 10 pm',
+        detail: 'Buses to most of the district stop around 8 pm, though.',
+      },
+      {
+        icon: 'solo-friendly',
+        title: 'Easy to do alone',
+        detail: 'Everything here is within a two-hour ride, so a day trip needs no planning.',
+      },
+    ],
+    safetyScore: {
+      score: 84,
+      signals: [
+        {
+          month: 'Jul',
+          year: "'26",
+          direction: 'down',
+          tag: 'monsoon',
+          text: 'The Teekoy road was blocked by a landslide for a week in peak monsoon.',
+        },
+        {
+          month: 'Apr',
+          year: "'26",
+          direction: 'up',
+          tag: 'access',
+          text: 'A proper railing and steps went in on the Illickal Kallu approach.',
+        },
+        {
+          month: 'Jan',
+          year: "'26",
+          direction: 'up',
+          tag: 'boats',
+          text: 'Kumarakom country boats moved to fixed, published evening timings.',
+        },
+      ],
+    },
+    localTips: [
+      'Go east early. The mist closes Illickal Kallu in by eleven.',
+      'Take the country boat at Kumarakom, not the houseboat. A fraction of the price and twice the view.',
+      'Most of the good food in town stops serving by 9 pm.',
+    ],
+  },
 };
 
 export const placeRatings: Record<string, PlaceRating> = {
+  'ktm-illickal': {
+    score: 4.7,
+    count: 3100,
+    review: {
+      author: 'Anoop V.',
+      when: 'a week ago',
+      text: 'Reached by 7 and had the whole rock to ourselves. By 10 the mist had swallowed everything.',
+    },
+  },
+  'ktm-marmala': {
+    score: 4.4,
+    count: 1450,
+    review: {
+      author: 'Sneha R.',
+      when: '3 weeks ago',
+      text: 'Small but lovely. The walk down is short and the water was freezing in a good way.',
+    },
+  },
+  'ktm-kumarakom': {
+    score: 4.5,
+    count: 21600,
+    review: {
+      author: 'Jithin P.',
+      when: 'a month ago',
+      text: 'Took the 5pm country boat. Better than any houseboat and a tenth of the cost.',
+    },
+  },
+  'ktm-cafe': {
+    score: 4.3,
+    count: 890,
+    review: {
+      author: 'Aparna M.',
+      when: '2 weeks ago',
+      text: 'Small place off MC Road. The beef and the filter coffee are both worth the detour.',
+    },
+  },
+  'ktm-vaikom': {
+    score: 4.8,
+    count: 9700,
+    review: {
+      author: 'Hari S.',
+      when: 'a month ago',
+      text: 'Go for the evening deeparadhana. Quiet, old and genuinely beautiful.',
+    },
+  },
+  'ktm-thali': {
+    score: 4.6,
+    count: 610,
+    review: {
+      author: 'Deepa N.',
+      when: 'a week ago',
+      text: 'Sadya on a leaf for under two hundred. Get there before 1 or the good stuff is gone.',
+    },
+  },
   'gok-temple': {
     score: 4.6,
     count: 12400,

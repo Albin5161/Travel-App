@@ -1,7 +1,7 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Keyboard, StyleSheet, TextInput, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { Keyboard, TextInput, View } from 'react-native';
+import Animated, { css, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { PasteButton } from '@/components/PasteButton';
 import { Text } from '@/components/Text';
@@ -111,7 +111,7 @@ export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = css.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   field: {
     flex: 1,

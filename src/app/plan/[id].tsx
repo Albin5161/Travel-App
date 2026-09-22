@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   useAnimatedProps,
@@ -21,6 +21,7 @@ import { Path } from 'react-native-svg';
 import { Button } from '@/components/Button';
 import { CityMap, fitCameraToRect, flyTo, useCamera } from '@/components/CityMap';
 import { IconButton } from '@/components/IconButton';
+import { PassportStamp } from '@/components/motion/PassportStamp';
 import { costLabel } from '@/components/PlaceMeta';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
@@ -58,6 +59,7 @@ export default function PlanScreen() {
   const focusScale = fit.s * 1.6;
   const camera = useCamera(fit);
   const activeId = useSharedValue<string | null>(null);
+  const [stamping, setStamping] = useState(false);
 
   // Route draws itself once the numbered pins have popped in; redraws when a stop is added.
   const routeKey = plan.stops.map((s) => s.place.id).join('|');
@@ -117,8 +119,9 @@ export default function PlanScreen() {
     dispatch({ type: 'addLocal', cityId: id, placeId: place.id });
   };
 
-  const save = () => {
-    haptic.success();
+  // Saving plays the passport stamp (its thud is the haptic), then heads home.
+  const save = () => setStamping(true);
+  const saved = () => {
     dispatch({ type: 'saveTrip', cityId: id });
     router.dismissTo('/');
   };
@@ -207,9 +210,10 @@ export default function PlanScreen() {
           style={[styles.bottomFade, { height: insets.bottom + 110 }]}
         />
         <View style={[styles.floating, { paddingBottom: insets.bottom + 16 }]}>
-          <Button label="Save this day" onPress={save} disabled={plan.stops.length === 0} />
+          <Button label="Save this day" onPress={save} disabled={plan.stops.length === 0 || stamping} />
         </View>
       </View>
+      {stamping ? <PassportStamp city={city.name} date={new Date()} onDone={saved} /> : null}
     </View>
   );
 }

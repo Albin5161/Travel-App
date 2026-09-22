@@ -7,7 +7,7 @@ import Svg, { Defs, LinearGradient as SvgGradient, Rect, Stop } from 'react-nati
 import { colors, radii } from '@/theme/tokens';
 
 // Gradient only under text: clean photo until ~40pt above the text, then down to solid Night.
-const GRADIENTS = {
+export const GRADIENTS = {
   city: {
     colors: ['rgba(13,15,14,0)', 'rgba(13,15,14,0.5)', 'rgba(13,15,14,1)'] as const,
     locations: [0.64, 0.73, 1] as const,

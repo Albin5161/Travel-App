@@ -7,6 +7,10 @@ export const haptic = {
   light: () => {
     if (enabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   },
+  /** A firm tap, for something landing (the passport stamp). */
+  thud: () => {
+    if (enabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  },
   selection: () => {
     if (enabled) Haptics.selectionAsync();
   },

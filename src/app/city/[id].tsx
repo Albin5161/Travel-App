@@ -1,163 +1,232 @@
-import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { setStatusBarStyle } from 'expo-status-bar';
+import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedReaction,
+  useAnimatedRef,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
-  withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { Button } from '@/components/Button';
-import { CityMap, fitCameraToRect, flyTo, useCamera } from '@/components/CityMap';
+import { CityHeroContent, HeroScrim } from '@/components/CityHero';
 import { IconButton } from '@/components/IconButton';
+import { PANEL_HEADER_H, PanelTabs, restPeek } from '@/components/plan/PanelTabs';
+import { GoodToKnowSection, OverviewSection, PlacesSection, PlanSection } from '@/components/plan/PlanSections';
 import { Text } from '@/components/Text';
-import { getCity, getReel } from '@/data/api';
+import { getCity } from '@/data/api';
+import { formatRupees, getCityInfo } from '@/data/cityInfo';
+import { buildPlan } from '@/data/plan';
 import { haptic } from '@/lib/haptics';
-import { EASE_OUT, SPRING_SHEET } from '@/lib/motion';
 import { useCityPlaces, useTrips } from '@/state/trips';
 import { light, shadows } from '@/theme/tokens';
 
-const PANEL_H = 270;
+// Top strip of photo that stays visible when the panel is fully up (holds the back button).
+const TOP_STRIP = 56;
 
+/**
+ * The city page, Plan mode. A full-bleed photo with the city's title; the Plan panel rests at the
+ * bottom and slides up over the photo (like Atlys's visa page), with sticky tabs that follow the
+ * scroll. Home's city card grows into this screen and shrinks back into its card (CityOpenOverlay).
+ */
 export default function CityScreen() {
-  const { id, reveal } = useLocalSearchParams<{ id: string; reveal?: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const city = getCity(id);
-  const { collected } = useCityPlaces(id);
+  const info = getCityInfo(id);
   const { state } = useTrips();
+  const { collected, kept, locals } = useCityPlaces(id);
   const { width: W, height: H } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const reduced = useReducedMotion();
-  const [revealing] = useState(reveal === '1');
 
-  const panelBottom = PANEL_H + insets.bottom;
-  const fit = fitCameraToRect(
-    collected.map((p) => p.map),
-    { w: W, h: H },
-    { top: insets.top + 64, bottom: panelBottom },
-  );
-  const maxScale = fit.s * 1.6;
-  const camera = useCamera(revealing && !reduced ? { ...fit, s: fit.s * 1.12 } : fit);
-  const activeId = useSharedValue<string | null>(null);
+  const top = insets.top + TOP_STRIP;
+  // Scroll distance from "panel resting" to "panel up against the top strip".
+  const rise = H - restPeek(insets.bottom) - top;
 
-  const mapOpacity = useSharedValue(revealing ? 0 : 1);
-  const panel = useSharedValue(revealing ? 0 : 1);
-
-  useEffect(() => {
-    if (!revealing) return;
-    mapOpacity.set(withTiming(1, { duration: 300, easing: EASE_OUT }));
-    camera.s.set(withTiming(fit.s, { duration: 600, easing: EASE_OUT }));
-    // Mount-only: the reveal plays once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const onRevealed = () => {
-    haptic.light();
-    panel.set(withSpring(1, SPRING_SHEET));
-  };
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const scrollY = useSharedValue(0);
+  const sectionYs = useSharedValue<number[]>([]);
+  const sectionYsRef = useRef<number[]>([]);
+  const [active, setActive] = useState(0);
+  const [barOn, setBarOn] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      activeId.set(null);
-    }, [activeId]),
+      setStatusBarStyle('light');
+      return () => setStatusBarStyle('dark');
+    }, []),
   );
 
-  const mapStyle = useAnimatedStyle(() => ({ opacity: mapOpacity.get() }));
-  const panelStyle = useAnimatedStyle(() => ({
-    opacity: panel.get(),
-    transform: [{ translateY: (1 - panel.get()) * 40 }],
+  const maxScroll = useSharedValue(Infinity);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.set(e.contentOffset.y);
+    maxScroll.set(e.contentSize.height - e.layoutMeasurement.height);
+  });
+
+  // Scroll-spy: the section under the tabs is the active tab. The last section is shorter than the
+  // screen, so its heading can never reach the tabs; scrolled to the end counts as reaching it.
+  useAnimatedReaction(
+    () => {
+      const y = scrollY.get();
+      const ys = sectionYs.get();
+      if (ys.length > 0 && y > rise && y >= maxScroll.get() - 24) return ys.length - 1;
+      const line = y + PANEL_HEADER_H + 24;
+      let idx = 0;
+      for (let i = 0; i < ys.length; i++) if (ys[i] !== undefined && ys[i] <= line) idx = i;
+      return idx;
+    },
+    (idx, prev) => {
+      if (idx !== prev) scheduleOnRN(setActive, idx);
+    },
+  );
+  // The sticky bar takes over from the round button once the panel is mostly up.
+  useAnimatedReaction(
+    () => scrollY.get() > rise * 0.6,
+    (on, prev) => {
+      if (on !== prev) scheduleOnRN(setBarOn, on);
+    },
+  );
+
+  const heroStyle = useAnimatedStyle(() => {
+    const y = scrollY.get();
+    return {
+      opacity: interpolate(y, [0, rise * 0.55], [1, 0], Extrapolation.CLAMP),
+      // Drifts up slower than the panel, so the panel visibly slides over it.
+      transform: [{ translateY: y * 0.45 }, { scale: interpolate(y, [0, rise], [1, 0.94], Extrapolation.CLAMP) }],
+    };
+  });
+  const dimStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.get(), [0, rise], [0, 1], Extrapolation.CLAMP),
   }));
+  const barStyle = useAnimatedStyle(() => {
+    const t = interpolate(scrollY.get(), [rise * 0.5, rise * 0.8], [0, 1], Extrapolation.CLAMP);
+    return { opacity: t, transform: [{ translateY: (1 - t) * 24 }] };
+  });
 
-  if (!city) return null;
+  if (!city || !info) return null;
 
-  const reelIds = state.collections[id]?.reelIds ?? [];
-  const firstReel = reelIds[0] ? getReel(reelIds[0]) : undefined;
-  const kept = collected.filter((p) => !state.skipped[p.id]).length;
+  const collection = state.collections[id];
+  const planned = !!state.savedTrips[id];
+  const places = collection?.placeIds.length ?? 0;
+  const reels = collection?.reelIds.length ?? 0;
+  const plan = buildPlan([...kept, ...locals].length ? [...kept, ...locals] : collected);
 
-  const openPin = (placeId: string) => {
-    const place = collected.find((p) => p.id === placeId);
-    if (!place) return;
-    activeId.set(placeId);
-    // Centre the pin in the strip of map left visible above the 72% sheet.
-    const s = camera.s.get();
-    const stripCy = insets.top / 2 + H * 0.14;
-    flyTo(camera, { x: place.map[0], y: place.map[1] - (stripCy - H / 2) / s, s });
-    router.push({ pathname: '/place/[id]', params: { id: placeId } });
+  const start = () => router.push({ pathname: planned ? '/plan/[id]' : '/pick/[id]', params: { id } });
+
+  // Sections measure themselves inside the panel body; store them in scroll-content coordinates.
+  const setSectionY = (i: number, y: number) => {
+    sectionYsRef.current[i] = rise + PANEL_HEADER_H + y;
+    sectionYs.set([...sectionYsRef.current]);
+  };
+
+  // Lower the panel first, so the page shrinks back into its card from the same resting layout it
+  // grew into (the growing card only knows that one).
+  const back = () => {
+    const leave = () => (router.canGoBack() ? router.back() : router.replace('/'));
+    if (scrollY.get() < 8) return leave();
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    setTimeout(leave, 320);
+  };
+
+  // Tapping a tab raises the panel if needed and brings that section under the tabs.
+  const goToTab = (i: number) => {
+    haptic.selection();
+    const y = (sectionYsRef.current[i] ?? rise + PANEL_HEADER_H) - PANEL_HEADER_H;
+    scrollRef.current?.scrollTo({ y: Math.max(y, rise), animated: true });
   };
 
   return (
     <View style={styles.fill}>
-      <Animated.View style={[StyleSheet.absoluteFill, mapStyle]}>
-        <CityMap
-          city={city}
-          pins={collected.map((p) => ({ id: p.id, place: p }))}
-          width={W}
-          height={H}
-          camera={camera}
-          maxScale={maxScale}
-          activeId={activeId}
-          reveal={revealing}
-          revealDelay={reduced ? 0 : 450}
-          onRevealed={revealing ? onRevealed : undefined}
-          onPinPress={openPin}
-        />
-      </Animated.View>
+      <Image source={city.hero} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
+      <HeroScrim />
+      <Animated.View style={[StyleSheet.absoluteFill, styles.dim, dimStyle]} />
 
-      <LinearGradient
-        pointerEvents="none"
-        colors={['rgba(245,244,241,0.85)', 'rgba(245,244,241,0)']}
-        style={[styles.topFade, { height: insets.top + 90 }]}
-      />
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <IconButton
-          icon="chevron-left"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-          accessibilityLabel="Back to your places"
-        />
+      <Animated.ScrollView
+        ref={scrollRef}
+        style={[styles.scroll, { top }]}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        stickyHeaderIndices={[1]}
+        showsVerticalScrollIndicator={false}
+        // Rest or fully up; past that, the panel's content scrolls freely.
+        snapToOffsets={[0, rise]}
+        snapToEnd={false}
+        decelerationRate="fast"
+      >
+        {/* Transparent over the photo; holds the title and the round button, which drift and fade. */}
+        <View style={{ height: rise }}>
+          <Animated.View style={[styles.hero, { top: -top, width: W, height: H }, heroStyle]}>
+            <CityHeroContent
+              city={city}
+              stats={{ places, reels, planned }}
+              width={W}
+              height={H}
+              insetTop={insets.top}
+              insetBottom={insets.bottom}
+              onStart={start}
+              hideBack
+            />
+          </Animated.View>
+        </View>
+
+        <PanelTabs active={active} onTab={goToTab} />
+
+        <View style={[styles.panelBody, { paddingBottom: insets.bottom + 120, minHeight: H - top }]}>
+          <OverviewSection cityName={city.name} info={info} onLayout={(e) => setSectionY(0, e.nativeEvent.layout.y)} />
+          <PlacesSection places={collected} cityId={id} onLayout={(e) => setSectionY(1, e.nativeEvent.layout.y)} />
+          <PlanSection plan={plan} planned={planned} onLayout={(e) => setSectionY(2, e.nativeEvent.layout.y)} />
+          <GoodToKnowSection info={info} onLayout={(e) => setSectionY(3, e.nativeEvent.layout.y)} />
+        </View>
+      </Animated.ScrollView>
+
+      <View style={[styles.back, { top: insets.top + 8 }]}>
+        <IconButton icon="chevron-left" onPress={back} accessibilityLabel="Back to your cities" />
       </View>
 
-      <Animated.View style={[styles.panel, { paddingBottom: insets.bottom + 16 }, panelStyle]}>
-        <Text variant="micro">
-          {collected.length} places{firstReel ? ` · from ${firstReel.creator}` : ''}
-        </Text>
-        <Text variant="display">{city.name}</Text>
-        <Text variant="body">Tap a pin to see a place, or go through them one by one.</Text>
-        <Button
-          label={`Review ${collected.length} places`}
-          onPress={() => router.push({ pathname: '/pick/[id]', params: { id } })}
-          style={styles.cta}
-        />
-        <Button
-          kind="text"
-          label={`Plan my day with ${kept} places`}
-          trailingArrow
-          onPress={() => router.push({ pathname: '/plan/[id]', params: { id } })}
-        />
+      <Animated.View
+        style={[styles.bar, { paddingBottom: insets.bottom + 12, pointerEvents: barOn ? 'auto' : 'none' }, barStyle]}
+      >
+        <View style={styles.barText}>
+          <Text variant="bodyStrong">
+            {places} {places === 1 ? 'place' : 'places'} from {reels} {reels === 1 ? 'reel' : 'reels'}
+          </Text>
+          <Text variant="data">
+            {formatRupees(info.costPerDay.low)} – {formatRupees(info.costPerDay.high)} a day
+          </Text>
+        </View>
+        <Button compact label={planned ? 'See your day' : 'Start planning'} onPress={start} />
       </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.mapLand },
-  topFade: { position: 'absolute', left: 0, right: 0, top: 0 },
-  topBar: { position: 'absolute', left: 16, top: 0 },
-  // White panel resting on the map, like the Atlys sheet over its photo.
-  panel: {
+  fill: { flex: 1, backgroundColor: '#000' },
+  dim: { backgroundColor: 'rgba(0,0,0,0.35)', pointerEvents: 'none' },
+  scroll: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  hero: { position: 'absolute', left: 0 },
+  panelBody: { backgroundColor: light.panel },
+  back: { position: 'absolute', left: 16 },
+  bar: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingTop: 12,
+    paddingHorizontal: 20,
     backgroundColor: light.panel,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: light.line,
     boxShadow: shadows.panel,
   },
-  cta: { marginTop: 12 },
+  barText: { flex: 1, gap: 2 },
 });

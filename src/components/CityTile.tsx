@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { StyleSheet, View, type ImageSourcePropType } from 'react-native';
 
 import { PhotoCard } from '@/components/PhotoCard';
@@ -5,18 +6,26 @@ import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { fonts, light, shadows } from '@/theme/tokens';
 
-type Props = {
+export type Rect = { x: number; y: number; width: number; height: number };
+
+type FaceProps = {
   name: string;
-  photo: ImageSourcePropType;
   /** Bottom row on the photo, e.g. SPOTS · 7 */
   statLabel: string;
   statValue: string;
+  badge?: string;
+};
+
+type Props = FaceProps & {
+  photo: ImageSourcePropType;
   /** Two lines under the card, e.g. "Collected from" / "2 reels" */
   captionLabel: string;
   captionValue: string;
-  badge?: string;
   width: number;
-  onPress: () => void;
+  /** Called with the photo's on-screen rect, so the card can grow out of exactly that spot. */
+  onPress: (photoRect: Rect) => void;
+  /** Hide the photo while a copy of it is growing into (or shrinking back from) the city page. */
+  lifted?: boolean;
   accessibilityLabel: string;
 };
 
@@ -35,33 +44,26 @@ export function CityTile({
   badge,
   width,
   onPress,
+  lifted,
   accessibilityLabel,
 }: Props) {
+  const photoRef = useRef<View>(null);
+  const press = () => {
+    const node = photoRef.current;
+    if (!node) return;
+    node.measureInWindow((x, y, w, h) => onPress({ x, y, width: w, height: h }));
+  };
+
   return (
-    <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={{ width }}>
-      <View style={styles.shadow}>
+    <PressableScale
+      onPress={press}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={{ width }}
+    >
+      <View ref={photoRef} style={[styles.shadow, lifted && styles.lifted]}>
         <PhotoCard source={photo} radius={TILE_RADIUS} style={{ width, height: width * TILE_RATIO }}>
-          {badge ? (
-            <View style={styles.badge}>
-              <Text variant="micro" color={light.photoInk} style={styles.badgeText}>
-                {badge}
-              </Text>
-            </View>
-          ) : null}
-          <View style={styles.body}>
-            <Text style={styles.name} numberOfLines={2}>
-              {name}
-            </Text>
-            <View style={styles.rule} />
-            <View style={styles.stat}>
-              <Text variant="micro" color={light.photoInkSoft} style={styles.statText}>
-                {statLabel}
-              </Text>
-              <Text variant="micro" color={light.photoInk} style={styles.statText}>
-                {statValue}
-              </Text>
-            </View>
-          </View>
+          <CityTileFace name={name} statLabel={statLabel} statValue={statValue} badge={badge} />
         </PhotoCard>
       </View>
       <View style={styles.caption}>
@@ -76,8 +78,38 @@ export function CityTile({
   );
 }
 
+/** What sits on the tile's photo. Also drawn on the growing card, fading out as it opens. */
+export function CityTileFace({ name, statLabel, statValue, badge }: FaceProps) {
+  return (
+    <>
+      {badge ? (
+        <View style={styles.badge}>
+          <Text variant="micro" color={light.photoInk} style={styles.badgeText}>
+            {badge}
+          </Text>
+        </View>
+      ) : null}
+      <View style={styles.body}>
+        <Text style={styles.name} numberOfLines={2}>
+          {name}
+        </Text>
+        <View style={styles.rule} />
+        <View style={styles.stat}>
+          <Text variant="micro" color={light.photoInkSoft} style={styles.statText}>
+            {statLabel}
+          </Text>
+          <Text variant="micro" color={light.photoInk} style={styles.statText}>
+            {statValue}
+          </Text>
+        </View>
+      </View>
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
   shadow: { borderRadius: TILE_RADIUS, boxShadow: shadows.card },
+  lifted: { opacity: 0 },
   badge: {
     position: 'absolute',
     top: 12,

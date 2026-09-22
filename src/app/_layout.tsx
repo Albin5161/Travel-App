@@ -12,6 +12,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { LaunchIntro } from '@/components/motion/LaunchIntro';
+// Imported for its side effect: expo-location needs the geofencing task defined at module scope,
+// before any arrival event can reach the app.
+import '@/lib/arrival';
 import { TripsProvider } from '@/state/trips';
 import { light } from '@/theme/tokens';
 
@@ -52,12 +55,12 @@ export default function RootLayout() {
               animation: reduced ? 'fade' : 'default',
             }}
           >
-            <Stack.Screen name="index" />
+            <Stack.Screen name="(tabs)" />
             <Stack.Screen name="analysing" options={{ animation: 'fade', gestureEnabled: false }} />
             {/* Home's card grows into this page itself (CityOpenOverlay), so the screen doesn't animate.
                 The edge swipe is off because it would slide the page away instead of shrinking it. */}
             <Stack.Screen name="city/[id]" options={{ animation: 'none', gestureEnabled: false }} />
-            <Stack.Screen name="map/[id]" options={{ animation: 'fade' }} />
+            <Stack.Screen name="citymap/[id]" options={{ animation: 'fade' }} />
             <Stack.Screen name="pick/[id]" />
             <Stack.Screen name="plan/[id]" />
             <Stack.Screen

@@ -16,3 +16,19 @@ Images were resized; no other changes.
 
 ## Unsplash (Unsplash License)
 gok-om.jpg, gok-mainbeach.jpg, gok-aerial.jpg, hero-dusk.jpg, kochi-*.jpg, meg-*.jpg. Sourced from Unsplash searches for Gokarna, Fort Kochi and Meghalaya.
+
+## Placeholders
+
+The Kottayam spots (`ktm-*`) are real places, but their photography is borrowed from the files
+above until the district is actually shot:
+
+| Spot | Using |
+|---|---|
+| Illickal Kallu | meg-valley.jpg |
+| Marmala Waterfall | meg-falls.jpg |
+| Kumarakom Backwaters | kochi-waterfront.jpg |
+| Ark Cafe | gok-cafe.jpg |
+| Vaikom Mahadeva Temple | gok-temple.jpg |
+| Thali at Meenachil Mess | gok-thali.jpg |
+
+Replace these before anything ships.

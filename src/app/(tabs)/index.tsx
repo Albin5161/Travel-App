@@ -17,8 +17,11 @@ import { useTrips } from '@/state/trips';
 import { fonts, light, shadows } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
-const SAMPLE_CITIES = ['gokarna', 'kochi', 'meghalaya'];
+// Home district first: tapping it is the fastest way to a map worth looking at.
+const SAMPLE_CITIES = ['kottayam', 'kochi', 'gokarna', 'meghalaya'];
 const GUTTER = 16;
+/** The floating tab bar sits over the scroll, so the last row of tiles has to clear it. */
+const TAB_BAR_CLEARANCE = 100;
 const GAP = 12;
 
 // Home is Collect mode: paste reels, watch cities fill up. Tapping a city opens Plan mode.
@@ -73,7 +76,7 @@ export default function Home() {
             <LinkBox key={boxKey} onSubmit={start} clipboardHasLink={hasLink} />
           </Animated.View>
 
-          <Animated.View entering={ENTER[2]} style={[styles.panel, { paddingBottom: insets.bottom + 32 }]}>
+          <Animated.View entering={ENTER[2]} style={[styles.panel, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}>
             <Text variant="micro" style={styles.panelTitle}>
               {empty ? 'Or try a sample' : `Your cities · ${collections.length}`}
             </Text>

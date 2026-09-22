@@ -1,7 +1,9 @@
-import { createContext, useContext, useReducer, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react';
 
-import { getPlace } from '@/data/api';
-import type { Extraction, Place } from '@/data/types';
+import { getPlace, getCity } from '@/data/api';
+import { allDistricts } from '@/data/regions';
+import type { Extraction, Place, SpotStatus } from '@/data/types';
+import { clusterSpots, districtOf } from '@/lib/spots';
 
 export interface CityCollection {
   cityId: string;
@@ -12,6 +14,18 @@ export interface CityCollection {
 
 interface State {
   pendingLink: string | null;
+  /**
+   * The district you live in. Everything near-home hangs off this: the weekend view, and which
+   * districts are worth an arrival notification. A real app asks once at onboarding; the demo
+   * starts in Kottayam and the Profile tab can change it.
+   */
+  homeDistrictId: string | null;
+  /** Want to go, or already been. Absent means want. */
+  spotStatus: Record<string, SpotStatus>;
+  /** Whether arrival notifications are switched on, independent of the OS permission. */
+  notifyOnArrival: boolean;
+  /** A district just arrived in, for the in-app banner. Cleared when dismissed or acted on. */
+  arrivedDistrictId: string | null;
   lastExtraction: Extraction | null;
   collections: Record<string, CityCollection>;
   skipped: Record<string, boolean>;
@@ -28,10 +42,19 @@ type Action =
   | { type: 'keepAll'; placeIds: string[] }
   | { type: 'addLocal'; cityId: string; placeId: string }
   | { type: 'saveTrip'; cityId: string }
-  | { type: 'clearFresh' };
+  | { type: 'clearFresh' }
+  | { type: 'setHomeDistrict'; districtId: string }
+  | { type: 'setSpotStatus'; placeId: string; status: SpotStatus }
+  | { type: 'setNotifyOnArrival'; on: boolean }
+  | { type: 'arrived'; districtId: string }
+  | { type: 'clearArrival' };
 
 const initial: State = {
   pendingLink: null,
+  homeDistrictId: 'kottayam',
+  spotStatus: {},
+  notifyOnArrival: true,
+  arrivedDistrictId: null,
   lastExtraction: null,
   collections: {},
   skipped: {},
@@ -76,6 +99,16 @@ function reducer(state: State, action: Action): State {
       return { ...state, savedTrips: { ...state.savedTrips, [action.cityId]: true } };
     case 'clearFresh':
       return { ...state, freshCityId: null };
+    case 'setHomeDistrict':
+      return { ...state, homeDistrictId: action.districtId };
+    case 'setSpotStatus':
+      return { ...state, spotStatus: { ...state.spotStatus, [action.placeId]: action.status } };
+    case 'setNotifyOnArrival':
+      return { ...state, notifyOnArrival: action.on };
+    case 'arrived':
+      return { ...state, arrivedDistrictId: action.districtId };
+    case 'clearArrival':
+      return { ...state, arrivedDistrictId: null };
   }
 }
 
@@ -98,4 +131,96 @@ export function useCityPlaces(cityId: string) {
   const kept = collected.filter((p) => !state.skipped[p.id]);
   const locals = (state.addedLocals[cityId] ?? []).map((id) => getPlace(id)).filter(Boolean) as Place[];
   return { collected, kept, locals };
+}
+
+
+// ---------------------------------------------------------------------------
+// Saved spots, read across every city at once
+// ---------------------------------------------------------------------------
+
+/** Every spot you have kept, from every city, in one list. The Map tab's whole input. */
+export function useSavedSpots(): Place[] {
+  const { state } = useTrips();
+  const { collections, skipped, addedLocals } = state;
+  return useMemo(() => {
+    const ids = new Set<string>();
+    Object.values(collections).forEach((c) => c.placeIds.forEach((id) => !skipped[id] && ids.add(id)));
+    Object.values(addedLocals).forEach((list) => list.forEach((id) => ids.add(id)));
+    return [...ids].map((id) => getPlace(id)).filter(Boolean) as Place[];
+  }, [collections, skipped, addedLocals]);
+}
+
+export interface DistrictSpots {
+  districtId: string | null;
+  name: string;
+  state: string;
+  spots: Place[];
+  isHome: boolean;
+}
+
+/** Saved spots grouped by district, home first, then by how many spots each holds. */
+export function useSpotsByDistrict(): DistrictSpots[] {
+  const spots = useSavedSpots();
+  const { state } = useTrips();
+  const home = state.homeDistrictId;
+  return useMemo(() => {
+    const homeName = allDistricts.find((d) => d.id === home)?.name ?? null;
+    const byName = new Map<string, Place[]>();
+    spots.forEach((p) => {
+      const name = districtOf(p);
+      const list = byName.get(name);
+      if (list) list.push(p);
+      else byName.set(name, [p]);
+    });
+    return [...byName.entries()]
+      .map(([name, spots]) => ({
+        districtId: allDistricts.find((d) => d.name === name)?.id ?? null,
+        name,
+        state: getCity(spots[0].cityId)?.state ?? '',
+        spots,
+        isHome: name === homeName,
+      }))
+      .sort((a, b) => Number(b.isHome) - Number(a.isHome) || b.spots.length - a.spots.length);
+  }, [spots, home]);
+}
+
+/**
+ * The districts worth a geofence, with the copy each notification needs. Only districts that both
+ * hold saved spots and have known coordinates can be watched.
+ */
+export function useArrivalTargets() {
+  const groups = useSpotsByDistrict();
+  return useMemo(
+    () =>
+      groups.flatMap((g) => {
+        const district = allDistricts.find((d) => d.id === g.districtId);
+        if (!district) return [];
+        const biggest = clusterSpots(g.spots)[0];
+        return [
+          {
+            districtId: district.id,
+            name: district.name,
+            centre: district.centre,
+            radiusKm: district.radiusKm,
+            spots: g.spots.length,
+            topArea: biggest?.label ?? null,
+            topAreaSpots: biggest?.spots.length ?? 0,
+          },
+        ];
+      }),
+    [groups],
+  );
+}
+
+export function useSpotStatus() {
+  const { state, dispatch } = useTrips();
+  return {
+    statusOf: (placeId: string): SpotStatus => state.spotStatus[placeId] ?? 'want',
+    toggle: (placeId: string) =>
+      dispatch({
+        type: 'setSpotStatus',
+        placeId,
+        status: (state.spotStatus[placeId] ?? 'want') === 'want' ? 'been' : 'want',
+      }),
+  };
 }

@@ -1,4 +1,3 @@
-import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -14,15 +13,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { CityMap, fitCameraToRect, flyTo, useCamera } from '@/components/CityMap';
-import { PressableScale } from '@/components/PressableScale';
+import { IconButton } from '@/components/IconButton';
 import { Text } from '@/components/Text';
 import { getCity, getReel } from '@/data/api';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT, SPRING_SHEET } from '@/lib/motion';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { colors } from '@/theme/tokens';
+import { light, shadows } from '@/theme/tokens';
 
-const PANEL_H = 250;
+const PANEL_H = 270;
 
 export default function CityScreen() {
   const { id, reveal } = useLocalSearchParams<{ id: string; reveal?: string }>();
@@ -109,26 +108,17 @@ export default function CityScreen() {
 
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(13,15,14,0.7)', 'rgba(13,15,14,0)']}
+        colors={['rgba(245,244,241,0.85)', 'rgba(245,244,241,0)']}
         style={[styles.topFade, { height: insets.top + 90 }]}
       />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <PressableScale
+        <IconButton
+          icon="chevron-left"
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-          style={styles.iconButton}
-          accessibilityRole="button"
           accessibilityLabel="Back to your places"
-        >
-          <Feather name="chevron-left" size={22} color={colors.mist} />
-        </PressableScale>
+        />
       </View>
 
-      <LinearGradient
-        pointerEvents="none"
-        colors={['rgba(13,15,14,0)', 'rgba(13,15,14,0.92)', colors.night]}
-        locations={[0, 0.35, 1]}
-        style={[styles.bottomFade, { height: panelBottom + 80 }]}
-      />
       <Animated.View style={[styles.panel, { paddingBottom: insets.bottom + 16 }, panelStyle]}>
         <Text variant="micro">
           {collected.length} places{firstReel ? ` · from ${firstReel.creator}` : ''}
@@ -152,20 +142,22 @@ export default function CityScreen() {
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: colors.night },
+  fill: { flex: 1, backgroundColor: light.mapLand },
   topFade: { position: 'absolute', left: 0, right: 0, top: 0 },
   topBar: { position: 'absolute', left: 16, top: 0 },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.glassDark,
-    borderWidth: 1,
-    borderColor: colors.rim,
+  // White panel resting on the map, like the Atlys sheet over its photo.
+  panel: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    gap: 8,
+    backgroundColor: light.panel,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    boxShadow: shadows.panel,
   },
-  bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
-  panel: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 24, gap: 8 },
   cta: { marginTop: 12 },
 });

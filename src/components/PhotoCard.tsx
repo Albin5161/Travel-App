@@ -51,7 +51,7 @@ export function GlassRim({ radius }: { radius: number }) {
       style={StyleSheet.absoluteFill}
       onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
     >
-      {size ? (
+      {size && size.w > 2 && size.h > 2 ? (
         <Svg width={size.w} height={size.h}>
           <Defs>
             <SvgGradient id={id} x1="0" y1="0" x2="1" y2="1">

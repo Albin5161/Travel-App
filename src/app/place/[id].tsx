@@ -6,7 +6,7 @@ import { PlaceCard } from '@/components/PlaceCard';
 import { Text } from '@/components/Text';
 import { getPlace } from '@/data/api';
 import { useTrips } from '@/state/trips';
-import { colors } from '@/theme/tokens';
+import { light } from '@/theme/tokens';
 
 export default function PlaceSheet() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,7 +32,7 @@ export default function PlaceSheet() {
         />
       </View>
       {skipped ? (
-        <Text variant="label" color={colors.ash} style={styles.note}>
+        <Text variant="label" color={light.inkFaint} style={styles.note}>
           Skipped. It won’t be in your day plan.
         </Text>
       ) : null}
@@ -41,7 +41,7 @@ export default function PlaceSheet() {
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: colors.night },
+  fill: { flex: 1, backgroundColor: light.panel },
   content: { padding: 16, paddingTop: 24, paddingBottom: 40 },
   actions: { flexDirection: 'row', gap: 12, marginTop: 16 },
   action: { flex: 1 },

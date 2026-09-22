@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "raahi-web",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["expo", "start", "--web", "--port", "8081"],
-      "port": 8081
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "npx expo start --web --port ${PORT:-8082}"],
+      "port": 8082,
+      "autoPort": true
     }
   ]
 }

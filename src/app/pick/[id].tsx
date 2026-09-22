@@ -1,4 +1,3 @@
-import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
@@ -16,15 +15,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { Button } from '@/components/Button';
+import { IconButton } from '@/components/IconButton';
 import { PlaceCard } from '@/components/PlaceCard';
-import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { getCity } from '@/data/api';
 import type { Place } from '@/data/types';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT, FADE_IN, FADE_OUT, project, SPRING_DRAG, SPRING_SETTLE, fadeUp } from '@/lib/motion';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { colors, fonts } from '@/theme/tokens';
+import { colors, fonts, light } from '@/theme/tokens';
 
 type Dir = 'keep' | 'skip';
 type CardHandle = { swipe: (dir: Dir) => void };
@@ -73,9 +72,7 @@ export default function Pick() {
   return (
     <View style={[styles.fill, { paddingTop: insets.top + 8 }]}>
       <View style={styles.header}>
-        <PressableScale onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Back">
-          <Feather name="chevron-left" size={22} color={colors.mist} />
-        </PressableScale>
+        <IconButton icon="chevron-left" onPress={() => router.back()} accessibilityLabel="Back" />
         <View style={styles.headerRight}>
           <Animated.View key={`${index}-${kept}`} entering={FADE_IN}>
             <Text variant="data">
@@ -84,9 +81,7 @@ export default function Pick() {
           </Animated.View>
           {history.length > 0 && !done ? (
             <Animated.View entering={FADE_IN} exiting={FADE_OUT}>
-              <PressableScale onPress={undo} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Undo last choice">
-                <Feather name="rotate-ccw" size={17} color={colors.mist} />
-              </PressableScale>
+              <IconButton icon="rotate-ccw" onPress={undo} accessibilityLabel="Undo last choice" />
             </Animated.View>
           ) : null}
         </View>
@@ -244,7 +239,7 @@ function SwipeCard({ ref, place, depth, width, height, screenW, enterFrom, fresh
           overlay={
             <>
               <Animated.View style={[styles.stamp, styles.stampKeep, keepStyle]} pointerEvents="none">
-                <Text style={[styles.stampText, { color: colors.night }]}>Keep</Text>
+                <Text style={[styles.stampText, { color: light.ink }]}>Keep</Text>
               </Animated.View>
               <Animated.View style={[styles.stamp, styles.stampSkip, skipStyle]} pointerEvents="none">
                 <Text style={[styles.stampText, { color: colors.mist }]}>Skip</Text>
@@ -291,19 +286,9 @@ function DoneState({
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: colors.night },
+  fill: { flex: 1, backgroundColor: light.canvas },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.glassLight,
-    borderWidth: 1,
-    borderColor: colors.rim,
-  },
   titleBlock: { paddingHorizontal: 24, marginTop: 8, gap: 4 },
   stack: { marginTop: 16, alignItems: 'center' },
   card: { position: 'absolute', top: 0 },
@@ -314,7 +299,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
   },
-  stampKeep: { left: 20, backgroundColor: colors.ember, transform: [{ rotate: '-8deg' }] },
+  stampKeep: { left: 20, backgroundColor: light.panel, transform: [{ rotate: '-8deg' }] },
   stampSkip: {
     right: 20,
     backgroundColor: colors.glassDark,

@@ -4,7 +4,7 @@ import {
   InstrumentSerif_400Regular_Italic,
 } from '@expo-google-fonts/instrument-serif';
 import { useFonts } from 'expo-font';
-import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -12,13 +12,13 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { TripsProvider } from '@/state/trips';
-import { colors } from '@/theme/tokens';
+import { light } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync();
 
 const theme = {
-  ...DarkTheme,
-  colors: { ...DarkTheme.colors, background: colors.night, card: colors.night, primary: colors.ember },
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: light.canvas, card: light.canvas, primary: light.ink, text: light.ink },
 };
 
 export default function RootLayout() {
@@ -38,28 +38,18 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.night }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: light.canvas }}>
       <ThemeProvider value={theme}>
         <TripsProvider>
-          <StatusBar style="light" />
+          <StatusBar style="dark" />
           <Stack
             screenOptions={{
               headerShown: false,
-              contentStyle: { backgroundColor: colors.night },
+              contentStyle: { backgroundColor: light.canvas },
               animation: reduced ? 'fade' : 'default',
             }}
           >
             <Stack.Screen name="index" />
-            <Stack.Screen
-              name="paste"
-              options={{
-                presentation: 'formSheet',
-                sheetAllowedDetents: [0.62],
-                sheetGrabberVisible: true,
-                sheetCornerRadius: 32,
-                contentStyle: { backgroundColor: colors.basalt },
-              }}
-            />
             <Stack.Screen name="analysing" options={{ animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="city/[id]" options={{ animation: 'fade' }} />
             <Stack.Screen name="pick/[id]" />
@@ -71,7 +61,7 @@ export default function RootLayout() {
                 sheetAllowedDetents: [0.72],
                 sheetGrabberVisible: true,
                 sheetCornerRadius: 32,
-                contentStyle: { backgroundColor: colors.night },
+                contentStyle: { backgroundColor: light.panel },
               }}
             />
           </Stack>

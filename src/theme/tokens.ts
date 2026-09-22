@@ -16,6 +16,43 @@ export const colors = {
   mapCoast: 'rgba(255,255,255,0.07)',
 } as const;
 
+// Light direction (Atlys-like): airy paper UI, photos carry the colour, black primary button.
+// Screens move over one at a time; see Tone in ./tone.
+export const light = {
+  canvasTop: '#ECEAE6',
+  canvas: '#F5F4F1',
+  panel: '#FFFFFF',
+  ink: '#111111',
+  inkSoft: '#5E5E5E',
+  inkFaint: '#A3A3A3',
+  line: 'rgba(17,17,17,0.08)',
+  lineStrong: 'rgba(17,17,17,0.16)',
+  field: '#FFFFFF',
+  cta: '#111111',
+  ctaInk: '#FFFFFF',
+  photoInk: '#FFFFFF',
+  photoInkSoft: 'rgba(255,255,255,0.72)',
+  photoLine: 'rgba(255,255,255,0.22)',
+  accent: '#E2763C',
+  // Map, drawn as paper: pale land, soft blue-grey sea, quiet roads.
+  mapLand: '#F7F6F2',
+  mapSea: '#DDE6E7',
+  mapCoast: 'rgba(17,17,17,0.10)',
+  mapRoad: '#E6E3DC',
+  mapTrail: 'rgba(17,17,17,0.28)',
+  mapLabel: 'rgba(17,17,17,0.38)',
+  mapSeaLabel: 'rgba(40,70,80,0.30)',
+} as const;
+
+export const shadows = {
+  field: '0 6px 20px rgba(17,17,17,0.06)',
+  card: '0 10px 24px rgba(17,17,17,0.14)',
+  panel: '0 -8px 30px rgba(17,17,17,0.05)',
+  cta: '0 8px 20px rgba(17,17,17,0.22)',
+  pin: '0 4px 10px rgba(17,17,17,0.25)',
+  button: '0 2px 8px rgba(17,17,17,0.08)',
+} as const;
+
 export const fonts = {
   serif: 'InstrumentSerif_400Regular',
   serifItalic: 'InstrumentSerif_400Regular_Italic',

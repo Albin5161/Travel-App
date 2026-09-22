@@ -28,10 +28,30 @@ export interface CityInfo {
   /** Per person per day, mid-range, in rupees. */
   costPerDay: { low: number; high: number };
   costBreakdown: CostLine[];
-  /** Specific facts, never a score: we don't have data solid enough to grade a place's safety. */
+  /** Specific facts: what the score below is made of, in words a traveller can act on. */
   safety: SafetyFact[];
+  /**
+   * A 0–100 comfort score with the dated signals behind it (after Atlys's "India currently").
+   * Always shown with its basis, and as sample data until a real source backs it.
+   */
+  safetyScore: { score: number; signals: SafetySignal[] };
   localTips: string[];
 }
+
+export interface SafetySignal {
+  /** e.g. "Mar" and "'26" */
+  month: string;
+  year: string;
+  text: string;
+  tag: string;
+  direction: 'up' | 'down';
+}
+
+export const SAFETY_BANDS = ['Low', 'Moderate', 'High', 'Excellent'] as const;
+/** Where each band starts on the 0–100 scale. */
+export const SAFETY_BAND_STARTS = [0, 30, 55, 80];
+export const safetyBand = (score: number) =>
+  SAFETY_BANDS[SAFETY_BAND_STARTS.filter((start) => score >= start).length - 1];
 
 export interface Review {
   author: string;
@@ -87,6 +107,32 @@ export const cityInfo: Record<string, CityInfo> = {
         detail: 'Download offline maps before you start the trail.',
       },
     ],
+    safetyScore: {
+      score: 72,
+      signals: [
+        {
+          month: 'Aug',
+          year: "'26",
+          direction: 'down',
+          tag: 'beach safety',
+          text: 'Rip currents closed Kudle and Om for swimming in peak monsoon. Both reopened in September.',
+        },
+        {
+          month: 'Mar',
+          year: "'26",
+          direction: 'up',
+          tag: 'lifeguards',
+          text: 'Lifeguard hours on Om Beach extended to 6 pm for the season.',
+        },
+        {
+          month: 'Dec',
+          year: "'25",
+          direction: 'up',
+          tag: 'trails',
+          text: 'New markers on the cliff trail from Kudle to Paradise make it easier to follow.',
+        },
+      ],
+    },
     localTips: [
       'At the temple, cover your shoulders and knees.',
       'Boats from Om to Paradise run about ₹300 a person when the sea is calm.',
@@ -132,6 +178,32 @@ export const cityInfo: Record<string, CityInfo> = {
         detail: 'Solo women travellers report feeling safe in Fort Kochi.',
       },
     ],
+    safetyScore: {
+      score: 81,
+      signals: [
+        {
+          month: 'Jul',
+          year: "'26",
+          direction: 'up',
+          tag: 'night safety',
+          text: 'Evening patrols added along the Fort Kochi waterfront and Princess Street.',
+        },
+        {
+          month: 'Apr',
+          year: "'26",
+          direction: 'down',
+          tag: 'heat',
+          text: 'A heat advisory asked visitors to stay indoors from noon to 3 pm for two weeks.',
+        },
+        {
+          month: 'Jan',
+          year: "'26",
+          direction: 'up',
+          tag: 'transport',
+          text: 'More water-metro boats between Fort Kochi and the mainland cut waiting times.',
+        },
+      ],
+    },
     localTips: [
       'Jew Town shops close on Friday afternoon and Saturday.',
       'Catch the Kathakali make-up session an hour before the show.',
@@ -161,6 +233,32 @@ export const cityInfo: Record<string, CityInfo> = {
       { icon: 'patchy-network', title: 'Patchy network', detail: 'Only some networks work in parts of Sohra.' },
       { icon: 'solo-friendly', title: 'Solo-friendly', detail: 'Homestays are welcoming. Book ahead in season.' },
     ],
+    safetyScore: {
+      score: 66,
+      signals: [
+        {
+          month: 'Jul',
+          year: "'26",
+          direction: 'down',
+          tag: 'roads',
+          text: 'Landslides closed the Sohra road for three days during heavy rain.',
+        },
+        {
+          month: 'Feb',
+          year: "'26",
+          direction: 'up',
+          tag: 'trails',
+          text: 'New railings on the steepest steps down to Nongriat.',
+        },
+        {
+          month: 'Nov',
+          year: "'25",
+          direction: 'up',
+          tag: 'support',
+          text: 'Homestays in Sohra began sharing a common helpline for guests.',
+        },
+      ],
+    },
     localTips: [
       'Carry cash. There are few ATMs past Shillong.',
       'Boating at Dawki is clearest from November to February.',

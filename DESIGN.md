@@ -149,7 +149,7 @@ Raahi has moved from "a travel film at dusk" to a **light, airy direction modell
 - **Overview:** summary, three quick facts (best time, ideal stay, per day), and **cost per day** as horizontal ink bars (stay, food, getting around, entry), marked as our estimate.
 - **Places:** "Open the map", then each place with a photo, type and area, **★ rating · review count**, one short review, and its author. Marked "Ratings and reviews from Google. Sample data for the demo."
 - **Plan:** the day in three rows (Morning / Afternoon / Evening) with start times, stop counts and stacked photo thumbnails.
-- **Good to know:** **safety as specific facts, never a score** (an icon, a title and one line each), then tips "From locals".
+- **Good to know:** first **Safety today**, after Atlys's "India currently": "Gokarna currently" with the **score (0–100, green) sitting above the end of a gradient bar** (peach → olive → green) that fills over 0.9s the first time the tab is reached, with the bands **Low · Moderate · High · Excellent** underneath (reached bands in ink, the rest faint). Below it, **dated signals** explain the score: month and year on a rail, and a card with one line and a green ▲ or red ▼ tag. It's always labelled "Based on traveller reports and local news" and marked as sample data until a real source backs it. Then the **specific facts** (an icon, a title and one line each) and the tips "From locals".
 - A **sticky bottom bar** takes over from the round button once the panel is mostly up: "7 places from 1 reel · ₹1,800 – ₹3,000 a day" with a black **Start planning**.
 - Back while the panel is up lowers it first, so the page shrinks into its card from the resting layout.
 

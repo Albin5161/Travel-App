@@ -7,6 +7,7 @@ import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { Button } from '@/components/Button';
 import { typeLine } from '@/components/PlaceMeta';
 import { PressableScale } from '@/components/PressableScale';
+import { SafetyScale } from '@/components/plan/SafetyScale';
 import { isSafetyIcon, SafetyIcon } from '@/components/SafetyIcon';
 import { Text } from '@/components/Text';
 import { formatCount, formatRupees, getPlaceRating, type CityInfo } from '@/data/cityInfo';
@@ -180,10 +181,20 @@ export function PlanSection({ plan, planned, onLayout }: SectionProps & { plan: 
   );
 }
 
-export function GoodToKnowSection({ info, onLayout }: SectionProps & { info: CityInfo }) {
+export function GoodToKnowSection({
+  cityName,
+  info,
+  play,
+  onLayout,
+}: SectionProps & { cityName: string; info: CityInfo; play: boolean }) {
   return (
     <Section title="Good to know" onLayout={onLayout}>
       <Text variant="micro" style={styles.group}>
+        Safety today
+      </Text>
+      <SafetyScale cityName={cityName} score={info.safetyScore.score} signals={info.safetyScore.signals} play={play} />
+
+      <Text variant="micro" style={[styles.group, styles.groupGap]}>
         Staying safe
       </Text>
       <View style={styles.facts}>
@@ -268,6 +279,7 @@ const styles = StyleSheet.create({
   stackThumb: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: light.canvas },
 
   group: { marginTop: 8, marginBottom: 12 },
+  groupGap: { marginTop: 28 },
   facts: { gap: 16, marginBottom: 20 },
   fact: { flexDirection: 'row', gap: 12 },
   factIcon: {

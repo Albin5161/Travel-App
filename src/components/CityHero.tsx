@@ -6,6 +6,7 @@ import { IconButton } from '@/components/IconButton';
 import { PanelTabs, restPeek } from '@/components/plan/PanelTabs';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
+import { cityPlaceLine } from '@/data/api';
 import type { City } from '@/data/types';
 import { Tone } from '@/theme/tone';
 import { fonts, light } from '@/theme/tokens';
@@ -78,7 +79,7 @@ export function CityHeroContent({
 
         <View style={[styles.center, { top: height * 0.3 }]}>
           <Text variant="micro" color={light.photoInkSoft}>
-            {city.state}
+            {cityPlaceLine(city)}
           </Text>
           <Text style={styles.name}>{city.name}</Text>
           <Text style={styles.line}>

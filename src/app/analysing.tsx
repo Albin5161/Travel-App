@@ -93,7 +93,7 @@ export default function Analysing() {
 
   const planTrip = () => {
     if (!result) return;
-    router.replace({ pathname: '/map/[id]', params: { id: result.city.id, reveal: '1' } });
+    router.replace({ pathname: '/citymap/[id]', params: { id: result.city.id, reveal: '1' } });
   };
 
   const cardW = W - 48;

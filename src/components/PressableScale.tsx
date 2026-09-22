@@ -5,11 +5,20 @@ import Animated, { css, cubicBezier } from 'react-native-reanimated';
 type Props = Omit<PressableProps, 'style' | 'children'> & {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
+  /** Layout for the outer pressable — `flex` and `alignSelf` belong here, not in `style`. */
+  containerStyle?: StyleProp<ViewStyle>;
   pressedScale?: number;
 };
 
 // Feedback on press-in: 3% scale in 120ms. Commit happens on press-out via onPress.
-export function PressableScale({ children, style, pressedScale = 0.97, disabled, ...rest }: Props) {
+export function PressableScale({
+  children,
+  style,
+  containerStyle,
+  pressedScale = 0.97,
+  disabled,
+  ...rest
+}: Props) {
   const [pressed, setPressed] = useState(false);
   return (
     <Pressable
@@ -17,6 +26,7 @@ export function PressableScale({ children, style, pressedScale = 0.97, disabled,
       disabled={disabled}
       hitSlop={rest.hitSlop ?? 8}
       pressRetentionOffset={16}
+      style={containerStyle}
       onPressIn={(e) => {
         setPressed(true);
         rest.onPressIn?.(e);

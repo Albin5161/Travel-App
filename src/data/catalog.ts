@@ -18,6 +18,13 @@ const photos = {
   megFalls: require('@/assets/images/places/meg-falls.jpg'),
   megBridge: require('@/assets/images/places/meg-bridge.jpg'),
   megDawki: require('@/assets/images/places/meg-dawki.jpg'),
+  // Kottayam placeholders: real places, stand-in photography until the district is shot.
+  ktmIllickal: require('@/assets/images/places/meg-valley.jpg'),
+  ktmMarmala: require('@/assets/images/places/meg-falls.jpg'),
+  ktmKumarakom: require('@/assets/images/places/kochi-waterfront.jpg'),
+  ktmCafe: require('@/assets/images/places/gok-cafe.jpg'),
+  ktmVaikom: require('@/assets/images/places/gok-temple.jpg'),
+  ktmThali: require('@/assets/images/places/gok-thali.jpg'),
 };
 
 export const heroDusk = require('@/assets/images/places/hero-dusk.jpg');
@@ -27,6 +34,7 @@ export const cities: Record<string, City> = {
     id: 'gokarna',
     name: 'Gokarna',
     state: 'Karnataka',
+    district: 'Uttara Kannada',
     hero: photos.gokAerial,
     map: {
       coast: [
@@ -66,6 +74,8 @@ export const cities: Record<string, City> = {
     id: 'kochi',
     name: 'Kochi',
     state: 'Kerala',
+    district: 'Ernakulam',
+    regionId: 'kerala',
     hero: photos.kochiMural,
     map: {
       coast: [
@@ -88,7 +98,8 @@ export const cities: Record<string, City> = {
   meghalaya: {
     id: 'meghalaya',
     name: 'Meghalaya',
-    state: 'East Khasi Hills',
+    state: 'Meghalaya',
+    district: 'East Khasi Hills',
     hero: photos.megValley,
     map: {
       rivers: [[[700, 1500], [760, 1150], [820, 1020], [900, 850], [980, 600], [1100, 300], [1200, -200]]],
@@ -108,6 +119,38 @@ export const cities: Record<string, City> = {
         { text: 'SOHRA', x: 330, y: 250, kind: 'area' },
         { text: 'DAWKI', x: 860, y: 1070, kind: 'area' },
         { text: 'Bangladesh', x: 420, y: 1330, kind: 'sea' },
+      ],
+    },
+  },
+  // Home. Inland, so no coast: Vembanad sits to the west and the ghats to the east.
+  kottayam: {
+    id: 'kottayam',
+    name: 'Kottayam',
+    state: 'Kerala',
+    district: 'Kottayam',
+    regionId: 'kerala',
+    hero: photos.ktmKumarakom,
+    map: {
+      water: [{ cx: 110, cy: 700, rx: 215, ry: 430 }],
+      rivers: [[[1120, 560], [900, 600], [700, 660], [540, 720], [400, 762], [300, 790]]],
+      roads: [
+        [[560, -250], [580, 100], [600, 400], [620, 700], [640, 1000], [660, 1450]],
+        [[600, 400], [460, 428], [330, 452], [250, 470]],
+        [[620, 700], [780, 762], [920, 842], [1020, 920]],
+        [[580, 100], [420, 58], [300, 40]],
+        [[640, 1000], [820, 1010], [900, 1010]],
+      ],
+      hills: [
+        { cx: 980, cy: 900, rx: 172, ry: 122 },
+        { cx: 980, cy: 900, rx: 100, ry: 70 },
+        { cx: 1060, cy: 1250, rx: 140, ry: 100 },
+      ],
+      labels: [
+        { text: 'Vembanad', x: 110, y: 700, kind: 'sea', anchor: 'middle' },
+        { text: 'KOTTAYAM', x: 648, y: 384, kind: 'area' },
+        { text: 'KUMARAKOM', x: 300, y: 430, kind: 'area', anchor: 'end' },
+        { text: 'TEEKOY', x: 964, y: 828, kind: 'area' },
+        { text: 'VAIKOM', x: 288, y: 18, kind: 'area', anchor: 'end' },
       ],
     },
   },
@@ -143,6 +186,16 @@ export const reels: Record<string, Reel> = {
     thumbnail: photos.megDawki,
     cityId: 'meghalaya',
     placeIds: ['meg-valley', 'meg-falls', 'meg-bridge', 'meg-dawki'],
+  },
+  'reel-kottayam': {
+    id: 'reel-kottayam',
+    platform: 'instagram',
+    creator: '@kottayam.diaries',
+    title: 'Hidden spots in Kottayam nobody tells you about',
+    duration: '1:04',
+    thumbnail: photos.ktmIllickal,
+    cityId: 'kottayam',
+    placeIds: ['ktm-illickal', 'ktm-marmala', 'ktm-kumarakom', 'ktm-cafe', 'ktm-vaikom'],
   },
 };
 
@@ -204,25 +257,25 @@ const placeList: Place[] = [
     id: 'kochi-mural', cityId: 'kochi', name: 'Fort Kochi Street Art', type: 'experience', area: 'Fort Kochi',
     photo: photos.kochiMural, why: 'Lanes of murals, many left over from the Biennale. Best explored on foot, early.',
     source: reel('reel-kochi', '0:18'), bestTime: 'morning', cost: 0, minutes: 90,
-    coords: { lat: 9.9655, lng: 76.2445 }, map: [520, 470], order: 1,
+    coords: { lat: 9.9655, lng: 76.2445 }, map: [520, 470], regionPoint: [232, 512], order: 1,
   },
   {
     id: 'kochi-street', cityId: 'kochi', name: 'Jew Town, Mattancherry', type: 'sight', area: 'Mattancherry',
     photo: photos.kochiStreet, why: 'Antique shops and old spice warehouses. Go before noon, ahead of the crowds.',
     source: reel('reel-kochi', '0:29'), bestTime: 'morning', cost: 1, minutes: 120,
-    coords: { lat: 9.9575, lng: 76.2596 }, map: [760, 760], order: 2,
+    coords: { lat: 9.9575, lng: 76.2596 }, map: [760, 760], regionPoint: [258, 548], order: 2,
   },
   {
     id: 'kochi-pier', cityId: 'kochi', name: 'Fort Kochi Jetty', type: 'experience', area: 'Fort Kochi',
     photo: photos.kochiPier, why: 'Take the ferry across the harbour for the cheapest view of the city.',
     source: reel('reel-kochi', '0:40'), bestTime: 'afternoon', cost: 1, minutes: 45,
-    coords: { lat: 9.969, lng: 76.245 }, map: [540, 330], order: 1,
+    coords: { lat: 9.969, lng: 76.245 }, map: [540, 330], regionPoint: [214, 530], order: 1,
   },
   {
     id: 'kochi-waterfront', cityId: 'kochi', name: 'Fort Kochi Waterfront', type: 'sight', area: 'Fort Kochi',
     photo: photos.kochiWaterfront, why: 'Watch the Chinese fishing nets being hauled in at golden hour.',
     source: reel('reel-kochi', '0:05'), bestTime: 'evening', cost: 0, minutes: 60,
-    coords: { lat: 9.967, lng: 76.242 }, map: [430, 420], order: 1,
+    coords: { lat: 9.967, lng: 76.242 }, map: [430, 420], regionPoint: [226, 498], order: 1,
   },
   // Meghalaya — from @northeast.notes
   {
@@ -249,12 +302,51 @@ const placeList: Place[] = [
     source: reel('reel-meghalaya', '0:58'), bestTime: 'evening', cost: 2, minutes: 90,
     coords: { lat: 25.186, lng: 92.02 }, map: [820, 1020], order: 1,
   },
+  // Kottayam — from @kottayam.diaries. Home district: these are weekend spots, not a trip.
+  {
+    id: 'ktm-illickal', cityId: 'kottayam', name: 'Illickal Kallu', type: 'sight', area: 'Teekoy',
+    photo: photos.ktmIllickal, why: 'Three rocks above the clouds, an hour and a half east. Go early — the mist closes in by eleven.',
+    source: reel('reel-kottayam', '0:08'), bestTime: 'morning', cost: 1, minutes: 180,
+    coords: { lat: 9.7167, lng: 76.7833 }, map: [1020, 920], regionPoint: [772, 1012], order: 1,
+  },
+  {
+    id: 'ktm-marmala', cityId: 'kottayam', name: 'Marmala Waterfall', type: 'sight', area: 'Teekoy',
+    photo: photos.ktmMarmala, why: 'A short scramble off the Teekoy road to a plunge pool most people drive straight past.',
+    source: reel('reel-kottayam', '0:26'), bestTime: 'morning', cost: 0, minutes: 90,
+    coords: { lat: 9.6833, lng: 76.75 }, map: [900, 1010], regionPoint: [726, 1058], order: 2,
+  },
+  {
+    id: 'ktm-kumarakom', cityId: 'kottayam', name: 'Kumarakom Backwaters', type: 'experience', area: 'Kumarakom',
+    photo: photos.ktmKumarakom, why: 'Twenty minutes west to Vembanad. Take the 5pm country boat, not the houseboat.',
+    source: reel('reel-kottayam', '0:41'), bestTime: 'evening', cost: 2, minutes: 120,
+    coords: { lat: 9.6178, lng: 76.43 }, map: [280, 470], regionPoint: [434, 858], order: 1,
+  },
+  {
+    id: 'ktm-cafe', cityId: 'kottayam', name: 'Ark Cafe', type: 'food', area: 'Kottayam Town',
+    photo: photos.ktmCafe, why: 'The one from the reel: filter coffee and beef ularthiyathu, five minutes off MC Road.',
+    source: reel('reel-kottayam', '0:52'), bestTime: 'afternoon', cost: 1, minutes: 60,
+    coords: { lat: 9.5916, lng: 76.5222 }, map: [620, 640], regionPoint: [522, 906], order: 2,
+  },
+  {
+    id: 'ktm-vaikom', cityId: 'kottayam', name: 'Vaikom Mahadeva Temple', type: 'sight', area: 'Vaikom',
+    photo: photos.ktmVaikom, why: 'North-west, on the way to Ernakulam. Worth the stop for the evening deeparadhana.',
+    source: reel('reel-kottayam', '0:58'), bestTime: 'evening', cost: 0, minutes: 60,
+    coords: { lat: 9.7486, lng: 76.3936 }, map: [310, 40], regionPoint: [428, 700], order: 3,
+  },
+  // Kottayam — local recommendation (gap-fill only)
+  {
+    id: 'ktm-thali', cityId: 'kottayam', name: 'Thali at Meenachil Mess', type: 'food', area: 'Kottayam Town',
+    photo: photos.ktmThali, why: 'A proper Kerala sadya on a banana leaf. Lunch only, and they stop at two.',
+    source: { kind: 'local' }, bestTime: 'afternoon', cost: 1, minutes: 45,
+    coords: { lat: 9.5942, lng: 76.5188 }, map: [668, 704], regionPoint: [534, 930], order: 3,
+  },
 ];
 
 export const places: Record<string, Place> = Object.fromEntries(placeList.map((p) => [p.id, p]));
 
 export const localPicks: Record<string, string[]> = {
   gokarna: ['gok-prema'],
+  kottayam: ['ktm-thali'],
 };
 
 export const SAMPLE_LINK = 'https://youtu.be/konkan-trails-gokarna-48h';

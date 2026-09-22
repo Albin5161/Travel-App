@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
+import { ReelScanner } from '@/components/motion/ReelScanner';
+import { SavedTick } from '@/components/motion/SavedTick';
 import { PhotoCard } from '@/components/PhotoCard';
 import { Text } from '@/components/Text';
 import { extractPlaces, getLinkPreview } from '@/data/api';
@@ -36,6 +38,11 @@ const CREDIT_GAP_MS = 130;
 const CHOICE_ENTER = [0, 1].map((i) => fadeUp(i * 60));
 // A single-spot reel skips the choice: confirm, then straight back home.
 const QUICK_SAVE_MS = 1400;
+// After "Save N spots": the tick plays, then back home.
+const SAVED_MS = 1000;
+const SCANNER = 132;
+// Where the scanner's orb sits: on the card's bottom edge, near the right corner.
+const ORB_INSET = 46;
 
 export default function Analysing() {
   const { state, dispatch } = useTrips();
@@ -77,10 +84,16 @@ export default function Analysing() {
   }, [dispatch, result, shown]);
 
   const existed = !!result && knownCities.has(result.city.id);
+  const [saved, setSaved] = useState(false);
+  const save = () => {
+    haptic.light();
+    setSaved(true);
+    setTimeout(() => !cancelled.current && router.back(), SAVED_MS);
+  };
 
   const planTrip = () => {
     if (!result) return;
-    router.replace({ pathname: '/city/[id]', params: { id: result.city.id, reveal: '1' } });
+    router.replace({ pathname: '/map/[id]', params: { id: result.city.id, reveal: '1' } });
   };
 
   const cardW = W - 48;
@@ -95,32 +108,37 @@ export default function Analysing() {
       />
 
       <View style={styles.body}>
-        {preview ? (
-          <Animated.View entering={CARD_IN}>
-            <Tone value="dark">
-              <PhotoCard source={preview.thumbnail} style={{ width: cardW, height: cardW * 0.62 }}>
-                <Shimmer width={cardW} active={phase === 'reading'} />
-                <View style={styles.previewText}>
-                  <View style={styles.sourceRow}>
-                    <Ionicons
-                      name={preview.platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'}
-                      size={14}
-                      color={colors.mist}
-                    />
-                    <Text variant="micro" color={colors.mist}>
-                      {preview.creator} · {preview.duration}
+        <View>
+          {preview ? (
+            <Animated.View entering={CARD_IN}>
+              <Tone value="dark">
+                <PhotoCard source={preview.thumbnail} style={{ width: cardW, height: cardW * 0.62 }}>
+                  <Shimmer width={cardW} active={phase === 'reading'} />
+                  <View style={styles.previewText}>
+                    <View style={styles.sourceRow}>
+                      <Ionicons
+                        name={preview.platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'}
+                        size={14}
+                        color={colors.mist}
+                      />
+                      <Text variant="micro" color={colors.mist}>
+                        {preview.creator} · {preview.duration}
+                      </Text>
+                    </View>
+                    <Text variant="bodyStrong" numberOfLines={2}>
+                      {preview.title}
                     </Text>
                   </View>
-                  <Text variant="bodyStrong" numberOfLines={2}>
-                    {preview.title}
-                  </Text>
-                </View>
-              </PhotoCard>
-            </Tone>
-          </Animated.View>
-        ) : (
-          <View style={{ width: cardW, height: cardW * 0.62 }} />
-        )}
+                </PhotoCard>
+              </Tone>
+            </Animated.View>
+          ) : (
+            <View style={{ width: cardW, height: cardW * 0.62 }} />
+          )}
+          <View style={[styles.scanner, { left: cardW - ORB_INSET - SCANNER / 2, top: cardW * 0.62 - SCANNER / 2 }]}>
+            <ReelScanner done={phase === 'done'} size={SCANNER} />
+          </View>
+        </View>
 
         <View style={styles.statusRow}>
           <Animated.View key={phase} entering={FADE_IN} exiting={FADE_OUT}>
@@ -150,10 +168,13 @@ export default function Analysing() {
 
       {phase === 'done' && result ? (
         <View style={[styles.choice, { paddingBottom: insets.bottom + 12 }]}>
-          {result.places.length === 1 ? (
-            <Animated.View entering={CHOICE_ENTER[0]}>
+          {result.places.length === 1 || saved ? (
+            <Animated.View entering={CHOICE_ENTER[0]} style={styles.saved}>
+              <SavedTick size={56} />
               <Text variant="bodyStrong" style={styles.center}>
-                {result.places[0].name} added to {result.city.name}
+                {result.places.length === 1
+                  ? `${result.places[0].name} added to ${result.city.name}`
+                  : `Saved to ${result.city.name}`}
               </Text>
             </Animated.View>
           ) : (
@@ -165,7 +186,7 @@ export default function Analysing() {
                       ? `Add ${result.places.length} spots to ${result.city.name}`
                       : `Save ${result.places.length} spots`
                   }
-                  onPress={() => router.back()}
+                  onPress={save}
                   accessibilityHint="Keeps collecting. Back to your cities."
                 />
               </Animated.View>
@@ -213,7 +234,8 @@ const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: light.canvas },
   close: { marginLeft: 16 },
   body: { flex: 1, paddingHorizontal: 24, paddingTop: 28 },
-  previewText: { position: 'absolute', left: 18, right: 18, bottom: 16, gap: 6 },
+  // Right padding leaves room for the scanner sitting on the card's bottom-right edge.
+  previewText: { position: 'absolute', left: 18, right: ORB_INSET + 28, bottom: 16, gap: 6 },
   sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   shimmer: { position: 'absolute', top: -60, bottom: -60, width: 120 },
   statusRow: {
@@ -228,4 +250,6 @@ const styles = StyleSheet.create({
   creditName: { flexShrink: 1 },
   choice: { position: 'absolute', left: 20, right: 20, bottom: 0, gap: 4 },
   center: { textAlign: 'center', paddingBottom: 12 },
+  saved: { alignItems: 'center', gap: 10, paddingBottom: 8 },
+  scanner: { position: 'absolute', pointerEvents: 'none' },
 });

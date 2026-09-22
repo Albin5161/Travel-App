@@ -140,7 +140,30 @@ Raahi has moved from "a travel film at dusk" to a **light, airy direction modell
 
 **Save or Plan (end of analysing):** once the places have rolled in, they're already saved. The user chooses what's next: **Save N spots** (black; back to home, stays in Collect) or **Plan this trip →** (text; into the map reveal and Pick). If the city already existed, the button reads "Add N spots to Gokarna". A single-spot reel skips the choice: "Namaste Café added to Gokarna", then back home.
 
-**Still to come in this direction:** the card → full-screen city transition, the City page as Plan mode (panel over the photo with Overview · Places · Plan · Good to know), and the city card's count ticking up on quick-save.
+**Card → city page (signature transition):** tapping a city card on home grows a copy of it from the card's exact spot to full screen in **420ms** (`cubic-bezier(0.32, 0.72, 0, 1)`), with a light haptic. The corners open from 22 to ~44 as it grows, then square off where the phone's own corners take over. The card's label fades out in the first 30%, and the city page's content (scaled with the card, never reflowing) fades in from 35–85%. Then the city page appears underneath with no animation of its own. Going back plays it in reverse as a **spring (450ms, damping 0.8)** that settles into the card, however the user got home. Reduced motion: a 200ms crossfade. Code: `CityOpenOverlay`, `CityHero`.
+
+**City page (Plan mode):** full-bleed city photo, a white back button, the state in micro caps, the city name in serif 48, "7 places from 1 reel" in serif italic (the count in a warm peach), and a round dark-glass **Start planning** button (**See your day** once planned).
+
+**The Plan panel** (after Atlys's visa page): a white panel rests at the bottom showing only its grabber and tabs, **Overview · Places · Plan · Good to know**. Scrolling (or tapping a tab) slides it up over the photo, snapping to "resting" or "up". When it's up, a strip of photo stays visible at the top, holding the back button. As the panel rises, the title drifts up more slowly, fades and shrinks slightly, and the photo dims.
+- **Tabs** stick under the photo strip. The black underline **slides** (spring) to the active tab, and scroll-spy keeps it in sync as you scroll.
+- **Overview:** summary, three quick facts (best time, ideal stay, per day), and **cost per day** as horizontal ink bars (stay, food, getting around, entry), marked as our estimate.
+- **Places:** "Open the map", then each place with a photo, type and area, **★ rating · review count**, one short review, and its author. Marked "Ratings and reviews from Google. Sample data for the demo."
+- **Plan:** the day in three rows (Morning / Afternoon / Evening) with start times, stop counts and stacked photo thumbnails.
+- **Good to know:** **safety as specific facts, never a score** (an icon, a title and one line each), then tips "From locals".
+- A **sticky bottom bar** takes over from the round button once the panel is mostly up: "7 places from 1 reel · ₹1,800 – ₹3,000 a day" with a black **Start planning**.
+- Back while the panel is up lowers it first, so the page shrinks into its card from the resting layout.
+
+The map is its own screen (`map/[id]`), reached from Places ("Open the map") or from "Plan this trip →" after analysing.
+
+**Signature animations** (Albin's designs in `references/animations/`, rebuilt natively in `src/components/motion/`):
+- **Opening** (`LaunchIntro`, once per launch, skipped with Reduce Motion): a winding accent route draws itself in 0.6s with a light at its tip, and a pin drops onto its end at 0.35s with a bounce, a ripple and a light haptic. At 0.55s the pin shrinks into the **dot of the ı** while "Raahı" fades up letter by letter (0.05s stagger). The route fades and "EVERY PATH HAS A STORY" appears by 1.6s, then the layer fades to reveal home. The letters are placed from Instrument Serif's own advances, so the dot lands exactly on the dotless i.
+- **Reel scanner** (`ReelScanner`, Analysing): a white orb on the reel card's bottom-right edge. Three ink ripples, an accent arc circling (2.4s cycle), and the orb's icon cycling play → pin → sparkle. When all places are found, the arc closes into a ring, a check draws in, and the orb pops once (0.6s).
+- **Saved tick** (`SavedTick`, after "Save N spots" and on single-spot quick-save): an ink circle pops in with overshoot, a white check draws itself, and six accent dots burst and fade (0.7s). Then back home.
+- **Passport stamp** (`PassportStamp`, "Save this day"): the page veils to paper, and an Ember stamp (worn double ring, curved "RAAHI · DAY PLANNED", the city in serif capitals, the date) drops from 1.6× at -12° to land at -6° in 0.35s with a **haptic thud**, squashes to 0.96, rebounds and settles as an ink ring spreads. It holds, then goes home. Tap to skip.
+- **Safety icons** (`SafetyIcon`, Good to know): 24×24 line icons, 1.5 stroke, one colour. Facts without a matching icon keep a Feather icon.
+- *Not carried over from the web versions:* the rough-ink turbulence filter and blur glows (react-native-svg doesn't support them). Worn, dashed rings and a wide low-opacity stroke stand in for them.
+
+**Still to come in this direction:** drag-down to close the city page, and the city card's count ticking up on quick-save.
 
 ## Overview
 

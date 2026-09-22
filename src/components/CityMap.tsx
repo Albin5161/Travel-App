@@ -19,7 +19,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import type { City, Place } from '@/data/types';
 import { smoothPath, type Point } from '@/lib/geo';
 import { EASE_IN_OUT, EASE_OUT, SPRING_LAND, SPRING_SETTLE } from '@/lib/motion';
-import { colors, fonts } from '@/theme/tokens';
+import { fonts, light, shadows } from '@/theme/tokens';
 
 import { Text } from './Text';
 
@@ -156,7 +156,11 @@ export function CityMap({
 
   return (
     <GestureDetector gesture={gesture}>
-      <View style={[styles.root, { width, height }]} collapsable={false}>
+      <View
+        // Past the drawn world, coastal maps continue as sea (it lies west), inland maps as land.
+        style={[styles.root, { width, height, backgroundColor: city.map.coast ? light.mapSea : light.mapLand }]}
+        collapsable={false}
+      >
         <Animated.View style={[styles.world, { width: WORLD.w * r, height: WORLD.h * r }, worldStyle]}>
           <MapArt city={city} r={r}>
             {artChildren}
@@ -199,23 +203,22 @@ const MapArt = memo(function MapArt({ city, r, children }: { city: City; r: numb
       height={WORLD.h * r}
       viewBox={`${WORLD.x0} ${WORLD.y0} ${WORLD.w} ${WORLD.h}`}
     >
-      <Rect x={WORLD.x0} y={WORLD.y0} width={WORLD.w} height={WORLD.h} fill={land ? colors.night : colors.basalt} />
-      {land ? <Path d={land} fill={colors.basalt} stroke={colors.mapCoast} strokeWidth={3} /> : null}
+      <Rect x={WORLD.x0} y={WORLD.y0} width={WORLD.w} height={WORLD.h} fill={land ? light.mapSea : light.mapLand} />
+      {land ? <Path d={land} fill={light.mapLand} stroke={light.mapCoast} strokeWidth={3} /> : null}
       {art.water?.map((w, i) => (
-        <Ellipse key={`w${i}`} cx={w.cx} cy={w.cy} rx={w.rx} ry={w.ry} fill={colors.night} stroke={colors.mapCoast} strokeWidth={3} />
+        <Ellipse key={`w${i}`} cx={w.cx} cy={w.cy} rx={w.rx} ry={w.ry} fill={light.mapSea} stroke={light.mapCoast} strokeWidth={3} />
       ))}
       {art.rivers?.map((pts, i) => (
-        <Path key={`r${i}`} d={smoothPath(pts)} stroke={colors.night} strokeWidth={26} strokeLinecap="round" fill="none" />
+        <Path key={`r${i}`} d={smoothPath(pts)} stroke={light.mapSea} strokeWidth={26} strokeLinecap="round" fill="none" />
       ))}
       {art.hills.map((h, i) => (
-        <Ellipse key={`h${i}`} cx={h.cx} cy={h.cy} rx={h.rx} ry={h.ry} fill="none" stroke={colors.hairline} strokeWidth={2} />
+        <Ellipse key={`h${i}`} cx={h.cx} cy={h.cy} rx={h.rx} ry={h.ry} fill="none" stroke={light.line} strokeWidth={2} />
       ))}
       {art.borders?.map((pts, i) => (
         <Path
           key={`b${i}`}
           d={smoothPath(pts)}
-          stroke={colors.ash}
-          strokeOpacity={0.35}
+          stroke={light.mapTrail}
           strokeWidth={3}
           strokeDasharray="2 14"
           strokeLinecap="round"
@@ -223,14 +226,13 @@ const MapArt = memo(function MapArt({ city, r, children }: { city: City; r: numb
         />
       ))}
       {art.roads.map((pts, i) => (
-        <Path key={`rd${i}`} d={smoothPath(pts)} stroke={colors.mapRoad} strokeWidth={7} strokeLinecap="round" fill="none" />
+        <Path key={`rd${i}`} d={smoothPath(pts)} stroke={light.mapRoad} strokeWidth={7} strokeLinecap="round" fill="none" />
       ))}
       {art.trails?.map((pts, i) => (
         <Path
           key={`t${i}`}
           d={smoothPath(pts)}
-          stroke={colors.ash}
-          strokeOpacity={0.45}
+          stroke={light.mapTrail}
           strokeWidth={3}
           strokeDasharray="1 12"
           strokeLinecap="round"
@@ -243,8 +245,7 @@ const MapArt = memo(function MapArt({ city, r, children }: { city: City; r: numb
             key={`l${i}`}
             x={l.x}
             y={l.y}
-            fill={colors.mist}
-            fillOpacity={0.22}
+            fill={light.mapSeaLabel}
             fontFamily={fonts.serifItalic}
             fontSize={48}
             textAnchor={l.anchor ?? 'start'}
@@ -256,8 +257,7 @@ const MapArt = memo(function MapArt({ city, r, children }: { city: City; r: numb
             key={`l${i}`}
             x={l.x}
             y={l.y}
-            fill={colors.ash}
-            fillOpacity={0.55}
+            fill={light.mapLabel}
             fontFamily={fonts.sansSemi}
             fontSize={20}
             letterSpacing={4}
@@ -339,7 +339,7 @@ function MapPinView({ pin, index, camera, width, height, activeId, reveal, revea
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={pin.number ? `Stop ${pin.number}, ${pin.place.name}` : pin.place.name}
-        style={{ width: size, height: size }}
+        style={[styles.pinShadow, { width: size, height: size, borderRadius: size / 2 }]}
       >
         <View style={[styles.pinRing, { width: size, height: size, borderRadius: size / 2, borderWidth: size < 40 ? 2 : 2.5 }]}>
           <Image source={pin.place.photo} style={styles.pinPhoto} contentFit="cover" transition={0} />
@@ -355,14 +355,17 @@ function MapPinView({ pin, index, camera, width, height, activeId, reveal, revea
 }
 
 const styles = StyleSheet.create({
-  root: { overflow: 'hidden', backgroundColor: colors.night },
+  root: { overflow: 'hidden', backgroundColor: light.mapLand },
   world: { position: 'absolute', left: 0, top: 0, transformOrigin: 'top left' },
   pin: { position: 'absolute', left: 0, top: 0 },
+  // White-rimmed photo pins, lifted off the paper map by a soft shadow.
   pinRing: {
-    borderColor: colors.ember,
-    backgroundColor: colors.basalt,
+    borderColor: light.panel,
+    backgroundColor: light.canvasTop,
     overflow: 'hidden',
   },
+  // On the unclipped wrapper, so overflow: hidden on the ring can't cut the shadow off.
+  pinShadow: { boxShadow: shadows.pin },
   pinPhoto: { width: '100%', height: '100%' },
   badge: {
     position: 'absolute',
@@ -372,11 +375,11 @@ const styles = StyleSheet.create({
     height: 20,
     paddingHorizontal: 5,
     borderRadius: 10,
-    backgroundColor: colors.ember,
+    backgroundColor: light.ink,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: colors.night,
+    borderColor: light.panel,
   },
-  badgeText: { fontFamily: fonts.sansSemi, fontSize: 11, color: colors.night, fontVariant: ['tabular-nums'] },
+  badgeText: { fontFamily: fonts.sansSemi, fontSize: 11, color: light.ctaInk, fontVariant: ['tabular-nums'] },
 });

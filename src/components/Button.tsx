@@ -1,6 +1,7 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors, fonts } from '@/theme/tokens';
+import { useTone } from '@/theme/tone';
+import { colors, fonts, light, shadows } from '@/theme/tokens';
 
 import { PressableScale } from './PressableScale';
 import { Text } from './Text';
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export function Button({ label, onPress, kind = 'primary', disabled, trailingArrow, compact, style, accessibilityHint }: Props) {
+  const tone = useTone();
   const text = trailingArrow ? `${label} →` : label;
   if (kind === 'text') {
     return (
@@ -32,7 +34,7 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
           style={styles.textButton}
           hitSlop={12}
         >
-          <Text style={styles.textLabel}>{text}</Text>
+          <Text style={[styles.textLabel, tone === 'light' && { color: light.inkSoft }]}>{text}</Text>
         </PressableScale>
       </View>
     );
@@ -50,14 +52,20 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
           styles.button,
           compact && styles.compact,
           primary ? styles.primary : styles.secondary,
+          tone === 'light' && (primary ? styles.primaryLight : styles.secondaryLight),
           disabled && styles.disabled,
         ]}
       >
-        <Text style={[styles.label, { color: primary ? colors.night : colors.mist }]}>{text}</Text>
+        <Text style={[styles.label, { color: LABEL[tone][primary ? 'primary' : 'secondary'] }]}>{text}</Text>
       </PressableScale>
     </View>
   );
 }
+
+const LABEL = {
+  dark: { primary: colors.night, secondary: colors.mist },
+  light: { primary: light.ctaInk, secondary: light.ink },
+} as const;
 
 const styles = StyleSheet.create({
   button: {
@@ -77,6 +85,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.rim,
   },
+  // Light direction: solid black with white text.
+  primaryLight: { backgroundColor: light.cta, boxShadow: shadows.cta },
+  secondaryLight: { backgroundColor: light.panel, borderColor: light.lineStrong },
   disabled: { opacity: 0.4, boxShadow: 'none' },
   label: { fontFamily: fonts.sansSemi, fontSize: 16, letterSpacing: 0.1 },
   textWrap: { alignItems: 'center' },

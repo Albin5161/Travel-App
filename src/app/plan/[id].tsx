@@ -20,6 +20,7 @@ import { Path } from 'react-native-svg';
 
 import { Button } from '@/components/Button';
 import { CityMap, fitCameraToRect, flyTo, useCamera } from '@/components/CityMap';
+import { IconButton } from '@/components/IconButton';
 import { costLabel } from '@/components/PlaceMeta';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
@@ -30,7 +31,7 @@ import { formatClock, formatDuration, smoothPath, smoothPathLength } from '@/lib
 import { haptic } from '@/lib/haptics';
 import { EASE_IN_OUT, FADE_OUT, fadeUp, REFLOW } from '@/lib/motion';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { colors, fonts } from '@/theme/tokens';
+import { fonts, light } from '@/theme/tokens';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const PART_TITLE: Record<DayPart, string> = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening' };
@@ -147,13 +148,11 @@ export default function PlanScreen() {
         />
         <LinearGradient
           pointerEvents="none"
-          colors={['rgba(13,15,14,0.7)', 'rgba(13,15,14,0)']}
+          colors={['rgba(245,244,241,0.85)', 'rgba(245,244,241,0)']}
           style={[styles.topFade, { height: insets.top + 80 }]}
         />
         <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-          <PressableScale onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Back">
-            <Feather name="chevron-left" size={22} color={colors.mist} />
-          </PressableScale>
+          <IconButton icon="chevron-left" onPress={() => router.back()} accessibilityLabel="Back" />
         </View>
       </View>
 
@@ -204,7 +203,7 @@ export default function PlanScreen() {
 
         <LinearGradient
           pointerEvents="none"
-          colors={['rgba(27,29,26,0)', colors.basalt]}
+          colors={['rgba(255,255,255,0)', light.panel]}
           style={[styles.bottomFade, { height: insets.bottom + 110 }]}
         />
         <View style={[styles.floating, { paddingBottom: insets.bottom + 16 }]}>
@@ -221,7 +220,7 @@ function Route({ d, length, progress, width }: { d: string; length: number; prog
     <AnimatedPath
       d={d}
       fill="none"
-      stroke={colors.ember}
+      stroke={light.ink}
       strokeWidth={width}
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -240,7 +239,7 @@ function Leg({ stop, compact }: { stop: PlanStop; compact?: boolean }) {
   return (
     <View style={[styles.leg, compact && styles.legCompact]}>
       <View style={styles.legLine} />
-      <Feather name={leg.mode === 'walk' ? 'navigation' : 'truck'} size={12} color={colors.ash} />
+      <Feather name={leg.mode === 'walk' ? 'navigation' : 'truck'} size={12} color={light.inkFaint} />
       <Text variant="data">{label}</Text>
     </View>
   );
@@ -271,7 +270,7 @@ function StopRow({ stop, number, activeId }: { stop: PlanStop; number: number; a
             {formatClock(stop.startMinutes)} · {formatDuration(stop.place.minutes)} · {costLabel(stop.place.cost)}
           </Text>
           {stop.place.source.kind === 'local' ? (
-            <Text variant="micro" color={colors.ember}>
+            <Text variant="micro" color={light.accent}>
               Recommended by locals
             </Text>
           ) : null}
@@ -288,7 +287,7 @@ function GapCard({ place, onAdd }: { place: Place; onAdd: () => void }) {
       <View style={styles.gapRow}>
         <Image source={place.photo} style={styles.thumb} contentFit="cover" transition={0} />
         <View style={styles.stopText}>
-          <Text variant="micro" color={colors.ember}>
+          <Text variant="micro" color={light.accent}>
             Recommended by locals
           </Text>
           <Text variant="bodyStrong">{place.name}</Text>
@@ -303,27 +302,15 @@ function GapCard({ place, onAdd }: { place: Place; onAdd: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: colors.night },
+  fill: { flex: 1, backgroundColor: light.mapLand },
   topFade: { position: 'absolute', left: 0, right: 0, top: 0 },
   topBar: { position: 'absolute', left: 16, top: 0 },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.glassDark,
-    borderWidth: 1,
-    borderColor: colors.rim,
-  },
   panel: {
     flex: 1,
     marginTop: -28,
-    backgroundColor: colors.basalt,
+    backgroundColor: light.panel,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    borderTopWidth: 1,
-    borderColor: colors.hairline,
     overflow: 'hidden',
   },
   title: { marginTop: 6, marginBottom: 8 },
@@ -333,24 +320,24 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.ember,
+    backgroundColor: light.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stopNumberText: { fontFamily: fonts.sansSemi, fontSize: 12, color: colors.night, fontVariant: ['tabular-nums'] },
-  thumb: { width: 56, height: 56, borderRadius: 14, backgroundColor: colors.basaltRaised },
+  stopNumberText: { fontFamily: fonts.sansSemi, fontSize: 12, color: light.ctaInk, fontVariant: ['tabular-nums'] },
+  thumb: { width: 56, height: 56, borderRadius: 14, backgroundColor: light.canvasTop },
   stopText: { flex: 1, gap: 2 },
   leg: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 5, paddingVertical: 8 },
   legCompact: { paddingTop: 0 },
-  legLine: { width: 2, height: 18, borderRadius: 1, backgroundColor: colors.hairline, marginRight: 4 },
+  legLine: { width: 2, height: 18, borderRadius: 1, backgroundColor: light.line, marginRight: 4 },
   gap: {
     marginTop: 16,
     padding: 16,
     borderRadius: 24,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: colors.rimStrong,
-    backgroundColor: colors.basaltRaised,
+    borderColor: light.lineStrong,
+    backgroundColor: light.canvas,
     gap: 12,
   },
   gapRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },

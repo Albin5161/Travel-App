@@ -110,6 +110,38 @@ components:
 
 # Design System: Raahi
 
+## Direction update: Light (22 Sep 2026, in progress)
+
+Raahi has moved from "a travel film at dusk" to a **light, airy direction modelled on the Atlys iOS app**, and every screen is now light. **Where this section and the dusk system below disagree, this section wins.** The dusk rules still describe what sits *on photos* (place cards, the reel preview): those wrap themselves in `<Tone value="dark">` (`src/theme/tone.tsx`) so their text stays light on the image.
+
+**North star:** paper UI, photos carry all the colour. The chrome almost disappears (hairlines, pale fields, small grey labels) so the photo cards read as objects sitting on paper.
+
+**Colours** (`light` in `src/theme/tokens.ts`)
+- **Canvas** `#F5F4F1`, washing up to **Canvas top** `#ECEAE6`: the screen background. Never pure white.
+- **Panel** `#FFFFFF`: the white panel that rises over the canvas (home grid; later the Plan panel over the city photo). Top corners 32.
+- **Ink** `#111111` for titles and key values; **Ink soft** `#5E5E5E` for body; **Ink faint** `#A3A3A3` for placeholders, captions and micro-caps.
+- **Lines** `rgba(17,17,17,0.08)`, strong `0.16`: field borders and dividers.
+- **Primary button: solid black (`#111111`) with white text.** One per screen at most.
+- **On photos:** white text, 72% white for secondary, 22% white hairlines.
+- Ember (`#E2763C`) stays available as a small accent, not as the button colour.
+
+**Type:** the same two voices (Instrument Serif + Geist). On light: centred serif questions at 32/36 (e.g. "which reel is your next trip?"), and city names in **serif capitals** at 22/24 with +1 tracking on photo cards.
+
+**Home (Collect mode)**
+- Wordmark, then a centred serif question.
+- **Link box:** a white pill field (48 high), with the platform icon swapping in (link → Instagram/YouTube) once the link is recognised, and a **black circular system Paste button** beside it. The box sticks to the top while scrolling.
+- A hint line under the box: "You copied a link. Tap paste to add it." when iOS reports a link on the clipboard (checked without reading it), or the error line after a gentle shake.
+- **White panel with a 2-column grid of tall city tiles** (ratio 1.55, radius 22, soft shadow): serif-caps name, a hairline, a SPOTS row, and a two-line caption under the card ("Collected from / 2 reels", or "Day planned / Ready to go").
+- Empty state: the grid shows Gokarna, Kochi and Meghalaya as **Sample** tiles; tapping one runs its demo reel.
+
+**Map (paper):** pale land `#F7F6F2`, soft blue-grey sea `#DDE6E7`, quiet roads, grey labels. Photo pins have a **white rim and a soft shadow**; numbered badges and the day's **route are ink black**. White panels rest on the map (City, Plan).
+
+**Round icon buttons** (back, close, undo): white, a hairline border and a faint shadow (`IconButton`).
+
+**Save or Plan (end of analysing):** once the places have rolled in, they're already saved. The user chooses what's next: **Save N spots** (black; back to home, stays in Collect) or **Plan this trip →** (text; into the map reveal and Pick). If the city already existed, the button reads "Add N spots to Gokarna". A single-spot reel skips the choice: "Namaste Café added to Gokarna", then back home.
+
+**Still to come in this direction:** the card → full-screen city transition, the City page as Plan mode (panel over the photo with Overview · Places · Plan · Good to know), and the city card's count ticking up on quick-save.
+
 ## Overview
 
 **Creative North Star: "A travel film at dusk."**

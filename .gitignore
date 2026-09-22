@@ -44,3 +44,6 @@ example
 
 # Claude local settings
 .claude/settings.local.json
+
+# Design references (third-party app recordings, not ours to publish)
+references/

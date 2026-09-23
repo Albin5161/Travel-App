@@ -26,6 +26,8 @@ interface State {
   notifyOnArrival: boolean;
   /** A district just arrived in, for the in-app banner. Cleared when dismissed or acted on. */
   arrivedDistrictId: string | null;
+  /** Onboarding runs once. In memory for now, so it replays on every restart in the demo. */
+  onboarded: boolean;
   lastExtraction: Extraction | null;
   collections: Record<string, CityCollection>;
   skipped: Record<string, boolean>;
@@ -47,7 +49,8 @@ type Action =
   | { type: 'setSpotStatus'; placeId: string; status: SpotStatus }
   | { type: 'setNotifyOnArrival'; on: boolean }
   | { type: 'arrived'; districtId: string }
-  | { type: 'clearArrival' };
+  | { type: 'clearArrival' }
+  | { type: 'finishOnboarding' };
 
 const initial: State = {
   pendingLink: null,
@@ -55,6 +58,7 @@ const initial: State = {
   spotStatus: {},
   notifyOnArrival: true,
   arrivedDistrictId: null,
+  onboarded: false,
   lastExtraction: null,
   collections: {},
   skipped: {},
@@ -109,6 +113,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, arrivedDistrictId: action.districtId };
     case 'clearArrival':
       return { ...state, arrivedDistrictId: null };
+    case 'finishOnboarding':
+      return { ...state, onboarded: true };
   }
 }
 

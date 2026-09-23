@@ -1,4 +1,3 @@
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 
@@ -28,8 +27,6 @@ type Props = {
   peek?: boolean;
 };
 
-const CIRCLE = 92;
-
 // Scrims over the full-bleed city photo: a little at the top for the status bar and back button,
 // more at the bottom for the title block. Shared by the city page and the growing card.
 export function HeroScrim() {
@@ -53,7 +50,11 @@ export function HeroScrim() {
 }
 
 // Everything drawn over the photo on the city page (after Atlys's country page): back button,
-// state, serif city name, a count line and a round glass "Start planning" button.
+// state, serif city name, a count line and the primary action.
+//
+// The block sits just above the panel's resting edge rather than floating at a third of the height.
+// That puts the type where the scrim is strongest (so it stays legible on a bright photo), leaves
+// the picture itself uncovered, and stacks name → action → panel in the order they're used.
 // Laid out for a full-screen box; the opening card renders it scaled down so the swap is seamless.
 export function CityHeroContent({
   city,
@@ -77,11 +78,13 @@ export function CityHeroContent({
           </View>
         )}
 
-        <View style={[styles.center, { top: height * 0.3 }]}>
+        <View style={[styles.block, { bottom: restPeek(insetBottom) + 26 }]}>
           <Text variant="micro" color={light.photoInkSoft}>
             {cityPlaceLine(city)}
           </Text>
-          <Text style={styles.name}>{city.name}</Text>
+          <Text style={styles.name} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
+            {city.name}
+          </Text>
           <Text style={styles.line}>
             <Text style={[styles.line, styles.accent]}>
               {stats.places} {stats.places === 1 ? 'place' : 'places'}
@@ -89,16 +92,16 @@ export function CityHeroContent({
             from {stats.reels} {stats.reels === 1 ? 'reel' : 'reels'}
           </Text>
 
+          {/* White, not black: on a photo the ink button disappears into the scrim. Same weight and
+              shape as every other primary, inverted for the surface it sits on. */}
           <PressableScale
             onPress={onStart ?? noop}
-            style={styles.circle}
+            containerStyle={styles.ctaSlot}
+            style={styles.cta}
             accessibilityRole="button"
             accessibilityLabel={stats.planned ? 'See your day' : 'Start planning'}
           >
-            <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
-            <Text variant="label" color={light.photoInk} style={styles.circleText}>
-              {stats.planned ? 'See your\nday' : 'Start\nplanning'}
-            </Text>
+            <Text style={styles.ctaLabel}>{stats.planned ? 'See your day' : 'Start planning'}</Text>
           </PressableScale>
         </View>
 
@@ -116,7 +119,7 @@ const noop = () => {};
 
 const styles = StyleSheet.create({
   top: { position: 'absolute', left: 16 },
-  center: { position: 'absolute', left: 24, right: 24, alignItems: 'center', gap: 6 },
+  block: { position: 'absolute', left: 24, right: 24, alignItems: 'center', gap: 6 },
   name: {
     fontFamily: fonts.serif,
     fontSize: 48,
@@ -137,19 +140,16 @@ const styles = StyleSheet.create({
     textShadowRadius: 10,
   },
   accent: { color: '#F2B48A' },
-  circle: {
-    marginTop: 28,
-    width: CIRCLE,
-    height: CIRCLE,
-    borderRadius: CIRCLE / 2,
-    overflow: 'hidden',
+  ctaSlot: { alignSelf: 'stretch', marginTop: 22 },
+  cta: {
+    height: 56,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(17,17,17,0.28)',
-    borderWidth: 1,
-    borderColor: light.photoLine,
+    backgroundColor: light.panel,
+    boxShadow: '0 10px 30px rgba(0,0,0,0.28)',
   },
-  circleText: { textAlign: 'center', lineHeight: 17 },
+  ctaLabel: { fontFamily: fonts.sansSemi, fontSize: 16, letterSpacing: 0.1, color: light.ink },
   peek: {
     position: 'absolute',
     left: 0,

@@ -79,7 +79,9 @@ export default function CityScreen() {
       const y = scrollY.get();
       const ys = sectionYs.get();
       if (ys.length > 0 && y > rise && y >= maxScroll.get() - 24) return ys.length - 1;
-      const line = y + PANEL_HEADER_H + 24;
+      // A section counts as arrived once its heading has cleared the tabs, not its first pixel —
+      // otherwise the heading you are reading and the tab that is lit disagree.
+      const line = y + PANEL_HEADER_H + 64;
       let idx = 0;
       for (let i = 0; i < ys.length; i++) if (ys[i] !== undefined && ys[i] <= line) idx = i;
       return idx;
@@ -137,9 +139,13 @@ export default function CityScreen() {
     setTimeout(leave, 320);
   };
 
-  // Tapping a tab raises the panel if needed and brings that section under the tabs.
+  // Tapping a tab raises the panel if needed and brings that section under the tabs. The tab lights
+  // on the tap rather than when the scroll settles — the icon's motion is the feedback for the
+  // press, so waiting for scroll-spy to catch up would read as a dropped tap. The spy corrects it
+  // afterwards if the scroll lands somewhere else.
   const goToTab = (i: number) => {
     haptic.selection();
+    setActive(i);
     const y = (sectionYsRef.current[i] ?? rise + PANEL_HEADER_H) - PANEL_HEADER_H;
     scrollRef.current?.scrollTo({ y: Math.max(y, rise), animated: true });
   };

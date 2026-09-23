@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  wordmark: { fontFamily: fonts.serif, fontSize: 24, color: light.ink },
+  wordmark: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, letterSpacing: -0.8, color: light.ink },
   wherePill: {
     flexDirection: 'row',
     alignItems: 'center',

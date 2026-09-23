@@ -117,7 +117,14 @@ function later(onDone: () => void) {
   setTimeout(onDone, HOLD);
 }
 
-// The stamp itself: a worn double ring, curved "RAAHI · DAY PLANNED", the city in serif capitals,
+// Jakarta's capitals are wide (0.69 em on average), so the city is sized to the gap between the two
+// stars (about 92 units) rather than picked from two fixed sizes: Kochi sets at 22, Meghalaya at 13.
+const STAMP_TRACK = 1.5;
+const STAMP_GAP = 92;
+const stampSize = (city: string) =>
+  Math.min(22, (STAMP_GAP - STAMP_TRACK * (city.length - 1)) / (0.72 * city.length));
+
+// The stamp itself: a worn double ring, curved "RAAHI · DAY PLANNED", the city in heavy capitals,
 // a star between rules, and the date. (The web version roughens the ink with an SVG turbulence
 // filter, which react-native-svg doesn't support; broken dashes in the rings give the worn edge.)
 function StampArt({ city, date, size }: { city: string; date: string; size: number }) {
@@ -164,10 +171,10 @@ function StampArt({ city, date, size }: { city: string; date: string; size: numb
         x={100}
         y={104}
         textAnchor="middle"
-        fontFamily={fonts.serif}
-        fontSize={city.length > 8 ? 20 : 24}
+        fontFamily={fonts.display}
+        fontSize={stampSize(city)}
         fill={INK}
-        letterSpacing={3}
+        letterSpacing={STAMP_TRACK}
       >
         {city}
       </SvgText>

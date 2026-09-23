@@ -70,7 +70,10 @@ export default function Home() {
           <View style={styles.header}>
             <Text style={styles.wordmark}>Raahi</Text>
             <Animated.View entering={ENTER[0]}>
-              <Text style={styles.question}>which reel is{'\n'}your next trip?</Text>
+              <Text style={styles.question}>
+                Which reel is{'\n'}
+                <Text style={styles.questionStrong}>your next trip?</Text>
+              </Text>
             </Animated.View>
           </View>
 
@@ -177,16 +180,21 @@ const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: light.canvas },
   wash: { position: 'absolute', top: 0, left: 0, right: 0, height: 240 },
   header: { paddingHorizontal: GUTTER, paddingBottom: 28 },
-  wordmark: { fontFamily: fonts.serif, fontSize: 24, color: light.ink },
+  wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: light.ink },
+  // Two weights, one line box: a quiet Medium lead-in, then the ask in ExtraBold. The weight change
+  // does the emphasis a decorative italic used to.
   question: {
     marginTop: 40,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.displayMedium,
     fontSize: 32,
-    lineHeight: 36,
-    textAlign: 'center',
-    color: light.ink,
-    letterSpacing: -0.3,
+    lineHeight: 37,
+    color: light.inkSoft,
+    // Lighter weights need more air than heavy ones or the word spaces close up.
+    letterSpacing: -0.5,
   },
+  // Sized again on purpose: the nested Text is our own component, which would otherwise reset it
+  // to body's 15/22 rather than inherit from the line around it.
+  questionStrong: { fontFamily: fonts.display, fontSize: 32, lineHeight: 37, color: light.ink, letterSpacing: -1 },
   sticky: {
     paddingHorizontal: GUTTER,
     paddingTop: 8,

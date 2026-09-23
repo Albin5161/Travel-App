@@ -33,7 +33,7 @@ type Props = FaceProps & {
 
 export const TILE_RATIO = 1.55;
 export const TILE_RADIUS = 22;
-/** Below this the serif name has to come down or it wraps to three lines. */
+/** Below this the name has to come down or it wraps to three lines. */
 const COMPACT_W = 150;
 
 /** The corner a tile of this width uses. The growing card starts here, so the hand-over matches. */
@@ -44,19 +44,19 @@ function faceScale(width: number | undefined) {
   const compact = (width ?? 999) < COMPACT_W;
   return {
     compact,
-    name: compact ? 13 : 22,
-    nameLine: compact ? 15 : 24,
-    nameTrack: compact ? 0.4 : 1,
+    name: compact ? 15 : 22,
+    nameLine: compact ? 18 : 25,
+    nameTrack: compact ? -0.4 : -0.7,
     inset: compact ? 9 : 14,
     ruleTop: compact ? 10 : 18,
     ruleBottom: compact ? 7 : 12,
     stat: compact ? 8 : 10,
-    statTrack: compact ? 0.8 : 1.5,
+    statTrack: compact ? 0.5 : 0.8,
     radius: tileRadius(width),
   };
 }
 
-// Tall photo card for the home grid (after Atlys's country cards): name in serif caps over the
+// Tall photo card for the home grid (after Atlys's country cards): name in heavy Jakarta over the
 // photo, a hairline, one stat row, and a two-line caption below the card.
 export function CityTile({
   name,
@@ -151,21 +151,19 @@ const styles = StyleSheet.create({
     borderColor: light.photoLine,
   },
   badgeCompact: { top: 7, left: 7, paddingHorizontal: 6, paddingVertical: 3 },
-  badgeText: { fontSize: 9, letterSpacing: 1.5 },
-  badgeTextCompact: { fontSize: 7, letterSpacing: 0.8 },
+  badgeText: { fontSize: 9, letterSpacing: 0.6 },
+  badgeTextCompact: { fontSize: 7, letterSpacing: 0.4 },
   body: { position: 'absolute' },
   name: {
-    fontFamily: fonts.serif,
+    fontFamily: fonts.display,
     fontSize: 22,
-    lineHeight: 24,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    textAlign: 'center',
+    lineHeight: 25,
+    letterSpacing: -0.7,
     color: light.photoInk,
   },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: light.photoLine, marginTop: 18, marginBottom: 12 },
   stat: { flexDirection: 'row', justifyContent: 'space-between' },
-  statText: { fontSize: 10, letterSpacing: 1.5 },
+  statText: { fontSize: 10, letterSpacing: 0.8 },
   caption: { paddingHorizontal: 4, paddingTop: 10, gap: 1 },
   captionCompact: { paddingHorizontal: 2, paddingTop: 7 },
   captionText: { fontSize: 11, lineHeight: 15 },

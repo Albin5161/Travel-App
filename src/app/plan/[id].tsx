@@ -287,7 +287,7 @@ function StopRow({ stop, number, activeId }: { stop: PlanStop; number: number; a
 function GapCard({ place, onAdd }: { place: Place; onAdd: () => void }) {
   return (
     <Animated.View entering={ROW_ENTER} exiting={FADE_OUT} style={styles.gap}>
-      <Text variant="serifItalic">Nothing planned for dinner.</Text>
+      <Text variant="title">Nothing planned for dinner.</Text>
       <View style={styles.gapRow}>
         <Image source={place.photo} style={styles.thumb} contentFit="cover" transition={0} />
         <View style={styles.stopText}>

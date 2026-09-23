@@ -16,25 +16,29 @@ colors:
   hairline: "rgba(255,255,255,0.08)"
 typography:
   display-xl:
-    fontFamily: "Instrument Serif"
-    fontSize: 56
-    fontWeight: 400
-    lineHeight: 56
+    fontFamily: "Plus Jakarta Sans"
+    fontSize: 44
+    fontWeight: 800
+    lineHeight: 49
+    letterSpacing: -1.6
   display:
-    fontFamily: "Instrument Serif"
-    fontSize: 40
-    fontWeight: 400
-    lineHeight: 42
+    fontFamily: "Plus Jakarta Sans"
+    fontSize: 34
+    fontWeight: 800
+    lineHeight: 38
+    letterSpacing: -1.1
   headline:
-    fontFamily: "Instrument Serif"
-    fontSize: 28
-    fontWeight: 400
-    lineHeight: 32
-  serif-italic:
-    fontFamily: "Instrument Serif Italic"
+    fontFamily: "Plus Jakarta Sans"
     fontSize: 22
-    fontWeight: 400
-    lineHeight: 28
+    fontWeight: 700
+    lineHeight: 27
+    letterSpacing: -0.5
+  title:
+    fontFamily: "Plus Jakarta Sans"
+    fontSize: 18
+    fontWeight: 600
+    lineHeight: 24
+    letterSpacing: -0.3
   body:
     fontFamily: "Geist"
     fontSize: 15
@@ -55,7 +59,7 @@ typography:
     fontSize: 11
     fontWeight: 600
     lineHeight: 14
-    letterSpacing: 2
+    letterSpacing: 0.9
 rounded:
   thumb: 14
   card: 28
@@ -125,13 +129,13 @@ Raahi has moved from "a travel film at dusk" to a **light, airy direction modell
 - **On photos:** white text, 72% white for secondary, 22% white hairlines.
 - Ember (`#E2763C`) stays available as a small accent, not as the button colour.
 
-**Type:** the same two voices (Instrument Serif + Geist). On light: centred serif questions at 32/36 (e.g. "which reel is your next trip?"), and city names in **serif capitals** at 22/24 with +1 tracking on photo cards.
+**Type:** Plus Jakarta Sans for headings, Geist for everything you read (see Typography, updated 23 Sep 2026). Headlines are **two-weight**: a Medium lead-in in Ink soft, then the payoff in ExtraBold Ink ("Which reel is / **your next trip?**"). City names on photo cards are Jakarta ExtraBold 22/25, title case, -0.7 tracking.
 
 **Home (Collect mode)**
-- Wordmark, then a centred serif question.
+- Wordmark, then a left-aligned two-weight question.
 - **Link box:** a white pill field (48 high), with the platform icon swapping in (link → Instagram/YouTube) once the link is recognised, and a **black circular system Paste button** beside it. The box sticks to the top while scrolling.
 - A hint line under the box: "You copied a link. Tap paste to add it." when iOS reports a link on the clipboard (checked without reading it), or the error line after a gentle shake.
-- **White panel with a 2-column grid of tall city tiles** (ratio 1.55, radius 22, soft shadow): serif-caps name, a hairline, a SPOTS row, and a two-line caption under the card ("Collected from / 2 reels", or "Day planned / Ready to go").
+- **White panel with a 2-column grid of tall city tiles** (ratio 1.55, radius 22, soft shadow): Jakarta ExtraBold name, a hairline, a SPOTS row, and a two-line caption under the card ("Collected from / 2 reels", or "Day planned / Ready to go").
 - Empty state: the grid shows Gokarna, Kochi and Meghalaya as **Sample** tiles; tapping one runs its demo reel.
 
 **Map (paper):** pale land `#F7F6F2`, soft blue-grey sea `#DDE6E7`, quiet roads, grey labels. Photo pins have a **white rim and a soft shadow**; numbered badges and the day's **route are ink black**. White panels rest on the map (City, Plan).
@@ -142,7 +146,7 @@ Raahi has moved from "a travel film at dusk" to a **light, airy direction modell
 
 **Card → city page (signature transition):** tapping a city card on home grows a copy of it from the card's exact spot to full screen in **420ms** (`cubic-bezier(0.32, 0.72, 0, 1)`), with a light haptic. The corners open from 22 to ~44 as it grows, then square off where the phone's own corners take over. The card's label fades out in the first 30%, and the city page's content (scaled with the card, never reflowing) fades in from 35–85%. Then the city page appears underneath with no animation of its own. Going back plays it in reverse as a **spring (450ms, damping 0.8)** that settles into the card, however the user got home. Reduced motion: a 200ms crossfade. Code: `CityOpenOverlay`, `CityHero`.
 
-**City page (Plan mode):** full-bleed city photo, a white back button, the state in micro caps, the city name in serif 48, "7 places from 1 reel" in serif italic (the count in a warm peach), and a round dark-glass **Start planning** button (**See your day** once planned).
+**City page (Plan mode):** full-bleed city photo, a white back button, the state in micro caps, the city name in Jakarta ExtraBold 46/51 at -1.8 tracking, "7 places from 1 reel" in Geist Medium 16 (the count in Jakarta Bold, warm peach), and a round dark-glass **Start planning** button (**See your day** once planned).
 
 **The Plan panel** (after Atlys's visa page): a white panel rests at the bottom showing only its grabber and tabs, **Overview · Places · Plan · Good to know**. Scrolling (or tapping a tab) slides it up over the photo, snapping to "resting" or "up". When it's up, a strip of photo stays visible at the top, holding the back button. As the panel rises, the title drifts up more slowly, fades and shrinks slightly, and the photo dims.
 - **Tabs** stick under the photo strip. The black underline **slides** (spring) to the active tab, and scroll-spy keeps it in sync as you scroll.
@@ -156,10 +160,10 @@ Raahi has moved from "a travel film at dusk" to a **light, airy direction modell
 The map is its own screen (`map/[id]`), reached from Places ("Open the map") or from "Plan this trip →" after analysing.
 
 **Signature animations** (Albin's designs in `references/animations/`, rebuilt natively in `src/components/motion/`):
-- **Opening** (`LaunchIntro`, once per launch, skipped with Reduce Motion): a winding accent route draws itself in 0.6s with a light at its tip, and a pin drops onto its end at 0.35s with a bounce, a ripple and a light haptic. At 0.55s the pin shrinks into the **dot of the ı** while "Raahı" fades up letter by letter (0.05s stagger). The route fades and "EVERY PATH HAS A STORY" appears by 1.6s, then the layer fades to reveal home. The letters are placed from Instrument Serif's own advances, so the dot lands exactly on the dotless i.
+- **Opening** (`LaunchIntro`, once per launch, skipped with Reduce Motion): a winding accent route draws itself in 0.6s with a light at its tip, and a pin drops onto its end at 0.35s with a bounce, a ripple and a light haptic. At 0.55s the pin shrinks into the **dot of the ı** while "Raahı" fades up letter by letter (0.05s stagger). The route fades and "EVERY PATH HAS A STORY" appears by 1.6s, then the layer fades to reveal home. The letters are placed from Plus Jakarta Sans ExtraBold's own advances at 40, less -0.04 em tracking, so the dot (0.15 em, the tittle's own size) lands exactly on the dotless i.
 - **Reel scanner** (`ReelScanner`, Analysing): a white orb on the reel card's bottom-right edge. Three ink ripples, an accent arc circling (2.4s cycle), and the orb's icon cycling play → pin → sparkle. When all places are found, the arc closes into a ring, a check draws in, and the orb pops once (0.6s).
 - **Saved tick** (`SavedTick`, after "Save N spots" and on single-spot quick-save): an ink circle pops in with overshoot, a white check draws itself, and six accent dots burst and fade (0.7s). Then back home.
-- **Passport stamp** (`PassportStamp`, "Save this day"): the page veils to paper, and an Ember stamp (worn double ring, curved "RAAHI · DAY PLANNED", the city in serif capitals, the date) drops from 1.6× at -12° to land at -6° in 0.35s with a **haptic thud**, squashes to 0.96, rebounds and settles as an ink ring spreads. It holds, then goes home. Tap to skip.
+- **Passport stamp** (`PassportStamp`, "Save this day"): the page veils to paper, and an Ember stamp (worn double ring, curved "RAAHI · DAY PLANNED", the city in Jakarta ExtraBold capitals sized to fit between the stars, the date) drops from 1.6× at -12° to land at -6° in 0.35s with a **haptic thud**, squashes to 0.96, rebounds and settles as an ink ring spreads. It holds, then goes home. Tap to skip.
 - **Safety icons** (`SafetyIcon`, Good to know): 24×24 line icons, 1.5 stroke, one colour. Facts without a matching icon keep a Feather icon.
 - *Not carried over from the web versions:* the rough-ink turbulence filter and blur glows (react-native-svg doesn't support them). Worn, dashed rings and a wide low-opacity stroke stand in for them.
 
@@ -211,23 +215,29 @@ Visual references and the decision trail live in the Figma file *Raahi — Refer
 
 ## Typography
 
-**Display:** Instrument Serif (Regular, Italic)
+**Display:** Plus Jakarta Sans (500, 500 Italic, 600, 700, 800)
 **Interface:** Geist (400, 500, 600)
 
-**Character:** a warm, high-contrast editorial serif for *places and moments*, and a neutral, precise grotesque for *everything you operate*. You can tell what's content and what's control before you read it.
+*Updated 23 Sep 2026: Instrument Serif retired. Instrument Serif with Geist had become the default pairing of generated design, and the app read as generated before anyone read a word.*
+
+**Character:** headings are heavy and tightly tracked, so large type reads as one shape. Weight carries emphasis; italics don't (the one exception is water on the maps, where italic is a cartographic convention). Geist stays neutral and untracked for everything you read and operate.
+
+**Tracking scales with size and weight.** Bigger and heavier sets tighter: -0.017 em at Title, up to -0.036 em at Display XL. Medium lead-ins sit looser (about -0.016 em) than the ExtraBold payoffs next to them, or their word spaces close up.
+
+**Line height is never left to default.** Jakarta's ascent plus descent is 1.26 em, so every heading sets a line height of at least 1.1× its size. A Text without one inherits body's 22 and iOS crops the tops of the capitals.
 
 ### Hierarchy
-- **Display XL** (Instrument Serif 56/56): place names on the Pick card, city names on photo cards.
-- **Display** (Instrument Serif 40/42): screen titles, e.g. "Gokarna".
-- **Headline** (Instrument Serif 28/32): day-part headers in the plan (Morning, Afternoon, Evening).
-- **Serif Italic** (Instrument Serif Italic 22/28): narrative lines only. The empty-state promise, and the place names rolling in like film credits during analysis.
+- **Display XL** (Jakarta 800 44/49, -1.6): place names on the Pick card.
+- **Display** (Jakarta 800 34/38, -1.1): screen titles, e.g. "Gokarna".
+- **Headline** (Jakarta 700 22/27, -0.5): section and day-part headers (Morning, Afternoon, Evening).
+- **Title** (Jakarta 600 18/24, -0.3): list names that are content, e.g. the places rolling in like film credits during analysis.
 - **Body** (Geist 400 15/22): why-go lines, descriptions. Keep to ~40 characters per line on cards.
 - **Label** (Geist 500 13/18): buttons in compact spots, pill text, list meta.
-- **Micro-caps** (Geist 600 11, tracking 2, uppercase, Ash): areas, states, section eyebrows. `OM BEACH · GOKARNA`.
+- **Micro-caps** (Geist 600 11, tracking 0.9, uppercase, Ash): areas, states, section eyebrows. `OM BEACH · GOKARNA`.
 - Numbers in counters and times use tabular figures so they don't jitter while counting.
 
 ### Named rules
-**The Two-Voices Rule.** Serif says *where*. Sans says *what to do*. A button is never serif; a place name is never Geist.
+**The Two-Voices Rule.** Jakarta says *where* and *what matters*. Geist says *what to do* and everything you read. A button is never Jakarta; a heading is never Geist.
 
 ## Layout
 
@@ -360,7 +370,7 @@ A tap is never cinematic. A reveal is never rushed.
 **2 · Analysing** *(rare, the product's hero; purpose: explanation + delight)*
 - Reel preview card enters: scale 0.96 to 1, opacity 0 to 1, 300ms ease-out.
 - A light sweep crosses the thumbnail (a diagonal gradient band translating across it, 1.4s, linear, looping) while the status reads *Reading the description…*
-- **Places roll in like film credits:** each name appears in Serif Italic, opacity 0 and y +8 to rest, 300ms ease-out, **130ms apart**. That's slower than a normal list stagger on purpose, because each name is content to read. A tabular counter ticks up with it: `Found 4 places`.
+- **Places roll in like film credits:** each name appears in Title (Jakarta 600), opacity 0 and y +8 to rest, 300ms ease-out, **130ms apart**. That's slower than a normal list stagger on purpose, because each name is content to read. A tabular counter ticks up with it: `Found 4 places`.
 - Status line crossfades (180ms) through *Reading the description…*, *Finding places…*, *Placing them on the map…*
 - One success haptic when the last place lands. **No per-place haptic ticks:** a haptic belongs to something the user did, and a burst of seven would train people to turn haptics off.
 - Hands off to the map with a native fade.
@@ -433,5 +443,5 @@ Fewer and gentler, not zero:
 - **Don't** animate `height`, `width`, `margin` or blur intensity. Transform and opacity only.
 - **Don't** fire haptics on scroll, per frame, or for things the user didn't cause.
 - **Don't** make tabs, filters or counters slide.
-- **Don't** set place names in Geist or buttons in the serif.
+- **Don't** set headings in Geist or buttons in Jakarta.
 - **Don't** show a place without a photo, a why-go line and its source. "Places arrive blank" is the #1 complaint about our competitors.

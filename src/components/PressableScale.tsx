@@ -26,7 +26,7 @@ export function PressableScale({
       disabled={disabled}
       hitSlop={rest.hitSlop ?? 8}
       pressRetentionOffset={16}
-      style={containerStyle}
+      {...(containerStyle ? { style: containerStyle } : null)}
       onPressIn={(e) => {
         setPressed(true);
         rest.onPressIn?.(e);

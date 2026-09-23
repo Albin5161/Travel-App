@@ -10,12 +10,14 @@ import Animated, {
   useSharedValue,
   withSpring,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
+import { AmbientBackdrop } from '@/components/pick/AmbientBackdrop';
 import { PlaceCard } from '@/components/PlaceCard';
 import { Text } from '@/components/Text';
 import { getCity } from '@/data/api';
@@ -41,12 +43,16 @@ export default function Pick() {
   const [history, setHistory] = useState<{ id: string; dir: Dir }[]>([]);
   const [returning, setReturning] = useState<Dir | null>(null);
   const topCard = useRef<CardHandle>(null);
+  // The front card writes its drag here so the backdrop reads the same gesture off one shared
+  // value. Reset before the index moves, so the incoming card starts centred.
+  const dragX = useSharedValue(0);
 
   const kept = collected.filter((p) => !state.skipped[p.id]).length;
   const done = index >= collected.length;
 
   const commit = (place: Place, dir: Dir) => {
     haptic.light();
+    dragX.set(0);
     dispatch({ type: 'decide', placeId: place.id, keep: dir === 'keep' });
     setHistory((h) => [...h, { id: place.id, dir }]);
     setReturning(null);
@@ -57,6 +63,7 @@ export default function Pick() {
     const last = history[history.length - 1];
     if (!last) return;
     haptic.selection();
+    dragX.set(0);
     dispatch({ type: 'decide', placeId: last.id, keep: true });
     setHistory((h) => h.slice(0, -1));
     setReturning(last.dir);
@@ -71,6 +78,9 @@ export default function Pick() {
 
   return (
     <View style={[styles.fill, { paddingTop: insets.top + 8 }]}>
+      {!done ? (
+        <AmbientBackdrop current={collected[index]} next={collected[index + 1]} x={dragX} width={W} />
+      ) : null}
       <View style={styles.header}>
         <IconButton icon="chevron-left" onPress={() => router.back()} accessibilityLabel="Back" />
         <View style={styles.headerRight}>
@@ -113,6 +123,7 @@ export default function Pick() {
                   screenW={W}
                   enterFrom={i === 0 ? returning : null}
                   fresh={i === 2 && index > 0}
+                  dragX={dragX}
                   onCommit={(dir) => commit(place, dir)}
                 />
               ))
@@ -146,19 +157,27 @@ type SwipeProps = {
   enterFrom: Dir | null;
   /** Newly revealed at the back of the stack: fade in from one step further back. */
   fresh?: boolean;
+  /** Shared with the screen: the front card drives this, the backdrop follows it. */
+  dragX: SharedValue<number>;
   onCommit: (dir: Dir) => void;
 };
 
-function SwipeCard({ ref, place, depth, width, height, screenW, enterFrom, fresh, onCommit }: SwipeProps) {
+function SwipeCard({ ref, place, depth, width, height, screenW, enterFrom, fresh, dragX, onCommit }: SwipeProps) {
   const reduced = useReducedMotion();
   const offscreen = screenW * 1.4;
-  const x = useSharedValue(enterFrom ? (enterFrom === 'keep' ? offscreen : -offscreen) : 0);
+  const own = useSharedValue(enterFrom ? (enterFrom === 'keep' ? offscreen : -offscreen) : 0);
+  // The front card animates the screen's shared value directly, so the backdrop needs no wiring of
+  // its own. Cards behind never move sideways, so they keep their own.
+  const x = depth === 0 ? dragX : own;
   const y = useSharedValue(0);
   const d = useSharedValue(fresh ? depth + 1 : depth);
   const start = useSharedValue({ x: 0, y: 0 });
 
   useEffect(() => {
-    if (enterFrom) x.set(withSpring(0, SPRING_SETTLE));
+    if (enterFrom) {
+      x.set(enterFrom === 'keep' ? offscreen : -offscreen);
+      x.set(withSpring(0, SPRING_SETTLE));
+    }
     // Mount-only: an undone card flies back in once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

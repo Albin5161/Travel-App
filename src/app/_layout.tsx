@@ -56,6 +56,7 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="onboarding" options={{ animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="analysing" options={{ animation: 'fade', gestureEnabled: false }} />
             {/* Home's card grows into this page itself (CityOpenOverlay), so the screen doesn't animate.
                 The edge swipe is off because it would slide the page away instead of shrinking it. */}

@@ -22,7 +22,9 @@ const SAMPLE_CITIES = ['kottayam', 'kochi', 'gokarna', 'meghalaya'];
 const GUTTER = 16;
 /** The floating tab bar sits over the scroll, so the last row of tiles has to clear it. */
 const TAB_BAR_CLEARANCE = 100;
-const GAP = 12;
+const GAP = 10;
+/** Three across. Tighter than two, and the grid reads as a collection rather than a shortlist. */
+const COLUMNS = 3;
 
 // Home is Collect mode: paste reels, watch cities fill up. Tapping a city opens Plan mode.
 export default function Home() {
@@ -46,7 +48,7 @@ export default function Home() {
   const collections = Object.values(state.collections).sort((a, b) => b.addedAt - a.addedAt);
   const empty = collections.length === 0;
   const fresh = state.freshCityId;
-  const tileW = (W - GUTTER * 2 - GAP) / 2;
+  const tileW = (W - GUTTER * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
 
   useEffect(() => {
     if (!fresh) return;
@@ -201,5 +203,5 @@ const styles = StyleSheet.create({
     boxShadow: shadows.panel,
   },
   panelTitle: { marginBottom: 16, marginLeft: 4 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: GAP, rowGap: 22 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: GAP, rowGap: 18 },
 });

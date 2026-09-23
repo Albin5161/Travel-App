@@ -14,6 +14,8 @@ type FaceProps = {
   statLabel: string;
   statValue: string;
   badge?: string;
+  /** Tile width, so the face can shrink with it. Omit for the full-size face. */
+  width?: number;
 };
 
 type Props = FaceProps & {
@@ -31,6 +33,28 @@ type Props = FaceProps & {
 
 export const TILE_RATIO = 1.55;
 export const TILE_RADIUS = 22;
+/** Below this the serif name has to come down or it wraps to three lines. */
+const COMPACT_W = 150;
+
+/** The corner a tile of this width uses. The growing card starts here, so the hand-over matches. */
+export const tileRadius = (width: number | undefined) => ((width ?? 999) < COMPACT_W ? 16 : TILE_RADIUS);
+
+/** One scale for the whole face, so nothing drifts out of proportion as the grid narrows. */
+function faceScale(width: number | undefined) {
+  const compact = (width ?? 999) < COMPACT_W;
+  return {
+    compact,
+    name: compact ? 13 : 22,
+    nameLine: compact ? 15 : 24,
+    nameTrack: compact ? 0.4 : 1,
+    inset: compact ? 9 : 14,
+    ruleTop: compact ? 10 : 18,
+    ruleBottom: compact ? 7 : 12,
+    stat: compact ? 8 : 10,
+    statTrack: compact ? 0.8 : 1.5,
+    radius: tileRadius(width),
+  };
+}
 
 // Tall photo card for the home grid (after Atlys's country cards): name in serif caps over the
 // photo, a hairline, one stat row, and a two-line caption below the card.
@@ -48,6 +72,7 @@ export function CityTile({
   accessibilityLabel,
 }: Props) {
   const photoRef = useRef<View>(null);
+  const f = faceScale(width);
   const press = () => {
     const node = photoRef.current;
     if (!node) return;
@@ -61,16 +86,16 @@ export function CityTile({
       accessibilityLabel={accessibilityLabel}
       style={{ width }}
     >
-      <View ref={photoRef} style={[styles.shadow, lifted && styles.lifted]}>
-        <PhotoCard source={photo} radius={TILE_RADIUS} style={{ width, height: width * TILE_RATIO }}>
-          <CityTileFace name={name} statLabel={statLabel} statValue={statValue} badge={badge} />
+      <View ref={photoRef} style={[styles.shadow, { borderRadius: f.radius }, lifted && styles.lifted]}>
+        <PhotoCard source={photo} radius={f.radius} style={{ width, height: width * TILE_RATIO }}>
+          <CityTileFace name={name} statLabel={statLabel} statValue={statValue} badge={badge} width={width} />
         </PhotoCard>
       </View>
-      <View style={styles.caption}>
-        <Text variant="label" color={light.inkFaint} numberOfLines={1}>
+      <View style={[styles.caption, f.compact && styles.captionCompact]}>
+        <Text variant="label" color={light.inkFaint} numberOfLines={1} style={f.compact && styles.captionText}>
           {captionLabel}
         </Text>
-        <Text variant="label" numberOfLines={1}>
+        <Text variant="label" numberOfLines={1} style={f.compact && styles.captionText}>
           {captionValue}
         </Text>
       </View>
@@ -79,26 +104,30 @@ export function CityTile({
 }
 
 /** What sits on the tile's photo. Also drawn on the growing card, fading out as it opens. */
-export function CityTileFace({ name, statLabel, statValue, badge }: FaceProps) {
+export function CityTileFace({ name, statLabel, statValue, badge, width }: FaceProps) {
+  const f = faceScale(width);
   return (
     <>
       {badge ? (
-        <View style={styles.badge}>
-          <Text variant="micro" color={light.photoInk} style={styles.badgeText}>
+        <View style={[styles.badge, f.compact && styles.badgeCompact]}>
+          <Text variant="micro" color={light.photoInk} style={[styles.badgeText, f.compact && styles.badgeTextCompact]}>
             {badge}
           </Text>
         </View>
       ) : null}
-      <View style={styles.body}>
-        <Text style={styles.name} numberOfLines={2}>
+      <View style={[styles.body, { left: f.inset, right: f.inset, bottom: f.inset }]}>
+        <Text
+          style={[styles.name, { fontSize: f.name, lineHeight: f.nameLine, letterSpacing: f.nameTrack }]}
+          numberOfLines={2}
+        >
           {name}
         </Text>
-        <View style={styles.rule} />
+        <View style={[styles.rule, { marginTop: f.ruleTop, marginBottom: f.ruleBottom }]} />
         <View style={styles.stat}>
-          <Text variant="micro" color={light.photoInkSoft} style={styles.statText}>
+          <Text variant="micro" color={light.photoInkSoft} style={[styles.statText, { fontSize: f.stat, letterSpacing: f.statTrack }]}>
             {statLabel}
           </Text>
-          <Text variant="micro" color={light.photoInk} style={styles.statText}>
+          <Text variant="micro" color={light.photoInk} style={[styles.statText, { fontSize: f.stat, letterSpacing: f.statTrack }]}>
             {statValue}
           </Text>
         </View>
@@ -108,7 +137,7 @@ export function CityTileFace({ name, statLabel, statValue, badge }: FaceProps) {
 }
 
 const styles = StyleSheet.create({
-  shadow: { borderRadius: TILE_RADIUS, boxShadow: shadows.card },
+  shadow: { boxShadow: shadows.card },
   lifted: { opacity: 0 },
   badge: {
     position: 'absolute',
@@ -121,8 +150,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: light.photoLine,
   },
+  badgeCompact: { top: 7, left: 7, paddingHorizontal: 6, paddingVertical: 3 },
   badgeText: { fontSize: 9, letterSpacing: 1.5 },
-  body: { position: 'absolute', left: 14, right: 14, bottom: 14 },
+  badgeTextCompact: { fontSize: 7, letterSpacing: 0.8 },
+  body: { position: 'absolute' },
   name: {
     fontFamily: fonts.serif,
     fontSize: 22,
@@ -136,4 +167,6 @@ const styles = StyleSheet.create({
   stat: { flexDirection: 'row', justifyContent: 'space-between' },
   statText: { fontSize: 10, letterSpacing: 1.5 },
   caption: { paddingHorizontal: 4, paddingTop: 10, gap: 1 },
+  captionCompact: { paddingHorizontal: 2, paddingTop: 7 },
+  captionText: { fontSize: 11, lineHeight: 15 },
 });

@@ -266,8 +266,9 @@ const MapArt = memo(function MapArt({
             x={l.x}
             y={l.y}
             fill={light.mapSeaLabel}
-            fontFamily={fonts.serifItalic}
-            fontSize={48}
+            fontFamily={fonts.displayItalic}
+            fontSize={44}
+            letterSpacing={2}
             textAnchor={l.anchor ?? 'start'}
           >
             {l.text}

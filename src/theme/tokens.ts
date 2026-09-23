@@ -53,9 +53,15 @@ export const shadows = {
   button: '0 2px 8px rgba(17,17,17,0.08)',
 } as const;
 
+// Headings in Plus Jakarta Sans, heavy and tightly tracked; everything you read in Geist.
+// Jakarta sits taller than it looks (ascent + descent = 1.26 em): keep heading line heights at
+// 1.1x the size or more, or iOS shaves the tops off the capitals.
 export const fonts = {
-  serif: 'InstrumentSerif_400Regular',
-  serifItalic: 'InstrumentSerif_400Regular_Italic',
+  display: 'PlusJakartaSans_800ExtraBold',
+  displayBold: 'PlusJakartaSans_700Bold',
+  displaySemi: 'PlusJakartaSans_600SemiBold',
+  displayMedium: 'PlusJakartaSans_500Medium',
+  displayItalic: 'PlusJakartaSans_500Medium_Italic',
   sans: 'Geist_400Regular',
   sansMedium: 'Geist_500Medium',
   sansSemi: 'Geist_600SemiBold',

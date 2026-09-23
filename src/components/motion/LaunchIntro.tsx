@@ -31,16 +31,20 @@ const FADE_OUT = 350;
 const INK = light.ink;
 const ACCENT = light.accent;
 
-// Wordmark set in Instrument Serif 48, centred on x=150, baseline 166. Letter advances are the
-// font's own (R .513, a .399, h .47, ı .223 em), so the dot lands exactly on the dotless i.
-const SIZE = 48;
+// Wordmark set in Plus Jakarta Sans ExtraBold 40, centred on x=150, baseline 166. Letter advances
+// are the font's own (R .667, a .583, h .599, ı .238 em) less the wordmark's -0.04 em tracking, so
+// the dot lands exactly on the dotless i.
+const SIZE = 40;
+const TRACK = -0.04;
 const WORD = ['R', 'a', 'a', 'h', 'ı'];
-const ADVANCE = [0.513, 0.399, 0.399, 0.47, 0.223];
+const ADVANCE = [0.667 + TRACK, 0.583 + TRACK, 0.583 + TRACK, 0.599 + TRACK, 0.238];
 const X0 = 150 - (ADVANCE.reduce((a, b) => a + b, 0) * SIZE) / 2;
 const LETTER_X = ADVANCE.map((_, i) => X0 + ADVANCE.slice(0, i).reduce((a, b) => a + b, 0) * SIZE);
 const BASELINE = 166;
-// Centre of the i's tittle: halfway across its stem, 0.62 em above the baseline.
-const DOT = { x: LETTER_X[4] + 0.1135 * SIZE, y: BASELINE - 0.62 * SIZE };
+// Centre of the i's tittle: halfway across its stem (0.119 em), 0.67 em above the baseline.
+const DOT = { x: LETTER_X[4] + 0.119 * SIZE, y: BASELINE - 0.67 * SIZE };
+// The tittle is 0.15 em across; the pin shrinks to exactly that.
+const DOT_R = 0.075 * SIZE;
 
 // The route: two cubic curves ending at the dot.
 const P0 = [30, 185];
@@ -168,7 +172,7 @@ export function LaunchIntro({ onDone }: Props) {
   });
   const dot = useAnimatedProps(() => {
     const p = seg(t.get(), 550, 350);
-    return { r: 3.4 * (0.1 + 0.9 * BOUNCE(p)), opacity: p === 0 ? 0 : 1 };
+    return { r: DOT_R * (0.1 + 0.9 * BOUNCE(p)), opacity: p === 0 ? 0 : 1 };
   });
 
   const tagline = useAnimatedStyle(() => {
@@ -241,7 +245,7 @@ export function LaunchIntro({ onDone }: Props) {
 
         {WORD.map((ch, i) => (
           <Letter key={i} t={t} index={i} box={box}>
-            <SvgText x={LETTER_X[i]} y={BASELINE} fontFamily={fonts.serif} fontSize={SIZE} fill={INK}>
+            <SvgText x={LETTER_X[i]} y={BASELINE} fontFamily={fonts.display} fontSize={SIZE} fill={INK}>
               {ch}
             </SvgText>
           </Letter>
@@ -255,7 +259,7 @@ export function LaunchIntro({ onDone }: Props) {
               textAnchor="middle"
               fontFamily={fonts.sansSemi}
               fontSize={8}
-              letterSpacing={2.6}
+              letterSpacing={1.6}
               fill={INK}
             >
               EVERY PATH HAS A STORY

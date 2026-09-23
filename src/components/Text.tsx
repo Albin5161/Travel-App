@@ -7,7 +7,7 @@ export type TextVariant =
   | 'displayXL'
   | 'display'
   | 'headline'
-  | 'serifItalic'
+  | 'title'
   | 'body'
   | 'bodyStrong'
   | 'label'
@@ -22,7 +22,7 @@ const INK: Record<'dark' | 'light', Record<TextVariant, string>> = {
     displayXL: colors.mist,
     display: colors.mist,
     headline: colors.mist,
-    serifItalic: colors.mist,
+    title: colors.mist,
     body: colors.stone,
     bodyStrong: colors.mist,
     label: colors.mist,
@@ -33,7 +33,7 @@ const INK: Record<'dark' | 'light', Record<TextVariant, string>> = {
     displayXL: light.ink,
     display: light.ink,
     headline: light.ink,
-    serifItalic: light.ink,
+    title: light.ink,
     body: light.inkSoft,
     bodyStrong: light.ink,
     label: light.ink,
@@ -47,19 +47,24 @@ export function Text({ variant = 'body', color, style, ...rest }: Props) {
   return <RNText {...rest} style={[styles[variant], { color: color ?? INK[tone][variant] }, style]} />;
 }
 
+// Two voices. Jakarta carries every heading: the bigger it gets, the heavier and tighter it sets
+// (tracking runs from -0.017 em at title size to -0.036 em at displayXL), so large type reads as
+// one shape instead of a row of letters. Geist carries everything you read, at its own spacing.
+// Every style sets a line height: without one, Text inherits body's 22 and iOS crops the tops.
 const styles = StyleSheet.create({
-  displayXL: { fontFamily: fonts.serif, fontSize: 52, lineHeight: 54, letterSpacing: -0.5 },
-  display: { fontFamily: fonts.serif, fontSize: 40, lineHeight: 44, letterSpacing: -0.3 },
-  headline: { fontFamily: fonts.serif, fontSize: 28, lineHeight: 32 },
-  serifItalic: { fontFamily: fonts.serifItalic, fontSize: 22, lineHeight: 28 },
+  displayXL: { fontFamily: fonts.display, fontSize: 44, lineHeight: 49, letterSpacing: -1.6 },
+  display: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, letterSpacing: -1.1 },
+  headline: { fontFamily: fonts.displayBold, fontSize: 22, lineHeight: 27, letterSpacing: -0.5 },
+  title: { fontFamily: fonts.displaySemi, fontSize: 18, lineHeight: 24, letterSpacing: -0.3 },
   body: { fontFamily: fonts.sans, fontSize: 15, lineHeight: 22 },
   bodyStrong: { fontFamily: fonts.sansMedium, fontSize: 15, lineHeight: 22 },
   label: { fontFamily: fonts.sansMedium, fontSize: 13, lineHeight: 18 },
+  // Caps whisper rather than shout: 0.08 em, not the 0.18 em of a generated landing page.
   micro: {
     fontFamily: fonts.sansSemi,
     fontSize: 11,
     lineHeight: 14,
-    letterSpacing: 2,
+    letterSpacing: 0.9,
     textTransform: 'uppercase',
   },
   data: { fontFamily: fonts.sansMedium, fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums'] },

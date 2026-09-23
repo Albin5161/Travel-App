@@ -4,9 +4,13 @@ import Animated, { css } from 'react-native-reanimated';
 import { Tone } from '@/theme/tone';
 import { fonts, light } from '@/theme/tokens';
 
+import { TabIcon, type TabIconName } from './TabIcon';
+
 export const PLAN_TABS = ['Overview', 'Places', 'Plan', 'Good to know'] as const;
+const TAB_ICONS: TabIconName[] = ['overview', 'places', 'plan', 'safety'];
+
 /** Grabber + tab row. */
-export const PANEL_HEADER_H = 64;
+export const PANEL_HEADER_H = 78;
 export const PANEL_RADIUS = 32;
 
 /** How much of the panel shows at rest, above the home indicator. */
@@ -18,9 +22,10 @@ type Props = {
   onTab?: (index: number) => void;
 };
 
-// The top of the Plan panel: a grabber and the tabs. The active tab is marked by its text alone:
-// ink when active, faint otherwise, crossfading in 180ms. Scrolling the panel changes it too
-// (scroll-spy, in the screen). Weight stays the same so the tabs never shift sideways.
+// The top of the Plan panel: a grabber and the tabs. Still no underline — the active tab is its
+// ink, and its icon, which performs a small gesture of its own as the section arrives. Weight never
+// changes, so the tabs can't shift sideways. Scrolling the panel changes the active tab too
+// (scroll-spy, in the screen).
 export function PanelTabs({ active, onTab }: Props) {
   return (
     <Tone value="light">
@@ -32,11 +37,16 @@ export function PanelTabs({ active, onTab }: Props) {
               key={label}
               onPress={onTab ? () => onTab(i) : undefined}
               disabled={!onTab}
-              hitSlop={8}
+              style={styles.tab}
+              hitSlop={6}
               accessibilityRole="tab"
               accessibilityState={{ selected: i === active }}
             >
-              <Animated.Text style={[styles.tab, { color: i === active ? light.ink : light.inkFaint }]}>
+              <TabIcon name={TAB_ICONS[i]} active={i === active} />
+              <Animated.Text
+                numberOfLines={1}
+                style={[styles.label, { color: i === active ? light.ink : light.inkFaint }]}
+              >
                 {label}
               </Animated.Text>
             </Pressable>
@@ -63,13 +73,14 @@ const styles = css.create({
     borderRadius: 3,
     backgroundColor: light.lineStrong,
   },
-  row: { flexDirection: 'row', gap: 22, paddingHorizontal: 24, marginTop: 16, height: 34 },
-  tab: {
+  row: { flexDirection: 'row', paddingHorizontal: 10, marginTop: 8, height: 52 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1 },
+  label: {
     fontFamily: fonts.sansMedium,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 11,
+    lineHeight: 15,
     transitionProperty: 'color',
-    transitionDuration: '180ms',
+    transitionDuration: '200ms',
   },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: light.line },
 });

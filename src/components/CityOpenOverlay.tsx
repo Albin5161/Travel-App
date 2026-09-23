@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { CityHeroContent, HeroScrim, type HeroStats } from '@/components/CityHero';
-import { CityTileFace, TILE_RADIUS, type Rect } from '@/components/CityTile';
+import { CityTileFace, tileRadius, type Rect } from '@/components/CityTile';
 import { GRADIENTS } from '@/components/PhotoCard';
 import type { City } from '@/data/types';
 import { haptic } from '@/lib/haptics';
@@ -95,6 +95,7 @@ type Props = {
 export function CityOpenOverlay({ card, progress, from, reduced }: Props) {
   const { width: W, height: H } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const startRadius = tileRadius(card?.rect.width);
 
   // The frame moves from the card's rect to the full screen; corners open up a little as it grows
   // (like Atlys), then square off at the very end, where the phone's own corners take over.
@@ -107,7 +108,7 @@ export function CityOpenOverlay({ card, progress, from, reduced }: Props) {
       top: r.y + (0 - r.y) * p,
       width: r.width + (W - r.width) * p,
       height: r.height + (H - r.height) * p,
-      borderRadius: interpolate(p, [0, 0.92, 1], [TILE_RADIUS, 44, 0], Extrapolation.CLAMP),
+      borderRadius: interpolate(p, [0, 0.92, 1], [startRadius, 44, 0], Extrapolation.CLAMP),
       opacity: 1,
     };
   });
@@ -161,7 +162,7 @@ export function CityOpenOverlay({ card, progress, from, reduced }: Props) {
           <HeroScrim />
         </Animated.View>
         <Animated.View style={[styles.face, tileFace]}>
-          <CityTileFace {...card.face} />
+          <CityTileFace {...card.face} width={card.rect.width} />
         </Animated.View>
         <Animated.View style={[styles.face, { width: W, height: H }, heroFace]}>
           <CityHeroContent

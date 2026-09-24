@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
 
   stats: { flexDirection: 'row', gap: 8, marginTop: 18 },
   stat: { flex: 1, gap: 4, padding: 12, borderRadius: 16, backgroundColor: light.canvas },
-  statLabel: { fontSize: 10, letterSpacing: 1 },
+  statLabel: { fontSize: 10, letterSpacing: 0.6 },
 
   bars: { marginTop: 14, gap: 12 },
   barRow: { gap: 6 },

@@ -15,6 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle } from 'react-native-svg';
 
 import { Button } from '@/components/Button';
 import { PressableScale } from '@/components/PressableScale';
@@ -98,7 +99,8 @@ export default function Onboarding() {
         <Page index={0} p={p}>
           <ReelFan />
           <Copy
-            title={'Your next trip is\nhiding in your\nsaved reels.'}
+            lead={'Your next trip is\nhiding in your\n'}
+            title="saved reels."
             body="Paste an Instagram or YouTube link. Every place in it is pulled out, named, and put on your map."
           />
         </Page>
@@ -106,15 +108,14 @@ export default function Onboarding() {
         <Page index={1} p={p}>
           <WeekendPreview />
           <Copy
-            title={'The ones near\nhome become\nyour weekends.'}
+            lead={'The ones near\nhome become\n'}
+            title="your weekends."
             body="Spots you save close by get grouped into outings you can actually do on a Saturday — with the drive time worked out."
           />
         </Page>
 
         <Page index={2} p={p}>
-          <View style={styles.districtArt}>
-            <Text style={styles.districtGlyph}>◎</Text>
-          </View>
+          <HomeRings />
           <Copy
             title={'Where do\nyou live?'}
             body="So we know which spots are a weekend away — and which ones to mention when you're somewhere else."
@@ -165,13 +166,31 @@ function Page({ index, p, children }: { index: number; p: SharedValue<number>; c
   );
 }
 
-function Copy({ title, body }: { title: string; body: string }) {
+/** A lead-in in Medium, the payoff in ExtraBold: the same two-weight headline as home. */
+function Copy({ lead, title, body }: { lead?: string; title: string; body: string }) {
   return (
     <View style={styles.copy}>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, lead ? styles.titleLead : null]}>
+        {lead}
+        {lead ? <Text style={styles.title}>{title}</Text> : title}
+      </Text>
       <Text variant="body" style={styles.body}>
         {body}
       </Text>
+    </View>
+  );
+}
+
+/** Home, drawn as the rings a location ping leaves: your district at the centre, weekends around it. */
+function HomeRings() {
+  return (
+    <View style={styles.art}>
+      <Svg width={190} height={190} viewBox="0 0 190 190">
+        <Circle cx={95} cy={95} r={92} fill="none" stroke={light.line} strokeWidth={1.5} />
+        <Circle cx={95} cy={95} r={62} fill="none" stroke={light.lineStrong} strokeWidth={1.5} />
+        <Circle cx={95} cy={95} r={32} fill={light.panel} stroke={light.lineStrong} strokeWidth={1.5} />
+        <Circle cx={95} cy={95} r={9} fill={light.accent} stroke={light.panel} strokeWidth={3} />
+      </Svg>
     </View>
   );
 }
@@ -262,7 +281,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: GUTTER,
     paddingBottom: 8,
   },
-  wordmark: { fontFamily: fonts.serif, fontSize: 24, color: light.ink },
+  wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: light.ink },
   viewport: { flex: 1, overflow: 'hidden' },
   row: { flex: 1, flexDirection: 'row' },
   pageSlot: { flex: 1 },
@@ -305,11 +324,10 @@ const styles = StyleSheet.create({
   routePhotos: { flexDirection: 'row', marginBottom: 12 },
   routePhoto: { width: 76, height: 84, borderRadius: 14, backgroundColor: light.canvasTop },
   routePhotoStacked: { marginLeft: -22, borderWidth: 2, borderColor: light.panel },
-  districtArt: { height: 230, alignItems: 'center', justifyContent: 'center' },
-  districtGlyph: { fontFamily: fonts.serif, fontSize: 96, color: light.inkFaint },
   districtPicker: { marginTop: -12, marginHorizontal: -GUTTER, paddingLeft: GUTTER },
   copy: { gap: 12 },
-  title: { fontFamily: fonts.serif, fontSize: 34, lineHeight: 39, color: light.ink, letterSpacing: -0.3 },
+  title: { fontFamily: fonts.display, fontSize: 30, lineHeight: 35, color: light.ink, letterSpacing: -1 },
+  titleLead: { fontFamily: fonts.displayMedium, color: light.inkSoft, letterSpacing: -0.5 },
   body: { paddingRight: 8 },
   bottom: { paddingHorizontal: GUTTER, gap: 22 },
   dots: { flexDirection: 'row', alignSelf: 'center', gap: 6, height: 6, alignItems: 'center' },

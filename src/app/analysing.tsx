@@ -157,7 +157,7 @@ export default function Analysing() {
         <View style={styles.credits}>
           {result?.places.slice(0, shown).map((p) => (
             <Animated.View key={p.id} entering={CREDIT_IN} style={styles.creditRow}>
-              <Text variant="serifItalic" style={styles.creditName} numberOfLines={1}>
+              <Text variant="title" style={styles.creditName} numberOfLines={1}>
                 {p.name}
               </Text>
               <Text variant="micro">{p.area}</Text>

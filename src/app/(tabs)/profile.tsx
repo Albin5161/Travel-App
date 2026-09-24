@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: light.canvas },
   wash: { position: 'absolute', top: 0, left: 0, right: 0, height: 240 },
   header: { paddingHorizontal: GUTTER, paddingBottom: 18 },
-  wordmark: { fontFamily: fonts.serif, fontSize: 24, color: light.ink },
+  wordmark: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, letterSpacing: -0.8, color: light.ink },
   statRow: { flexDirection: 'row', gap: 10, paddingHorizontal: GUTTER },
   stat: {
     flex: 1,
@@ -278,7 +278,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: light.line,
   },
-  statValue: { fontFamily: fonts.serif, fontSize: 34, lineHeight: 36, color: light.ink },
+  statValue: {
+    fontFamily: fonts.display,
+    fontSize: 30,
+    lineHeight: 34,
+    letterSpacing: -1.1,
+    color: light.ink,
+    fontVariant: ['tabular-nums'],
+  },
   card: {
     marginTop: 14,
     marginHorizontal: GUTTER,

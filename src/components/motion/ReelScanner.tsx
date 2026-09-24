@@ -69,7 +69,7 @@ export function ReelScanner({ done, size = 160 }: Props) {
   });
 
   return (
-    <View style={{ width: size, height: size }} accessibilityLabel={done ? 'Places found' : 'Reading the reel'}>
+    <View style={{ width: size, height: size }} accessibilityLabel={done ? 'Places found' : 'Reading the video'}>
       <Svg width={size} height={size} viewBox="0 0 240 240" style={StyleSheet.absoluteFill}>
         {[0, 1, 2].map((i) => (
           <Ripple key={i} t={t} d={d} offset={i / 3} still={reduced} />

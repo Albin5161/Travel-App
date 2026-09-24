@@ -89,7 +89,7 @@ export function CityHeroContent({
             <Text style={[styles.line, styles.accent]}>
               {stats.places} {stats.places === 1 ? 'place' : 'places'}
             </Text>{' '}
-            from {stats.reels} {stats.reels === 1 ? 'reel' : 'reels'}
+            from {stats.reels} {stats.reels === 1 ? 'video' : 'videos'}
           </Text>
 
           {/* White, not black: on a photo the ink button disappears into the scrim. Same weight and

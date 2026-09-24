@@ -1,9 +1,11 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRef } from 'react';
 import { StyleSheet, View, type ImageSourcePropType } from 'react-native';
 
 import { PhotoCard } from '@/components/PhotoCard';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
+import type { Platform } from '@/data/types';
 import { fonts, light, shadows } from '@/theme/tokens';
 
 export type Rect = { x: number; y: number; width: number; height: number };
@@ -20,9 +22,11 @@ type FaceProps = {
 
 type Props = FaceProps & {
   photo: ImageSourcePropType;
-  /** Two lines under the card, e.g. "Collected from" / "2 reels" */
+  /** Two lines under the card, e.g. "Instagram reel" / "@slowdays.kochi" */
   captionLabel: string;
   captionValue: string;
+  /** Where the reels came from, shown as small logos before the caption value. */
+  sources?: Platform[];
   width: number;
   /** Called with the photo's on-screen rect, so the card can grow out of exactly that spot. */
   onPress: (photoRect: Rect) => void;
@@ -65,6 +69,7 @@ export function CityTile({
   statValue,
   captionLabel,
   captionValue,
+  sources,
   badge,
   width,
   onPress,
@@ -92,9 +97,26 @@ export function CityTile({
         </PhotoCard>
       </View>
       <View style={[styles.caption, f.compact && styles.captionCompact]}>
-        <Text variant="label" color={light.inkFaint} numberOfLines={1} style={f.compact && styles.captionText}>
-          {captionLabel}
-        </Text>
+        {/* Logos ride on the short first line, so the handle underneath keeps its full width. */}
+        <View style={styles.captionRow}>
+          {sources?.map((p) => (
+            <Ionicons
+              key={p}
+              name={p === 'youtube' ? 'logo-youtube' : 'logo-instagram'}
+              size={f.compact ? 11 : 13}
+              color={light.inkSoft}
+              accessibilityLabel={p === 'youtube' ? 'YouTube' : 'Instagram'}
+            />
+          ))}
+          <Text
+            variant="label"
+            color={light.inkFaint}
+            numberOfLines={1}
+            style={[styles.captionShrink, f.compact && styles.captionText]}
+          >
+            {captionLabel}
+          </Text>
+        </View>
         <Text variant="label" numberOfLines={1} style={f.compact && styles.captionText}>
           {captionValue}
         </Text>
@@ -167,4 +189,7 @@ const styles = StyleSheet.create({
   caption: { paddingHorizontal: 4, paddingTop: 10, gap: 1 },
   captionCompact: { paddingHorizontal: 2, paddingTop: 7 },
   captionText: { fontSize: 11, lineHeight: 15 },
+  // Same monochrome logos the link box swaps in, so the source reads at a glance without brand colour.
+  captionRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  captionShrink: { flexShrink: 1 },
 });

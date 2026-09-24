@@ -208,7 +208,7 @@ export default function CityScreen() {
       >
         <View style={styles.barText}>
           <Text variant="bodyStrong">
-            {places} {places === 1 ? 'place' : 'places'} from {reels} {reels === 1 ? 'reel' : 'reels'}
+            {places} {places === 1 ? 'place' : 'places'} from {reels} {reels === 1 ? 'video' : 'videos'}
           </Text>
           <Text variant="data">
             {formatRupees(info.costPerDay.low)} – {formatRupees(info.costPerDay.high)} a day

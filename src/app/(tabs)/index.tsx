@@ -10,15 +10,16 @@ import { CityOpenOverlay, useCityOpen } from '@/components/CityOpenOverlay';
 import { CityTile } from '@/components/CityTile';
 import { LinkBox } from '@/components/LinkBox';
 import { Text } from '@/components/Text';
-import { getCity } from '@/data/api';
+import { Segmented } from '@/components/Segmented';
+import { EXAMPLE_LINKS, getCity } from '@/data/api';
 import { reels } from '@/data/catalog';
-import { fadeUp } from '@/lib/motion';
-import { useTrips } from '@/state/trips';
+import { allDistricts } from '@/data/regions';
+import type { Platform as SourcePlatform } from '@/data/types';
+import { FADE_IN, fadeUp } from '@/lib/motion';
+import { isNearHome, useTrips, type HomeTab } from '@/state/trips';
 import { fonts, light, shadows } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
-// Home district first: tapping it is the fastest way to a map worth looking at.
-const SAMPLE_CITIES = ['kottayam', 'kochi', 'gokarna', 'meghalaya'];
 const GUTTER = 16;
 /** The floating tab bar sits over the scroll, so the last row of tiles has to clear it. */
 const TAB_BAR_CLEARANCE = 100;
@@ -26,7 +27,9 @@ const GAP = 10;
 /** Three across. Tighter than two, and the grid reads as a collection rather than a shortlist. */
 const COLUMNS = 3;
 
-// Home is Collect mode: paste reels, watch cities fill up. Tapping a city opens Plan mode.
+// Home is Collect mode: paste a video, check what it found, watch your collections fill up. The
+// collections split the way the app does: Near Home (weekends) and Cities (trips). Tapping a card
+// opens that place's page.
 export default function Home() {
   const insets = useSafeAreaInsets();
   const { width: W } = useWindowDimensions();
@@ -46,7 +49,13 @@ export default function Home() {
   useFocusEffect(closeCity);
 
   const collections = Object.values(state.collections).sort((a, b) => b.addedAt - a.addedAt);
-  const empty = collections.length === 0;
+  const near = collections.filter((c) => isNearHome(c.cityId, state.homeDistrictId));
+  const away = collections.filter((c) => !isNearHome(c.cityId, state.homeDistrictId));
+  const tab = state.homeTab;
+  const shown = tab === 'near' ? near : away;
+  const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? 'home';
+  // Offer the first example whose place isn't collected yet, so each tap shows something new.
+  const example = EXAMPLE_LINKS.find((e) => !state.collections[e.cityId]) ?? EXAMPLE_LINKS[0];
   const fresh = state.freshCityId;
   const tileW = (W - GUTTER * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
 
@@ -71,72 +80,65 @@ export default function Home() {
             <Text style={styles.wordmark}>Raahi</Text>
             <Animated.View entering={ENTER[0]}>
               <Text style={styles.question}>
-                Which reel is{'\n'}
+                Which video is{'\n'}
                 <Text style={styles.questionStrong}>your next trip?</Text>
               </Text>
             </Animated.View>
           </View>
 
           <Animated.View entering={ENTER[1]} style={styles.sticky}>
-            <LinkBox key={boxKey} onSubmit={start} clipboardHasLink={hasLink} />
+            <LinkBox key={boxKey} onSubmit={start} clipboardHasLink={hasLink} onExample={() => start(example.url)} />
           </Animated.View>
 
           <Animated.View entering={ENTER[2]} style={[styles.panel, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}>
+            <Segmented
+              value={tab}
+              onChange={(t) => dispatch({ type: 'setHomeTab', tab: t })}
+              options={[
+                { key: 'near', label: 'Near Home', count: near.length },
+                { key: 'cities', label: 'Cities', count: away.length },
+              ]}
+            />
             <Text variant="micro" style={styles.panelTitle}>
-              {empty ? 'Or try a sample' : `Your cities · ${collections.length}`}
+              My collections
             </Text>
-            <View style={styles.grid}>
-              {empty
-                ? SAMPLE_CITIES.map((id) => {
-                    const city = getCity(id);
-                    const reel = Object.values(reels).find((r) => r.cityId === id);
-                    if (!city || !reel) return null;
-                    return (
+            <Animated.View key={tab} entering={FADE_IN} style={styles.grid}>
+              {shown.length === 0 ? (
+                <Empty tab={tab} homeName={homeName} />
+              ) : (
+                shown.map((c) => {
+                  const city = getCity(c.cityId);
+                  if (!city) return null;
+                  const planned = !!state.savedTrips[c.cityId];
+                  const nReels = c.reelIds.length;
+                  const sources = c.reelIds.map((id) => reels[id]).filter((r) => !!r);
+                  return (
+                    <Animated.View key={c.cityId} entering={c.cityId === fresh ? ENTER[3] : undefined}>
                       <CityTile
-                        key={id}
                         width={tileW}
                         name={city.name}
                         photo={city.hero}
-                        badge="Sample"
                         statLabel="Spots"
-                        statValue={String(reel.placeIds.length)}
-                        captionLabel="Sample reel by"
-                        captionValue={reel.creator}
-                        onPress={() => start(`https://youtu.be/sample-${id}`)}
-                        accessibilityLabel={`Try the ${city.name} sample reel`}
+                        statValue={String(c.placeIds.length)}
+                        captionLabel={sourceLabel(sources.map((r) => r.platform))}
+                        captionValue={creators(sources.map((r) => r.creator))}
+                        sources={[...new Set(sources.map((r) => r.platform))]}
+                        lifted={cityOpen.card?.city.id === city.id}
+                        onPress={(rect) =>
+                          cityOpen.open({
+                            city,
+                            rect,
+                            face: { name: city.name, statLabel: 'Spots', statValue: String(c.placeIds.length) },
+                            stats: { places: c.placeIds.length, reels: nReels, planned },
+                          })
+                        }
+                        accessibilityLabel={`${city.name}, ${c.placeIds.length} spots`}
                       />
-                    );
-                  })
-                : collections.map((c) => {
-                    const city = getCity(c.cityId);
-                    if (!city) return null;
-                    const planned = !!state.savedTrips[c.cityId];
-                    const nReels = c.reelIds.length;
-                    return (
-                      <Animated.View key={c.cityId} entering={c.cityId === fresh ? ENTER[3] : undefined}>
-                        <CityTile
-                          width={tileW}
-                          name={city.name}
-                          photo={city.hero}
-                          statLabel="Spots"
-                          statValue={String(c.placeIds.length)}
-                          captionLabel={planned ? 'Day planned' : 'Collected from'}
-                          captionValue={planned ? 'Ready to go' : `${nReels} ${nReels === 1 ? 'reel' : 'reels'}`}
-                          lifted={cityOpen.card?.city.id === city.id}
-                          onPress={(rect) =>
-                            cityOpen.open({
-                              city,
-                              rect,
-                              face: { name: city.name, statLabel: 'Spots', statValue: String(c.placeIds.length) },
-                              stats: { places: c.placeIds.length, reels: nReels, planned },
-                            })
-                          }
-                          accessibilityLabel={`${city.name}, ${c.placeIds.length} spots`}
-                        />
-                      </Animated.View>
-                    );
-                  })}
-            </View>
+                    </Animated.View>
+                  );
+                })
+              )}
+            </Animated.View>
           </Animated.View>
         </ScrollView>
       </View>
@@ -146,6 +148,31 @@ export default function Home() {
         from={cityOpen.from}
         reduced={cityOpen.reduced}
       />
+    </View>
+  );
+}
+
+/** "Instagram reel" or "YouTube video" for one source; "2 videos" once there are more. */
+function sourceLabel(platforms: SourcePlatform[]) {
+  if (platforms.length > 1) return `${platforms.length} videos`;
+  return platforms[0] === 'youtube' ? 'YouTube video' : 'Instagram reel';
+}
+
+/** The first creator, then how many others: "@slowdays.kochi +1". */
+function creators(handles: string[]) {
+  const unique = [...new Set(handles)];
+  return unique.length > 1 ? `${unique[0]} +${unique.length - 1}` : (unique[0] ?? '');
+}
+
+function Empty({ tab, homeName }: { tab: HomeTab; homeName: string }) {
+  return (
+    <View style={styles.empty}>
+      <Text variant="headline">{tab === 'near' ? 'Nothing near home yet' : 'No cities yet'}</Text>
+      <Text variant="body">
+        {tab === 'near'
+          ? `Save a video of a café, a waterfall or a drive around ${homeName}. It lands here, ready for a free Saturday.`
+          : 'Paste a video of somewhere you want to go. Every place in it lands here, filed under its city.'}
+      </Text>
     </View>
   );
 }
@@ -210,6 +237,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     boxShadow: shadows.panel,
   },
-  panelTitle: { marginBottom: 16, marginLeft: 4 },
+  panelTitle: { marginTop: 22, marginBottom: 14, marginLeft: 4 },
+  empty: { width: '100%', gap: 8, paddingHorizontal: 4, paddingTop: 4, paddingBottom: 24 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: GAP, rowGap: 18 },
 });

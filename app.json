@@ -51,6 +51,14 @@
         {
           "color": "#E2763C"
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
       ]
     ],
     "experiments": {

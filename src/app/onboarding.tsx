@@ -100,7 +100,7 @@ export default function Onboarding() {
           <ReelFan />
           <Copy
             lead={'Your next trip is\nhiding in your\n'}
-            title="saved reels."
+            title="saved videos."
             body="Paste an Instagram or YouTube link. Every place in it is pulled out, named, and put on your map."
           />
         </Page>

@@ -38,8 +38,10 @@ export function TabIcon({ name, active, size = 19 }: Props) {
   const reduced = useReducedMotion();
   // Drives the resting difference between active and inactive.
   const on = useDerivedValue(() => (reduced ? (active ? 1 : 0) : withSpring(active ? 1 : 0, SETTLE)));
-  // Fires once per activation, for the part that is a gesture rather than a state.
-  const kick = useSharedValue(0);
+  // Fires once per activation, for the part that is a gesture rather than a state. Starts at 1, the
+  // resting pose: at 0 every icon that was never tapped sat mid-gesture (pin lifted 9pt, calendar
+  // tilted, book squeezed).
+  const kick = useSharedValue(1);
 
   useEffect(() => {
     if (!active || reduced) return;

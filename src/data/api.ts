@@ -2,7 +2,8 @@
 import { cities, localPicks, places, reels } from './catalog';
 import type { City, Extraction, Place, Platform, Reel } from './types';
 
-const LATENCY_MS = 1200;
+// Long enough for the loader to show every stage of what extraction really does.
+const LATENCY_MS = 2800;
 
 export function detectPlatform(input: string): Platform | null {
   const url = input.trim().toLowerCase();
@@ -26,6 +27,17 @@ function reelForLink(url: string): Reel {
   const order = ['reel-kottayam', 'reel-gokarna', 'reel-kochi', 'reel-meghalaya'];
   return reels[order[hash(url) % order.length]];
 }
+
+/**
+ * Demo links, one per sample video, shaped like the real thing so platform detection stays honest:
+ * the YouTube one reads as YouTube, the reels as Instagram. Home offers them one at a time.
+ */
+export const EXAMPLE_LINKS: { cityId: string; url: string }[] = [
+  { cityId: 'kochi', url: 'https://www.instagram.com/reel/slowdays-kochi/' },
+  { cityId: 'kottayam', url: 'https://www.instagram.com/reel/kottayam-diaries/' },
+  { cityId: 'gokarna', url: 'https://youtu.be/gokarna-in-48-hours' },
+  { cityId: 'meghalaya', url: 'https://www.instagram.com/reel/meghalaya-4-stops/' },
+];
 
 /** Title, creator and thumbnail. Fast, like an oEmbed lookup. */
 export async function getLinkPreview(url: string): Promise<Reel> {

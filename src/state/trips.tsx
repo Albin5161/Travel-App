@@ -35,11 +35,19 @@ interface State {
   savedTrips: Record<string, boolean>;
   /** City to fade in once on the home screen. */
   freshCityId: string | null;
+  /** Which half of My Collections Home shows. Set after a save, so the new card is on screen. */
+  homeTab: HomeTab;
 }
+
+export type HomeTab = 'near' | 'cities';
 
 type Action =
   | { type: 'setPendingLink'; url: string | null }
-  | { type: 'commitExtraction'; extraction: Extraction }
+  /** What the link turned into, held until the user has checked it. Nothing is saved yet. */
+  | { type: 'stageExtraction'; extraction: Extraction }
+  /** Save the places the user confirmed. Omitting placeIds saves every place found. */
+  | { type: 'commitExtraction'; extraction: Extraction; placeIds?: string[] }
+  | { type: 'setHomeTab'; tab: HomeTab }
   | { type: 'decide'; placeId: string; keep: boolean }
   | { type: 'keepAll'; placeIds: string[] }
   | { type: 'addLocal'; cityId: string; placeId: string }
@@ -65,16 +73,30 @@ const initial: State = {
   addedLocals: {},
   savedTrips: {},
   freshCityId: null,
+  homeTab: 'cities',
 };
+
+/** Home-district places live under Near Home; everywhere else is a City. */
+export function isNearHome(cityId: string, homeDistrictId: string | null) {
+  const city = getCity(cityId);
+  const home = allDistricts.find((d) => d.id === homeDistrictId);
+  return !!city && !!home && city.district === home.name;
+}
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'setPendingLink':
       return { ...state, pendingLink: action.url };
+    case 'stageExtraction':
+      return { ...state, lastExtraction: action.extraction, pendingLink: null };
+    case 'setHomeTab':
+      return { ...state, homeTab: action.tab };
     case 'commitExtraction': {
       const { city, reel, places } = action.extraction;
+      const confirmed = action.placeIds ?? places.map((p) => p.id);
+      if (confirmed.length === 0) return { ...state, lastExtraction: null, pendingLink: null };
       const existing = state.collections[city.id];
-      const placeIds = [...new Set([...(existing?.placeIds ?? []), ...places.map((p) => p.id)])];
+      const placeIds = [...new Set([...(existing?.placeIds ?? []), ...confirmed])];
       const reelIds = [...new Set([...(existing?.reelIds ?? []), reel.id])];
       return {
         ...state,
@@ -85,6 +107,7 @@ function reducer(state: State, action: Action): State {
           [city.id]: { cityId: city.id, placeIds, reelIds, addedAt: existing?.addedAt ?? Date.now() },
         },
         freshCityId: existing ? state.freshCityId : city.id,
+        homeTab: isNearHome(city.id, state.homeDistrictId) ? 'near' : 'cities',
       };
     }
     case 'decide':

@@ -16,30 +16,34 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
 import { ReelScanner } from '@/components/motion/ReelScanner';
-import { SavedTick } from '@/components/motion/SavedTick';
 import { PhotoCard } from '@/components/PhotoCard';
 import { Text } from '@/components/Text';
 import { extractPlaces, getLinkPreview } from '@/data/api';
 import { SAMPLE_LINK } from '@/data/catalog';
 import type { Extraction, Reel } from '@/data/types';
 import { haptic } from '@/lib/haptics';
+import { sound } from '@/lib/sound';
 import { CARD_IN, CREDIT_IN, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { useTrips } from '@/state/trips';
 import { Tone } from '@/theme/tone';
 import { colors, light } from '@/theme/tokens';
 
 type Phase = 'reading' | 'finding' | 'done';
-const STATUS: Record<Phase, string> = {
-  reading: 'Reading the description…',
-  finding: 'Finding places…',
+// While the link is being read, the status line walks through what the extraction actually does,
+// in order, one step per beat. Honest steps make a wait feel like work; the wink keeps it light.
+const STAGES = [
+  'Pressing play…',
+  'Reading the caption. Skipping the hashtags.',
+  'Listening for place names…',
+  'Pinning them on a map…',
+];
+const STAGE_MS = 700;
+const STATUS: Record<Exclude<Phase, 'reading'>, string> = {
+  finding: 'Writing them down…',
   done: 'All found',
 };
 const CREDIT_GAP_MS = 130;
 const CHOICE_ENTER = [0, 1].map((i) => fadeUp(i * 60));
-// A single-spot reel skips the choice: confirm, then straight back home.
-const QUICK_SAVE_MS = 1400;
-// After "Save N spots": the tick plays, then back home.
-const SAVED_MS = 1000;
 const SCANNER = 132;
 // Where the scanner's orb sits: on the card's bottom edge, near the right corner.
 const ORB_INSET = 46;
@@ -52,10 +56,18 @@ export default function Analysing() {
   const [preview, setPreview] = useState<Reel | null>(null);
   const [result, setResult] = useState<Extraction | null>(null);
   const [shown, setShown] = useState(0);
-  // Cities the user had before this link, to tell "new city" from "adding to one".
-  const [knownCities] = useState(() => new Set(Object.keys(state.collections)));
+  const [stage, setStage] = useState(0);
   const cancelled = useRef(false);
   const phase: Phase = !result ? 'reading' : shown < result.places.length ? 'finding' : 'done';
+  const status = phase === 'reading' ? STAGES[stage] : STATUS[phase];
+
+  // Step through the stages, holding on the last one if the extraction runs long.
+  useEffect(() => {
+    sound.preload();
+    if (result || stage >= STAGES.length - 1) return;
+    const t = setTimeout(() => setStage((n) => n + 1), STAGE_MS);
+    return () => clearTimeout(t);
+  }, [result, stage]);
 
   useEffect(() => {
     cancelled.current = false;
@@ -68,8 +80,8 @@ export default function Analysing() {
     };
   }, [url]);
 
-  // Roll the place names in like film credits. The places are saved as soon as they're all found;
-  // what's left is the user's choice: stay collecting, or plan the trip now.
+  // Roll the place names in like film credits. When the last one lands, the work is done: chime,
+  // haptic, and the extraction is held for checking. Nothing is saved until the user confirms it.
   useEffect(() => {
     if (!result) return;
     if (shown < result.places.length) {
@@ -77,23 +89,13 @@ export default function Analysing() {
       return () => clearTimeout(t);
     }
     haptic.success();
-    dispatch({ type: 'commitExtraction', extraction: result });
-    if (result.places.length !== 1) return;
-    const t = setTimeout(() => !cancelled.current && router.back(), QUICK_SAVE_MS);
-    return () => clearTimeout(t);
+    void sound.done();
+    dispatch({ type: 'stageExtraction', extraction: result });
   }, [dispatch, result, shown]);
 
-  const existed = !!result && knownCities.has(result.city.id);
-  const [saved, setSaved] = useState(false);
-  const save = () => {
+  const check = () => {
     haptic.light();
-    setSaved(true);
-    setTimeout(() => !cancelled.current && router.back(), SAVED_MS);
-  };
-
-  const planTrip = () => {
-    if (!result) return;
-    router.replace({ pathname: '/citymap/[id]', params: { id: result.city.id, reveal: '1' } });
+    router.replace('/verify');
   };
 
   const cardW = W - 48;
@@ -141,9 +143,9 @@ export default function Analysing() {
         </View>
 
         <View style={styles.statusRow}>
-          <Animated.View key={phase} entering={FADE_IN} exiting={FADE_OUT}>
+          <Animated.View key={status} entering={FADE_IN} exiting={FADE_OUT} style={styles.statusText}>
             <Text variant="label" color={light.inkFaint}>
-              {STATUS[phase]}
+              {status}
             </Text>
           </Animated.View>
           {result ? (
@@ -168,33 +170,18 @@ export default function Analysing() {
 
       {phase === 'done' && result ? (
         <View style={[styles.choice, { paddingBottom: insets.bottom + 12 }]}>
-          {result.places.length === 1 || saved ? (
-            <Animated.View entering={CHOICE_ENTER[0]} style={styles.saved}>
-              <SavedTick size={56} />
-              <Text variant="bodyStrong" style={styles.center}>
-                {result.places.length === 1
-                  ? `${result.places[0].name} added to ${result.city.name}`
-                  : `Saved to ${result.city.name}`}
-              </Text>
-            </Animated.View>
-          ) : (
-            <>
-              <Animated.View entering={CHOICE_ENTER[0]}>
-                <Button
-                  label={
-                    existed
-                      ? `Add ${result.places.length} spots to ${result.city.name}`
-                      : `Save ${result.places.length} spots`
-                  }
-                  onPress={save}
-                  accessibilityHint="Keeps collecting. Back to your cities."
-                />
-              </Animated.View>
-              <Animated.View entering={CHOICE_ENTER[1]}>
-                <Button kind="text" label="Plan this trip" trailingArrow onPress={planTrip} />
-              </Animated.View>
-            </>
-          )}
+          <Animated.View entering={CHOICE_ENTER[0]}>
+            <Text variant="label" color={light.inkSoft} style={styles.center}>
+              Swipe through them. Right if we got it right.
+            </Text>
+          </Animated.View>
+          <Animated.View entering={CHOICE_ENTER[1]}>
+            <Button
+              label={result.places.length === 1 ? 'Check this place' : `Check ${result.places.length} places`}
+              onPress={check}
+              accessibilityHint="Confirm each place before it's saved"
+            />
+          </Animated.View>
         </View>
       ) : null}
     </View>
@@ -248,8 +235,8 @@ const styles = StyleSheet.create({
   credits: { marginTop: 18, gap: 10 },
   creditRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
   creditName: { flexShrink: 1 },
-  choice: { position: 'absolute', left: 20, right: 20, bottom: 0, gap: 4 },
+  choice: { position: 'absolute', left: 20, right: 20, bottom: 0 },
   center: { textAlign: 'center', paddingBottom: 12 },
-  saved: { alignItems: 'center', gap: 10, paddingBottom: 8 },
+  statusText: { flexShrink: 1 },
   scanner: { position: 'absolute', pointerEvents: 'none' },
 });

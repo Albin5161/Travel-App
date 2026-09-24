@@ -1,6 +1,6 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Keyboard, TextInput, View } from 'react-native';
+import { Keyboard, Platform, Pressable, TextInput, View, type TextStyle } from 'react-native';
 import Animated, { css, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { PasteButton } from '@/components/PasteButton';
@@ -14,13 +14,15 @@ type Props = {
   onSubmit: (url: string) => void;
   /** A link is on the clipboard (checked without reading it, so no iOS alert). */
   clipboardHasLink?: boolean;
+  /** Offered in the hint line when nothing else needs saying: for demos and first runs. */
+  onExample?: () => void;
 };
 
 const HEIGHT = 48;
 const ERROR = "That's not an Instagram or YouTube link.";
 
-// The home screen's link field: type or paste a reel link, or tap the system Paste button beside it.
-export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
+// The home screen's link field: type or paste a video link, or tap the system Paste button beside it.
+export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,14 +87,14 @@ export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             onSubmitEditing={() => submit(value)}
-            placeholder="Paste a reel or YouTube link"
+            placeholder="Paste a video link"
             placeholderTextColor={light.inkFaint}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
             returnKeyType="go"
             selectionColor={light.ink}
-            style={styles.input}
+            style={[styles.input, NO_FOCUS_RING]}
             accessibilityLabel="Link to an Instagram reel or YouTube video"
           />
         </Animated.View>
@@ -105,11 +107,27 @@ export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
               {hint}
             </Text>
           </Animated.View>
+        ) : onExample && !value ? (
+          <Animated.View entering={FADE_IN} exiting={FADE_OUT} style={styles.exampleRow}>
+            <Text variant="label" color={light.inkFaint}>
+              No link handy?
+            </Text>
+            <Pressable onPress={onExample} hitSlop={10} accessibilityRole="button">
+              <Text variant="label" style={styles.exampleLink}>
+                Try an example
+              </Text>
+            </Pressable>
+          </Animated.View>
         ) : null}
       </View>
     </View>
   );
 }
+
+// Web only: the browser draws its own focus ring round the inner input, in the system accent colour
+// and narrower than the pill. outlineWidth: 0 isn't enough, since Chrome's 'auto' ring ignores width.
+// The pill's darker border is the focus state. RN's types don't list 'none', hence the cast.
+const NO_FOCUS_RING = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : null;
 
 const styles = css.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -130,7 +148,9 @@ const styles = css.create({
   },
   fieldFocused: { borderColor: light.lineStrong },
   icon: { width: 20, alignItems: 'center', marginRight: 10 },
-  input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 15, color: light.ink, outlineWidth: 0 },
+  input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 15, color: light.ink },
   hintSlot: { minHeight: 26, justifyContent: 'center' },
   hint: { textAlign: 'center', marginTop: 8 },
+  exampleRow: { flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 8 },
+  exampleLink: { textDecorationLine: 'underline' },
 });

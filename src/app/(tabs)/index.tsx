@@ -11,8 +11,9 @@ import { CityTile } from '@/components/CityTile';
 import { LinkBox } from '@/components/LinkBox';
 import { Text } from '@/components/Text';
 import { Segmented } from '@/components/Segmented';
-import { EXAMPLE_LINKS, getCity } from '@/data/api';
-import { reels } from '@/data/catalog';
+import { EXAMPLE_LINKS, getCity, getPlace } from '@/data/api';
+import { places, reels } from '@/data/catalog';
+import { PlaceArc } from '@/components/home/PlaceArc';
 import { allDistricts } from '@/data/regions';
 import type { Platform as SourcePlatform } from '@/data/types';
 import { FADE_IN, fadeUp } from '@/lib/motion';
@@ -21,6 +22,11 @@ import { fonts, light, shadows } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
 const GUTTER = 16;
+// First-run dome: one striking place from each sample video, so the promise is visual.
+const INSPIRATION = ['kochi-mural', 'gok-om', 'meg-falls', 'ktm-illickal', 'kochi-waterfront', 'gok-halfmoon', 'meg-dawki']
+  .map((id) => places[id])
+  .filter((p) => !!p)
+  .map((p) => ({ id: p.id, photo: p.photo }));
 /** The floating tab bar sits over the scroll, so the last row of tiles has to clear it. */
 const TAB_BAR_CLEARANCE = 100;
 const GAP = 10;
@@ -54,6 +60,15 @@ export default function Home() {
   const tab = state.homeTab;
   const shown = tab === 'near' ? near : away;
   const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? 'home';
+  // The dome over the link box: your own places, newest first. Before the first save it holds a few
+  // inspiration places, muted, so the screen isn't a bare field.
+  const own = collections
+    .flatMap((c) => c.placeIds)
+    .map((id) => getPlace(id))
+    .filter((p) => !!p)
+    .map((p) => ({ id: p.id, photo: p.photo }));
+  const inspiration = own.length === 0;
+  const arcPhotos = inspiration ? INSPIRATION : own;
   // Offer the first example whose place isn't collected yet, so each tap shows something new.
   const example = EXAMPLE_LINKS.find((e) => !state.collections[e.cityId]) ?? EXAMPLE_LINKS[0];
   const fresh = state.freshCityId;
@@ -84,6 +99,9 @@ export default function Home() {
                 <Text style={styles.questionStrong}>your next trip?</Text>
               </Text>
             </Animated.View>
+            <View style={styles.arc}>
+              <PlaceArc photos={arcPhotos} width={W - GUTTER * 2} muted={inspiration} />
+            </View>
           </View>
 
           <Animated.View entering={ENTER[1]} style={styles.sticky}>
@@ -206,12 +224,14 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   fill: { flex: 1, backgroundColor: light.canvas },
   wash: { position: 'absolute', top: 0, left: 0, right: 0, height: 240 },
-  header: { paddingHorizontal: GUTTER, paddingBottom: 28 },
+  header: { paddingHorizontal: GUTTER, paddingBottom: 14 },
+  arc: { marginTop: 18, alignItems: 'center' },
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: light.ink },
   // Two weights, one line box: a quiet Medium lead-in, then the ask in ExtraBold. The weight change
   // does the emphasis a decorative italic used to.
   question: {
-    marginTop: 40,
+    marginTop: 28,
+    textAlign: 'center',
     fontFamily: fonts.displayMedium,
     fontSize: 32,
     lineHeight: 37,

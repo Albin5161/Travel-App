@@ -21,7 +21,8 @@ const DONE_ENTER = [0, 1, 2, 3].map((i) => fadeUp(i * 60));
 
 /**
  * The extraction, checked one card at a time: right if we got it right, left if we didn't. Nothing
- * is saved until the stack runs out (or "All correct" is tapped), and then only what was confirmed.
+ * is saved until the stack runs out, and then only what was confirmed. There is deliberately no
+ * "all correct": on the first card it would mean trusting cards nobody has looked at.
  * The swipe lives here rather than in planning because this is where a yes/no is a real question.
  */
 export default function Verify() {
@@ -33,12 +34,11 @@ export default function Verify() {
   const [index, setIndex] = useState(0);
   const [history, setHistory] = useState<{ id: string; dir: Dir }[]>([]);
   const [returning, setReturning] = useState<Dir | null>(null);
-  const [allCorrect, setAllCorrect] = useState(false);
   const topCard = useRef<CardHandle>(null);
   const dragX = useSharedValue(0);
 
   const places = extraction?.places ?? [];
-  const done = allCorrect || index >= places.length;
+  const done = index >= places.length;
   const wrong = new Set(history.filter((h) => h.dir === 'skip').map((h) => h.id));
   const confirmed = places.filter((p) => !wrong.has(p.id));
 
@@ -78,7 +78,7 @@ export default function Verify() {
   };
 
   const cardW = W - 40;
-  const cardH = Math.min(H - insets.top - insets.bottom - 290, 560);
+  const cardH = Math.min(H - insets.top - insets.bottom - 250, 580);
   const visible = places.slice(index, index + 3);
 
   return (
@@ -154,14 +154,6 @@ export default function Verify() {
               <Button kind="secondary" label="Wrong" onPress={() => topCard.current?.swipe('skip')} style={styles.action} />
               <Button label="Right" onPress={() => topCard.current?.swipe('keep')} style={styles.action} />
             </View>
-            <Button
-              kind="text"
-              label={index === 0 ? 'All correct' : 'The rest are correct'}
-              onPress={() => {
-                haptic.light();
-                setAllCorrect(true);
-              }}
-            />
           </View>
         </>
       )}
@@ -218,7 +210,7 @@ const styles = StyleSheet.create({
   titleBlock: { paddingHorizontal: 24, marginTop: 8, gap: 6 },
   source: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   stack: { marginTop: 16, alignItems: 'center' },
-  actions: { position: 'absolute', left: 20, right: 20, bottom: 0, gap: 4 },
+  actions: { position: 'absolute', left: 20, right: 20, bottom: 0 },
   actionRow: { flexDirection: 'row', gap: 12 },
   action: { flex: 1 },
   done: { flex: 1, paddingHorizontal: 24, gap: 12 },

@@ -1,14 +1,16 @@
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withDelay,
   withRepeat,
+  withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,11 +18,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
 import { ReelScanner } from '@/components/motion/ReelScanner';
+import { ReelTimeline, seconds } from '@/components/motion/ReelTimeline';
 import { PhotoCard } from '@/components/PhotoCard';
 import { Text } from '@/components/Text';
 import { extractPlaces, getLinkPreview } from '@/data/api';
 import { SAMPLE_LINK } from '@/data/catalog';
-import type { Extraction, Reel } from '@/data/types';
+import type { Extraction, Place, Reel } from '@/data/types';
 import { haptic } from '@/lib/haptics';
 import { sound } from '@/lib/sound';
 import { CARD_IN, CREDIT_IN, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
@@ -42,11 +45,15 @@ const STATUS: Record<Exclude<Phase, 'reading'>, string> = {
   finding: 'Writing them down…',
   done: 'All found',
 };
-const CREDIT_GAP_MS = 130;
+// One place per beat, slow enough that each marker's pop and each pin's drop read on their own.
+const CREDIT_GAP_MS = 300;
+const WATCH_MS = STAGES.length * STAGE_MS;
 const CHOICE_ENTER = [0, 1].map((i) => fadeUp(i * 60));
 const SCANNER = 132;
 // Where the scanner's orb sits: on the card's bottom edge, near the right corner.
 const ORB_INSET = 46;
+// The timeline stops short of the scanner orb on the card's edge.
+const TIMELINE_RIGHT = ORB_INSET + 36;
 
 export default function Analysing() {
   const { state, dispatch } = useTrips();
@@ -58,6 +65,18 @@ export default function Analysing() {
   const [shown, setShown] = useState(0);
   const [stage, setStage] = useState(0);
   const cancelled = useRef(false);
+  // Places land in the order the video mentions them, so the list and the timeline agree.
+  const found = useMemo(
+    () => (result ? [...result.places].sort((a, b) => seconds(stampOf(a)) - seconds(stampOf(b))) : []),
+    [result],
+  );
+  const markers = useMemo(() => {
+    const length = seconds(preview?.duration) || 1;
+    return found.map((p, i) => ({
+      id: p.id,
+      at: stampOf(p) ? clamp(seconds(stampOf(p)) / length) : (i + 1) / (found.length + 1),
+    }));
+  }, [found, preview?.duration]);
   const phase: Phase = !result ? 'reading' : shown < result.places.length ? 'finding' : 'done';
   const status = phase === 'reading' ? STAGES[stage] : STATUS[phase];
 
@@ -85,7 +104,10 @@ export default function Analysing() {
   useEffect(() => {
     if (!result) return;
     if (shown < result.places.length) {
-      const t = setTimeout(() => setShown((n) => n + 1), shown === 0 ? 200 : CREDIT_GAP_MS);
+      const t = setTimeout(() => {
+        haptic.selection();
+        setShown((n) => n + 1);
+      }, shown === 0 ? 360 : CREDIT_GAP_MS);
       return () => clearTimeout(t);
     }
     haptic.success();
@@ -115,7 +137,6 @@ export default function Analysing() {
             <Animated.View entering={CARD_IN}>
               <Tone value="dark">
                 <PhotoCard source={preview.thumbnail} style={{ width: cardW, height: cardW * 0.62 }}>
-                  <Shimmer width={cardW} active={phase === 'reading'} />
                   <View style={styles.previewText}>
                     <View style={styles.sourceRow}>
                       <Ionicons
@@ -131,6 +152,15 @@ export default function Analysing() {
                       {preview.title}
                     </Text>
                   </View>
+                  <View style={styles.timeline}>
+                    <ReelTimeline
+                      width={cardW - 18 - TIMELINE_RIGHT}
+                      watching={!result}
+                      markers={markers}
+                      revealed={shown}
+                      watchMs={WATCH_MS}
+                    />
+                  </View>
                 </PhotoCard>
               </Tone>
             </Animated.View>
@@ -143,8 +173,9 @@ export default function Analysing() {
         </View>
 
         <View style={styles.statusRow}>
-          <Animated.View key={status} entering={FADE_IN} exiting={FADE_OUT} style={styles.statusText}>
-            <Text variant="label" color={light.inkFaint}>
+          <Animated.View key={status} entering={FADE_IN} exiting={FADE_OUT} style={styles.status}>
+            <StageGlyph kind={phase === 'reading' ? STAGE_GLYPHS[stage] : phase === 'done' ? 'done' : 'pin'} />
+            <Text variant="label" color={light.inkSoft} style={styles.statusText}>
               {status}
             </Text>
           </Animated.View>
@@ -157,12 +188,21 @@ export default function Analysing() {
         </View>
 
         <View style={styles.credits}>
-          {result?.places.slice(0, shown).map((p) => (
+          {found.slice(0, shown).map((p) => (
             <Animated.View key={p.id} entering={CREDIT_IN} style={styles.creditRow}>
-              <Text variant="title" style={styles.creditName} numberOfLines={1}>
-                {p.name}
+              <PinDrop />
+              <View style={styles.creditName}>
+                <Text variant="title" numberOfLines={1}>
+                  {p.name}
+                </Text>
+                <Text variant="micro" numberOfLines={1}>
+                  {p.area}
+                </Text>
+              </View>
+              {/* Where in the video it was said: the same moment its marker sits at above. */}
+              <Text variant="data" color={light.inkFaint} style={styles.creditTime}>
+                {stampOf(p) ?? ''}
               </Text>
-              <Text variant="micro">{p.area}</Text>
             </Animated.View>
           ))}
         </View>
@@ -188,31 +228,70 @@ export default function Analysing() {
   );
 }
 
-// A soft band of light crossing the thumbnail while the link is being read.
-function Shimmer({ width, active }: { width: number; active: boolean }) {
+function stampOf(p: Place) {
+  return p.source.kind === 'reel' ? p.source.timestamp : undefined;
+}
+
+const clamp = (v: number) => Math.min(0.97, Math.max(0.03, v));
+
+type Glyph = 'play' | 'caption' | 'listen' | 'pin' | 'done';
+const STAGE_GLYPHS: Glyph[] = ['play', 'caption', 'listen', 'pin'];
+
+/** A small moving picture of the step in progress, so the status line is more than words. */
+function StageGlyph({ kind }: { kind: Glyph }) {
+  if (kind === 'listen') return <SoundBars />;
+  const name = kind === 'play' ? 'play' : kind === 'caption' ? 'align-left' : kind === 'done' ? 'check' : 'map-pin';
+  return (
+    <View style={styles.glyph}>
+      <Feather name={name} size={13} color={kind === 'done' ? light.ink : light.inkSoft} />
+    </View>
+  );
+}
+
+/** Three bars bobbing out of step: listening to the audio for place names. */
+function SoundBars() {
+  return (
+    <View style={[styles.glyph, styles.bars]}>
+      {[0, 1, 2].map((i) => (
+        <Bar key={i} delay={i * 110} />
+      ))}
+    </View>
+  );
+}
+
+function Bar({ delay }: { delay: number }) {
   const reduced = useReducedMotion();
-  const x = useSharedValue(-160);
-  const on = useSharedValue(1);
+  const h = useSharedValue(0.4);
   useEffect(() => {
     if (reduced) return;
-    x.set(withRepeat(withTiming(width + 160, { duration: 1400, easing: Easing.linear }), -1, false));
-  }, [reduced, width, x]);
+    h.set(
+      withDelay(
+        delay,
+        withRepeat(
+          withSequence(
+            withTiming(1, { duration: 240, easing: Easing.out(Easing.quad) }),
+            withTiming(0.35, { duration: 240, easing: Easing.in(Easing.quad) }),
+          ),
+          -1,
+        ),
+      ),
+    );
+  }, [delay, h, reduced]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scaleY: h.get() }] }));
+  return <Animated.View style={[styles.bar, style]} />;
+}
+
+/** The pin each place arrives with: dropped from above, landing with a small bounce. */
+function PinDrop() {
+  const reduced = useReducedMotion();
+  const y = useSharedValue(reduced ? 0 : -14);
   useEffect(() => {
-    on.set(withTiming(active ? 1 : 0, { duration: 300 }));
-  }, [active, on]);
-  const style = useAnimatedStyle(() => ({
-    opacity: on.get(),
-    transform: [{ translateX: x.get() }, { rotate: '18deg' }],
-  }));
-  if (reduced) return null;
+    if (!reduced) y.set(withSpring(0, { duration: 420, dampingRatio: 0.45 }));
+  }, [reduced, y]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }));
   return (
-    <Animated.View pointerEvents="none" style={[styles.shimmer, style]}>
-      <LinearGradient
-        colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.16)', 'rgba(255,255,255,0)']}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={StyleSheet.absoluteFill}
-      />
+    <Animated.View style={[styles.pin, style]}>
+      <Feather name="map-pin" size={13} color={light.accent} />
     </Animated.View>
   );
 }
@@ -222,9 +301,9 @@ const styles = StyleSheet.create({
   close: { marginLeft: 16 },
   body: { flex: 1, paddingHorizontal: 24, paddingTop: 28 },
   // Right padding leaves room for the scanner sitting on the card's bottom-right edge.
-  previewText: { position: 'absolute', left: 18, right: ORB_INSET + 28, bottom: 16, gap: 6 },
+  previewText: { position: 'absolute', left: 18, right: ORB_INSET + 28, bottom: 36, gap: 6 },
+  timeline: { position: 'absolute', left: 18, bottom: 14 },
   sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  shimmer: { position: 'absolute', top: -60, bottom: -60, width: 120 },
   statusRow: {
     marginTop: 28,
     flexDirection: 'row',
@@ -232,9 +311,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 20,
   },
-  credits: { marginTop: 18, gap: 10 },
-  creditRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
-  creditName: { flexShrink: 1 },
+  credits: { marginTop: 18, gap: 14 },
+  creditRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  creditTime: { flexShrink: 0 },
+  creditName: { flex: 1, gap: 1 },
+  pin: { width: 14, alignItems: 'center', alignSelf: 'flex-start', marginTop: 4 },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
+  glyph: { width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
+  bars: { flexDirection: 'row', gap: 2 },
+  bar: { width: 2.5, height: 12, borderRadius: 1.5, backgroundColor: light.inkSoft },
   choice: { position: 'absolute', left: 20, right: 20, bottom: 0 },
   center: { textAlign: 'center', paddingBottom: 12 },
   statusText: { flexShrink: 1 },

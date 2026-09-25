@@ -15,7 +15,7 @@ type Props = {
 };
 
 const PILL = { height: 36, width: 96 };
-const CIRCLE = 48;
+export const CIRCLE = 48;
 
 // On iOS 16+ this is Apple's UIPasteControl: the tap itself grants access, so iOS shows no
 // "Allow Paste" alert, and it greys itself out when there's nothing to paste.

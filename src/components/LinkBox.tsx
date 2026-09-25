@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Keyboard, Platform, Pressable, TextInput, View, type TextStyle } from 'react-native';
 import Animated, { css, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
-import { PasteButton } from '@/components/PasteButton';
+import { CIRCLE, PasteButton } from '@/components/PasteButton';
 import { Text } from '@/components/Text';
 import { detectPlatform } from '@/data/api';
 import { haptic } from '@/lib/haptics';
@@ -19,6 +19,9 @@ type Props = {
 };
 
 const HEIGHT = 48;
+const GAP = 10;
+/** Width the paste button and its gap take from the row: the field is the rest. */
+export const FIELD_TRAILING = CIRCLE + GAP;
 const ERROR = "That's not an Instagram or YouTube link.";
 
 // The home screen's link field: type or paste a video link, or tap the system Paste button beside it.
@@ -130,7 +133,7 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
 const NO_FOCUS_RING = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : null;
 
 const styles = css.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: GAP },
   field: {
     flex: 1,
     height: HEIGHT,
@@ -150,7 +153,7 @@ const styles = css.create({
   icon: { width: 20, alignItems: 'center', marginRight: 10 },
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 15, color: light.ink },
   hintSlot: { minHeight: 26, justifyContent: 'center' },
-  hint: { textAlign: 'center', marginTop: 8 },
-  exampleRow: { flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 8 },
+  hint: { marginTop: 8, marginLeft: 4 },
+  exampleRow: { flexDirection: 'row', gap: 4, marginTop: 8, marginLeft: 4 },
   exampleLink: { textDecorationLine: 'underline' },
 });

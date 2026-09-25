@@ -8,8 +8,12 @@ import type { DayPart, Place } from './types';
 
 export type When = 'this-weekend' | 'next-weekend' | 'dates' | 'flexible';
 export type Pace = 'relaxed' | 'balanced' | 'packed';
+/** Who's going. Decides whether there's a vote, and who's in it. */
+export type Party = 'solo' | 'partner' | 'friends' | 'family';
 
 export interface TripPrefs {
+  /** Absent on plans made before the question existed: those count as friends. */
+  party?: Party;
   when: When;
   /** First day, as YYYY-MM-DD. Null when the dates aren't known yet. */
   start: string | null;
@@ -61,6 +65,8 @@ export interface Planner {
   name: string;
   plan(input: PlannerInput): Promise<TripPlan>;
 }
+
+export const partyOf = (prefs: TripPrefs): Party => prefs.party ?? 'friends';
 
 /** Stops per day at each pace. */
 export const PACE_STOPS: Record<Pace, number> = { relaxed: 3, balanced: 4, packed: 6 };

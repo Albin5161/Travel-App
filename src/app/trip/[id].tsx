@@ -19,6 +19,7 @@ import {
   rulePlanner,
   weekend,
   type Pace,
+  type Party,
   type TripPrefs,
   type When,
 } from '@/data/planner';
@@ -28,15 +29,16 @@ import { FADE_IN, FADE_OUT, fadeUp, SPRING_SETTLE } from '@/lib/motion';
 import { useCityPlaces, useTrips } from '@/state/trips';
 import { light } from '@/theme/tokens';
 
-type Step = 'when' | 'dates' | 'days' | 'pace' | 'getting' | 'build';
+type Step = 'who' | 'when' | 'dates' | 'days' | 'pace' | 'getting' | 'build';
 const ADVANCE_MS = 260;
 const MAX_DAYS = 7;
 const CALENDAR_WEEKS = 4;
 const ENTER = [0, 1, 2, 3, 4].map((i) => fadeUp(60 + i * 50));
 
 /**
- * Four quick questions before a plan: when, how long (only if the dates don't say), what pace,
- * and how you're getting around. One per screen, answered with a tap that moves you on, so it
+ * Five quick questions before a plan: who's going, when, how long (only if the dates don't say),
+ * what pace, and how you're getting around. Who's going decides whether sharing the plan starts a
+ * vote, and who's in it. One per screen, answered with a tap that moves you on, so it
  * feels like a conversation rather than a form. The last step builds the plan in place.
  */
 export default function TripSetup() {
@@ -52,15 +54,17 @@ export default function TripSetup() {
   // Changing answers starts from the ones already given.
   const previous = state.tripPlans[id]?.prefs;
   const [prefs, setPrefs] = useState<TripPrefs>(
-    previous ?? { when: 'this-weekend', start: null, days: 2, pace: 'balanced', getting: 'local' },
+    previous ?? { party: 'friends', when: 'this-weekend', start: null, days: 2, pace: 'balanced', getting: 'local' },
   );
-  const [answered, setAnswered] = useState<Partial<Record<Step, boolean>>>(previous ? { when: true, pace: true, getting: true } : {});
-  const [history, setHistory] = useState<Step[]>(['when']);
+  const [answered, setAnswered] = useState<Partial<Record<Step, boolean>>>(
+    previous ? { who: !!previous.party, when: true, pace: true, getting: true } : {},
+  );
+  const [history, setHistory] = useState<Step[]>(['who']);
   const step = history[history.length - 1];
 
   // The middle question only exists for "Pick dates" and "Not sure yet".
   const middle: Step | null = prefs.when === 'dates' ? 'dates' : prefs.when === 'flexible' ? 'days' : null;
-  const sequence: Step[] = ['when', ...(middle ? [middle] : []), 'pace', 'getting'];
+  const sequence: Step[] = ['who', 'when', ...(middle ? [middle] : []), 'pace', 'getting'];
   const position = step === 'build' ? sequence.length : sequence.indexOf(step);
 
   const go = (next: Step) => setHistory((h) => [...h, next]);
@@ -79,6 +83,10 @@ export default function TripSetup() {
     if (pending.current) clearTimeout(pending.current);
     pending.current = setTimeout(() => go(next), ADVANCE_MS);
   };
+
+  // Family trips start from a relaxed pace, unless a pace was already chosen.
+  const chooseWho = (party: Party) =>
+    answer({ party, ...(answered.pace ? {} : { pace: party === 'family' ? 'relaxed' : 'balanced' }) }, 'who', 'when');
 
   const chooseWhen = (when: When) => {
     if (when === 'this-weekend' || when === 'next-weekend') {
@@ -131,6 +139,19 @@ export default function TripSetup() {
               </Text>
             </Animated.View>
 
+            {step === 'who' ? (
+              <Options
+                selected={answered.who ? (prefs.party ?? null) : null}
+                onPick={(k) => chooseWho(k as Party)}
+                options={[
+                  { key: 'solo', title: 'Just me', detail: 'Plan it your way' },
+                  { key: 'partner', title: 'With my partner', detail: 'You both get a say' },
+                  { key: 'friends', title: 'With friends', detail: 'Share it, and the group votes' },
+                  { key: 'family', title: 'With family', detail: 'Everyone votes, even Appa' },
+                ]}
+              />
+            ) : null}
+
             {step === 'when' ? (
               <Options
                 selected={answered.when ? prefs.when : null}
@@ -167,7 +188,7 @@ export default function TripSetup() {
 
             {step === 'pace' ? (
               <Options
-                selected={answered.pace ? prefs.pace : null}
+                selected={answered.pace || prefs.party === 'family' ? prefs.pace : null}
                 onPick={(k) => answer({ pace: k as Pace }, 'pace', 'getting')}
                 options={[
                   { key: 'relaxed', title: 'Relaxed', detail: `${PACE_STOPS.relaxed - 1}–${PACE_STOPS.relaxed} stops a day, late starts` },
@@ -209,6 +230,7 @@ export default function TripSetup() {
 }
 
 const QUESTION: Record<Exclude<Step, 'build'>, string> = {
+  who: 'Who’s going?',
   when: 'When are you going?',
   dates: 'Which days?',
   days: 'How many days?',

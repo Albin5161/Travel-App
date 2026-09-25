@@ -12,7 +12,7 @@ import { StopVote } from '@/components/group/StopVote';
 import { IconButton } from '@/components/IconButton';
 import { Text } from '@/components/Text';
 import { getCity, getPlace } from '@/data/api';
-import { FRIENDS, friend } from '@/data/group';
+import { member, PARTY_COPY, whoLine } from '@/data/group';
 import { formatDay, removeStop, swapStop } from '@/data/planner';
 import { formatClock } from '@/lib/geo';
 import { haptic } from '@/lib/haptics';
@@ -33,9 +33,9 @@ const JOIN_POP = web
 const TOAST_IN = web ? undefined : FadeIn.duration(200);
 const TOAST_OUT = web ? undefined : FadeOut.duration(200);
 
-// The group vote: friends join, and go through the plan stop by stop. Reached from the share
-// screen, or cold from the shared link. When every stop is decided, confetti, and "Lock it in"
-// applies the swaps and drops to the saved plan.
+// The vote: the people on the trip join and go through the plan stop by stop. Reached from the
+// share screen, a trip in the Trips tab, or cold from the shared link. When every stop is decided,
+// confetti (once, whenever you first see it), and "Lock it in" applies the swaps and drops.
 export default function GroupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const city = getCity(id);
@@ -43,19 +43,18 @@ export default function GroupScreen() {
   const reduced = useReducedMotion();
   const { dispatch } = useTrips();
   const { kept } = useCityPlaces(id);
-  const { plan, group, stops, verdicts, votesIn, total, approved } = useGroupVote(id, { live: true });
+  const { plan, group, members, stops, verdicts, votesIn, total, approved } = useGroupVote(id);
 
-  // Confetti only for the moment it happens on this screen, not when reopening an agreed plan.
-  const [cheer, setCheer] = useState(0);
-  const [wasApproved, setWasApproved] = useState<boolean | null>(null);
-  if (group && approved !== wasApproved) {
-    if (wasApproved === false && approved && !group.locked) setCheer(cheer + 1);
-    setWasApproved(approved);
-  }
+  // Confetti the first time you see the agreement, whether it lands while you watch or while you
+  // were elsewhere. Held locally so it keeps playing after the store marks it seen.
+  const [celebrating, setCelebrating] = useState(false);
+  if (group && approved && !group.cheered && !group.locked && !celebrating) setCelebrating(true);
   useEffect(() => {
-    if (cheer > 0) haptic.success();
-  }, [cheer]);
-  const celebrate = cheer > 0 && !reduced;
+    if (!celebrating) return;
+    haptic.success();
+    dispatch({ type: 'groupCheer', cityId: id });
+  }, [celebrating, dispatch, id]);
+  const celebrate = celebrating && !reduced;
 
   // "Riya joined": the latest arrival, for a moment.
   const lastJoined = group?.joined[group.joined.length - 1];
@@ -64,7 +63,7 @@ export default function GroupScreen() {
   useEffect(() => {
     const n = group?.joined.length ?? 0;
     if (seenJoins.current !== null && n > seenJoins.current && lastJoined) {
-      setToast(`${friend(lastJoined).name} joined`);
+      setToast(`${member(lastJoined).name} joined`);
       const t = setTimeout(() => setToast(null), 1600);
       seenJoins.current = n;
       return () => clearTimeout(t);
@@ -74,6 +73,9 @@ export default function GroupScreen() {
 
   if (!city) return null;
 
+  const party = group?.party ?? 'friends';
+  const copy = PARTY_COPY[party];
+  const passLabel = party === 'partner' ? 'Hand the phone to Arya' : party === 'family' ? 'Vote as family' : 'Vote as a friend';
   const locked = !!group?.locked;
   const multiDay = (plan?.days.length ?? 0) > 1;
   const count = (k: string) => Object.values(verdicts).filter((v) => v === k).length;
@@ -92,9 +94,9 @@ export default function GroupScreen() {
     dispatch({ type: 'setTripPlan', plan: next });
   };
 
-  const title = locked ? 'Locked in.' : approved ? 'Everyone’s in' : 'Does the group\nagree?';
+  const title = locked ? 'Locked in.' : approved ? copy.agreed : copy.ask;
   const sub = locked
-    ? `Here’s the plan the group agreed on.`
+    ? `Here’s the plan ${party === 'partner' ? 'you two' : `the ${party === 'family' ? 'family' : 'group'}`} agreed on.`
     : approved
       ? [count('keep') && `${count('keep')} kept`, count('swap') && `${count('swap')} swapped`, count('drop') && `${count('drop')} dropped`]
           .filter(Boolean)
@@ -104,7 +106,7 @@ export default function GroupScreen() {
   return (
     <View style={[styles.fill, { paddingTop: insets.top + 8 }]}>
       <View style={styles.topBar}>
-        <IconButton icon="x" onPress={() => router.dismissTo('/')} accessibilityLabel="Close" />
+        <IconButton icon="x" onPress={() => router.dismissTo('/trips')} accessibilityLabel="Close" />
       </View>
 
       <ScrollView
@@ -113,7 +115,7 @@ export default function GroupScreen() {
       >
         <Animated.View entering={HEAD_IN} style={styles.head}>
           <Text variant="micro">
-            {city.name} · group vote
+            {city.name} · {copy.vote}
           </Text>
           <Text variant="display" style={styles.title}>
             {title}
@@ -123,13 +125,13 @@ export default function GroupScreen() {
 
         <View style={styles.people}>
           <View style={styles.avatars}>
-            {FRIENDS.map((f, i) => {
-              const joined = group?.joined.includes(f.id);
+            {members.map((m, i) => {
+              const joined = group?.joined.includes(m.id);
               return (
-                <View key={f.id} style={[styles.avatarSlot, i > 0 && styles.overlap]}>
+                <View key={m.id} style={[styles.avatarSlot, i > 0 && styles.overlap]}>
                   {joined ? (
                     <Animated.View entering={JOIN_POP}>
-                      <Avatar friend={f} size={40} />
+                      <Avatar person={m} size={40} />
                     </Animated.View>
                   ) : (
                     <View style={styles.emptySlot} />
@@ -145,7 +147,7 @@ export default function GroupScreen() {
               </Animated.View>
             ) : (
               <Text variant="label" color={light.inkSoft}>
-                {group?.joined.length ? `You + ${group.joined.length} ${group.joined.length === 1 ? 'friend' : 'friends'}` : 'Waiting for friends…'}
+                {group?.joined.length ? whoLine(party, group.joined) : copy.waiting}
               </Text>
             )}
           </View>
@@ -185,6 +187,7 @@ export default function GroupScreen() {
                     votes={group?.votes[stop.place.id]}
                     verdict={verdicts[stop.place.id]}
                     swap={getPlace(group?.swapFor[stop.place.id] ?? '')}
+                    members={members}
                   />
                 );
               })}
@@ -193,16 +196,16 @@ export default function GroupScreen() {
 
       <View style={[styles.actions, { paddingBottom: insets.bottom + 12 }]}>
         {locked ? (
-          <Button label="Done" onPress={() => router.dismissTo('/')} />
+          <Button label="Done" onPress={() => router.dismissTo('/trips')} />
         ) : approved ? (
           <>
             <Button label="Lock it in" onPress={lockIn} />
-            <Button kind="text" label="Vote as a friend" onPress={() => router.push({ pathname: '/vote/[id]', params: { id } })} />
+            <Button kind="text" label={passLabel} onPress={() => router.push({ pathname: '/vote/[id]', params: { id } })} />
           </>
         ) : (
           <Button
             kind="secondary"
-            label="Vote as a friend"
+            label={passLabel}
             onPress={() => router.push({ pathname: '/vote/[id]', params: { id } })}
             disabled={!group}
           />

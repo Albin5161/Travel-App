@@ -4,16 +4,28 @@ import type { RefObject } from 'react';
 import { Platform, Share, type View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
+import type { Party } from '@/data/planner';
+
 /**
  * Where a shared plan opens: the group vote on the public web build (EAS Hosting). There's no
  * backend, so a friend opening it gets the city's plan with the scripted group, and can vote.
  */
 export const PLAN_LINK_BASE = 'https://xplore.expo.app';
 
-export function planMessage(cityName: string, cityId: string, stops: number, days: number) {
+/** The words that go with the card. A solo plan is shown off; everyone else is asked to vote. */
+export function planMessage(cityName: string, cityId: string, stops: number, days: number, party: Party) {
   const link = `\n${PLAN_LINK_BASE}/group/${cityId}`;
   const span = days === 1 ? 'one day' : `${days} days`;
-  return `${cityName}, sorted. ${stops} stops, ${span}. Have a look and vote before we lock it in 👇${link}`;
+  switch (party) {
+    case 'solo':
+      return `My ${cityName} plan: ${stops} stops, ${span}. Made with Xplore.`;
+    case 'partner':
+      return `Our ${cityName} plan ❤️ ${stops} stops, ${span}. Keep, swap or drop anything before we lock it in 👇${link}`;
+    case 'family':
+      return `Family trip to ${cityName}! ${stops} stops, ${span}. Everyone vote before we book anything 👇${link}`;
+    default:
+      return `${cityName}, sorted. ${stops} stops, ${span}. Have a look and vote before we lock it in 👇${link}`;
+  }
 }
 
 export type ShareResult = 'shared' | 'dismissed' | 'copied';

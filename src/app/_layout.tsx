@@ -18,6 +18,7 @@ import { LaunchIntro } from '@/components/motion/LaunchIntro';
 // Imported for its side effect: expo-location needs the geofencing task defined at module scope,
 // before any arrival event can reach the app.
 import '@/lib/arrival';
+import { GroupScripts } from '@/state/group';
 import { TripsProvider } from '@/state/trips';
 import { light } from '@/theme/tokens';
 
@@ -97,6 +98,7 @@ export default function RootLayout() {
               }}
             />
           </Stack>
+          <GroupScripts />
           {intro && !reduced ? <LaunchIntro onDone={() => setIntro(false)} /> : null}
         </TripsProvider>
       </ThemeProvider>

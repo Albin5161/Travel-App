@@ -10,7 +10,7 @@ import { Avatar } from '@/components/group/Avatar';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { getPlace } from '@/data/api';
-import { FRIENDS, QUICK_NOTES, friend, type VoteKind } from '@/data/group';
+import { QUICK_NOTES, member, type VoteKind } from '@/data/group';
 import { formatClock } from '@/lib/geo';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT } from '@/lib/motion';
@@ -24,14 +24,14 @@ const STEP_IN = web ? undefined : FadeIn.duration(200);
 const EMOJI = ['😍', '🔥', '🙌', '🤔', '😴'];
 const DEFAULT_EMOJI: Record<VoteKind, string> = { keep: '👍', swap: '🔁', drop: '✋' };
 
-// Pass the phone: whoever's holding it picks which friend they are, then goes stop by stop.
-// Their votes replace that friend's scripted ones; the group screen underneath updates live.
+// Pass the phone: whoever's holding it picks who they are, then goes stop by stop. Their votes
+// replace that person's scripted ones; the vote screen underneath updates live.
 export default function VoteSheet() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { dispatch } = useTrips();
   // The group screen underneath runs the script; this sheet only votes.
-  const { group, stops } = useGroupVote(id, { live: false });
+  const { group, members, stops } = useGroupVote(id);
   const [voter, setVoter] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [emoji, setEmoji] = useState<string | null>(null);
@@ -39,10 +39,10 @@ export default function VoteSheet() {
 
   if (!group) return null;
 
-  const choose = (friendId: string) => {
+  const choose = (memberId: string) => {
     haptic.selection();
-    dispatch({ type: 'groupManual', cityId: id, friendId });
-    setVoter(friendId);
+    dispatch({ type: 'groupManual', cityId: id, memberId });
+    setVoter(memberId);
     setIndex(0);
   };
 
@@ -54,7 +54,7 @@ export default function VoteSheet() {
       type: 'groupVote',
       cityId: id,
       placeId: stop.place.id,
-      friendId: voter,
+      memberId: voter,
       vote: { kind, emoji: emoji ?? DEFAULT_EMOJI[kind], note: note ?? undefined },
     });
     setEmoji(null);
@@ -71,11 +71,11 @@ export default function VoteSheet() {
           Who’s voting?
         </Text>
         <View style={styles.who}>
-          {FRIENDS.map((f) => {
+          {members.map((f) => {
             const done = stops.filter(({ stop }) => group.votes[stop.place.id]?.[f.id]).length;
             return (
               <PressableScale key={f.id} onPress={() => choose(f.id)} style={styles.whoRow} accessibilityRole="button" accessibilityLabel={`Vote as ${f.name}`}>
-                <Avatar friend={f} size={44} />
+                <Avatar person={f} size={44} />
                 <View style={styles.flex}>
                   <Text variant="title">{f.name}</Text>
                   <Text variant="data">
@@ -90,13 +90,13 @@ export default function VoteSheet() {
     );
   }
 
-  const me = friend(voter);
+  const me = member(voter);
 
   // 3. Done.
   if (index >= stops.length) {
     return (
       <Animated.View entering={STEP_IN} style={[styles.pad, styles.done, { paddingBottom: insets.bottom + 24 }]}>
-        <Avatar friend={me} size={64} />
+        <Avatar person={me} size={64} />
         <Text variant="display" style={styles.center}>
           Thanks, {me.name}!
         </Text>
@@ -119,7 +119,7 @@ export default function VoteSheet() {
   return (
     <ScrollView contentContainerStyle={[styles.pad, { paddingBottom: insets.bottom + 24 }]}>
       <View style={styles.voterRow}>
-        <Avatar friend={me} size={28} />
+        <Avatar person={me} size={28} />
         <Text variant="label">Voting as {me.name}</Text>
         <Text variant="data" style={styles.progress}>
           {index + 1} / {stops.length}

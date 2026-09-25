@@ -9,21 +9,25 @@ import { PlanPass } from '@/components/share/PlanPass';
 import { TiltCard } from '@/components/share/TiltCard';
 import { Text } from '@/components/Text';
 import { getCity } from '@/data/api';
+import { PARTY_COPY } from '@/data/group';
+import { partyOf } from '@/data/planner';
 import { haptic } from '@/lib/haptics';
 import { FADE_IN, fadeUp } from '@/lib/motion';
 import { planMessage, sharePlanCard } from '@/lib/share';
+import { startGroup } from '@/state/group';
 import { useTrips } from '@/state/trips';
 import { light } from '@/theme/tokens';
 
 const HEAD_IN = fadeUp(0);
 const TITLE_IN = fadeUp(60);
 
-// After the passport stamp: the plan, as a card you can tilt, ready to send to the group.
-// Arrived at by replacing the plan screen, so there's no back; "Done for now" goes home.
+// After the passport stamp: the plan, as a card you can tilt, ready to send to whoever's going.
+// Sharing starts their vote. Arrived at by replacing the plan screen, so there's no back; "Done"
+// goes to the Trips tab, where the trip now lives.
 export default function ShareScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const city = getCity(id);
-  const { state } = useTrips();
+  const { state, dispatch } = useTrips();
   const plan = state.tripPlans[id];
   const { width: W, height: H } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -31,6 +35,7 @@ export default function ShareScreen() {
   const [issued] = useState(() => new Date());
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
 
   // Nothing to share without a plan (a reload wipes the in-memory store): go home.
   useEffect(() => {
@@ -39,6 +44,8 @@ export default function ShareScreen() {
 
   if (!city || !plan) return null;
   const stops = plan.days.reduce((sum, d) => sum + d.stops.length, 0);
+  const party = partyOf(plan.prefs);
+  const copy = PARTY_COPY[party];
 
   const cardW = Math.min(W - 64, 340);
   const room = H - insets.top - insets.bottom - 150 - 150;
@@ -48,14 +55,20 @@ export default function ShareScreen() {
     if (busy) return;
     setBusy(true);
     try {
-      const result = await sharePlanCard(card, planMessage(city.name, city.id, stops, plan.days.length));
-      if (result === 'shared') {
-        haptic.success();
-        setNote('Sent. Now get everyone to agree.');
-      } else if (result === 'copied') {
-        haptic.light();
-        setNote('Message copied. Paste it in your group.');
-      }
+      const result = await sharePlanCard(card, planMessage(city.name, city.id, stops, plan.days.length, party));
+      if (result === 'dismissed') return;
+      if (result === 'shared') haptic.success();
+      else haptic.light();
+      setSent(true);
+      // The vote starts the moment it's out: people begin joining while you're still in the chat.
+      startGroup(dispatch, plan);
+      setNote(
+        result === 'copied'
+          ? `Message copied. Paste it in your ${party === 'family' ? 'family chat' : party === 'partner' ? 'chat' : 'group'}.`
+          : party === 'solo'
+            ? 'Sent.'
+            : 'Sent. Now get everyone to agree.',
+      );
     } catch {
       setNote('Couldn’t open sharing. Try again?');
     } finally {
@@ -92,12 +105,16 @@ export default function ShareScreen() {
             </Text>
           </Animated.View>
         ) : null}
-        {note ? (
-          <Button label="See who’s voting" onPress={() => router.push({ pathname: '/group/[id]', params: { id } })} />
+        {sent && party !== 'solo' ? (
+          <Button label={copy.see} onPress={() => router.push({ pathname: '/group/[id]', params: { id } })} />
+        ) : sent ? (
+          <Button label="Done" onPress={() => router.dismissTo('/trips')} />
         ) : (
-          <Button label="Share to group" onPress={share} disabled={busy} />
+          <Button label={copy.share} onPress={share} disabled={busy} />
         )}
-        <Button kind="text" label={note ? 'Done' : 'Done for now'} onPress={() => router.dismissTo('/')} />
+        {sent && party === 'solo' ? null : (
+          <Button kind="text" label={sent ? 'Done' : 'Done for now'} onPress={() => router.dismissTo('/trips')} />
+        )}
       </View>
     </View>
   );

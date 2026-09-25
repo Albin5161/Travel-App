@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Text } from '@/components/Text';
-import { FRIENDS, friend, type Verdict, type Vote, type VoteKind } from '@/data/group';
+import { member, type Member, type Verdict, type Vote, type VoteKind } from '@/data/group';
 import type { Place } from '@/data/types';
 import { haptic } from '@/lib/haptics';
 import { EASE_IN_OUT, EASE_OUT } from '@/lib/motion';
@@ -42,9 +42,11 @@ type Props = {
   votes: Record<string, Vote> | undefined;
   verdict: Verdict;
   swap?: Place;
+  /** Everyone voting, one bar slot each. */
+  members: Member[];
 };
 
-export function StopVote({ place, meta, votes, verdict, swap }: Props) {
+export function StopVote({ place, meta, votes, verdict, swap, members }: Props) {
   const reduced = useReducedMotion();
   const flip = useSharedValue(verdict === 'swap' && swap ? 1 : 0);
   const swapped = verdict === 'swap' && !!swap;
@@ -74,8 +76,8 @@ export function StopVote({ place, meta, votes, verdict, swap }: Props) {
   const latestNote =
     [...list].reverse().find(([, v]) => v.note && (!decided || v.kind === decided)) ??
     [...list].reverse().find(([, v]) => v.note);
-  const byFriend = FRIENDS.map((f) => votes?.[f.id]);
-  const swappers = list.filter(([, v]) => v.kind === 'swap').map(([id]) => friend(id).name);
+  const byMember = members.map((m) => votes?.[m.id]);
+  const swappers = list.filter(([, v]) => v.kind === 'swap').map(([id]) => member(id).name);
 
   return (
     <View style={[styles.card, verdict === 'drop' && styles.cardDropped]}>
@@ -97,8 +99,8 @@ export function StopVote({ place, meta, votes, verdict, swap }: Props) {
       </View>
 
       <View style={styles.bar}>
-        {byFriend.map((v, i) => (
-          <View key={FRIENDS[i].id} style={styles.slot}>
+        {byMember.map((v, i) => (
+          <View key={members[i].id} style={styles.slot}>
             {v ? <SlotFill key={v.kind} color={VOTE_COLOR[v.kind]} /> : null}
           </View>
         ))}
@@ -112,7 +114,7 @@ export function StopVote({ place, meta, votes, verdict, swap }: Props) {
         ) : (
           list.map(([id, v]) => (
             <Animated.View key={id} entering={POP} style={styles.chip}>
-              <Avatar friend={friend(id)} size={22} />
+              <Avatar person={member(id)} size={22} />
               <Text style={styles.emoji}>{v.emoji}</Text>
             </Animated.View>
           ))
@@ -123,7 +125,7 @@ export function StopVote({ place, meta, votes, verdict, swap }: Props) {
         <Animated.View key={`${latestNote[0]}:${latestNote[1].note}`} entering={NOTE_IN} style={styles.note}>
           <Text variant="label" numberOfLines={2}>
             <Text variant="label" style={styles.noteName}>
-              {friend(latestNote[0]).name}
+              {member(latestNote[0]).name}
             </Text>
             {'  '}
             {latestNote[1].note}

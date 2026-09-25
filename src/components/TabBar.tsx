@@ -24,8 +24,8 @@ type TabBarProps = {
   navigation: { navigate: (name: string) => void };
 };
 
-const ICONS: Record<string, IconName> = { index: 'bookmark', map: 'map', profile: 'user' };
-const LABELS: Record<string, string> = { index: 'Home', map: 'Map', profile: 'Profile' };
+const ICONS: Record<string, IconName> = { index: 'bookmark', trips: 'compass', map: 'map', profile: 'user' };
+const LABELS: Record<string, string> = { index: 'Home', trips: 'Trips', map: 'Map', profile: 'Profile' };
 
 /**
  * A floating paper pill rather than a system tab bar, so it sits on the light canvas like the rest of

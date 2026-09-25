@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, useReducer, type ReactNode } from '
 
 import { getPlace, getCity } from '@/data/api';
 import { allDistricts } from '@/data/regions';
-import type { GroupState, Vote } from '@/data/group';
+import type { Group, GroupState, Vote } from '@/data/group';
 import type { TripPlan } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
 import { clusterSpots, districtOf } from '@/lib/spots';
@@ -59,10 +59,11 @@ type Action =
   | { type: 'addLocal'; cityId: string; placeId: string }
   | { type: 'saveTrip'; cityId: string }
   | { type: 'setTripPlan'; plan: TripPlan }
-  | { type: 'groupStart'; cityId: string; planKey: string; swapFor: Record<string, string> }
-  | { type: 'groupJoin'; cityId: string; friendId: string }
-  | { type: 'groupVote'; cityId: string; placeId: string; friendId: string; vote: Vote }
-  | { type: 'groupManual'; cityId: string; friendId: string }
+  | { type: 'groupStart'; cityId: string; planKey: string; party: Group; swapFor: Record<string, string> }
+  | { type: 'groupJoin'; cityId: string; memberId: string }
+  | { type: 'groupVote'; cityId: string; placeId: string; memberId: string; vote: Vote }
+  | { type: 'groupManual'; cityId: string; memberId: string }
+  | { type: 'groupCheer'; cityId: string }
   | { type: 'groupLock'; cityId: string }
   | { type: 'clearFresh' }
   | { type: 'setHomeDistrict'; districtId: string }
@@ -143,12 +144,22 @@ function reducer(state: State, action: Action): State {
         ...state,
         groups: {
           ...state.groups,
-          [action.cityId]: { planKey: action.planKey, joined: [], votes: {}, manual: [], swapFor: action.swapFor, locked: false },
+          [action.cityId]: {
+            planKey: action.planKey,
+            party: action.party,
+            joined: [],
+            votes: {},
+            manual: [],
+            swapFor: action.swapFor,
+            cheered: false,
+            locked: false,
+          },
         },
       };
     case 'groupJoin':
     case 'groupVote':
     case 'groupManual':
+    case 'groupCheer':
     case 'groupLock': {
       const g = state.groups[action.cityId];
       if (!g) return state;
@@ -173,25 +184,27 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-type GroupAction = Extract<Action, { type: 'groupJoin' | 'groupVote' | 'groupManual' | 'groupLock' }>;
+type GroupAction = Extract<Action, { type: 'groupJoin' | 'groupVote' | 'groupManual' | 'groupCheer' | 'groupLock' }>;
 
 function groupReducer(g: GroupState, action: GroupAction): GroupState {
   const join = (id: string) => (g.joined.includes(id) ? g.joined : [...g.joined, id]);
   switch (action.type) {
     case 'groupJoin':
-      return { ...g, joined: join(action.friendId) };
+      return { ...g, joined: join(action.memberId) };
     case 'groupVote':
       return {
         ...g,
-        joined: join(action.friendId),
-        votes: { ...g.votes, [action.placeId]: { ...g.votes[action.placeId], [action.friendId]: action.vote } },
+        joined: join(action.memberId),
+        votes: { ...g.votes, [action.placeId]: { ...g.votes[action.placeId], [action.memberId]: action.vote } },
       };
     case 'groupManual':
       return {
         ...g,
-        joined: join(action.friendId),
-        manual: g.manual.includes(action.friendId) ? g.manual : [...g.manual, action.friendId],
+        joined: join(action.memberId),
+        manual: g.manual.includes(action.memberId) ? g.manual : [...g.manual, action.memberId],
       };
+    case 'groupCheer':
+      return { ...g, cheered: true };
     case 'groupLock':
       return { ...g, locked: true };
   }

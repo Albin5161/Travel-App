@@ -15,9 +15,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle } from 'react-native-svg';
-
 import { Button } from '@/components/Button';
+import { Avatar } from '@/components/group/Avatar';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { Chips } from '@/components/spots/Chips';
@@ -32,9 +31,11 @@ const PAGES = 3;
 const GUTTER = 28;
 
 /**
- * Three screens, then out. Two of them explain the halves of the app — the trip you plan and the
- * weekend you don't — and the third asks the one thing the app genuinely can't work without.
- * Permissions are not asked here: they come later, in context, where the reason can be stated.
+ * Three screens, each a reason before a feature. First the problem everyone has (saved reels, no
+ * trips), then what makes Xplore different (a plan the whole group agrees on), then the weekly
+ * reason to come back (spots near home become weekends), which is where it asks the one thing it
+ * needs: where home is. The how (paste a link, swipe to check) is left to the app itself, where
+ * it's obvious. Permissions come later, in context, where the reason can be stated.
  */
 export default function Onboarding() {
   const { width: W } = useWindowDimensions();
@@ -99,26 +100,27 @@ export default function Onboarding() {
         <Page index={0} p={p}>
           <ReelFan />
           <Copy
-            lead={'Your next trip is\nhiding in your\n'}
-            title="saved videos."
-            body="Paste an Instagram or YouTube link. Every place in it is pulled out, named, and put on your map."
+            lead={'You saved 200 reels.\n'}
+            title="You’ve been to none."
+            body="Xplore pulls the places out of the videos you save and turns them into trips you actually take."
           />
         </Page>
 
         <Page index={1} p={p}>
-          <WeekendPreview />
+          <VotePreview />
           <Copy
-            lead={'The ones near\nhome become\n'}
-            title="your weekends."
-            body="Spots you save close by get grouped into outings you can actually do on a Saturday, with the drive time worked out."
+            lead={'Plans your whole\ngroup '}
+            title="agrees on."
+            body="Share a plan and everyone keeps, swaps or drops each stop. No more forty messages to decide on lunch."
           />
         </Page>
 
         <Page index={2} p={p}>
-          <HomeRings />
+          <WeekendPreview />
           <Copy
-            title={'Where do\nyou live?'}
-            body="So we know which spots are a weekend away, and which ones to mention when you're somewhere else."
+            lead={'The ones near\nhome become\n'}
+            title="your weekends."
+            body="Spots you save close by turn into Saturday outings, drive time worked out. So, where's home?"
           />
           <View style={styles.districtPicker}>
             <Chips
@@ -181,16 +183,51 @@ function Copy({ lead, title, body }: { lead?: string; title: string; body: strin
   );
 }
 
-/** Home, drawn as the rings a location ping leaves: your district at the centre, weekends around it. */
-function HomeRings() {
+// The group vote in miniature: one stop, three friends, one of them pushing for a swap.
+const VOTERS = [
+  { member: { id: 'riya', name: 'Riya', tint: '#F4CDB0' }, emoji: '😍', fill: light.ink },
+  { member: { id: 'kabir', name: 'Kabir', tint: '#C3DDD6' }, emoji: '🔥', fill: light.ink },
+  { member: { id: 'meera', name: 'Meera', tint: '#DAD1F3' }, emoji: '🤔', fill: light.accent },
+];
+
+/** A stop in the group vote, as it looks in the app. */
+function VotePreview() {
+  const stop = places['gok-om'];
   return (
     <View style={styles.art}>
-      <Svg width={190} height={190} viewBox="0 0 190 190">
-        <Circle cx={95} cy={95} r={92} fill="none" stroke={light.line} strokeWidth={1.5} />
-        <Circle cx={95} cy={95} r={62} fill="none" stroke={light.lineStrong} strokeWidth={1.5} />
-        <Circle cx={95} cy={95} r={32} fill={light.panel} stroke={light.lineStrong} strokeWidth={1.5} />
-        <Circle cx={95} cy={95} r={9} fill={light.accent} stroke={light.panel} strokeWidth={3} />
-      </Svg>
+      <View style={styles.voteCard}>
+        <View style={styles.voteHead}>
+          <Image source={stop.photo} style={styles.voteThumb} contentFit="cover" transition={0} />
+          <View style={styles.voteText}>
+            <Text variant="bodyStrong">{stop.name}</Text>
+            <Text variant="data">Sat · 5:30 PM</Text>
+          </View>
+          <View style={styles.votePill}>
+            <Text style={styles.votePillText}>Keeping</Text>
+          </View>
+        </View>
+        <View style={styles.voteBar}>
+          {VOTERS.map((v) => (
+            <View key={v.member.id} style={[styles.voteSlot, { backgroundColor: v.fill }]} />
+          ))}
+        </View>
+        <View style={styles.voteChips}>
+          {VOTERS.map((v) => (
+            <View key={v.member.id} style={styles.voteChip}>
+              <Avatar person={v.member} size={22} />
+              <Text style={styles.voteEmoji}>{v.emoji}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={styles.voteNote}>
+          <Text variant="label">
+            <Text variant="label" style={styles.voteNoteName}>
+              Meera
+            </Text>
+            {'  '}What about Paradise Beach?
+          </Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -325,6 +362,44 @@ const styles = StyleSheet.create({
   routePhoto: { width: 76, height: 84, borderRadius: 14, backgroundColor: light.canvasTop },
   routePhotoStacked: { marginLeft: -22, borderWidth: 2, borderColor: light.panel },
   districtPicker: { marginTop: -12, marginHorizontal: -GUTTER, paddingLeft: GUTTER },
+  voteCard: {
+    width: 290,
+    padding: 14,
+    gap: 12,
+    borderRadius: 22,
+    backgroundColor: light.panel,
+    borderWidth: 1,
+    borderColor: light.line,
+    boxShadow: shadows.card,
+  },
+  voteHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  voteThumb: { width: 48, height: 48, borderRadius: 13, backgroundColor: light.canvasTop },
+  voteText: { flex: 1, gap: 1 },
+  votePill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: light.ink },
+  votePillText: { fontFamily: fonts.sansSemi, fontSize: 12, lineHeight: 15, color: light.ctaInk },
+  voteBar: { flexDirection: 'row', gap: 4, height: 6 },
+  voteSlot: { flex: 1, borderRadius: 3 },
+  voteChips: { flexDirection: 'row', gap: 8 },
+  voteChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingLeft: 3,
+    paddingRight: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: light.canvas,
+  },
+  voteEmoji: { fontSize: 14, lineHeight: 18 },
+  voteNote: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderTopLeftRadius: 4,
+    backgroundColor: light.canvas,
+  },
+  voteNoteName: { fontFamily: fonts.sansSemi, color: light.ink },
   copy: { gap: 12 },
   title: { fontFamily: fonts.display, fontSize: 30, lineHeight: 35, color: light.ink, letterSpacing: -1 },
   titleLead: { fontFamily: fonts.displayMedium, color: light.inkSoft, letterSpacing: -0.5 },

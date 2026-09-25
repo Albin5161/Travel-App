@@ -112,56 +112,60 @@ export default function Home() {
             <LinkBox key={boxKey} onSubmit={start} clipboardHasLink={hasLink} onExample={() => start(example.url)} />
           </Animated.View>
 
-          <Animated.View entering={ENTER[2]} style={[styles.panel, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}>
-            <Segmented
-              value={tab}
-              onChange={(t) => dispatch({ type: 'setHomeTab', tab: t })}
-              options={[
-                { key: 'near', label: 'Near Home', count: near.length },
-                { key: 'cities', label: 'Cities', count: away.length },
-              ]}
-            />
-            <Text variant="micro" style={styles.panelTitle}>
-              My collections
-            </Text>
-            <Animated.View key={tab} entering={FADE_IN} style={styles.grid}>
-              {shown.length === 0 ? (
-                <Empty tab={tab} homeName={homeName} />
-              ) : (
-                shown.map((c) => {
-                  const city = getCity(c.cityId);
-                  if (!city) return null;
-                  const planned = !!state.savedTrips[c.cityId];
-                  const nReels = c.reelIds.length;
-                  const sources = c.reelIds.map((id) => reels[id]).filter((r) => !!r);
-                  return (
-                    <Animated.View key={c.cityId} entering={c.cityId === fresh ? ENTER[3] : undefined}>
-                      <CityTile
-                        width={tileW}
-                        name={city.name}
-                        photo={city.hero}
-                        statLabel="Spots"
-                        statValue={String(c.placeIds.length)}
-                        captionLabel={sourceLabel(sources.map((r) => r.platform))}
-                        captionValue={creators(sources.map((r) => r.creator))}
-                        sources={[...new Set(sources.map((r) => r.platform))]}
-                        lifted={cityOpen.card?.city.id === city.id}
-                        onPress={(rect) =>
-                          cityOpen.open({
-                            city,
-                            rect,
-                            face: { name: city.name, statLabel: 'Spots', statValue: String(c.placeIds.length) },
-                            stats: { places: c.placeIds.length, reels: nReels, planned },
-                          })
-                        }
-                        accessibilityLabel={`${city.name}, ${c.placeIds.length} spots`}
-                      />
-                    </Animated.View>
-                  );
-                })
-              )}
+          {/* First run is just the question and the link box. The collections appear with the first
+              save, fading up as it lands, rather than greeting a new user with two empty tabs. */}
+          {collections.length === 0 ? null : (
+            <Animated.View entering={ENTER[2]} style={[styles.panel, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}>
+              <Segmented
+                value={tab}
+                onChange={(t) => dispatch({ type: 'setHomeTab', tab: t })}
+                options={[
+                  { key: 'near', label: 'Near Home', count: near.length },
+                  { key: 'cities', label: 'Cities', count: away.length },
+                ]}
+              />
+              <Text variant="micro" style={styles.panelTitle}>
+                My collections
+              </Text>
+              <Animated.View key={tab} entering={FADE_IN} style={styles.grid}>
+                {shown.length === 0 ? (
+                  <Empty tab={tab} homeName={homeName} />
+                ) : (
+                  shown.map((c) => {
+                    const city = getCity(c.cityId);
+                    if (!city) return null;
+                    const planned = !!state.savedTrips[c.cityId];
+                    const nReels = c.reelIds.length;
+                    const sources = c.reelIds.map((id) => reels[id]).filter((r) => !!r);
+                    return (
+                      <Animated.View key={c.cityId} entering={c.cityId === fresh ? ENTER[3] : undefined}>
+                        <CityTile
+                          width={tileW}
+                          name={city.name}
+                          photo={city.hero}
+                          statLabel="Spots"
+                          statValue={String(c.placeIds.length)}
+                          captionLabel={sourceLabel(sources.map((r) => r.platform))}
+                          captionValue={creators(sources.map((r) => r.creator))}
+                          sources={[...new Set(sources.map((r) => r.platform))]}
+                          lifted={cityOpen.card?.city.id === city.id}
+                          onPress={(rect) =>
+                            cityOpen.open({
+                              city,
+                              rect,
+                              face: { name: city.name, statLabel: 'Spots', statValue: String(c.placeIds.length) },
+                              stats: { places: c.placeIds.length, reels: nReels, planned },
+                            })
+                          }
+                          accessibilityLabel={`${city.name}, ${c.placeIds.length} spots`}
+                        />
+                      </Animated.View>
+                    );
+                  })
+                )}
+              </Animated.View>
             </Animated.View>
-          </Animated.View>
+          )}
         </ScrollView>
       </View>
       <CityOpenOverlay

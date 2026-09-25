@@ -1,8 +1,7 @@
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Keyboard, Platform, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -11,38 +10,39 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withSpring,
+  withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
-import { Avatar } from '@/components/group/Avatar';
+import { GroupVote } from '@/components/onboarding/GroupVote';
+import { ProfilePreview } from '@/components/onboarding/ProfilePreview';
+import { VideoToTrip } from '@/components/onboarding/VideoToTrip';
+import { WeekendRoute } from '@/components/onboarding/WeekendRoute';
 import { PressableScale } from '@/components/PressableScale';
-import { ProfilePhoto } from '@/components/ProfilePhoto';
 import { Text } from '@/components/Text';
 import { Chips } from '@/components/spots/Chips';
-import { places } from '@/data/catalog';
 import { allDistricts } from '@/data/regions';
 import { haptic } from '@/lib/haptics';
-import { project, SPRING_DRAG } from '@/lib/motion';
+import { EASE_OUT, project, SPRING_DRAG } from '@/lib/motion';
 import { useTrips } from '@/state/trips';
-import { fonts, light, shadows } from '@/theme/tokens';
+import { fonts, light } from '@/theme/tokens';
 
 const PAGES = 4;
 const GUTTER = 28;
 
 /**
- * Three screens, each a reason before a feature, then who you are.
+ * Four screens. The first says what Xplore does, in one sentence and one moving picture: any video
+ * of a place (a beach, a café, a restaurant) becomes pins on a map and a planned day. Someone who has never heard of the app should be
+ * able to explain it after that screen alone. Then the two reasons it's worth keeping: plans the
+ * group decides together, and spots near home that become weekends (where it asks where home is).
+ * Last, your name and photo, shown as the invite a friend would get, so the reason is visible.
  *
- * The three: First the problem everyone has (saved reels, no
- * trips), then what makes Xplore different (a plan the whole group agrees on), then the weekly
- * reason to come back (spots near home become weekends), which is where it asks the one thing it
- * needs: where home is. Last, your name and photo, so a plan you share says who it's from and you're
-never asked at the moment of sharing. The how (paste a link, swipe to check) is left to the app itself, where
- * it's obvious. Permissions come later, in context, where the reason can be stated.
+ * Every illustration is a short loop that plays only while its page is on screen.
  */
 export default function Onboarding() {
-  const { width: W } = useWindowDimensions();
+  const { width: W, height: H } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useTrips();
   const [page, setPage] = useState(0);
@@ -51,6 +51,11 @@ export default function Onboarding() {
   // rather than snapping between states, and every derived animation reads this one value.
   const p = useSharedValue(0);
   const start = useSharedValue(0);
+  const lift = useKeyboardLift();
+
+  const art = Math.round(Math.min(290, Math.max(224, H * 0.34)));
+  const artW = W - GUTTER * 2;
+  const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? 'home';
 
   const go = (next: number) => {
     setPage(next);
@@ -90,7 +95,7 @@ export default function Onboarding() {
       <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.wordmark}>Xplore</Text>
         {last ? null : (
-          <PressableScale onPress={finish} accessibilityRole="button" accessibilityLabel="Skip setup">
+          <PressableScale onPress={finish} accessibilityRole="button" accessibilityLabel="Skip the intro">
             <Text variant="label" color={light.inkFaint}>
               Skip
             </Text>
@@ -98,102 +103,187 @@ export default function Onboarding() {
         )}
       </View>
 
-      {/* Clipped: the row is three screens wide, and without this it stretches the whole layout
-          to 3x the viewport — which silently moves every other control off the screen. */}
+      {/* Clipped: the row is four screens wide, and without this it stretches the whole layout
+          to 4x the viewport — which silently moves every other control off the screen. */}
       <View style={styles.viewport}>
         <GestureDetector gesture={swipe}>
-          <Row p={p} width={W}>
-        <Page index={0} p={p}>
-          <ReelFan />
-          <Copy
-            lead={'You saved 200 reels.\n'}
-            title="You’ve been to none."
-            body="Xplore pulls the places out of the videos you save and turns them into trips you actually take."
-          />
-        </Page>
+          <Row p={p} width={W} lift={lift}>
+            <Page
+              index={0}
+              p={p}
+              artHeight={art}
+              art={<VideoToTrip active={page === 0} width={artW} height={art} />}
+            >
+              <Copy
+                lead={'Saw it in a video?\n'}
+                title="Go there for real."
+                body="Paste any Instagram or YouTube link: a hidden beach, a new café, a street-food lane. Xplore finds every place in it, pins it on your map and plans the day around it."
+              />
+            </Page>
 
-        <Page index={1} p={p}>
-          <VotePreview />
-          <Copy
-            lead={'Plans your whole\ngroup '}
-            title="agrees on."
-            body="Share a plan and everyone keeps, swaps or drops each stop. No more forty messages to decide on lunch."
-          />
-        </Page>
+            <Page index={1} p={p} artHeight={art} art={<GroupVote active={page === 1} width={artW} />}>
+              <Copy
+                lead={'Going with friends?\n'}
+                title="Decide together."
+                body="Share the plan and everyone votes on each stop: keep it, swap it or drop it. No more forty messages about lunch."
+              />
+            </Page>
 
-        <Page index={2} p={p}>
-          <WeekendPreview />
-          <Copy
-            lead={'The ones near\nhome become\n'}
-            title="your weekends."
-            body="Spots you save close by turn into Saturday outings, drive time worked out. So, where's home?"
-          />
-          <View style={styles.districtPicker}>
-            <Chips
-              value={state.homeDistrictId}
-              onChange={(id) => id && dispatch({ type: 'setHomeDistrict', districtId: id })}
-              options={allDistricts.map((d) => ({ key: d.id as string | null, label: d.name }))}
-            />
-          </View>
-        </Page>
+            <Page
+              index={2}
+              p={p}
+              artHeight={art}
+              art={<WeekendRoute active={page === 2} width={artW} homeName={homeName} />}
+            >
+              <Copy
+                lead={'A spot near home?\n'}
+                title="Weekend, sorted."
+                body="Places close to home become ready-made day trips, with the drive and the cost worked out."
+              />
+              <View style={styles.district}>
+                <Text variant="label" color={light.inkSoft}>
+                  Where’s home? <Text variant="label" color={light.inkFaint}>Kerala for now</Text>
+                </Text>
+                <View style={styles.districtChips}>
+                  <Chips
+                    value={state.homeDistrictId}
+                    onChange={(id) => id && dispatch({ type: 'setHomeDistrict', districtId: id })}
+                    options={allDistricts.map((d) => ({ key: d.id as string | null, label: d.name }))}
+                  />
+                </View>
+              </View>
+            </Page>
 
-        <Page index={3} p={p}>
-          <View style={styles.art}>
-            <ProfilePhoto size={112} />
-          </View>
-          <Copy
-            lead={'Last thing.\n'}
-            title="Who's planning?"
-            body="Friends see your name and photo when you share a trip with them. Tap the circle to add a photo."
-          />
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Your first name"
-            placeholderTextColor={light.inkFaint}
-            autoCapitalize="words"
-            autoComplete="given-name"
-            textContentType="givenName"
-            maxLength={40}
-            returnKeyType="done"
-            style={styles.nameInput}
-            accessibilityLabel="Your name"
-          />
-        </Page>
+            <Page index={3} p={p} artHeight={art} art={<ProfilePreview active={page === 3} name={name} />}>
+              <Copy
+                lead={'Last thing.\n'}
+                title="Who’s planning?"
+                body="This is how you’ll appear when you share a plan. Tap the circle to add a photo."
+              />
+              <NameField value={name} onChange={setName} onDone={finish} />
+            </Page>
           </Row>
         </GestureDetector>
       </View>
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 20 }]}>
         <Dots p={p} />
-        <Button label={last ? 'Start collecting' : 'Next'} onPress={() => (last ? finish() : go(page + 1))} />
+        <Button
+          label={last ? 'Find my first trip' : 'Next'}
+          onPress={() => (last ? finish() : go(page + 1))}
+          accessibilityHint={last ? 'Opens the app, ready for your first video' : undefined}
+        />
       </View>
     </View>
   );
 }
 
-/** The three pages side by side, slid by the shared page position. */
-function Row({ p, width, children }: { p: SharedValue<number>; width: number; children: React.ReactNode }) {
-  const style = useAnimatedStyle(() => ({ transform: [{ translateX: -p.get() * width }] }));
+/**
+ * How far to raise the pages so the focused field clears the keyboard. It follows the keyboard's
+ * own timing, and only moves as much as it has to. Web leaves this to the browser.
+ */
+function useKeyboardLift() {
+  const lift = useSharedValue(0);
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const ios = Platform.OS === 'ios';
+    const show = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (e) => {
+      const field = TextInput.State.currentlyFocusedInput();
+      if (!field) return;
+      field.measureInWindow((_x, y, _w, h) => {
+        const bottom = y + h - lift.get();
+        const target = Math.min(0, e.endCoordinates.screenY - 20 - bottom);
+        lift.set(withTiming(target, { duration: e.duration || 250, easing: EASE_OUT }));
+      });
+    });
+    const hide = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', (e) => {
+      lift.set(withTiming(0, { duration: e.duration || 250, easing: EASE_OUT }));
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [lift]);
+  return lift;
+}
+
+function NameField({ value, onChange, onDone }: { value: string; onChange: (v: string) => void; onDone: () => void }) {
+  const [focused, setFocused] = useState(false);
   return (
-    <Animated.View style={[styles.row, { width: width * PAGES }, style]}>{children}</Animated.View>
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onSubmitEditing={onDone}
+      placeholder="Your first name"
+      placeholderTextColor={light.inkFaint}
+      autoCapitalize="words"
+      autoComplete="given-name"
+      textContentType="givenName"
+      maxLength={40}
+      returnKeyType="go"
+      style={[styles.nameInput, focused && styles.nameInputFocused]}
+      accessibilityLabel="Your first name"
+    />
   );
 }
 
-/** Each page's contents drift and fade against the swipe, so the pages feel stacked in depth. */
-function Page({ index, p, children }: { index: number; p: SharedValue<number>; children: React.ReactNode }) {
+/** The pages side by side, slid by the shared page position, and raised clear of the keyboard. */
+function Row({
+  p,
+  width,
+  lift,
+  children,
+}: {
+  p: SharedValue<number>;
+  width: number;
+  lift: SharedValue<number>;
+  children: ReactNode;
+}) {
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateX: -p.get() * width }, { translateY: lift.get() }],
+  }));
+  return <Animated.View style={[styles.row, { width: width * PAGES }, style]}>{children}</Animated.View>;
+}
+
+/**
+ * A page in two layers. The illustration sits deeper: it trails the swipe, shrinks and tilts away,
+ * while the words move nearly with the finger. The difference is what gives the carousel depth.
+ */
+function Page({
+  index,
+  p,
+  art,
+  artHeight,
+  children,
+}: {
+  index: number;
+  p: SharedValue<number>;
+  art: ReactNode;
+  artHeight: number;
+  children: ReactNode;
+}) {
   const reduced = useReducedMotion();
-  const style = useAnimatedStyle(() => {
+  const artStyle = useAnimatedStyle(() => {
+    const d = p.get() - index;
+    const a = Math.min(Math.abs(d), 1);
+    return {
+      opacity: interpolate(Math.abs(d), [0, 0.75], [1, 0], Extrapolation.CLAMP),
+      transform: reduced ? [] : [{ translateX: d * 150 }, { scale: 1 - a * 0.12 }, { rotate: `${-d * 5}deg` }],
+    };
+  });
+  const copyStyle = useAnimatedStyle(() => {
     const d = p.get() - index;
     return {
-      opacity: interpolate(Math.abs(d), [0, 0.9], [1, 0], Extrapolation.CLAMP),
-      // Contents move with the page but slower, so the pages read as stacked in depth.
-      transform: reduced ? [] : [{ translateX: d * 46 }, { scale: 1 - Math.min(Math.abs(d), 1) * 0.06 }],
+      opacity: interpolate(Math.abs(d), [0, 0.6], [1, 0], Extrapolation.CLAMP),
+      transform: reduced ? [] : [{ translateX: d * 36 }],
     };
   });
   return (
     <View style={styles.pageSlot}>
-      <Animated.View style={[styles.page, style]}>{children}</Animated.View>
+      <Animated.View style={[styles.art, { height: artHeight }, artStyle]}>{art}</Animated.View>
+      <Animated.View style={[styles.words, copyStyle]}>{children}</Animated.View>
     </View>
   );
 }
@@ -202,115 +292,13 @@ function Page({ index, p, children }: { index: number; p: SharedValue<number>; c
 function Copy({ lead, title, body }: { lead?: string; title: string; body: string }) {
   return (
     <View style={styles.copy}>
-      <Text style={[styles.title, lead ? styles.titleLead : null]}>
+      <Text style={[styles.title, lead ? styles.titleLead : null]} accessibilityRole="header">
         {lead}
         {lead ? <Text style={styles.title}>{title}</Text> : title}
       </Text>
       <Text variant="body" style={styles.body}>
         {body}
       </Text>
-    </View>
-  );
-}
-
-// The group vote in miniature: one stop, three friends, one of them pushing for a swap.
-const VOTERS = [
-  { member: { id: 'riya', name: 'Riya', tint: '#F4CDB0' }, emoji: '😍', fill: light.ink },
-  { member: { id: 'kabir', name: 'Kabir', tint: '#C3DDD6' }, emoji: '🔥', fill: light.ink },
-  { member: { id: 'meera', name: 'Meera', tint: '#DAD1F3' }, emoji: '🤔', fill: light.accent },
-];
-
-/** A stop in the group vote, as it looks in the app. */
-function VotePreview() {
-  const stop = places['gok-om'];
-  return (
-    <View style={styles.art}>
-      <View style={styles.voteCard}>
-        <View style={styles.voteHead}>
-          <Image source={stop.photo} style={styles.voteThumb} contentFit="cover" transition={0} />
-          <View style={styles.voteText}>
-            <Text variant="bodyStrong">{stop.name}</Text>
-            <Text variant="data">Sat · 5:30 PM</Text>
-          </View>
-          <View style={styles.votePill}>
-            <Text style={styles.votePillText}>Keeping</Text>
-          </View>
-        </View>
-        <View style={styles.voteBar}>
-          {VOTERS.map((v) => (
-            <View key={v.member.id} style={[styles.voteSlot, { backgroundColor: v.fill }]} />
-          ))}
-        </View>
-        <View style={styles.voteChips}>
-          {VOTERS.map((v) => (
-            <View key={v.member.id} style={styles.voteChip}>
-              <Avatar person={v.member} size={22} />
-              <Text style={styles.voteEmoji}>{v.emoji}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={styles.voteNote}>
-          <Text variant="label">
-            <Text variant="label" style={styles.voteNoteName}>
-              Meera
-            </Text>
-            {'  '}What about Paradise Beach?
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-/** Three saved reels, fanned like cards still waiting to be dealt. */
-function ReelFan() {
-  const shots = [places['ktm-kumarakom'], places['kochi-mural'], places['ktm-illickal']];
-  return (
-    <View style={styles.art}>
-      {shots.map((p, i) => (
-        <View
-          key={p.id}
-          style={[
-            styles.fanCard,
-            {
-              transform: [
-                { translateX: (i - 1) * 62 },
-                { rotate: `${(i - 1) * 11}deg` },
-                { translateY: Math.abs(i - 1) * 16 },
-              ],
-              zIndex: i === 1 ? 3 : 1,
-            },
-          ]}
-        >
-          <Image source={p.photo} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
-          {i === 1 ? <View style={styles.fanPin} /> : null}
-        </View>
-      ))}
-    </View>
-  );
-}
-
-/** A weekend outing, exactly as it appears on the map tab. */
-function WeekendPreview() {
-  const shots = [places['ktm-illickal'], places['ktm-marmala']];
-  return (
-    <View style={styles.art}>
-      <View style={styles.routeCard}>
-        <View style={styles.routePhotos}>
-          {shots.map((p, i) => (
-            <Image
-              key={p.id}
-              source={p.photo}
-              style={[styles.routePhoto, i > 0 && styles.routePhotoStacked]}
-              contentFit="cover"
-              transition={0}
-            />
-          ))}
-        </View>
-        <Text variant="micro">2 stops</Text>
-        <Text variant="headline">Teekoy</Text>
-        <Text variant="data">7 hrs out and back · about ₹250</Text>
-      </View>
     </View>
   );
 }
@@ -351,48 +339,10 @@ const styles = StyleSheet.create({
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: light.ink },
   viewport: { flex: 1, overflow: 'hidden' },
   row: { flex: 1, flexDirection: 'row' },
-  pageSlot: { flex: 1 },
-  page: { flex: 1, paddingHorizontal: GUTTER, justifyContent: 'center', gap: 34 },
-  art: { height: 230, alignItems: 'center', justifyContent: 'center' },
-  fanCard: {
-    position: 'absolute',
-    width: 124,
-    height: 184,
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: light.canvasTop,
-    borderWidth: 3,
-    borderColor: light.panel,
-    boxShadow: shadows.card,
-  },
-  fanPin: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    marginLeft: -9,
-    marginTop: -9,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 3,
-    borderColor: light.panel,
-    backgroundColor: light.accent,
-  },
-  routeCard: {
-    width: 250,
-    padding: 18,
-    borderRadius: 24,
-    gap: 3,
-    backgroundColor: light.panel,
-    borderWidth: 1,
-    borderColor: light.line,
-    boxShadow: shadows.card,
-  },
-  routePhotos: { flexDirection: 'row', marginBottom: 12 },
-  routePhoto: { width: 76, height: 84, borderRadius: 14, backgroundColor: light.canvasTop },
-  routePhotoStacked: { marginLeft: -22, borderWidth: 2, borderColor: light.panel },
+  pageSlot: { flex: 1, paddingHorizontal: GUTTER, justifyContent: 'center' },
+  art: { alignItems: 'center', justifyContent: 'center' },
+  words: { marginTop: 30, gap: 22 },
   nameInput: {
-    marginTop: -12,
     height: 54,
     paddingHorizontal: 18,
     borderRadius: 999,
@@ -403,45 +353,9 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: light.ink,
   },
-  districtPicker: { marginTop: -12, marginHorizontal: -GUTTER, paddingLeft: GUTTER },
-  voteCard: {
-    width: 290,
-    padding: 14,
-    gap: 12,
-    borderRadius: 22,
-    backgroundColor: light.panel,
-    borderWidth: 1,
-    borderColor: light.line,
-    boxShadow: shadows.card,
-  },
-  voteHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  voteThumb: { width: 48, height: 48, borderRadius: 13, backgroundColor: light.canvasTop },
-  voteText: { flex: 1, gap: 1 },
-  votePill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: light.ink },
-  votePillText: { fontFamily: fonts.sansSemi, fontSize: 12, lineHeight: 15, color: light.ctaInk },
-  voteBar: { flexDirection: 'row', gap: 4, height: 6 },
-  voteSlot: { flex: 1, borderRadius: 3 },
-  voteChips: { flexDirection: 'row', gap: 8 },
-  voteChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingLeft: 3,
-    paddingRight: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: light.canvas,
-  },
-  voteEmoji: { fontSize: 14, lineHeight: 18 },
-  voteNote: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 14,
-    borderTopLeftRadius: 4,
-    backgroundColor: light.canvas,
-  },
-  voteNoteName: { fontFamily: fonts.sansSemi, color: light.ink },
+  nameInputFocused: { borderColor: light.lineStrong },
+  district: { gap: 10 },
+  districtChips: { marginHorizontal: -GUTTER, paddingLeft: GUTTER },
   copy: { gap: 12 },
   title: { fontFamily: fonts.display, fontSize: 30, lineHeight: 35, color: light.ink, letterSpacing: -1 },
   titleLead: { fontFamily: fonts.displayMedium, color: light.inkSoft, letterSpacing: -0.5 },

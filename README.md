@@ -51,7 +51,7 @@ How it fits together: `src/lib/live/` talks to Supabase (the client, the calls, 
 
 ## The happy flow
 
-1. **Onboarding** → three screens: what it does, what it does near home, and which district you live in.
+1. **Onboarding** → four screens, each with a looping illustration: a video (a beach, a restaurant, a hidden spot) becoming pins on a map and a planned day, the group vote, weekends near home (with the district picker), and your name as friends will see it.
 2. **Home** → paste a link, or tap a sample city.
 3. **Analysing** → the reel is read and places roll in like film credits.
 4. **Save** the spots and keep collecting, or **Plan this trip** to go straight on.

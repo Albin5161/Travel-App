@@ -260,7 +260,7 @@ export function LaunchIntro({ onDone }: Props) {
               letterSpacing={1.6}
               fill={INK}
             >
-              EVERY PATH HAS A STORY
+              SAW IT IN A VIDEO? GO THERE.
             </SvgText>
             <Line
               x1={115}

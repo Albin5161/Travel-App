@@ -383,7 +383,7 @@ function EmptySpots() {
         Nothing saved yet.
       </Text>
       <Text variant="body" style={{ textAlign: 'center' }}>
-        Paste a reel on Home. Every spot in it lands here, sorted by how far it is from you.
+        Paste a video on Home: a café, a beach, a hidden spot. Every place in it lands here, sorted by how far it is from you.
       </Text>
       <Button label="Go to Home" onPress={() => router.replace('/')} style={{ marginTop: 8 }} />
     </View>

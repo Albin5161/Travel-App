@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Platform, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -154,6 +155,19 @@ export default function Profile() {
             )}
           </Card>
         </Animated.View>
+
+        <PressableScale
+          onPress={() => router.push('/credits')}
+          accessibilityRole="button"
+          accessibilityLabel="Photo credits"
+          style={styles.creditsRow}
+        >
+          <Feather name="image" size={15} color={light.ink} />
+          <Text variant="label" style={styles.creditsLabel}>
+            Photo credits
+          </Text>
+          <Feather name="chevron-right" size={16} color={light.inkFaint} />
+        </PressableScale>
 
         <Text variant="data" color={light.inkFaint} style={styles.footer}>
           Xplore {Constants.expoConfig?.version ?? ''} · prototype. Saved spots live in memory for now,
@@ -333,5 +347,18 @@ const styles = StyleSheet.create({
     backgroundColor: light.cta,
   },
   note: { flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'flex-start' },
+  creditsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 18,
+    backgroundColor: light.panel,
+    borderWidth: 1,
+    borderColor: light.line,
+  },
+  creditsLabel: { flex: 1 },
   footer: { paddingHorizontal: GUTTER, paddingTop: 22, lineHeight: 18 },
 });

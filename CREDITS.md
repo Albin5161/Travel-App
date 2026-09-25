@@ -7,8 +7,8 @@ Prototype photography, bundled in `assets/images/places/`.
 |---|---|---|---|
 | gok-temple.jpg | Main entry to the Mahabaleshwar Temple at Gokaran.jpg | Nvvchar | CC BY-SA 3.0 |
 | gok-kudle.jpg | Kudle beach gokarna.jpg | Happyshopper | CC BY 2.5 |
-| gok-halfmoon.jpg | Half Moon Beach Gokarna Karnatak 05.jpg | Sourabh.biswas003 | CC BY-SA 4.0 |
-| gok-paradise.jpg | Paradise beach gokarna, Paradise Beach Trail 18.jpg | Sourabh.biswas003 | CC BY-SA 4.0 |
+| gok-halfmoon.jpg | PXL 20260103 091848995.MP Half Moon Beach Gokarna Karnatak 05.jpg | Sourabh.biswas003 | CC BY-SA 4.0 |
+| gok-paradise.jpg | PXL 20260103 054657562.MP Paradise beach gokarna Paradise Beach Trail, Gokarna, Karnataka 581326 18.jpg | Sourabh.biswas003 | CC BY-SA 4.0 |
 | gok-cafe.jpg | Strawberry Farms, Kudle Beach, Gokarna 01.jpg | Devender Goyal | CC BY-SA 4.0 |
 | gok-thali.jpg | Vegetarian thali Karnataka DSC0004.jpg | Maina Bosco | CC BY-SA 4.0 |
 

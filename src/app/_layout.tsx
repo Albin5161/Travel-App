@@ -71,6 +71,7 @@ export default function RootLayout() {
             <Stack.Screen name="city/[id]" options={{ animation: 'none', gestureEnabled: false }} />
             <Stack.Screen name="citymap/[id]" options={{ animation: 'fade' }} />
             {/* Questions before a plan: its own back handling steps through them, so no edge swipe. */}
+            <Stack.Screen name="credits" />
             <Stack.Screen name="trip/[id]" options={{ animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="plan/[id]" />
             <Stack.Screen name="share/[id]" options={{ animation: 'fade', gestureEnabled: false }} />

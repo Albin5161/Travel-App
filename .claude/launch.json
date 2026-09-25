@@ -4,8 +4,21 @@
     {
       "name": "xplore-web",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "npx expo start --web --port ${PORT:-8082}"],
+      "runtimeArgs": [
+        "-c",
+        "npx expo start --web --port ${PORT:-8082}"
+      ],
       "port": 8082,
+      "autoPort": true
+    },
+    {
+      "name": "raahi-dist",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "/private/tmp/claude-501/-Users-albinsigi-Desktop-productanatomy-albin-RahiMobileApp--claude-worktrees-raahi-session-handoff-219950/2227cd52-78b8-4fae-b449-b49ac362beb6/scratchpad/serve-dist.mjs",
+        "/Users/albinsigi/Desktop/productanatomy-albin/RahiMobileApp/.claude/worktrees/raahi-session-handoff-219950/dist"
+      ],
+      "port": 8090,
       "autoPort": true
     }
   ]

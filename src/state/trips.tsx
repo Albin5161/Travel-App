@@ -1,10 +1,11 @@
-import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 
 import { getPlace, getCity } from '@/data/api';
 import { allDistricts } from '@/data/regions';
 import type { Group, GroupState, Member, Vote } from '@/data/group';
 import type { TripPlan } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
+import { deviceStorage } from '@/lib/live/storage';
 import { clusterSpots, districtOf } from '@/lib/spots';
 
 export interface CityCollection {
@@ -39,8 +40,10 @@ interface State {
   tripPlans: Record<string, TripPlan>;
   /** The group vote on each city's plan, if one has started. */
   groups: Record<string, GroupState>;
-  /** What friends see you as on a shared trip. Asked the first time you share or join. */
+  /** What friends see you as on a shared trip. Asked at the end of onboarding; kept on the device. */
   myName: string | null;
+  /** Your photo, as a data URI, kept on the device. */
+  myPhoto: string | null;
   /** Trips shared through the backend, by city: which trip, and who you are on it. */
   remote: Record<string, Remote>;
   /** City to fade in once on the home screen. */
@@ -76,6 +79,7 @@ type Action =
   | { type: 'groupStart'; cityId: string; planKey: string; party: Group; swapFor: Record<string, string>; live?: boolean }
   | { type: 'groupPeople'; cityId: string; people: Member[] }
   | { type: 'setMyName'; name: string }
+  | { type: 'setMyPhoto'; photo: string | null }
   | { type: 'setRemote'; cityId: string; remote: Remote }
   | { type: 'groupJoin'; cityId: string; memberId: string }
   | { type: 'groupVote'; cityId: string; placeId: string; memberId: string; vote: Vote }
@@ -105,6 +109,7 @@ const initial: State = {
   tripPlans: {},
   groups: {},
   myName: null,
+  myPhoto: null,
   remote: {},
   freshCityId: null,
   homeTab: 'cities',
@@ -179,6 +184,8 @@ function reducer(state: State, action: Action): State {
       };
     case 'setMyName':
       return { ...state, myName: action.name.trim() || null };
+    case 'setMyPhoto':
+      return { ...state, myPhoto: action.photo };
     case 'setRemote':
       return { ...state, remote: { ...state.remote, [action.cityId]: action.remote } };
     case 'groupJoin':
@@ -240,8 +247,32 @@ function groupReducer(g: GroupState, action: GroupAction): GroupState {
 
 const TripsContext = createContext<{ state: State; dispatch: (a: Action) => void } | null>(null);
 
+// Who you are is the one thing kept on the device so far: your name and photo survive a restart.
+// Everything else still lives in memory.
+const NAME_KEY = 'xplore.name';
+const PHOTO_KEY = 'xplore.photo';
+
+function read(key: string) {
+  try {
+    return deviceStorage?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function write(key: string, value: string | null) {
+  try {
+    if (value) deviceStorage?.setItem(key, value);
+    else deviceStorage?.removeItem(key);
+  } catch {
+    // Storage full or unavailable: it just won't be remembered next time.
+  }
+}
+
 export function TripsProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initial);
+  const [state, dispatch] = useReducer(reducer, initial, (s) => ({ ...s, myName: read(NAME_KEY), myPhoto: read(PHOTO_KEY) }));
+  useEffect(() => write(NAME_KEY, state.myName), [state.myName]);
+  useEffect(() => write(PHOTO_KEY, state.myPhoto), [state.myPhoto]);
   return <TripsContext.Provider value={{ state, dispatch }}>{children}</TripsContext.Provider>;
 }
 

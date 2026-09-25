@@ -31,7 +31,7 @@ export default function ShareScreen() {
   const city = getCity(id);
   const { state, dispatch } = useTrips();
   const plan = state.tripPlans[id];
-  const { width: W, height: H } = useWindowDimensions();
+  const { width: W } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const card = useRef<View>(null);
   const [issued] = useState(() => new Date());
@@ -39,6 +39,9 @@ export default function ShareScreen() {
   const [note, setNote] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [name, setName] = useState(state.myName ?? '');
+  // The room between the headline and the buttons, measured: a phone browser's own bars leave far
+  // less than the window height suggests, so the card is fitted to this, not guessed.
+  const [stageH, setStageH] = useState<number | null>(null);
 
   // Nothing to share without a plan (a reload wipes the in-memory store): go home.
   useEffect(() => {
@@ -54,9 +57,11 @@ export default function ShareScreen() {
   const live = liveEnabled && party !== 'solo';
   const needName = live && !state.myName;
 
+  // The card is laid out at its natural size (so the shared image is always full size) and scaled
+  // down as a whole when the stage is shorter than that.
   const cardW = Math.min(W - 64, 340);
-  const room = H - insets.top - insets.bottom - 150 - 150;
-  const cardH = Math.max(400, Math.min(Math.round(cardW * 1.42), room));
+  const cardH = Math.round(cardW * 1.42);
+  const fit = stageH ? Math.min(1, (stageH - 20) / cardH) : 1;
 
   const share = async () => {
     if (busy) return;
@@ -112,10 +117,14 @@ export default function ShareScreen() {
         </Animated.View>
       </View>
 
-      <View style={styles.stage}>
-        <TiltCard width={cardW} height={cardH} delay={160} faceRef={card}>
-          <PlanPass city={city} plan={plan} width={cardW} height={cardH} issued={issued} />
-        </TiltCard>
+      <View style={styles.stage} onLayout={(e) => setStageH(e.nativeEvent.layout.height)}>
+        {stageH ? (
+          <View style={{ transform: [{ scale: fit }] }}>
+            <TiltCard width={cardW} height={cardH} delay={160} faceRef={card}>
+              <PlanPass city={city} plan={plan} width={cardW} height={cardH} issued={issued} />
+            </TiltCard>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.actions}>

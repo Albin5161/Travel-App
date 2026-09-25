@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Avatar } from '@/components/group/Avatar';
 import { PressableScale } from '@/components/PressableScale';
+import { ProfilePhoto } from '@/components/ProfilePhoto';
 import { Text } from '@/components/Text';
 import { Chips } from '@/components/spots/Chips';
 import { places } from '@/data/catalog';
@@ -27,14 +28,17 @@ import { project, SPRING_DRAG } from '@/lib/motion';
 import { useTrips } from '@/state/trips';
 import { fonts, light, shadows } from '@/theme/tokens';
 
-const PAGES = 3;
+const PAGES = 4;
 const GUTTER = 28;
 
 /**
- * Three screens, each a reason before a feature. First the problem everyone has (saved reels, no
+ * Three screens, each a reason before a feature, then who you are.
+ *
+ * The three: First the problem everyone has (saved reels, no
  * trips), then what makes Xplore different (a plan the whole group agrees on), then the weekly
  * reason to come back (spots near home become weekends), which is where it asks the one thing it
- * needs: where home is. The how (paste a link, swipe to check) is left to the app itself, where
+ * needs: where home is. Last, your name and photo, so a plan you share says who it's from and you're
+never asked at the moment of sharing. The how (paste a link, swipe to check) is left to the app itself, where
  * it's obvious. Permissions come later, in context, where the reason can be stated.
  */
 export default function Onboarding() {
@@ -42,6 +46,7 @@ export default function Onboarding() {
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useTrips();
   const [page, setPage] = useState(0);
+  const [name, setName] = useState(state.myName ?? '');
   // Position in pages, continuous. The finger writes it directly, so the pages track the drag
   // rather than snapping between states, and every derived animation reads this one value.
   const p = useSharedValue(0);
@@ -71,6 +76,7 @@ export default function Onboarding() {
 
   const finish = () => {
     haptic.success();
+    if (name.trim()) dispatch({ type: 'setMyName', name });
     dispatch({ type: 'finishOnboarding' });
     router.replace('/');
   };
@@ -129,6 +135,30 @@ export default function Onboarding() {
               options={allDistricts.map((d) => ({ key: d.id as string | null, label: d.name }))}
             />
           </View>
+        </Page>
+
+        <Page index={3} p={p}>
+          <View style={styles.art}>
+            <ProfilePhoto size={112} />
+          </View>
+          <Copy
+            lead={'Last thing.\n'}
+            title="Who's planning?"
+            body="Friends see your name and photo when you share a trip with them. Tap the circle to add a photo."
+          />
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="Your first name"
+            placeholderTextColor={light.inkFaint}
+            autoCapitalize="words"
+            autoComplete="given-name"
+            textContentType="givenName"
+            maxLength={40}
+            returnKeyType="done"
+            style={styles.nameInput}
+            accessibilityLabel="Your name"
+          />
         </Page>
           </Row>
         </GestureDetector>
@@ -361,6 +391,18 @@ const styles = StyleSheet.create({
   routePhotos: { flexDirection: 'row', marginBottom: 12 },
   routePhoto: { width: 76, height: 84, borderRadius: 14, backgroundColor: light.canvasTop },
   routePhotoStacked: { marginLeft: -22, borderWidth: 2, borderColor: light.panel },
+  nameInput: {
+    marginTop: -12,
+    height: 54,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: light.panel,
+    borderWidth: 1,
+    borderColor: light.line,
+    fontFamily: fonts.sansMedium,
+    fontSize: 17,
+    color: light.ink,
+  },
   districtPicker: { marginTop: -12, marginHorizontal: -GUTTER, paddingLeft: GUTTER },
   voteCard: {
     width: 290,

@@ -2,11 +2,12 @@ import { Feather } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { Children, isValidElement, useState, type ComponentProps, type ReactNode } from 'react';
-import { Linking, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/PressableScale';
+import { ProfilePhoto } from '@/components/ProfilePhoto';
 import { Text } from '@/components/Text';
 import { allDistricts } from '@/data/regions';
 import { haptic } from '@/lib/haptics';
@@ -36,6 +37,7 @@ export default function Profile() {
   const { permissions, ask, watching, simulate, targets } = useArrivalWatch();
   const spots = useSavedSpots();
   const [picking, setPicking] = useState(false);
+  const [name, setName] = useState(state.myName ?? '');
 
   const home = allDistricts.find((d) => d.id === state.homeDistrictId);
   const trips = Object.values(state.savedTrips).filter(Boolean).length;
@@ -58,8 +60,13 @@ export default function Profile() {
       contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: insets.bottom + 110 }}
     >
       <Animated.View entering={ENTER[0]} style={styles.header}>
-        <Text variant="display">Profile</Text>
-        <Text variant="data">{home ? `Home in ${home.name}` : 'No home district yet'}</Text>
+        <ProfilePhoto size={72} />
+        <View style={styles.headerText}>
+          <Text variant="display" numberOfLines={1}>
+            {state.myName ?? 'Profile'}
+          </Text>
+          <Text variant="data">{home ? `Home in ${home.name}` : 'No home district yet'}</Text>
+        </View>
       </Animated.View>
 
       <Animated.View entering={ENTER[1]} style={styles.stats}>
@@ -69,7 +76,22 @@ export default function Profile() {
       </Animated.View>
 
       <Animated.View entering={ENTER[2]}>
-        <Section title="You" footer="Your weekend outings, and which places count as away, follow from this.">
+        <Section title="You" footer="Friends see your name and photo on trips you share. Your weekend outings, and which places count as away, follow from home.">
+          <Row icon="user" label="Name">
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              onEndEditing={() => dispatch({ type: 'setMyName', name })}
+              onBlur={() => dispatch({ type: 'setMyName', name })}
+              placeholder="Add your name"
+              placeholderTextColor={light.inkFaint}
+              autoCapitalize="words"
+              maxLength={40}
+              returnKeyType="done"
+              style={styles.nameField}
+              accessibilityLabel="Your name"
+            />
+          </Row>
           <Row
             icon="home"
             label="Home district"
@@ -350,7 +372,16 @@ function PermissionRow({
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: light.canvas },
-  header: { paddingHorizontal: GUTTER + 4, gap: 4 },
+  header: { paddingHorizontal: GUTTER + 4, flexDirection: 'row', alignItems: 'center', gap: 16 },
+  headerText: { flex: 1, gap: 2 },
+  nameField: {
+    minWidth: 140,
+    textAlign: 'right',
+    fontFamily: fonts.sansMedium,
+    fontSize: 15,
+    color: light.inkSoft,
+    paddingVertical: 6,
+  },
   stats: { flexDirection: 'row', gap: 10, paddingHorizontal: GUTTER, marginTop: 18 },
   statSlot: { flex: 1 },
   stat: {

@@ -1,7 +1,7 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 
 // One tiny player for the whole app, created on first use and kept: the chime is 0.6s of mono WAV,
-// synthesised for Raahi (two soft bell notes rising a fourth), so there is nothing to license.
+// synthesised for Xplore (two soft bell notes rising a fourth), so there is nothing to license.
 let player: AudioPlayer | null = null;
 let ready: Promise<void> | null = null;
 

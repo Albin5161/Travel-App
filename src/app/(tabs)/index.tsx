@@ -94,7 +94,7 @@ export default function Home() {
           contentContainerStyle={{ flexGrow: 1, paddingTop: 12 }}
         >
           <View style={styles.header}>
-            <Text style={styles.wordmark}>Raahi</Text>
+            <Text style={styles.wordmark}>Xplore</Text>
             <Animated.View entering={ENTER[0]}>
               <Text style={styles.question}>
                 Which video is{'\n'}

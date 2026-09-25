@@ -1,5 +1,5 @@
 ---
-name: Raahi
+name: Xplore
 description: Turn the reels you saved into a trip you'll actually take — a travel film at dusk, where photography talks and the UI recedes into dark glass.
 colors:
   night: "#0D0F0E"
@@ -112,11 +112,11 @@ components:
     rounded: "{rounded.card}"
 ---
 
-# Design System: Raahi
+# Design System: Xplore
 
 ## Direction update: Light (22 Sep 2026, in progress)
 
-Raahi has moved from "a travel film at dusk" to a **light, airy direction modelled on the Atlys iOS app**, and every screen is now light. **Where this section and the dusk system below disagree, this section wins.** The dusk rules still describe what sits *on photos* (place cards, the reel preview): those wrap themselves in `<Tone value="dark">` (`src/theme/tone.tsx`) so their text stays light on the image.
+Xplore (formerly Raahi) has moved from "a travel film at dusk" to a **light, airy direction modelled on the Atlys iOS app**, and every screen is now light. **Where this section and the dusk system below disagree, this section wins.** The dusk rules still describe what sits *on photos* (place cards, the reel preview): those wrap themselves in `<Tone value="dark">` (`src/theme/tone.tsx`) so their text stays light on the image.
 
 **North star:** paper UI, photos carry all the colour. The chrome almost disappears (hairlines, pale fields, small grey labels) so the photo cards read as objects sitting on paper.
 
@@ -160,10 +160,11 @@ Raahi has moved from "a travel film at dusk" to a **light, airy direction modell
 The map is its own screen (`map/[id]`), reached from Places ("Open the map") or from "Plan this trip →" after analysing.
 
 **Signature animations** (Albin's designs in `references/animations/`, rebuilt natively in `src/components/motion/`):
-- **Opening** (`LaunchIntro`, once per launch, skipped with Reduce Motion): a winding accent route draws itself in 0.6s with a light at its tip, and a pin drops onto its end at 0.35s with a bounce, a ripple and a light haptic. At 0.55s the pin shrinks into the **dot of the ı** while "Raahı" fades up letter by letter (0.05s stagger). The route fades and "EVERY PATH HAS A STORY" appears by 1.6s, then the layer fades to reveal home. The letters are placed from Plus Jakarta Sans ExtraBold's own advances at 40, less -0.04 em tracking, so the dot (0.15 em, the tittle's own size) lands exactly on the dotless i.
+- **Opening** (`LaunchIntro`, once per launch, skipped with Reduce Motion): a winding accent route draws itself in 0.6s with a light at its tip, and a pin drops onto its end at 0.35s with a bounce, a ripple and a light haptic. At 0.55s the pin shrinks into a **dot inside the o** while "Xplore" fades up letter by letter (0.05s stagger), so the o reads as a location marker. The route fades and "EVERY PATH HAS A STORY" appears by 1.6s, then the layer fades to reveal home. The letters are placed from Plus Jakarta Sans ExtraBold's own advances at 40, less -0.04 em tracking, so the dot (0.2 em, inside a 0.275 em counter) sits centred in the o's hole.
 - **Reel scanner** (`ReelScanner`, Analysing): a white orb on the reel card's bottom-right edge. Three ink ripples, an accent arc circling (2.4s cycle), and the orb's icon cycling play → pin → sparkle. When all places are found, the arc closes into a ring, a check draws in, and the orb pops once (0.6s).
 - **Saved tick** (`SavedTick`, after "Save N spots" and on single-spot quick-save): an ink circle pops in with overshoot, a white check draws itself, and six accent dots burst and fade (0.7s). Then back home.
-- **Passport stamp** (`PassportStamp`, "Save this day"): the page veils to paper, and an Ember stamp (worn double ring, curved "RAAHI · DAY PLANNED", the city in Jakarta ExtraBold capitals sized to fit between the stars, the date) drops from 1.6× at -12° to land at -6° in 0.35s with a **haptic thud**, squashes to 0.96, rebounds and settles as an ink ring spreads. It holds, then goes home. Tap to skip.
+- **Passport stamp** (`PassportStamp`, "Save this day"): the page veils to paper, and an Ember stamp (worn double ring, curved "XPLORE · DAY PLANNED", the city in Jakarta ExtraBold capitals sized to fit between the stars, the date) drops from 1.6× at -12° to land at -6° in 0.35s with a **haptic thud**, squashes to 0.96, rebounds and settles as an ink ring spreads. It holds, then goes home. Tap to skip.
+- **Share card** (`TiltCard` + `PlanPass`, after the stamp): "Your Xplore plan is ready" over the plan as a boarding pass (photo above a perforated tear; start and wrap-up, or the dates for a longer trip, the stops, issue date and barcode below). The card is dealt in (rises 70pt, scale 0.92→1, rotateX 22°→0 on a 900ms spring with damping 0.62) and one band of holographic light sweeps across it. It then leans with the phone, exaggerated: the gravity vector, measured against a neutral that drifts to your grip over ≈2s, up to 11° each way. A foil band and a glare slide the other way as if the light were fixed in the room, the photo shifts 9pt for parallax, and the shadow moves underneath. A finger tilts it too; without a sensor (web, simulator) it sways until touched. Reduce Motion: no deal, no tilt, static foil. "Share to group" sends the card as an image (with the message on iOS).
 - **Safety icons** (`SafetyIcon`, Good to know): 24×24 line icons, 1.5 stroke, one colour. Facts without a matching icon keep a Feather icon.
 - *Not carried over from the web versions:* the rough-ink turbulence filter and blur glows (react-native-svg doesn't support them). Worn, dashed rings and a wide low-opacity stroke stand in for them.
 
@@ -173,7 +174,7 @@ The map is its own screen (`map/[id]`), reached from Places ("Open the map") or 
 
 **Creative North Star: "A travel film at dusk."**
 
-Raahi should feel like the opening minutes of a travel film shot at golden hour. The photograph does the talking. The interface steps back into dark glass and gets out of the way. The mood is calm, warm and premium, and it's the opposite of the busy, list-heavy trip planners Raahi competes with. Depth comes from light, photography and glass, never from decoration.
+Xplore should feel like the opening minutes of a travel film shot at golden hour. The photograph does the talking. The interface steps back into dark glass and gets out of the way. The mood is calm, warm and premium, and it's the opposite of the busy, list-heavy trip planners Xplore competes with. Depth comes from light, photography and glass, never from decoration.
 
 The system is **dark-only**. Night (`#0D0F0E`) is the world every screen lives in. Warmth enters only through photography; the UI itself stays neutral, with one accent (Ember) reserved for the moments the user acts: keep, route, go.
 
@@ -283,7 +284,7 @@ Used exactly once: the Ember glow under the primary Keep button (Ember 45%, y 8,
 
 ## Map
 
-Raahi's map is a **custom-drawn, stylised dark map**, not Apple or Google Maps.
+Xplore's map is a **custom-drawn, stylised dark map**, not Apple or Google Maps.
 
 - Night sea, Basalt land, faint hairline roads, a serif "Arabian Sea" label. Only the places the user collected appear on it.
 - **Why custom:** the pin drop is our hero moment. Animated custom markers on native map SDKs are notoriously janky (they're rasterised snapshots), while pins drawn by us run on the UI thread at full frame rate. It also looks identical on iOS and Android, and works in Expo Go with no API keys.
@@ -321,7 +322,7 @@ A dashed-rim Basalt card in the empty slot: *"Nothing planned for dinner."* + a 
 ## Motion
 
 ### The Two-Speeds Rule
-Raahi moves at two speeds, and never mixes them up:
+Xplore moves at two speeds, and never mixes them up:
 
 1. **UI speed (≤300ms).** Anything the user does often: press, toggle, sheet, card commit. Fast, ease-out, never in the way.
 2. **Cinematic speed (400–600ms+).** Only the rare, story moments that happen once per link: the analysis, the reveal, the route drawing itself. This is where Direction A's "nothing snaps; everything settles" lives.

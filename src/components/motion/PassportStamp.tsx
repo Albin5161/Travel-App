@@ -124,7 +124,7 @@ const STAMP_GAP = 92;
 const stampSize = (city: string) =>
   Math.min(22, (STAMP_GAP - STAMP_TRACK * (city.length - 1)) / (0.72 * city.length));
 
-// The stamp itself: a worn double ring, curved "RAAHI · DAY PLANNED", the city in heavy capitals,
+// The stamp itself: a worn double ring, curved "XPLORE · DAY PLANNED", the city in heavy capitals,
 // a star between rules, and the date. (The web version roughens the ink with an SVG turbulence
 // filter, which react-native-svg doesn't support; broken dashes in the rings give the worn edge.)
 function StampArt({ city, date, size }: { city: string; date: string; size: number }) {
@@ -155,7 +155,7 @@ function StampArt({ city, date, size }: { city: string; date: string; size: numb
       />
       <SvgText fill={INK} fontFamily={fonts.sansSemi} fontSize={10} letterSpacing={2.2} textAnchor="middle">
         <TextPath href="#stamp-arc" startOffset="50%" textAnchor="middle">
-          RAAHI · DAY PLANNED
+          XPLORE · DAY PLANNED
         </TextPath>
       </SvgText>
       <Path

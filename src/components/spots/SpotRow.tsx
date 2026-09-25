@@ -12,7 +12,7 @@ import { light } from '@/theme/tokens';
 
 /**
  * One saved spot. The line under the name is what makes it actionable: how long the drive is, and
- * who put it in your head in the first place — the creator is a Raahi-specific memory hook.
+ * who put it in your head in the first place — the creator is an Xplore-specific memory hook.
  */
 export function SpotRow({
   spot,

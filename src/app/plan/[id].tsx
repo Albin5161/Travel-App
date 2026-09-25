@@ -212,10 +212,12 @@ export default function PlanScreen() {
     setFlash(result.changed);
   };
 
+  // The stamp's paper veil fades into the share card. Replaced, not pushed: the plan is saved, so
+  // there's nothing to come back to.
   const save = () => setStamping(true);
   const saved = () => {
     dispatch({ type: 'saveTrip', cityId: id });
-    router.dismissTo('/');
+    router.replace({ pathname: '/share/[id]', params: { id } });
   };
 
   // Stops grouped into parts of the day by their clock time, keeping the day's order.

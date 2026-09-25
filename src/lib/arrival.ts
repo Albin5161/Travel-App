@@ -13,7 +13,7 @@ import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 
-export const ARRIVAL_TASK = 'raahi-district-arrival';
+export const ARRIVAL_TASK = 'xplore-district-arrival';
 const CHANNEL_ID = 'arrivals';
 
 /** Don't say the same thing twice in a day if you cross a district edge a few times. */

@@ -55,7 +55,7 @@ export function SavedTick({ size = 64 }: Props) {
   });
 
   return (
-    <View style={{ width: size, height: size }} accessibilityElementsHidden importantForAccessibility="no">
+    <View style={{ width: size, height: size }} aria-hidden>
       <Animated.View style={[StyleSheet.absoluteFill, circle]}>
         <Svg width={size} height={size} viewBox="0 0 64 64">
           <Circle cx={32} cy={32} r={24} fill={light.ink} />

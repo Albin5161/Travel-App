@@ -81,7 +81,7 @@ export default function Onboarding() {
       <LinearGradient colors={[light.canvasTop, light.canvas]} style={styles.wash} pointerEvents="none" />
 
       <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.wordmark}>Raahi</Text>
+        <Text style={styles.wordmark}>Xplore</Text>
         {last ? null : (
           <PressableScale onPress={finish} accessibilityRole="button" accessibilityLabel="Skip setup">
             <Text variant="label" color={light.inkFaint}>

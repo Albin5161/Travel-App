@@ -105,7 +105,7 @@ export default function Profile() {
               label="Location, always"
               permissions={permissions}
               ask={ask}
-              why="The only way an arrival can reach you while Raahi is closed. iOS calls it “Always Allow”."
+              why="The only way an arrival can reach you while Xplore is closed. iOS calls it “Always Allow”."
             />
 
             {inExpoGo ? (
@@ -156,7 +156,7 @@ export default function Profile() {
         </Animated.View>
 
         <Text variant="data" color={light.inkFaint} style={styles.footer}>
-          Raahi {Constants.expoConfig?.version ?? ''} · prototype. Saved spots live in memory for now,
+          Xplore {Constants.expoConfig?.version ?? ''} · prototype. Saved spots live in memory for now,
           so they reset when the app restarts.
         </Text>
       </ScrollView>

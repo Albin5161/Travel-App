@@ -20,8 +20,8 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // Albin's opening animation (references/animations/raahi_travel_app_opening_animation.html), in a
 // 300×300 box: 0–0.6s a winding route draws itself with a light travelling at its tip; 0.35s a pin
-// drops onto its end with a bounce and a ripple; 0.55s the pin shrinks into the dot of the "ı" while
-// "Raahı" fades up letter by letter; 1.1–1.6s the route fades and the tagline appears. Then the
+// drops onto its end with a bounce and a ripple; 0.55s the pin shrinks into a dot inside the "o" while
+// "Xplore" fades up letter by letter; 1.1–1.6s the route fades and the tagline appears. Then the
 // whole layer fades away to reveal home.
 const EASE = Easing.bezierFn(0.23, 1, 0.32, 1);
 const BOUNCE = Easing.bezierFn(0.34, 1.56, 0.64, 1);
@@ -32,32 +32,30 @@ const INK = light.ink;
 const ACCENT = light.accent;
 
 // Wordmark set in Plus Jakarta Sans ExtraBold 40, centred on x=150, baseline 166. Letter advances
-// are the font's own (R .667, a .583, h .599, ı .238 em) less the wordmark's -0.04 em tracking, so
-// the dot lands exactly on the dotless i.
+// are the font's own (X .682, p .673, l .26, o .651, r .386, e .611 em) less the wordmark's -0.04 em
+// tracking, so the dot lands exactly in the o's counter.
 const SIZE = 40;
 const TRACK = -0.04;
-const WORD = ['R', 'a', 'a', 'h', 'ı'];
-const ADVANCE = [0.667 + TRACK, 0.583 + TRACK, 0.583 + TRACK, 0.599 + TRACK, 0.238];
+const WORD = ['X', 'p', 'l', 'o', 'r', 'e'];
+const ADVANCE = [0.682 + TRACK, 0.673 + TRACK, 0.26 + TRACK, 0.651 + TRACK, 0.386 + TRACK, 0.611];
 const X0 = 150 - (ADVANCE.reduce((a, b) => a + b, 0) * SIZE) / 2;
 const LETTER_X = ADVANCE.map((_, i) => X0 + ADVANCE.slice(0, i).reduce((a, b) => a + b, 0) * SIZE);
 const BASELINE = 166;
-// Centre of the i's tittle: halfway across its stem (0.119 em), 0.67 em above the baseline.
-const DOT = { x: LETTER_X[4] + 0.119 * SIZE, y: BASELINE - 0.67 * SIZE };
-// The tittle is 0.15 em across; the pin shrinks to exactly that.
-const DOT_R = 0.075 * SIZE;
+// Centre of the o's counter (the hole spans x .188–.463, y .123–.423 em): the pin lands in it, so the
+// o reads as a location marker.
+const DOT = { x: LETTER_X[3] + 0.3255 * SIZE, y: BASELINE - 0.273 * SIZE };
+// The counter is 0.275 em across; the dot fills most of it and the o's ring frames it.
+const DOT_R = 0.1 * SIZE;
 
-// The route: two cubic curves ending at the dot.
+// The route: two cubic curves ending at the dot. It dips, climbs to a waypoint above the X, runs over
+// the letters' cap height and drops straight down into the o, so it never crosses a letter.
 const P0 = [30, 185];
+const MID = [100, 112];
 const SEGMENTS = [
-  [P0, [60, 225], [85, 120], [120, 150]],
-  [
-    [120, 150],
-    [150, 175],
-    [165, 103],
-    [DOT.x, DOT.y],
-  ],
+  [P0, [55, 220], [70, 110], MID],
+  [MID, [130, 114], [DOT.x, 100], [DOT.x, DOT.y]],
 ] as const;
-const ROUTE_D = `M ${P0[0]},${P0[1]} C 60,225 85,120 120,150 C 150,175 165,103 ${DOT.x},${DOT.y}`;
+const ROUTE_D = `M ${P0[0]},${P0[1]} C 55,220 70,110 ${MID[0]},${MID[1]} C 130,114 ${DOT.x},100 ${DOT.x},${DOT.y}`;
 
 // Sample the route once so the travelling light can follow it by arc length.
 const SAMPLES = (() => {
@@ -186,7 +184,7 @@ export function LaunchIntro({ onDone }: Props) {
   const py = DOT.y - 133;
 
   return (
-    <Animated.View style={[styles.layer, layerStyle]} accessibilityLabel="Raahi">
+    <Animated.View style={[styles.layer, layerStyle]} accessibilityLabel="Xplore">
       <View style={{ width: box, height: box }}>
         <Svg width={box} height={box} viewBox="0 0 300 300" style={StyleSheet.absoluteFill}>
           <AnimatedPath
@@ -218,7 +216,7 @@ export function LaunchIntro({ onDone }: Props) {
             animatedProps={route}
           />
           <AnimatedCircle cx={P0[0]} cy={P0[1]} fill={ACCENT} animatedProps={wpStart} />
-          <AnimatedCircle cx={120} cy={150} fill={ACCENT} animatedProps={wpMid} />
+          <AnimatedCircle cx={MID[0]} cy={MID[1]} fill={ACCENT} animatedProps={wpMid} />
           <AnimatedCircle r={4} fill={ACCENT} animatedProps={particle} />
           <AnimatedCircle cx={DOT.x} cy={DOT.y} fill="none" stroke={ACCENT} animatedProps={ripple} />
           <AnimatedCircle cx={DOT.x} cy={DOT.y} fill={ACCENT} animatedProps={dot} />

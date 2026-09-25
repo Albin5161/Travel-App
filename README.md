@@ -1,4 +1,6 @@
-# Raahi — prototype
+# Xplore — prototype
+
+*Formerly Raahi.*
 
 *Turn the reels you saved into a trip you'll actually take — and the spots near home into your weekends.*
 

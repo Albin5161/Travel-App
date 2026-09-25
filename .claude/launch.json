@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "raahi-web",
+      "name": "xplore-web",
       "runtimeExecutable": "sh",
       "runtimeArgs": ["-c", "npx expo start --web --port ${PORT:-8082}"],
       "port": 8082,

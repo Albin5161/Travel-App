@@ -75,6 +75,17 @@ export default function RootLayout() {
             <Stack.Screen name="trip/[id]" options={{ animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="plan/[id]" />
             <Stack.Screen name="share/[id]" options={{ animation: 'fade', gestureEnabled: false }} />
+            <Stack.Screen name="group/[id]" />
+            <Stack.Screen
+              name="vote/[id]"
+              options={{
+                presentation: 'formSheet',
+                sheetAllowedDetents: [0.92],
+                sheetGrabberVisible: true,
+                sheetCornerRadius: 32,
+                contentStyle: { backgroundColor: light.panel },
+              }}
+            />
             <Stack.Screen
               name="place/[id]"
               options={{

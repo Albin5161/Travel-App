@@ -47,6 +47,8 @@ Everything else — the whole flow, the maps, the motion — works in Expo Go.
 5. **Reveal** → the city map, with photo pins dropping in.
 6. **Review** → swipe right to keep, left to skip; the room behind the cards becomes the place you're looking at. Undo, or *Keep the rest*.
 7. **Plan** → the route draws itself, and scrolling the day moves the map. Add a local pick, then *Save this day*.
+   - **Share** → the stamp lands, then "Your Xplore plan is ready": the plan as a boarding pass that tilts with your phone. *Share to group* sends it as an image with a link.
+   - **Group vote** → friends join and keep, swap or drop each stop; an overruled stop flips to its swap, and confetti when everyone agrees. *Vote as a friend* lets someone vote on your phone. *Lock it in* applies the result. The shared link opens the same vote on the web build.
 8. **Map tab** → every spot you've saved, split into *Near home* and *Away*, with ready-made weekend outings for the near ones.
 9. **Profile** → home district, permissions, and **Simulate arrival** to see the notification flow.
 

@@ -48,7 +48,7 @@ export default function ShareScreen() {
     if (busy) return;
     setBusy(true);
     try {
-      const result = await sharePlanCard(card, planMessage(city.name, stops, plan.days.length));
+      const result = await sharePlanCard(card, planMessage(city.name, city.id, stops, plan.days.length));
       if (result === 'shared') {
         haptic.success();
         setNote('Sent. Now get everyone to agree.');
@@ -92,7 +92,11 @@ export default function ShareScreen() {
             </Text>
           </Animated.View>
         ) : null}
-        <Button label={note ? 'Share again' : 'Share to group'} onPress={share} disabled={busy} />
+        {note ? (
+          <Button label="See who’s voting" onPress={() => router.push({ pathname: '/group/[id]', params: { id } })} />
+        ) : (
+          <Button label="Share to group" onPress={share} disabled={busy} />
+        )}
         <Button kind="text" label={note ? 'Done' : 'Done for now'} onPress={() => router.dismissTo('/')} />
       </View>
     </View>

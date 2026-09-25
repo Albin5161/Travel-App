@@ -5,13 +5,13 @@ import { Platform, Share, type View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
 /**
- * Where a shared plan opens. The POC has no backend, so this is the public web build; null until
- * that link is settled, and the message simply goes without one.
+ * Where a shared plan opens: the group vote on the public web build (EAS Hosting). There's no
+ * backend, so a friend opening it gets the city's plan with the scripted group, and can vote.
  */
-export const PLAN_LINK_BASE: string | null = null;
+export const PLAN_LINK_BASE = 'https://xplore.expo.app';
 
-export function planMessage(cityName: string, stops: number, days: number) {
-  const link = PLAN_LINK_BASE ? `\n${PLAN_LINK_BASE}/plan/${cityName.toLowerCase()}` : '';
+export function planMessage(cityName: string, cityId: string, stops: number, days: number) {
+  const link = `\n${PLAN_LINK_BASE}/group/${cityId}`;
   const span = days === 1 ? 'one day' : `${days} days`;
   return `${cityName}, sorted. ${stops} stops, ${span}. Have a look and vote before we lock it in 👇${link}`;
 }

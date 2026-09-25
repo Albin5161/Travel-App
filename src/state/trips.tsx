@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, useReducer, type ReactNode } from '
 
 import { getPlace, getCity } from '@/data/api';
 import { allDistricts } from '@/data/regions';
+import type { GroupState, Vote } from '@/data/group';
 import type { TripPlan } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
 import { clusterSpots, districtOf } from '@/lib/spots';
@@ -36,6 +37,8 @@ interface State {
   savedTrips: Record<string, boolean>;
   /** The current plan for each city, as built by the planner and then edited. */
   tripPlans: Record<string, TripPlan>;
+  /** The group vote on each city's plan, if one has started. */
+  groups: Record<string, GroupState>;
   /** City to fade in once on the home screen. */
   freshCityId: string | null;
   /** Which half of My Collections Home shows. Set after a save, so the new card is on screen. */
@@ -56,6 +59,11 @@ type Action =
   | { type: 'addLocal'; cityId: string; placeId: string }
   | { type: 'saveTrip'; cityId: string }
   | { type: 'setTripPlan'; plan: TripPlan }
+  | { type: 'groupStart'; cityId: string; planKey: string; swapFor: Record<string, string> }
+  | { type: 'groupJoin'; cityId: string; friendId: string }
+  | { type: 'groupVote'; cityId: string; placeId: string; friendId: string; vote: Vote }
+  | { type: 'groupManual'; cityId: string; friendId: string }
+  | { type: 'groupLock'; cityId: string }
   | { type: 'clearFresh' }
   | { type: 'setHomeDistrict'; districtId: string }
   | { type: 'setSpotStatus'; placeId: string; status: SpotStatus }
@@ -77,6 +85,7 @@ const initial: State = {
   addedLocals: {},
   savedTrips: {},
   tripPlans: {},
+  groups: {},
   freshCityId: null,
   homeTab: 'cities',
 };
@@ -129,6 +138,22 @@ function reducer(state: State, action: Action): State {
     }
     case 'setTripPlan':
       return { ...state, tripPlans: { ...state.tripPlans, [action.plan.cityId]: action.plan } };
+    case 'groupStart':
+      return {
+        ...state,
+        groups: {
+          ...state.groups,
+          [action.cityId]: { planKey: action.planKey, joined: [], votes: {}, manual: [], swapFor: action.swapFor, locked: false },
+        },
+      };
+    case 'groupJoin':
+    case 'groupVote':
+    case 'groupManual':
+    case 'groupLock': {
+      const g = state.groups[action.cityId];
+      if (!g) return state;
+      return { ...state, groups: { ...state.groups, [action.cityId]: groupReducer(g, action) } };
+    }
     case 'saveTrip':
       return { ...state, savedTrips: { ...state.savedTrips, [action.cityId]: true } };
     case 'clearFresh':
@@ -145,6 +170,30 @@ function reducer(state: State, action: Action): State {
       return { ...state, arrivedDistrictId: null };
     case 'finishOnboarding':
       return { ...state, onboarded: true };
+  }
+}
+
+type GroupAction = Extract<Action, { type: 'groupJoin' | 'groupVote' | 'groupManual' | 'groupLock' }>;
+
+function groupReducer(g: GroupState, action: GroupAction): GroupState {
+  const join = (id: string) => (g.joined.includes(id) ? g.joined : [...g.joined, id]);
+  switch (action.type) {
+    case 'groupJoin':
+      return { ...g, joined: join(action.friendId) };
+    case 'groupVote':
+      return {
+        ...g,
+        joined: join(action.friendId),
+        votes: { ...g.votes, [action.placeId]: { ...g.votes[action.placeId], [action.friendId]: action.vote } },
+      };
+    case 'groupManual':
+      return {
+        ...g,
+        joined: join(action.friendId),
+        manual: g.manual.includes(action.friendId) ? g.manual : [...g.manual, action.friendId],
+      };
+    case 'groupLock':
+      return { ...g, locked: true };
   }
 }
 

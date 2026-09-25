@@ -267,7 +267,7 @@ export const cityInfo: Record<string, CityInfo> = {
   },
   kottayam: {
     summary:
-      'Home. A district of rubber hills, the Meenachil river and the top end of Vembanad, with a town in the middle of it all. Nothing here needs a trip — most of it is a morning and back.',
+      'Home. A district of rubber hills, the Meenachil river and the top end of Vembanad, with a town in the middle of it all. Nothing here needs a trip. Most of it is a morning there and back.',
     bestTime: 'Sep – Feb',
     idealStay: 'A day at a time',
     costPerDay: { low: 700, high: 1600 },

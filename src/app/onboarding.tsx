@@ -110,7 +110,7 @@ export default function Onboarding() {
           <Copy
             lead={'The ones near\nhome become\n'}
             title="your weekends."
-            body="Spots you save close by get grouped into outings you can actually do on a Saturday — with the drive time worked out."
+            body="Spots you save close by get grouped into outings you can actually do on a Saturday, with the drive time worked out."
           />
         </Page>
 
@@ -118,7 +118,7 @@ export default function Onboarding() {
           <HomeRings />
           <Copy
             title={'Where do\nyou live?'}
-            body="So we know which spots are a weekend away — and which ones to mention when you're somewhere else."
+            body="So we know which spots are a weekend away, and which ones to mention when you're somewhere else."
           />
           <View style={styles.districtPicker}>
             <Chips

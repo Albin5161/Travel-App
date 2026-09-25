@@ -305,7 +305,7 @@ const placeList: Place[] = [
   // Kottayam — from @kottayam.diaries. Home district: these are weekend spots, not a trip.
   {
     id: 'ktm-illickal', cityId: 'kottayam', name: 'Illickal Kallu', type: 'sight', area: 'Teekoy',
-    photo: photos.ktmIllickal, why: 'Three rocks above the clouds, an hour and a half east. Go early — the mist closes in by eleven.',
+    photo: photos.ktmIllickal, why: 'Three rocks above the clouds, an hour and a half east. Go early: the mist closes in by eleven.',
     source: reel('reel-kottayam', '0:08'), bestTime: 'morning', cost: 1, minutes: 180,
     coords: { lat: 9.7167, lng: 76.7833 }, map: [1020, 920], regionPoint: [772, 1012], order: 1,
   },

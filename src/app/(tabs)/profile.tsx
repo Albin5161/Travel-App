@@ -1,275 +1,347 @@
 import { Feather } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Linking, Platform, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Children, isValidElement, useState, type ComponentProps, type ReactNode } from 'react';
+import { Linking, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
-import { Chips } from '@/components/spots/Chips';
 import { allDistricts } from '@/data/regions';
 import { haptic } from '@/lib/haptics';
-import { fadeUp } from '@/lib/motion';
+import { fadeUp, REFLOW } from '@/lib/motion';
 import { useArrivalWatch, type Permissions } from '@/state/arrival';
-import { useSavedSpots, useSpotsByDistrict, useTrips } from '@/state/trips';
-import { fonts, light, shadows } from '@/theme/tokens';
+import { useSavedSpots, useTrips } from '@/state/trips';
+import { fonts, light } from '@/theme/tokens';
 
-const ENTER = [0, 1, 2, 3].map((i) => fadeUp(80 + i * 60));
+type IconName = ComponentProps<typeof Feather>['name'];
+
+const ENTER = [0, 1, 2, 3, 4, 5].map((i) => fadeUp(60 + i * 50));
 const GUTTER = 16;
 
-// Background geofencing is not in Expo Go, so the simulate control is the only way to show the
-// arrival flow there. Detected rather than assumed, so a development build hides the caveat.
+// Background geofencing is not in Expo Go, so "Try it" is the only way to see an arrival there.
+// Detected rather than assumed, so a development build drops the caveat.
 const inExpoGo = Constants.appOwnership === 'expo' || Constants.executionEnvironment === 'storeClient';
 
+/**
+ * Settings, laid out the way iOS does it: grouped lists under small headings, one row per thing,
+ * and the same three trailing controls everywhere. A switch turns something on or off, a quiet
+ * outlined pill asks for something (Allow), and a chevron goes somewhere. Nothing here uses the
+ * black primary button: it's saved for the one main action on a screen, and Profile has none.
+ */
 export default function Profile() {
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useTrips();
   const { permissions, ask, watching, simulate, targets } = useArrivalWatch();
   const spots = useSavedSpots();
-  const groups = useSpotsByDistrict();
+  const [picking, setPicking] = useState(false);
 
   const home = allDistricts.find((d) => d.id === state.homeDistrictId);
+  const trips = Object.values(state.savedTrips).filter(Boolean).length;
   const been = spots.filter((s) => state.spotStatus[s.id] === 'been').length;
   const away = targets.filter((t) => t.districtId !== state.homeDistrictId);
+  const allowed = permissions.notifications === 'granted' && permissions.background === 'granted';
+
+  const arrivalDetail = !state.notifyOnArrival
+    ? 'Off'
+    : watching > 0
+      ? `Watching ${watching} ${watching === 1 ? 'district' : 'districts'}`
+      : allowed
+        ? 'Save a spot outside home to start'
+        : 'Needs the two permissions below';
 
   return (
-    <View style={styles.fill}>
-      <LinearGradient colors={[light.canvasTop, light.canvas]} style={styles.wash} pointerEvents="none" />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 100 }}
-      >
-        <View style={styles.header}>
-          <Text style={styles.wordmark}>Profile</Text>
-        </View>
+    <ScrollView
+      style={styles.fill}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: insets.bottom + 110 }}
+    >
+      <Animated.View entering={ENTER[0]} style={styles.header}>
+        <Text variant="display">Profile</Text>
+        <Text variant="data">{home ? `Home in ${home.name}` : 'No home district yet'}</Text>
+      </Animated.View>
 
-        <Animated.View entering={ENTER[0]} style={styles.statRow}>
-          <Stat label="Spots saved" value={spots.length} />
-          <Stat label="Districts" value={groups.length} />
-          <Stat label="Been" value={been} />
-        </Animated.View>
+      <Animated.View entering={ENTER[1]} style={styles.stats}>
+        <Stat value={spots.length} label="Spots" onPress={() => router.navigate('/map')} />
+        <Stat value={trips} label="Trips" onPress={() => router.navigate('/trips')} />
+        <Stat value={been} label="Been" onPress={() => router.navigate('/map')} />
+      </Animated.View>
 
-        <Animated.View entering={ENTER[1]}>
-          <Card
-            title="Where you live"
-            detail="Everything near-home follows from this: your weekend list, and which districts are worth telling you about when you arrive."
-          >
-            <Chips
-              value={state.homeDistrictId}
-              onChange={(id) => id && dispatch({ type: 'setHomeDistrict', districtId: id })}
-              options={allDistricts.map((d) => ({ key: d.id as string | null, label: d.name }))}
-            />
-          </Card>
-        </Animated.View>
-
-        <Animated.View entering={ENTER[2]}>
-          <Card
-            title="Tell me when I arrive"
-            detail={`One notification when you enter a district you've saved spots in — not a ping for every café you drive past. ${
-              away.length > 0
-                ? `${away.length} ${away.length === 1 ? 'district' : 'districts'} away from ${home?.name ?? 'home'} would qualify.`
-                : 'Save a spot outside your district and this starts to matter.'
-            }`}
-          >
-            <Row
-              label="Arrival notifications"
-              detail={
-                watching > 0
-                  ? `Watching ${watching} ${watching === 1 ? 'district' : 'districts'}`
-                  : 'Off — needs the permissions below'
-              }
-            >
-              <Switch
-                value={state.notifyOnArrival}
-                onValueChange={(on) => {
-                  haptic.selection();
-                  dispatch({ type: 'setNotifyOnArrival', on });
-                }}
-                trackColor={{ true: light.cta, false: light.lineStrong }}
-                thumbColor={light.panel}
-                ios_backgroundColor={light.lineStrong}
-              />
-            </Row>
-
-            <Permission
-              name="notifications"
-              label="Show notifications"
-              permissions={permissions}
-              ask={ask}
-              why="Without this the arrival still shows as a banner inside the app, but not on your lock screen."
-            />
-            <Permission
-              name="background"
-              label="Location, always"
-              permissions={permissions}
-              ask={ask}
-              why="The only way an arrival can reach you while Xplore is closed. iOS calls it “Always Allow”."
-            />
-
-            {inExpoGo ? (
-              <View style={styles.note}>
-                <Feather name="info" size={14} color={light.inkSoft} />
-                <Text variant="data" style={{ flex: 1 }}>
-                  Real geofencing needs a development build — it doesn&rsquo;t run in Expo Go. Simulate an
-                  arrival below to see the whole flow.
-                </Text>
-              </View>
-            ) : null}
-          </Card>
-        </Animated.View>
-
-        <Animated.View entering={ENTER[3]}>
-          <Card
-            title="Simulate an arrival"
-            detail="Runs the same path a real geofence would: the notification, the banner, and the map opening on that district."
-          >
-            {away.length === 0 ? (
-              <Text variant="body">
-                Nothing to simulate yet — every spot you&rsquo;ve saved is in {home?.name ?? 'your district'}.
-              </Text>
-            ) : (
-              away.map((t) => (
-                <PressableScale
-                  key={t.districtId}
-                  onPress={() => {
-                    haptic.success();
-                    simulate(t.districtId);
-                  }}
-                  containerStyle={styles.simulateSlot}
-                  style={styles.simulate}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Simulate arriving in ${t.name}`}
-                >
-                  <Feather name="map-pin" size={15} color={light.ctaInk} />
-                  <Text variant="label" color={light.ctaInk} style={{ flex: 1 }}>
-                    Arrive in {t.name}
-                  </Text>
-                  <Text variant="data" color="rgba(255,255,255,0.65)">
-                    {t.spots} {t.spots === 1 ? 'spot' : 'spots'}
-                  </Text>
-                </PressableScale>
+      <Animated.View entering={ENTER[2]}>
+        <Section title="You" footer="Your weekend outings, and which places count as away, follow from this.">
+          <Row
+            icon="home"
+            label="Home district"
+            value={home?.name ?? 'Choose'}
+            onPress={() => {
+              haptic.selection();
+              setPicking((p) => !p);
+            }}
+            chevron={picking ? 'chevron-up' : 'chevron-down'}
+          />
+          {picking
+            ? allDistricts.map((d) => (
+                <Animated.View key={d.id} layout={REFLOW}>
+                  <Choice
+                    label={d.name}
+                    detail={d.state}
+                    on={d.id === state.homeDistrictId}
+                    onPress={() => {
+                      haptic.selection();
+                      dispatch({ type: 'setHomeDistrict', districtId: d.id });
+                      setPicking(false);
+                    }}
+                  />
+                </Animated.View>
               ))
-            )}
-          </Card>
-        </Animated.View>
+            : null}
+        </Section>
+      </Animated.View>
 
-        <PressableScale
-          onPress={() => router.push('/credits')}
-          accessibilityRole="button"
-          accessibilityLabel="Photo credits"
-          style={styles.creditsRow}
+      <Animated.View entering={ENTER[3]}>
+        <Section
+          title="Notifications"
+          footer={
+            inExpoGo
+              ? 'One alert when you reach a district you have spots in, never one per café. Real alerts need a development build; use Try it below to see one here.'
+              : 'One alert when you reach a district you have spots in, never one per café.'
+          }
         >
-          <Feather name="image" size={15} color={light.ink} />
-          <Text variant="label" style={styles.creditsLabel}>
-            Photo credits
-          </Text>
-          <Feather name="chevron-right" size={16} color={light.inkFaint} />
-        </PressableScale>
+          <Row icon="bell" label="Arrival alerts" detail={arrivalDetail}>
+            <Switch
+              value={state.notifyOnArrival}
+              onValueChange={(on) => {
+                haptic.selection();
+                dispatch({ type: 'setNotifyOnArrival', on });
+              }}
+              trackColor={{ true: light.ink, false: light.lineStrong }}
+              thumbColor={light.panel}
+              ios_backgroundColor={light.lineStrong}
+              accessibilityLabel="Arrival alerts"
+            />
+          </Row>
+          <PermissionRow
+            name="notifications"
+            icon="message-square"
+            label="Notifications"
+            why="For your lock screen"
+            permissions={permissions}
+            ask={ask}
+            dimmed={!state.notifyOnArrival}
+          />
+          <PermissionRow
+            name="background"
+            icon="navigation"
+            label="Location, always"
+            why="So an arrival reaches you with the app closed"
+            permissions={permissions}
+            ask={ask}
+            dimmed={!state.notifyOnArrival}
+          />
+        </Section>
+      </Animated.View>
 
-        <Text variant="data" color={light.inkFaint} style={styles.footer}>
-          Xplore {Constants.expoConfig?.version ?? ''} · prototype. Saved spots live in memory for now,
-          so they reset when the app restarts.
-        </Text>
-      </ScrollView>
-    </View>
+      <Animated.View entering={ENTER[4]}>
+        <Section
+          title="Try it"
+          footer={
+            away.length
+              ? 'Plays exactly what a real arrival would: the alert, then the map on that district.'
+              : `Every spot you've saved is in ${home?.name ?? 'your district'}. Save one somewhere else to try this.`
+          }
+        >
+          {away.map((t) => (
+            <Row
+              key={t.districtId}
+              icon="map-pin"
+              label={`Arrive in ${t.name}`}
+              value={`${t.spots} ${t.spots === 1 ? 'spot' : 'spots'}`}
+              onPress={() => {
+                haptic.success();
+                simulate(t.districtId);
+              }}
+            />
+          ))}
+        </Section>
+      </Animated.View>
+
+      <Animated.View entering={ENTER[5]}>
+        <Section title="About" footer="Everything you save lives on this phone for now, and resets when the app restarts.">
+          <Row icon="image" label="Photo credits" onPress={() => router.push('/credits')} />
+          <Row icon="info" label="Version" value={`${Constants.expoConfig?.version ?? ''} · prototype`} />
+        </Section>
+      </Animated.View>
+    </ScrollView>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ value, label, onPress }: { value: number; label: string; onPress: () => void }) {
   return (
-    <View style={styles.stat}>
+    <PressableScale onPress={onPress} containerStyle={styles.statSlot} style={styles.stat} accessibilityRole="button" accessibilityLabel={`${value} ${label}`}>
       <Text style={styles.statValue}>{value}</Text>
-      <Text variant="micro">{label}</Text>
-    </View>
-  );
-}
-
-function Card({
-  title,
-  detail,
-  children,
-}: {
-  title: string;
-  detail: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.card}>
-      <Text variant="headline">{title}</Text>
-      <Text variant="body" style={{ marginTop: 2 }}>
-        {detail}
+      <Text variant="label" color={light.inkSoft}>
+        {label}
       </Text>
-      <View style={styles.cardBody}>{children}</View>
+    </PressableScale>
+  );
+}
+
+/** A heading, a white group of rows with hairlines between them, and an optional line of help. */
+function Section({ title, footer, children }: { title: string; footer?: string; children?: ReactNode }) {
+  const rows = Children.toArray(children).filter(isValidElement);
+  return (
+    <View style={styles.section}>
+      <Text variant="micro" style={styles.sectionTitle}>
+        {title}
+      </Text>
+      {rows.length ? <View style={styles.group}>{rows.map((r, i) => (i === 0 ? r : <Divided key={r.key}>{r}</Divided>))}</View> : null}
+      {footer ? (
+        <Text variant="data" color={light.inkFaint} style={styles.sectionFooter}>
+          {footer}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
-function Row({
-  label,
-  detail,
-  children,
-}: {
-  label: string;
-  detail?: string;
-  children?: React.ReactNode;
-}) {
+// The hairline starts where the text does, as in iOS lists; the row itself stays full width.
+function Divided({ children }: { children: ReactNode }) {
   return (
-    <View style={styles.row}>
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="bodyStrong">{label}</Text>
-        {detail ? <Text variant="data">{detail}</Text> : null}
-      </View>
+    <View>
+      <View style={styles.hairline} />
       {children}
     </View>
   );
 }
 
-function Permission({
+/**
+ * One row: an icon, a label (with a detail line under it, or a value on the right), and at most
+ * one trailing control. Rows that go somewhere get a chevron and the press scale.
+ */
+function Row({
+  icon,
+  label,
+  detail,
+  value,
+  onPress,
+  chevron = 'chevron-right',
+  dimmed,
+  children,
+}: {
+  icon: IconName;
+  label: string;
+  detail?: string;
+  value?: string;
+  onPress?: () => void;
+  chevron?: IconName;
+  dimmed?: boolean;
+  children?: ReactNode;
+}) {
+  const body = (
+    <View style={[styles.row, dimmed && styles.dimmed]}>
+      <View style={styles.icon}>
+        <Feather name={icon} size={16} color={light.ink} />
+      </View>
+      <View style={styles.rowText}>
+        <Text variant="bodyStrong" numberOfLines={1}>
+          {label}
+        </Text>
+        {detail ? (
+          <Text variant="data" numberOfLines={2}>
+            {detail}
+          </Text>
+        ) : null}
+      </View>
+      {value ? (
+        <Text variant="data" color={light.inkSoft} numberOfLines={1}>
+          {value}
+        </Text>
+      ) : null}
+      {children}
+      {onPress ? <Feather name={chevron} size={16} color={light.inkFaint} /> : null}
+    </View>
+  );
+  return onPress ? (
+    <PressableScale onPress={onPress} pressedScale={0.99} accessibilityRole="button" accessibilityLabel={value ? `${label}, ${value}` : label}>
+      {body}
+    </PressableScale>
+  ) : (
+    body
+  );
+}
+
+/** A district in the home picker: a check on the chosen one, like the planning questions. */
+function Choice({ label, detail, on, onPress }: { label: string; detail: string; on: boolean; onPress: () => void }) {
+  return (
+    <PressableScale onPress={onPress} pressedScale={0.99} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={label}>
+      <View style={[styles.row, styles.choice]}>
+        <View style={styles.rowText}>
+          <Text variant="body" color={light.ink}>
+            {label}
+          </Text>
+          <Text variant="data" color={light.inkFaint}>
+            {detail}
+          </Text>
+        </View>
+        {on ? (
+          <View style={styles.check}>
+            <Feather name="check" size={12} color={light.ctaInk} />
+          </View>
+        ) : null}
+      </View>
+    </PressableScale>
+  );
+}
+
+/** A permission: "Allowed" once granted; before that, the one secondary pill style Profile uses. */
+function PermissionRow({
   name,
+  icon,
   label,
   why,
   permissions,
   ask,
+  dimmed,
 }: {
   name: keyof Permissions;
+  icon: IconName;
   label: string;
   why: string;
   permissions: Permissions;
   ask: (which: keyof Permissions) => Promise<string>;
+  dimmed?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const status = permissions[name];
   const granted = status === 'granted';
-  // Once iOS has been told no, only Settings can change it.
+  // Once the system has been told no, only Settings can change it.
   const blocked = status === 'denied';
 
   return (
-    <Row label={label} detail={granted ? 'Allowed' : why}>
+    <Row icon={icon} label={label} detail={granted ? undefined : why} dimmed={dimmed}>
       {granted ? (
-        <View style={styles.tick}>
-          <Feather name="check" size={14} color={light.ctaInk} />
+        <View style={styles.granted}>
+          <Feather name="check" size={13} color={light.inkSoft} />
+          <Text variant="data">Allowed</Text>
         </View>
       ) : (
         <PressableScale
           onPress={async () => {
             if (blocked) {
-              Linking.openURL(Platform.OS === 'ios' ? 'app-settings:' : 'app-settings:').catch(() => {});
+              Linking.openSettings();
               return;
             }
             setBusy(true);
             await ask(name);
             setBusy(false);
           }}
-          style={styles.allow}
+          style={styles.pill}
+          disabled={busy}
           accessibilityRole="button"
-          accessibilityLabel={blocked ? `Open settings to allow ${label}` : `Allow ${label}`}
+          accessibilityLabel={blocked ? `Open Settings to allow ${label}` : `Allow ${label}`}
         >
-          <Text variant="label" color={light.ctaInk}>
-            {busy ? '…' : blocked ? 'Settings' : 'Allow'}
-          </Text>
+          <Text variant="label">{busy ? 'Asking…' : blocked ? 'Settings' : 'Allow'}</Text>
         </PressableScale>
       )}
     </Row>
@@ -278,87 +350,59 @@ function Permission({
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: light.canvas },
-  wash: { position: 'absolute', top: 0, left: 0, right: 0, height: 240 },
-  header: { paddingHorizontal: GUTTER, paddingBottom: 18 },
-  wordmark: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, letterSpacing: -0.8, color: light.ink },
-  statRow: { flexDirection: 'row', gap: 10, paddingHorizontal: GUTTER },
+  header: { paddingHorizontal: GUTTER + 4, gap: 4 },
+  stats: { flexDirection: 'row', gap: 10, paddingHorizontal: GUTTER, marginTop: 18 },
+  statSlot: { flex: 1 },
   stat: {
-    flex: 1,
-    gap: 6,
-    paddingVertical: 16,
+    gap: 2,
+    paddingVertical: 14,
     paddingHorizontal: 14,
-    borderRadius: 22,
+    borderRadius: 20,
     backgroundColor: light.panel,
     borderWidth: 1,
     borderColor: light.line,
   },
   statValue: {
     fontFamily: fonts.display,
-    fontSize: 30,
-    lineHeight: 34,
-    letterSpacing: -1.1,
+    fontSize: 28,
+    lineHeight: 33,
+    letterSpacing: -1,
     color: light.ink,
     fontVariant: ['tabular-nums'],
   },
-  card: {
-    marginTop: 14,
-    marginHorizontal: GUTTER,
-    padding: 18,
-    borderRadius: 26,
+  section: { marginTop: 26, paddingHorizontal: GUTTER },
+  sectionTitle: { marginLeft: 4, marginBottom: 8 },
+  sectionFooter: { marginTop: 8, marginHorizontal: 4, lineHeight: 18 },
+  group: {
+    borderRadius: 20,
     backgroundColor: light.panel,
     borderWidth: 1,
     borderColor: light.line,
-    boxShadow: shadows.button,
+    overflow: 'hidden',
   },
-  cardBody: { marginTop: 14, gap: 4 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: light.line,
-  },
-  allow: {
-    height: 34,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    backgroundColor: light.cta,
+  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: light.lineStrong, marginLeft: 56 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 10, paddingHorizontal: 14 },
+  dimmed: { opacity: 0.45 },
+  icon: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: light.canvas,
   },
-  tick: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: light.cta,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  simulateSlot: { alignSelf: 'stretch' },
-  simulate: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 8,
-    height: 46,
-    paddingHorizontal: 16,
+  rowText: { flex: 1, gap: 1 },
+  choice: { paddingLeft: 56, minHeight: 50 },
+  check: { width: 20, height: 20, borderRadius: 10, backgroundColor: light.ink, alignItems: 'center', justifyContent: 'center' },
+  granted: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  pill: {
+    height: 32,
+    paddingHorizontal: 14,
     borderRadius: 999,
-    backgroundColor: light.cta,
-  },
-  note: { flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'flex-start' },
-  creditsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 18,
-    backgroundColor: light.panel,
     borderWidth: 1,
-    borderColor: light.line,
+    borderColor: light.lineStrong,
+    backgroundColor: light.panel,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  creditsLabel: { flex: 1 },
-  footer: { paddingHorizontal: GUTTER, paddingTop: 22, lineHeight: 18 },
 });

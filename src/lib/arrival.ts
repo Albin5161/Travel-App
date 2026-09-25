@@ -54,7 +54,7 @@ export function clearArrivalHistory() {
 function copy(t: ArrivalTarget) {
   const title = `You're in ${t.name}`;
   const spots = `${t.spots} ${t.spots === 1 ? 'spot' : 'spots'} you saved ${t.spots === 1 ? 'is' : 'are'} here`;
-  const where = t.topArea && t.topAreaSpots > 1 ? ` — ${t.topAreaSpots} around ${t.topArea}.` : '.';
+  const where = t.topArea && t.topAreaSpots > 1 ? `, ${t.topAreaSpots} of them around ${t.topArea}.` : '.';
   return { title, body: `${spots}${where}` };
 }
 

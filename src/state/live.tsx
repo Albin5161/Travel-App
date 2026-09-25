@@ -37,16 +37,20 @@ export function LiveTrip({ cityId }: { cityId: string }) {
       dispatch({ type: 'groupVote', cityId, placeId: row.place_id, memberId: row.user_id, vote: voteFromRow(row) });
     };
 
-    loadTrip(remote.tripId)
-      .then(({ trip, members, votes }) => {
-        onTrip(trip);
-        members.forEach(onMember);
-        votes.forEach(onVote);
-      })
-      .catch(() => {
-        // Offline or signed out: the trip stays as it was, and the listener below catches up.
-      });
-    const stop = watchTrip(remote.tripId, { trip: onTrip, member: onMember, vote: onVote });
+    // Everything as it stands now. Run straight away, so the screen fills, and again once the live
+    // stream is really flowing, to pick up anything saved in between.
+    const sync = () =>
+      loadTrip(remote.tripId)
+        .then(({ trip, members, votes }) => {
+          onTrip(trip);
+          members.forEach(onMember);
+          votes.forEach(onVote);
+        })
+        .catch(() => {
+          // Offline: the trip stays as it was, and the next ready signal tries again.
+        });
+    sync();
+    const stop = watchTrip(remote.tripId, { trip: onTrip, member: onMember, vote: onVote, ready: sync });
     return () => {
       alive = false;
       stop();

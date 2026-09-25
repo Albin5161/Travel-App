@@ -93,6 +93,12 @@ type Handlers = {
   trip: (row: TripRow) => void;
   member: (row: MemberRow) => void;
   vote: (row: VoteRow) => void;
+  /**
+   * The database is now streaming changes. Supabase says "subscribed" a moment before it really is,
+   * and anything saved in between isn't sent, so this is the cue to fetch once and close the gap.
+   * It fires again after a reconnect, for the same reason.
+   */
+  ready: () => void;
 };
 
 /** Joins, votes and plan edits on one trip, as they happen. Returns a function that stops listening. */
@@ -107,6 +113,9 @@ export function watchTrip(tripId: string, on: Handlers) {
     )
     .on('postgres_changes', { event: '*', schema: 'public', table: 'votes', filter: `trip_id=eq.${tripId}` }, (p) => {
       if (p.eventType !== 'DELETE') on.vote(p.new as VoteRow);
+    })
+    .on('system', {}, (p: { extension?: string; status?: string }) => {
+      if (p.extension === 'postgres_changes' && p.status === 'ok') on.ready();
     })
     .subscribe();
   return () => {

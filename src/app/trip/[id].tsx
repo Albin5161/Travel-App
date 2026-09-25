@@ -9,6 +9,7 @@ import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
 import { Text } from '@/components/Text';
 import { getCity, getLocalPicks } from '@/data/api';
+import { customStops } from '@/data/custom';
 import {
   addDays,
   formatDay,
@@ -113,12 +114,14 @@ export default function TripSetup() {
           count={collected.length}
           prefs={prefs}
           onBuilt={async () => {
+            // New answers rebuild the plan; stops people typed in stay, on their day where it still exists.
+            const custom = customStops(state.tripPlans[id]);
             const plan = await rulePlanner.plan({
               cityId: id,
-              saved: collected,
+              saved: [...collected, ...custom.map((c) => c.place)],
               suggestions: getLocalPicks(id),
               prefs,
-              pins: [],
+              pins: custom.map((c) => ({ placeId: c.place.id, day: Math.min(c.day, prefs.days - 1) })),
               removed: [],
               seed: 1,
             });

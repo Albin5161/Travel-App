@@ -10,7 +10,9 @@ export type Platform = 'instagram' | 'youtube';
 
 export type PlaceSource =
   | { kind: 'reel'; reelId: string; timestamp: string }
-  | { kind: 'local' };
+  | { kind: 'local' }
+  /** Typed in by someone on the trip: "Lunch at Ammachi's", "Pick up Amma, 7:00". */
+  | { kind: 'custom'; by: string; note?: string };
 
 export interface Place {
   id: string;

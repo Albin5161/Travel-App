@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, useReducer, type ReactNode } from '
 
 import { getPlace, getCity } from '@/data/api';
 import { allDistricts } from '@/data/regions';
-import type { Group, GroupState, Vote } from '@/data/group';
+import type { Group, GroupState, Member, Vote } from '@/data/group';
 import type { TripPlan } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
 import { clusterSpots, districtOf } from '@/lib/spots';
@@ -39,6 +39,10 @@ interface State {
   tripPlans: Record<string, TripPlan>;
   /** The group vote on each city's plan, if one has started. */
   groups: Record<string, GroupState>;
+  /** What friends see you as on a shared trip. Asked the first time you share or join. */
+  myName: string | null;
+  /** Trips shared through the backend, by city: which trip, and who you are on it. */
+  remote: Record<string, Remote>;
   /** City to fade in once on the home screen. */
   freshCityId: string | null;
   /** Which half of My Collections Home shows. Set after a save, so the new card is on screen. */
@@ -46,6 +50,16 @@ interface State {
 }
 
 export type HomeTab = 'near' | 'cities';
+
+export interface Remote {
+  tripId: string;
+  code: string;
+  /** Your user id on this trip. */
+  me: string;
+  /** Who made it, and what they're called. */
+  owner: string;
+  ownerName: string;
+}
 
 type Action =
   | { type: 'setPendingLink'; url: string | null }
@@ -59,7 +73,10 @@ type Action =
   | { type: 'addLocal'; cityId: string; placeId: string }
   | { type: 'saveTrip'; cityId: string }
   | { type: 'setTripPlan'; plan: TripPlan }
-  | { type: 'groupStart'; cityId: string; planKey: string; party: Group; swapFor: Record<string, string> }
+  | { type: 'groupStart'; cityId: string; planKey: string; party: Group; swapFor: Record<string, string>; live?: boolean }
+  | { type: 'groupPeople'; cityId: string; people: Member[] }
+  | { type: 'setMyName'; name: string }
+  | { type: 'setRemote'; cityId: string; remote: Remote }
   | { type: 'groupJoin'; cityId: string; memberId: string }
   | { type: 'groupVote'; cityId: string; placeId: string; memberId: string; vote: Vote }
   | { type: 'groupManual'; cityId: string; memberId: string }
@@ -87,6 +104,8 @@ const initial: State = {
   savedTrips: {},
   tripPlans: {},
   groups: {},
+  myName: null,
+  remote: {},
   freshCityId: null,
   homeTab: 'cities',
 };
@@ -153,10 +172,17 @@ function reducer(state: State, action: Action): State {
             swapFor: action.swapFor,
             cheered: false,
             locked: false,
+            live: action.live,
+            people: action.live ? [] : undefined,
           },
         },
       };
+    case 'setMyName':
+      return { ...state, myName: action.name.trim() || null };
+    case 'setRemote':
+      return { ...state, remote: { ...state.remote, [action.cityId]: action.remote } };
     case 'groupJoin':
+    case 'groupPeople':
     case 'groupVote':
     case 'groupManual':
     case 'groupCheer':
@@ -184,13 +210,15 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-type GroupAction = Extract<Action, { type: 'groupJoin' | 'groupVote' | 'groupManual' | 'groupCheer' | 'groupLock' }>;
+type GroupAction = Extract<Action, { type: 'groupJoin' | 'groupPeople' | 'groupVote' | 'groupManual' | 'groupCheer' | 'groupLock' }>;
 
 function groupReducer(g: GroupState, action: GroupAction): GroupState {
   const join = (id: string) => (g.joined.includes(id) ? g.joined : [...g.joined, id]);
   switch (action.type) {
     case 'groupJoin':
       return { ...g, joined: join(action.memberId) };
+    case 'groupPeople':
+      return { ...g, people: action.people, joined: action.people.map((p) => p.id) };
     case 'groupVote':
       return {
         ...g,

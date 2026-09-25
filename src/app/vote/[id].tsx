@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,8 +15,9 @@ import { formatClock } from '@/lib/geo';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT } from '@/lib/motion';
 import { useGroupVote } from '@/state/group';
+import { useLiveVote } from '@/state/live';
 import { useTrips } from '@/state/trips';
-import { light } from '@/theme/tokens';
+import { fonts, light } from '@/theme/tokens';
 
 const web = Platform.OS === 'web';
 const NEXT_IN = web ? undefined : SlideInRight.duration(280).easing(EASE_OUT);
@@ -24,15 +25,20 @@ const STEP_IN = web ? undefined : FadeIn.duration(200);
 const EMOJI = ['😍', '🔥', '🙌', '🤔', '😴'];
 const DEFAULT_EMOJI: Record<VoteKind, string> = { keep: '👍', swap: '🔁', drop: '✋' };
 
-// Pass the phone: whoever's holding it picks who they are, then goes stop by stop. Their votes
-// replace that person's scripted ones; the vote screen underneath updates live.
+// Voting, stop by stop: react, say something (a quick note or your own words), then keep, swap or
+// drop. On a shared trip you vote as yourself and everyone sees it land. In the demo it's pass the
+// phone: whoever's holding it picks who they are, and their votes replace that person's scripted ones.
 export default function VoteSheet() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { dispatch } = useTrips();
   // The group screen underneath runs the script; this sheet only votes.
   const { group, members, stops } = useGroupVote(id);
-  const [voter, setVoter] = useState<string | null>(null);
+  const live = useLiveVote(id);
+  const [picked, setPicked] = useState<string | null>(null);
+  // On a shared trip there's no one to pick: it's you.
+  const voter = group?.live && live ? live.me : picked;
+  const setVoter = setPicked;
   const [index, setIndex] = useState(0);
   const [emoji, setEmoji] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -50,13 +56,9 @@ export default function VoteSheet() {
     if (!voter) return;
     const { stop } = stops[index];
     haptic.selection();
-    dispatch({
-      type: 'groupVote',
-      cityId: id,
-      placeId: stop.place.id,
-      memberId: voter,
-      vote: { kind, emoji: emoji ?? DEFAULT_EMOJI[kind], note: note ?? undefined },
-    });
+    const vote = { kind, emoji: emoji ?? DEFAULT_EMOJI[kind], note: note?.trim() || undefined };
+    if (group.live && live) live.cast(stop.place.id, vote);
+    else dispatch({ type: 'groupVote', cityId: id, placeId: stop.place.id, memberId: voter, vote });
     setEmoji(null);
     setNote(null);
     setIndex(index + 1);
@@ -90,7 +92,7 @@ export default function VoteSheet() {
     );
   }
 
-  const me = member(voter);
+  const me = member(voter, members);
 
   // 3. Done.
   if (index >= stops.length) {
@@ -101,11 +103,11 @@ export default function VoteSheet() {
           Thanks, {me.name}!
         </Text>
         <Text variant="body" style={styles.center}>
-          Pass the phone back. Your votes are in.
+          {group.live ? 'Your votes are in. Everyone can see them now.' : 'Pass the phone back. Your votes are in.'}
         </Text>
         <View style={styles.doneActions}>
           <Button label="Done" onPress={() => router.back()} />
-          <Button kind="text" label="Vote as someone else" onPress={() => setVoter(null)} />
+          {group.live ? null : <Button kind="text" label="Vote as someone else" onPress={() => setVoter(null)} />}
         </View>
       </Animated.View>
     );
@@ -170,6 +172,16 @@ export default function VoteSheet() {
             </PressableScale>
           ))}
         </View>
+        <TextInput
+          value={note && !QUICK_NOTES.includes(note) ? note : ''}
+          onChangeText={(t) => setNote(t || null)}
+          placeholder="Or say it in your own words"
+          placeholderTextColor={light.inkFaint}
+          maxLength={140}
+          style={styles.ownNote}
+          returnKeyType="done"
+          accessibilityLabel="Your note on this stop"
+        />
 
         <View style={styles.cast}>
           <Button label="Keep it" onPress={() => cast('keep')} />
@@ -215,6 +227,16 @@ const styles = StyleSheet.create({
   notes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   noteChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: light.canvas },
   noteSelected: { backgroundColor: light.ink },
+  ownNote: {
+    marginTop: 10,
+    height: 46,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    backgroundColor: light.canvas,
+    fontFamily: fonts.sans,
+    fontSize: 15,
+    color: light.ink,
+  },
   cast: { marginTop: 22, gap: 8 },
   done: { alignItems: 'center', gap: 10, paddingTop: 48 },
   center: { textAlign: 'center' },

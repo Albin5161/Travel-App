@@ -36,6 +36,9 @@ export function SourceLine({ place }: { place: Place }) {
       </Text>
     );
   }
+  if (place.source.kind === 'custom') {
+    return <Text variant="data">Added by {place.source.by}</Text>;
+  }
   const reel = getReel(place.source.reelId);
   if (!reel) return null;
   return (

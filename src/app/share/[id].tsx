@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,14 +9,16 @@ import { PlanPass } from '@/components/share/PlanPass';
 import { TiltCard } from '@/components/share/TiltCard';
 import { Text } from '@/components/Text';
 import { getCity } from '@/data/api';
-import { PARTY_COPY } from '@/data/group';
+import { PARTY_COPY, swapCandidates } from '@/data/group';
 import { partyOf } from '@/data/planner';
 import { haptic } from '@/lib/haptics';
 import { FADE_IN, fadeUp } from '@/lib/motion';
+import { createTrip } from '@/lib/live/api';
+import { ensureUser, liveEnabled } from '@/lib/live/client';
 import { planMessage, sharePlanCard } from '@/lib/share';
 import { startGroup } from '@/state/group';
 import { useTrips } from '@/state/trips';
-import { light } from '@/theme/tokens';
+import { fonts, light } from '@/theme/tokens';
 
 const HEAD_IN = fadeUp(0);
 const TITLE_IN = fadeUp(60);
@@ -36,6 +38,7 @@ export default function ShareScreen() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [name, setName] = useState(state.myName ?? '');
 
   // Nothing to share without a plan (a reload wipes the in-memory store): go home.
   useEffect(() => {
@@ -46,6 +49,10 @@ export default function ShareScreen() {
   const stops = plan.days.reduce((sum, d) => sum + d.stops.length, 0);
   const party = partyOf(plan.prefs);
   const copy = PARTY_COPY[party];
+  // With the backend set up, sharing makes a real trip others can join. The first time, it needs a
+  // name, so the people you send it to know who's asking.
+  const live = liveEnabled && party !== 'solo';
+  const needName = live && !state.myName;
 
   const cardW = Math.min(W - 64, 340);
   const room = H - insets.top - insets.bottom - 150 - 150;
@@ -53,24 +60,38 @@ export default function ShareScreen() {
 
   const share = async () => {
     if (busy) return;
+    if (needName && !name.trim()) return;
     setBusy(true);
     try {
-      const result = await sharePlanCard(card, planMessage(city.name, city.id, stops, plan.days.length, party));
+      let code: string | undefined;
+      if (live) {
+        const me = name.trim() || state.myName!;
+        if (needName) dispatch({ type: 'setMyName', name: me });
+        const existing = state.remote[id];
+        if (existing) code = existing.code;
+        else {
+          const swapFor = swapCandidates(plan);
+          const row = await createTrip({ plan, party, swapFor, name: me });
+          const user = await ensureUser();
+          dispatch({ type: 'setRemote', cityId: id, remote: { tripId: row.id, code: row.code, me: user, owner: row.owner, ownerName: me } });
+          startGroup(dispatch, plan, true, swapFor);
+          code = row.code;
+        }
+      }
+      const result = await sharePlanCard(card, planMessage(city.name, city.id, stops, plan.days.length, party, code));
       if (result === 'dismissed') return;
       if (result === 'shared') haptic.success();
       else haptic.light();
       setSent(true);
       // The vote starts the moment it's out: people begin joining while you're still in the chat.
-      startGroup(dispatch, plan);
+      if (!live) startGroup(dispatch, plan);
+      const chat = party === 'family' ? 'family chat' : party === 'partner' ? 'chat' : 'group';
       setNote(
-        result === 'copied'
-          ? `Message copied. Paste it in your ${party === 'family' ? 'family chat' : party === 'partner' ? 'chat' : 'group'}.`
-          : party === 'solo'
-            ? 'Sent.'
-            : 'Sent. Now get everyone to agree.',
+        (result === 'copied' ? `Message copied. Paste it in your ${chat}.` : party === 'solo' ? 'Sent.' : 'Sent. Now get everyone to agree.') +
+          (code ? ` Join code ${code}.` : ''),
       );
     } catch {
-      setNote('Couldn’t open sharing. Try again?');
+      setNote(live ? 'Couldn’t reach Xplore’s server. Check your connection and try again.' : 'Couldn’t open sharing. Try again?');
     } finally {
       setBusy(false);
     }
@@ -105,12 +126,25 @@ export default function ShareScreen() {
             </Text>
           </Animated.View>
         ) : null}
+        {needName && !sent ? (
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="Your name, so they know who's asking"
+            placeholderTextColor={light.inkFaint}
+            style={styles.name}
+            autoCapitalize="words"
+            returnKeyType="done"
+            maxLength={40}
+            accessibilityLabel="Your name"
+          />
+        ) : null}
         {sent && party !== 'solo' ? (
           <Button label={copy.see} onPress={() => router.push({ pathname: '/group/[id]', params: { id } })} />
         ) : sent ? (
           <Button label="Done" onPress={() => router.dismissTo('/trips')} />
         ) : (
-          <Button label={copy.share} onPress={share} disabled={busy} />
+          <Button label={busy ? 'Getting it ready…' : copy.share} onPress={share} disabled={busy || (needName && !name.trim())} />
         )}
         {sent && party === 'solo' ? null : (
           <Button kind="text" label={sent ? 'Done' : 'Done for now'} onPress={() => router.dismissTo('/trips')} />
@@ -127,4 +161,16 @@ const styles = StyleSheet.create({
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   actions: { paddingHorizontal: 20, gap: 4 },
   note: { textAlign: 'center', marginBottom: 8 },
+  name: {
+    height: 52,
+    marginBottom: 10,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: light.field,
+    borderWidth: 1,
+    borderColor: light.line,
+    fontFamily: fonts.sansMedium,
+    fontSize: 16,
+    color: light.ink,
+  },
 });

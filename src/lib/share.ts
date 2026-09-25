@@ -13,8 +13,12 @@ import type { Party } from '@/data/planner';
 export const PLAN_LINK_BASE = 'https://xplore.expo.app';
 
 /** The words that go with the card. A solo plan is shown off; everyone else is asked to vote. */
-export function planMessage(cityName: string, cityId: string, stops: number, days: number, party: Party) {
-  const link = `\n${PLAN_LINK_BASE}/group/${cityId}`;
+export function planMessage(cityName: string, cityId: string, stops: number, days: number, party: Party, code?: string) {
+  // A shared trip goes as a join link, plus the code for anyone who'd rather type it into the app.
+  // Without the backend, the link opens the demo vote.
+  const link = code
+    ? `\n${PLAN_LINK_BASE}/join?code=${code}\nOr in Xplore: Trips, Join, code ${code}`
+    : `\n${PLAN_LINK_BASE}/group/${cityId}`;
   const span = days === 1 ? 'one day' : `${days} days`;
   switch (party) {
     case 'solo':

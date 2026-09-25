@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 
+import { liveEnabled } from '@/lib/live/client';
+
 import { getLocalPicks } from '@/data/api';
 import { places } from '@/data/catalog';
 import {
@@ -13,15 +15,19 @@ import {
 } from '@/data/group';
 import { partyOf, rulePlanner, type TripPlan } from '@/data/planner';
 
+import { LiveTrip } from './live';
 import { useTrips } from './trips';
 
 type Dispatch = ReturnType<typeof useTrips>['dispatch'];
 
-/** Starts the vote on a plan, unless it's a solo trip. Called when the plan is shared. */
-export function startGroup(dispatch: Dispatch, plan: TripPlan) {
+/**
+ * Starts the vote on a plan, unless it's a solo trip. Called when the plan is shared. A live vote
+ * starts empty and fills as real people join; otherwise the scripted demo plays.
+ */
+export function startGroup(dispatch: Dispatch, plan: TripPlan, live = false, swapFor = swapCandidates(plan)) {
   const party = partyOf(plan.prefs);
   if (party === 'solo') return;
-  dispatch({ type: 'groupStart', cityId: plan.cityId, planKey: planKeyOf(plan), party, swapFor: swapCandidates(plan) });
+  dispatch({ type: 'groupStart', cityId: plan.cityId, planKey: planKeyOf(plan), party, swapFor, live });
 }
 
 /** The group's vote on a plan, read without side effects. Used by the vote screens and Trips. */
@@ -29,9 +35,11 @@ export function summarize(plan: TripPlan | undefined, stored: GroupState | undef
   const planKey = plan ? planKeyOf(plan) : null;
   const party = plan ? partyOf(plan.prefs) : null;
   // A plan edited since the vote started (other stops, or other people going) has moved on; a
-  // locked vote is kept as it ended.
-  const group = stored && ((stored.planKey === planKey && stored.party === party) || stored.locked) ? stored : undefined;
-  const members = group ? membersOf(group.party) : [];
+  // locked vote is kept as it ended. A live vote follows its plan as people edit it: votes are
+  // per stop, so a new stop just waits for votes.
+  const group =
+    stored && (stored.live || (stored.planKey === planKey && stored.party === party) || stored.locked) ? stored : undefined;
+  const members = group ? (group.people ?? membersOf(group.party)) : [];
   const stops = plan ? planStops(plan) : [];
   const verdicts = Object.fromEntries(
     stops.map(({ stop }) => [stop.place.id, verdictOf(group?.votes[stop.place.id], members.length)]),
@@ -89,11 +97,17 @@ export function useGroupVote(cityId: string) {
  */
 export function GroupScripts() {
   const { state } = useTrips();
-  const active = Object.keys(state.groups).filter((id) => !state.groups[id].locked && state.tripPlans[id]);
+  const scripted = Object.keys(state.groups).filter(
+    (id) => !state.groups[id].locked && !state.groups[id].live && state.tripPlans[id],
+  );
+  const live = liveEnabled ? Object.keys(state.remote) : [];
   return (
     <>
-      {active.map((id) => (
+      {scripted.map((id) => (
         <GroupScript key={id} cityId={id} />
+      ))}
+      {live.map((id) => (
+        <LiveTrip key={state.remote[id].tripId} cityId={id} />
       ))}
     </>
   );

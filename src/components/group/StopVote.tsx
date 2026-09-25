@@ -77,7 +77,7 @@ export function StopVote({ place, meta, votes, verdict, swap, members }: Props) 
     [...list].reverse().find(([, v]) => v.note && (!decided || v.kind === decided)) ??
     [...list].reverse().find(([, v]) => v.note);
   const byMember = members.map((m) => votes?.[m.id]);
-  const swappers = list.filter(([, v]) => v.kind === 'swap').map(([id]) => member(id).name);
+  const swappers = list.filter(([, v]) => v.kind === 'swap').map(([id]) => member(id, members).name);
 
   return (
     <View style={[styles.card, verdict === 'drop' && styles.cardDropped]}>
@@ -114,7 +114,7 @@ export function StopVote({ place, meta, votes, verdict, swap, members }: Props) 
         ) : (
           list.map(([id, v]) => (
             <Animated.View key={id} entering={POP} style={styles.chip}>
-              <Avatar person={member(id)} size={22} />
+              <Avatar person={member(id, members)} size={22} />
               <Text style={styles.emoji}>{v.emoji}</Text>
             </Animated.View>
           ))
@@ -125,7 +125,7 @@ export function StopVote({ place, meta, votes, verdict, swap, members }: Props) 
         <Animated.View key={`${latestNote[0]}:${latestNote[1].note}`} entering={NOTE_IN} style={styles.note}>
           <Text variant="label" numberOfLines={2}>
             <Text variant="label" style={styles.noteName}>
-              {member(latestNote[0]).name}
+              {member(latestNote[0], members).name}
             </Text>
             {'  '}
             {latestNote[1].note}

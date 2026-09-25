@@ -51,10 +51,18 @@ export default function TripsScreen() {
       contentContainerStyle={{ paddingTop: insets.top + 20, paddingHorizontal: 20, paddingBottom: insets.bottom + 120 }}
       showsVerticalScrollIndicator={false}
     >
-      <Text variant="micro">{trips.length ? `${trips.length} planned${voting ? ` · ${voting} voting` : ''}` : 'Trips'}</Text>
-      <Text variant="display" style={styles.title}>
-        Your trips
-      </Text>
+      <View style={styles.headRow}>
+        <View style={styles.flex}>
+          <Text variant="micro">{trips.length ? `${trips.length} planned${voting ? ` · ${voting} voting` : ''}` : 'Trips'}</Text>
+          <Text variant="display" style={styles.title}>
+            Your trips
+          </Text>
+        </View>
+        <PressableScale onPress={() => router.push('/join')} style={styles.joinPill} accessibilityRole="button" accessibilityLabel="Join a trip with a code">
+          <Feather name="user-plus" size={14} color={light.ink} />
+          <Text variant="label">Join</Text>
+        </PressableScale>
+      </View>
 
       {trips.length === 0 ? (
         <View style={styles.empty}>
@@ -66,6 +74,7 @@ export default function TripsScreen() {
             Plan a trip from any city you’ve saved. It lands here, with everyone who’s coming.
           </Text>
           <Button kind="secondary" compact label="Find a city" onPress={() => router.navigate('/')} style={styles.emptyButton} />
+          <Button kind="text" label="Got a code from a friend? Join their trip" onPress={() => router.push('/join')} />
         </View>
       ) : (
         <View style={styles.list}>
@@ -178,6 +187,19 @@ function Progress({ value }: { value: number }) {
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: light.canvas },
   title: { marginTop: 6, marginBottom: 18 },
+  headRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  joinPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 34,
+    marginTop: 14,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: light.lineStrong,
+    backgroundColor: light.panel,
+  },
   flex: { flex: 1 },
   center: { textAlign: 'center' },
   list: { gap: 16 },

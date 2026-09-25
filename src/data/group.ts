@@ -43,6 +43,10 @@ export interface GroupState {
   swapFor: Record<string, string>;
   /** The agreement has been celebrated (confetti plays once, whenever you first see it). */
   cheered: boolean;
+  /** Real people on a shared trip, not the scripted demo. */
+  live?: boolean;
+  /** On a live trip, everyone who votes: every member but the one who made it. */
+  people?: Member[];
   locked: boolean;
 }
 
@@ -63,10 +67,12 @@ const PEOPLE: Record<Group, Member[]> = {
 };
 
 export const membersOf = (party: Party): Member[] => (party === 'solo' ? [] : PEOPLE[party]);
-export const member = (id: string): Member =>
+/** Someone by id: a real person on a live trip first, then the scripted cast. */
+export const member = (id: string, people?: Member[]): Member =>
+  people?.find((m) => m.id === id) ??
   Object.values(PEOPLE)
     .flat()
-    .find((m) => m.id === id)!;
+    .find((m) => m.id === id) ?? { id, name: 'Someone', tint: '#E5E1DA' };
 
 /** Words that change with who's voting. */
 export const PARTY_COPY: Record<Party, { share: string; see: string; ask: string; agreed: string; vote: string; waiting: string }> = {

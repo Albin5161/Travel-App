@@ -18,6 +18,7 @@ import { formatClock } from '@/lib/geo';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT, fadeUp } from '@/lib/motion';
 import { useGroupVote } from '@/state/group';
+import { usePlanWriter } from '@/state/live';
 import { useCityPlaces, useTrips } from '@/state/trips';
 import { light } from '@/theme/tokens';
 
@@ -41,7 +42,8 @@ export default function GroupScreen() {
   const city = getCity(id);
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
-  const { dispatch } = useTrips();
+  const { state, dispatch } = useTrips();
+  const writePlan = usePlanWriter(id);
   const { kept } = useCityPlaces(id);
   const { plan, group, members, stops, verdicts, votesIn, total, approved } = useGroupVote(id);
 
@@ -58,21 +60,27 @@ export default function GroupScreen() {
 
   // "Riya joined": the latest arrival, for a moment.
   const lastJoined = group?.joined[group.joined.length - 1];
+  const lastName = lastJoined ? member(lastJoined, group?.people).name : null;
   const [toast, setToast] = useState<string | null>(null);
   const seenJoins = useRef<number | null>(null);
   useEffect(() => {
     const n = group?.joined.length ?? 0;
-    if (seenJoins.current !== null && n > seenJoins.current && lastJoined) {
-      setToast(`${member(lastJoined).name} joined`);
+    if (seenJoins.current !== null && n > seenJoins.current && lastName) {
+      setToast(`${lastName} joined`);
       const t = setTimeout(() => setToast(null), 1600);
       seenJoins.current = n;
       return () => clearTimeout(t);
     }
     seenJoins.current = n;
-  }, [group?.joined.length, lastJoined]);
+  }, [group?.joined.length, lastName]);
 
   if (!city) return null;
 
+  // On a shared trip: who you are, whether you made it, and whether you still have stops to vote on.
+  const remote = group?.live ? state.remote[id] : undefined;
+  const isOwner = !!remote && remote.me === remote.owner;
+  const isVoter = !!remote && members.some((m) => m.id === remote.me);
+  const myVotesDone = !!remote && stops.every(({ stop }) => group?.votes[stop.place.id]?.[remote.me]);
   const party = group?.party ?? 'friends';
   const copy = PARTY_COPY[party];
   const passLabel = party === 'partner' ? 'Hand the phone to Arya' : party === 'family' ? 'Vote as family' : 'Vote as a friend';
@@ -91,8 +99,18 @@ export default function GroupScreen() {
     }
     haptic.success();
     dispatch({ type: 'groupLock', cityId: id });
-    dispatch({ type: 'setTripPlan', plan: next });
+    writePlan(next, true);
   };
+
+  // "Albin + you", "You + Riya & Kabir": whose trip it is, and who's in.
+  const liveWho = () => {
+    if (!remote) return '';
+    const names = members.map((m) => (m.id === remote.me ? 'you' : m.name));
+    const others = names.length > 1 ? `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}` : names[0];
+    return isOwner ? `You + ${others}` : `${remote.ownerName} + ${others}`;
+  };
+  const vote = () => router.push({ pathname: '/vote/[id]', params: { id } });
+  const addStop = () => router.push({ pathname: '/addstop/[id]', params: { id } });
 
   const title = locked ? 'Locked in.' : approved ? copy.agreed : copy.ask;
   const sub = locked
@@ -147,7 +165,13 @@ export default function GroupScreen() {
               </Animated.View>
             ) : (
               <Text variant="label" color={light.inkSoft}>
-                {group?.joined.length ? whoLine(party, group.joined) : copy.waiting}
+                {remote
+                  ? members.length
+                    ? liveWho()
+                    : `Waiting for someone to join · code ${remote.code}`
+                  : group?.joined.length
+                    ? whoLine(party, group.joined)
+                    : copy.waiting}
               </Text>
             )}
           </View>
@@ -197,6 +221,25 @@ export default function GroupScreen() {
       <View style={[styles.actions, { paddingBottom: insets.bottom + 12 }]}>
         {locked ? (
           <Button label="Done" onPress={() => router.dismissTo('/trips')} />
+        ) : remote ? (
+          <>
+            {isOwner && approved ? (
+              <Button label="Lock it in" onPress={lockIn} />
+            ) : isVoter && !myVotesDone ? (
+              <Button label="Vote" onPress={vote} />
+            ) : isOwner ? (
+              <Button kind="secondary" label="Invite someone" onPress={() => router.push({ pathname: '/share/[id]', params: { id } })} />
+            ) : (
+              <Button kind="secondary" label="Change my votes" onPress={vote} />
+            )}
+            {approved && !isOwner ? (
+              <Text variant="label" color={light.inkSoft} style={styles.waitNote}>
+                Waiting for {remote.ownerName} to lock it in
+              </Text>
+            ) : (
+              <Button kind="text" label="Add a stop" onPress={addStop} />
+            )}
+          </>
         ) : approved ? (
           <>
             <Button label="Lock it in" onPress={lockIn} />
@@ -220,6 +263,7 @@ export default function GroupScreen() {
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: light.canvas },
   topBar: { paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'flex-end' },
+  waitNote: { textAlign: 'center', paddingVertical: 10 },
   head: { paddingHorizontal: 4, gap: 6 },
   title: { marginTop: 2 },
   people: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18, marginBottom: 16, paddingHorizontal: 4 },

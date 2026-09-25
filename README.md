@@ -38,6 +38,17 @@ Two things can't run in Expo Go, and both have a working stand-in:
 
 Everything else — the whole flow, the maps, the motion — works in Expo Go.
 
+## Planning together, for real
+
+Out of the box the group vote is a scripted demo (Riya, Kabir, Meera). Connect the free Supabase backend and two phones can plan the same trip: one shares, the other joins with the link or a six-letter code, and every join, vote, note and added stop shows up on both, live.
+
+1. In this folder, run `npx eas-cli@latest integrations:supabase:connect`. It opens your browser to sign in to Supabase, creates the project, and writes `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to `.env.local` (git-ignored; both are public by design).
+2. In the Supabase dashboard, open **SQL Editor**, paste [`supabase/schema.sql`](supabase/schema.sql) and run it.
+3. In **Authentication → Sign In / Providers**, turn on **Anonymous sign-ins**. Nobody makes an account: each phone or browser is its own person.
+4. Restart `npx expo start` so the new keys are picked up.
+
+How it fits together: `src/lib/live/` talks to Supabase (the client, the calls, and the wire format that sends places as catalog ids, since photo asset ids differ between builds). `src/state/live.tsx` listens to a shared trip and turns what arrives into the same store actions the scripted demo dispatches, so every screen works either way. Trips are private to their members by row level security; the only way in is making the trip or knowing its code.
+
 ## The happy flow
 
 1. **Onboarding** → three screens: what it does, what it does near home, and which district you live in.

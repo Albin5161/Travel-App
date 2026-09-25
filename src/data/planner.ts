@@ -309,6 +309,25 @@ export function addStop(plan: TripPlan, day: number, place: Place, suggested: bo
   });
 }
 
+/**
+ * Adds a stop someone typed in. It goes after the last stop in its part of the day rather than at
+ * the end, so a morning errand isn't timed for the evening.
+ */
+export function addCustomStop(plan: TripPlan, day: number, place: Place): TripPlan {
+  const current = plan.days[day].stops;
+  const rank = PART_RANK[place.bestTime];
+  let at = current.length;
+  for (let i = current.length - 1; i >= 0; i--) {
+    if (PART_RANK[current[i].place.bestTime] <= rank) {
+      at = i + 1;
+      break;
+    }
+    at = i;
+  }
+  const stops = [...current.slice(0, at), { place, startMinutes: 0, pinned: true, suggested: false }, ...current.slice(at)];
+  return retime({ ...plan, days: plan.days.map((d, k) => (k === day ? { ...d, stops } : d)) });
+}
+
 export function togglePin(plan: TripPlan, day: number, placeId: string): TripPlan {
   return {
     ...plan,

@@ -48,6 +48,8 @@ import type { DayPart, Place } from '@/data/types';
 import { formatClock, formatDuration, smoothPath, smoothPathLength } from '@/lib/geo';
 import { haptic } from '@/lib/haptics';
 import { EASE_IN_OUT, FADE_IN, FADE_OUT, fadeUp, REFLOW } from '@/lib/motion';
+import { customStops } from '@/data/custom';
+import { usePlanWriter } from '@/state/live';
 import { useCityPlaces, useTrips } from '@/state/trips';
 import { fonts, light } from '@/theme/tokens';
 
@@ -156,6 +158,8 @@ export default function PlanScreen() {
   };
 
   // A flash lasts one showing; a note fades after a few seconds.
+  // Edits save here, and to everyone's phone once the trip is shared.
+  const writePlan = usePlanWriter(id);
   useEffect(() => {
     if (flash.size === 0) return;
     const t = setTimeout(() => setFlash(new Set()), 1600);
@@ -169,7 +173,7 @@ export default function PlanScreen() {
 
   if (!city || !plan || !today) return null;
 
-  const update = (next: TripPlan) => dispatch({ type: 'setTripPlan', plan: next });
+  const update = (next: TripPlan) => writePlan(next);
   const inPlan = new Set(plan.days.flatMap((d) => d.stops.map((s) => s.place.id)));
   const locals = getLocalPicks(id);
   const candidates = [...plan.left, ...locals].filter((p, i, all) => !inPlan.has(p.id) && all.findIndex((q) => q.id === p.id) === i);
@@ -182,9 +186,10 @@ export default function PlanScreen() {
     setBusy(true);
     setEditing(false);
     setNote(null);
+    // Stops people typed in aren't saved places: they ride along pinned to their day.
     const input = {
       cityId: id,
-      saved: collected,
+      saved: [...collected, ...customStops(plan).map((c) => c.place)],
       suggestions: locals,
       prefs: plan.prefs,
       pins: pinsOf(plan),
@@ -388,6 +393,16 @@ export default function PlanScreen() {
                 </Animated.View>
               )),
             ])}
+
+            <PressableScale
+              onPress={() => router.push({ pathname: '/addstop/[id]', params: { id, day: String(dayIndex) } })}
+              style={styles.addOwn}
+              accessibilityRole="button"
+              accessibilityLabel="Add your own stop"
+            >
+              <Feather name="plus" size={16} color={light.ink} />
+              <Text variant="label">Add your own stop</Text>
+            </PressableScale>
 
             {left.length > 0 ? (
               <View style={styles.left}>
@@ -722,6 +737,18 @@ const styles = StyleSheet.create({
   leg: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 5, paddingVertical: 8 },
   legCompact: { paddingTop: 0 },
   legLine: { width: 2, height: 18, borderRadius: 1, backgroundColor: light.line, marginRight: 4 },
+  addOwn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 18,
+    height: 48,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: light.lineStrong,
+  },
   left: { marginTop: 28, gap: 12 },
   leftRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   leftThumb: { width: 44, height: 44, borderRadius: 12, backgroundColor: light.canvasTop },

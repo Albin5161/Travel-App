@@ -29,6 +29,8 @@ const W = 62;
 const H = 76;
 // Neighbouring prints overlap by 12pt, like photos dealt onto a table.
 const STEP = 50;
+// Room kept between the outer prints and the field's ends, allowing for their tilt.
+const EDGE = 10;
 // Tilt and drop grow toward the ends, so the row reads as a gentle fan rather than a shelf.
 const TILT = 4.5;
 const DROP = 2;
@@ -49,6 +51,9 @@ export function PhotoStrip({ photos, width, muted }: Props) {
     (a, b) => Math.abs(a) - Math.abs(b) || a - b,
   );
 
+  // Overlap more when the field is narrow (small phones), so no print hangs past its edges.
+  const step = n > 1 ? Math.min(STEP, (width - W - EDGE * 2) / (n - 1)) : STEP;
+
   return (
     <View style={{ width, height: STRIP_HEIGHT }} pointerEvents="none">
       {shown.map((p, i) => {
@@ -57,7 +62,7 @@ export function PhotoStrip({ photos, width, muted }: Props) {
           <Print
             key={p.id}
             photo={p.photo}
-            x={width / 2 + off * STEP - W / 2}
+            x={width / 2 + off * step - W / 2}
             y={6 + off * off * DROP}
             tilt={off * TILT}
             order={i}

@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CityOpenOverlay, useCityOpen } from '@/components/CityOpenOverlay';
 import { CityTile } from '@/components/CityTile';
-import { LinkBox } from '@/components/LinkBox';
+import { FIELD_TRAILING, LinkBox } from '@/components/LinkBox';
 import { Text } from '@/components/Text';
 import { Segmented } from '@/components/Segmented';
 import { EXAMPLE_LINKS, getCity, getPlace } from '@/data/api';
@@ -101,8 +101,10 @@ export default function Home() {
                 <Text style={styles.questionStrong}>your next trip?</Text>
               </Text>
             </Animated.View>
+            {/* Centred on the field, not the screen: the paste button takes the right of the row, and
+                a print hanging over it would be cut off in mid-air instead of tucking behind white. */}
             <View style={styles.strip}>
-              <PhotoStrip photos={stripPhotos} width={W - GUTTER * 2} muted={inspiration} />
+              <PhotoStrip photos={stripPhotos} width={W - GUTTER * 2 - FIELD_TRAILING} muted={inspiration} />
             </View>
           </View>
 
@@ -229,7 +231,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: GUTTER },
   // The strip's lower edge runs under the sticky link box below it (a later sibling, so it draws
   // on top), which is what makes the prints read as tucked behind the field.
-  strip: { marginTop: 14, marginBottom: -STRIP_TUCK, alignItems: 'center' },
+  strip: { marginTop: 14, marginBottom: -STRIP_TUCK },
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: light.ink },
   // Two weights, one line box: a quiet Medium lead-in, then the ask in ExtraBold. The weight change
   // does the emphasis a decorative italic used to.

@@ -12,13 +12,30 @@ export function distanceKm(a: LatLng, b: LatLng) {
 }
 
 // Straight-line distance undersells real paths; 1.3 is a common detour factor.
-export type TravelMode = 'walk' | 'auto' | 'cab';
+export type TravelMode = 'walk' | 'auto' | 'cab' | 'car' | 'bus';
+
+/** How someone gets around on a trip, as asked when planning. */
+export type Getting = 'local' | 'drive' | 'bus';
 
 export function travelLeg(a: LatLng, b: LatLng): { km: number; minutes: number; mode: TravelMode } {
   const km = distanceKm(a, b) * 1.3;
   if (km <= 2.5) return { km, minutes: Math.max(3, Math.round((km / 4.8) * 60)), mode: 'walk' };
   if (km <= 15) return { km, minutes: Math.round((km / 22) * 60) + 4, mode: 'auto' };
   return { km, minutes: Math.round((km / 35) * 60) + 5, mode: 'cab' };
+}
+
+/**
+ * A leg priced for how the traveller is actually moving. Walking-and-autos is the default above.
+ * Own vehicle is slower than it sounds on Kerala roads (about 30 km/h door to door, plus parking);
+ * the bus adds a wait at the stop, and anything under a kilometre is walked either way.
+ */
+export function travelLegFor(a: LatLng, b: LatLng, getting: Getting) {
+  if (getting === 'local') return travelLeg(a, b);
+  const km = distanceKm(a, b) * 1.3;
+  const walkable = getting === 'drive' ? 0.8 : 1.2;
+  if (km <= walkable) return { km, minutes: Math.max(3, Math.round((km / 4.8) * 60)), mode: 'walk' as TravelMode };
+  if (getting === 'drive') return { km, minutes: Math.round((km / 30) * 60) + 5, mode: 'car' as TravelMode };
+  return { km, minutes: Math.round((km / 18) * 60) + 12, mode: 'bus' as TravelMode };
 }
 
 export function formatDuration(minutes: number) {

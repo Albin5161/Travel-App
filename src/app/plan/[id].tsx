@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   useAnimatedProps,
   useAnimatedReaction,
@@ -22,54 +22,94 @@ import { Button } from '@/components/Button';
 import { CityMap, fitCameraToRect, flyTo, useCamera } from '@/components/CityMap';
 import { IconButton } from '@/components/IconButton';
 import { PassportStamp } from '@/components/motion/PassportStamp';
-import { costLabel } from '@/components/PlaceMeta';
+import { StopActions } from '@/components/plan/StopActions';
+import { costLabel, typeLine } from '@/components/PlaceMeta';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { getCity, getLocalPicks } from '@/data/api';
-import { buildPlan, findGap, type PlanStop } from '@/data/plan';
+import {
+  addStop,
+  changedStops,
+  formatDay,
+  formatRange,
+  fromIso,
+  moveToDay,
+  partOf,
+  pinsOf,
+  removeStop,
+  reorder,
+  rulePlanner,
+  swapStop,
+  togglePin,
+  type TripPlan,
+  type TripStop,
+} from '@/data/planner';
 import type { DayPart, Place } from '@/data/types';
 import { formatClock, formatDuration, smoothPath, smoothPathLength } from '@/lib/geo';
 import { haptic } from '@/lib/haptics';
-import { EASE_IN_OUT, FADE_OUT, fadeUp, REFLOW } from '@/lib/motion';
+import { EASE_IN_OUT, FADE_IN, FADE_OUT, fadeUp, REFLOW } from '@/lib/motion';
 import { useCityPlaces, useTrips } from '@/state/trips';
 import { fonts, light } from '@/theme/tokens';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const PART_TITLE: Record<DayPart, string> = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening' };
+const PACE_LABEL = { relaxed: 'Relaxed', balanced: 'Balanced', packed: 'Packed' } as const;
+const GETTING_LABEL = { local: 'Walking and autos', drive: 'Own vehicle', bus: 'By bus' } as const;
 const ROW_ENTER = fadeUp(0);
 const READING_LINE = 150;
+// A regenerate is a moment, not a wait: long enough to read as work, short enough not to stall.
+const REGENERATE_MS = 900;
+// Seeds tried before admitting the places only fit one way.
+const REGENERATE_TRIES = 6;
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default function PlanScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const city = getCity(id);
-  const { kept, locals } = useCityPlaces(id);
-  const { dispatch } = useTrips();
+  // Planned from the places not skipped in the place sheet.
+  const { kept: collected } = useCityPlaces(id);
+  const { state, dispatch } = useTrips();
+  const plan = state.tripPlans[id];
   const { width: W, height: H } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
 
-  const selected = [...kept, ...locals];
-  const plan = buildPlan(selected);
-  const gap = findGap(selected, getLocalPicks(id));
+  const [day, setDay] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const [sheet, setSheet] = useState<TripStop | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [flash, setFlash] = useState<Set<string>>(new Set());
+  const [note, setNote] = useState<string | null>(null);
+  const [stamping, setStamping] = useState(false);
 
-  const MAP_H = Math.round(H * 0.46);
-  const points = plan.stops.map((s) => s.place.map);
+  // No plan yet (a reload, or a deep link): ask the questions first.
+  useEffect(() => {
+    if (!plan) router.replace({ pathname: '/trip/[id]', params: { id } });
+  }, [id, plan]);
+
+  const dayIndex = Math.min(day, Math.max(0, (plan?.days.length ?? 1) - 1));
+  const today = plan?.days[dayIndex];
+  const stops = today?.stops ?? [];
+
+  const MAP_H = Math.round(H * 0.4);
+  const points = stops.map((s) => s.place.map);
   const fitRect = { top: insets.top + 56, bottom: 44 };
   const fit = fitCameraToRect(points.length ? points : [[500, 700]], { w: W, h: MAP_H }, fitRect, 120);
   const focusScale = fit.s * 1.6;
   const camera = useCamera(fit);
   const activeId = useSharedValue<string | null>(null);
-  const [stamping, setStamping] = useState(false);
 
-  // Route draws itself once the numbered pins have popped in; redraws when a stop is added.
-  const routeKey = plan.stops.map((s) => s.place.id).join('|');
+  // The route redraws for each day and after each edit; the camera fits the day it's showing.
+  const routeKey = `${dayIndex}:${stops.map((s) => s.place.id).join('|')}`;
   const progress = useSharedValue(0);
   const firstDraw = useRef(true);
   useEffect(() => {
-    const delay = firstDraw.current ? 300 + plan.stops.length * 80 : 120;
+    const delay = firstDraw.current ? 300 + stops.length * 80 : 120;
     firstDraw.current = false;
     progress.set(0);
     progress.set(withDelay(delay, withTiming(1, { duration: reduced ? 250 : 900, easing: EASE_IN_OUT })));
+    activeId.set(null);
+    flyTo(camera, fit);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeKey]);
 
@@ -80,8 +120,12 @@ export default function PlanScreen() {
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.set(e.contentOffset.y);
   });
-  const stopIds = plan.stops.map((s) => s.place.id);
+  const stopIds = stops.map((s) => s.place.id);
   const visibleCy = (fitRect.top + (MAP_H - fitRect.bottom)) / 2;
+  useEffect(() => {
+    rowYsRef.current = [];
+    rowYs.set([]);
+  }, [routeKey, rowYs]);
 
   useAnimatedReaction(
     () => {
@@ -95,7 +139,7 @@ export default function PlanScreen() {
     },
     (idx, prev) => {
       if (idx === prev) return;
-      if (idx < 0) {
+      if (idx < 0 || idx >= points.length) {
         activeId.set(null);
         flyTo(camera, fit);
         return;
@@ -106,34 +150,101 @@ export default function PlanScreen() {
     },
     [routeKey],
   );
-
   const setRowY = (i: number, y: number) => {
     rowYsRef.current[i] = y;
     rowYs.set([...rowYsRef.current]);
   };
 
-  if (!city) return null;
+  // A flash lasts one showing; a note fades after a few seconds.
+  useEffect(() => {
+    if (flash.size === 0) return;
+    const t = setTimeout(() => setFlash(new Set()), 1600);
+    return () => clearTimeout(t);
+  }, [flash]);
+  useEffect(() => {
+    if (!note) return;
+    const t = setTimeout(() => setNote(null), 3600);
+    return () => clearTimeout(t);
+  }, [note]);
 
-  const addGap = (place: Place) => {
+  if (!city || !plan || !today) return null;
+
+  const update = (next: TripPlan) => dispatch({ type: 'setTripPlan', plan: next });
+  const inPlan = new Set(plan.days.flatMap((d) => d.stops.map((s) => s.place.id)));
+  const locals = getLocalPicks(id);
+  const candidates = [...plan.left, ...locals].filter((p, i, all) => !inPlan.has(p.id) && all.findIndex((q) => q.id === p.id) === i);
+  const isSaved = (p: Place) => collected.some((c) => c.id === p.id);
+  const dayLabels = plan.days.map((d, i) => (d.date ? `Day ${i + 1} · ${formatDay(d.date).replace(/ \w+$/, '')}` : `Day ${i + 1}`));
+
+  const regenerate = async () => {
+    if (busy) return;
     haptic.light();
-    dispatch({ type: 'addLocal', cityId: id, placeId: place.id });
+    setBusy(true);
+    setEditing(false);
+    setNote(null);
+    const input = {
+      cityId: id,
+      saved: collected,
+      suggestions: locals,
+      prefs: plan.prefs,
+      pins: pinsOf(plan),
+      removed: plan.removed,
+    };
+    let next = plan;
+    let changed = new Set<string>();
+    const [result] = await Promise.all([
+      (async () => {
+        for (let k = 1; k <= REGENERATE_TRIES && changed.size === 0; k++) {
+          next = await rulePlanner.plan({ ...input, seed: plan.seed + k });
+          changed = changedStops(plan, next);
+        }
+        return { next, changed };
+      })(),
+      wait(REGENERATE_MS),
+    ]);
+    setBusy(false);
+    if (result.changed.size === 0) {
+      setNote('Same plan. With these places and answers, this is the only good fit.');
+      return;
+    }
+    haptic.success();
+    update(result.next);
+    setFlash(result.changed);
   };
 
-  // Saving plays the passport stamp (its thud is the haptic), then heads home.
   const save = () => setStamping(true);
   const saved = () => {
     dispatch({ type: 'saveTrip', cityId: id });
     router.dismissTo('/');
   };
 
-  const indexOf = new Map(plan.stops.map((s, i) => [s.place.id, i]));
+  // Stops grouped into parts of the day by their clock time, keeping the day's order.
+  const parts: { part: DayPart; stops: { stop: TripStop; i: number }[] }[] = [];
+  stops.forEach((stop, i) => {
+    const part = partOf(stop.startMinutes);
+    const last = parts[parts.length - 1];
+    if (last && last.part === part) last.stops.push({ stop, i });
+    else parts.push({ part, stops: [{ stop, i }] });
+  });
+
+  const prefs = plan.prefs;
+  const n = plan.days.length;
+  const meta = [
+    prefs.start ? formatRange(prefs.start, n) : `${n} ${n === 1 ? 'day' : 'days'}, dates to come`,
+    PACE_LABEL[prefs.pace],
+    GETTING_LABEL[prefs.getting],
+  ].join(' · ');
+  const left = plan.left.filter((p) => !inPlan.has(p.id));
+  // Asking for more days than there are places is easy; say so rather than show empty days bare.
+  const emptyDays = plan.days.filter((d) => d.stops.length === 0).length;
+  const placed = plan.days.reduce((sum, d) => sum + d.stops.filter((s) => !s.suggested).length, 0);
 
   return (
     <View style={styles.fill}>
       <View style={{ height: MAP_H }}>
         <CityMap
           city={city}
-          pins={plan.stops.map((s, i) => ({ id: s.place.id, place: s.place, number: i + 1 }))}
+          pins={stops.map((s, i) => ({ id: s.place.id, place: s.place, number: i + 1 }))}
           width={W}
           height={MAP_H}
           camera={camera}
@@ -164,28 +275,89 @@ export default function PlanScreen() {
           onScroll={onScroll}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: insets.bottom + 120 }}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: insets.bottom + 130 }}
         >
-          <Text variant="micro">
-            {plan.stops.length} stops · {plan.totalKm.toFixed(1)} km
+          <Text variant="micro" numberOfLines={2}>
+            {meta}
           </Text>
           <Text variant="display" style={styles.title}>
-            Your day in {city.name}
+            {n === 1 ? `Your day in ${city.name}` : `Your ${n} days in ${city.name}`}
           </Text>
 
-          {plan.stops.length === 0 ? (
-            <Text variant="body">You skipped everything. Go back and keep a few places to plan a day.</Text>
+          <View style={styles.tools}>
+            <Tool icon={editing ? 'check' : 'edit-2'} label={editing ? 'Done' : 'Edit'} on={editing} onPress={() => setEditing((e) => !e)} />
+            <Tool icon="refresh-cw" label={busy ? 'Reshuffling…' : 'Regenerate'} onPress={regenerate} />
+            <Tool icon="sliders" label="Change answers" onPress={() => router.push({ pathname: '/trip/[id]', params: { id, from: 'plan' } })} />
+          </View>
+          {note ? (
+            <Animated.View entering={FADE_IN} exiting={FADE_OUT}>
+              <Text variant="label" color={light.inkSoft} style={styles.note}>
+                {note}
+              </Text>
+            </Animated.View>
+          ) : (
+            <Text variant="label" color={light.inkFaint} style={styles.note}>
+              {editing ? 'Move stops with the arrows, or tap ⋯ for more.' : 'Pin the stops you love. Regenerate keeps them and reshuffles the rest.'}
+            </Text>
+          )}
+
+          {emptyDays > 0 && n > 1 ? (
+            <View style={styles.thin}>
+              <Feather name="info" size={14} color={light.inkSoft} />
+              <Text variant="label" color={light.inkSoft} style={styles.thinText}>
+                {`Your ${placed} ${placed === 1 ? 'place fills' : 'places fill'} ${n - emptyDays} of ${n} days. Save more places here, or `}
+                <Text variant="label" style={styles.thinLink} onPress={() => router.push({ pathname: '/trip/[id]', params: { id, from: 'plan' } })}>
+                  shorten the trip
+                </Text>
+                .
+              </Text>
+            </View>
           ) : null}
 
-          {/* Flat children so each row's onLayout y is relative to the scroll content. */}
-          {plan.parts.flatMap((part) => [
-            <Animated.View key={`h-${part.part}`} layout={REFLOW} style={styles.partHeader}>
-              <Text variant="headline">{PART_TITLE[part.part]}</Text>
-              <Text variant="data">{formatClock(part.stops[0].startMinutes)}</Text>
-            </Animated.View>,
-            ...part.stops.map((stop, j) => {
-              const i = indexOf.get(stop.place.id) ?? 0;
-              return (
+          {n > 1 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.days} contentContainerStyle={styles.daysContent}>
+              {dayLabels.map((label, i) => {
+                const on = i === dayIndex;
+                return (
+                  <Pressable
+                    key={label}
+                    onPress={() => {
+                      if (on) return;
+                      haptic.selection();
+                      setDay(i);
+                    }}
+                    style={[styles.dayTab, on && styles.dayTabOn]}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Text variant="label" color={on ? light.ctaInk : light.ink}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+
+          <View style={[styles.list, busy && styles.busy]}>
+            <Text variant="data" style={styles.daySummary}>
+              {stops.length} {stops.length === 1 ? 'stop' : 'stops'}
+              {today.totalKm > 0 ? ` · ${today.totalKm.toFixed(1)} km` : ''}
+            </Text>
+
+            {stops.length === 0 ? (
+              <Text variant="body" style={styles.emptyDay}>
+                Nothing planned this day. Add a saved spot below, move one here, or regenerate.
+              </Text>
+            ) : null}
+
+            {/* Flat children so each row's onLayout y is relative to the scroll content. */}
+            {parts.flatMap((part) => [
+              <Animated.View key={`h-${part.part}-${part.stops[0].i}`} layout={REFLOW} style={styles.partHeader}>
+                <Text variant="headline">{PART_TITLE[part.part]}</Text>
+                <Text variant="data">{formatClock(part.stops[0].stop.startMinutes)}</Text>
+              </Animated.View>,
+              ...part.stops.map(({ stop, i }, j) => (
                 <Animated.View
                   key={stop.place.id}
                   entering={ROW_ENTER}
@@ -193,15 +365,56 @@ export default function PlanScreen() {
                   onLayout={(e) => setRowY(i, e.nativeEvent.layout.y)}
                 >
                   {stop.legBefore ? <Leg stop={stop} compact={j === 0} /> : null}
-                  <StopRow stop={stop} number={i + 1} activeId={activeId} />
+                  <StopRow
+                    stop={stop}
+                    number={i + 1}
+                    activeId={activeId}
+                    flash={flash.has(stop.place.id)}
+                    editing={editing}
+                    first={i === 0}
+                    last={i === stops.length - 1}
+                    onPin={() => {
+                      haptic.selection();
+                      update(togglePin(plan, dayIndex, stop.place.id));
+                    }}
+                    onMove={(by) => {
+                      haptic.selection();
+                      update(reorder(plan, dayIndex, stop.place.id, by));
+                    }}
+                    onMore={() => setSheet(stop)}
+                  />
                 </Animated.View>
-              );
-            }),
-            part.part === 'evening' && gap ? <GapCard key="gap" place={gap} onAdd={() => addGap(gap)} /> : null,
-          ])}
-          {gap && !plan.parts.some((p) => p.part === 'evening') ? (
-            <GapCard place={gap} onAdd={() => addGap(gap)} />
-          ) : null}
+              )),
+            ])}
+
+            {left.length > 0 ? (
+              <View style={styles.left}>
+                <Text variant="micro">Not in this plan · {left.length}</Text>
+                {left.map((p) => (
+                  <Animated.View key={p.id} entering={ROW_ENTER} exiting={FADE_OUT} layout={REFLOW} style={styles.leftRow}>
+                    <Image source={p.photo} style={styles.leftThumb} contentFit="cover" transition={0} />
+                    <View style={styles.stopText}>
+                      <Text variant="bodyStrong" numberOfLines={1}>
+                        {p.name}
+                      </Text>
+                      <Text variant="label" color={light.inkSoft} numberOfLines={1}>
+                        {typeLine(p)}
+                      </Text>
+                    </View>
+                    <Button
+                      kind="secondary"
+                      compact
+                      label={n > 1 ? `Add to day ${dayIndex + 1}` : 'Add'}
+                      onPress={() => {
+                        haptic.light();
+                        update(addStop(plan, dayIndex, p, false));
+                      }}
+                    />
+                  </Animated.View>
+                ))}
+              </View>
+            ) : null}
+          </View>
         </Animated.ScrollView>
 
         <LinearGradient
@@ -210,11 +423,73 @@ export default function PlanScreen() {
           style={[styles.bottomFade, { height: insets.bottom + 110 }]}
         />
         <View style={[styles.floating, { paddingBottom: insets.bottom + 16 }]}>
-          <Button label="Save this day" onPress={save} disabled={plan.stops.length === 0 || stamping} />
+          <Button
+            label={n === 1 ? 'Save this day' : `Save this ${n}-day plan`}
+            onPress={save}
+            disabled={plan.days.every((d) => d.stops.length === 0) || stamping || busy}
+          />
         </View>
       </View>
-      {stamping ? <PassportStamp city={city.name} date={new Date()} onDone={saved} /> : null}
+
+      <StopActions
+        stop={sheet}
+        days={dayLabels}
+        day={dayIndex}
+        candidates={candidates}
+        onPin={() => {
+          if (!sheet) return;
+          haptic.selection();
+          update(togglePin(plan, dayIndex, sheet.place.id));
+          setSheet(null);
+        }}
+        onMove={(to) => {
+          if (!sheet) return;
+          haptic.light();
+          update(moveToDay(plan, dayIndex, sheet.place.id, to));
+          setSheet(null);
+        }}
+        onSwap={(p) => {
+          if (!sheet) return;
+          haptic.light();
+          update(swapStop(plan, dayIndex, sheet.place.id, p, !isSaved(p)));
+          setFlash(new Set([p.id]));
+          setSheet(null);
+        }}
+        onRemove={() => {
+          if (!sheet) return;
+          haptic.light();
+          update(removeStop(plan, dayIndex, sheet.place.id));
+          setSheet(null);
+        }}
+        onClose={() => setSheet(null)}
+      />
+      {stamping ? (
+        <PassportStamp city={city.name} date={today.date ? fromIso(plan.days[0].date ?? today.date) : new Date()} onDone={saved} />
+      ) : null}
     </View>
+  );
+}
+
+function Tool({
+  icon,
+  label,
+  on,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Feather>['name'];
+  label: string;
+  on?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+      <View style={[styles.tool, on && styles.toolOn]}>
+        <Feather name={icon} size={13} color={on ? light.ctaInk : light.ink} />
+        <Text variant="label" color={on ? light.ctaInk : light.ink}>
+          {label}
+        </Text>
+      </View>
+    </PressableScale>
   );
 }
 
@@ -234,7 +509,7 @@ function Route({ d, length, progress, width }: { d: string; length: number; prog
   );
 }
 
-function Leg({ stop, compact }: { stop: PlanStop; compact?: boolean }) {
+function Leg({ stop, compact }: { stop: TripStop; compact?: boolean }) {
   const leg = stop.legBefore!;
   const label =
     leg.mode === 'walk'
@@ -249,19 +524,55 @@ function Leg({ stop, compact }: { stop: PlanStop; compact?: boolean }) {
   );
 }
 
-function StopRow({ stop, number, activeId }: { stop: PlanStop; number: number; activeId: SharedValue<string | null> }) {
+function StopRow({
+  stop,
+  number,
+  activeId,
+  flash,
+  editing,
+  first,
+  last,
+  onPin,
+  onMove,
+  onMore,
+}: {
+  stop: TripStop;
+  number: number;
+  activeId: SharedValue<string | null>;
+  flash: boolean;
+  editing: boolean;
+  first: boolean;
+  last: boolean;
+  onPin: () => void;
+  onMove: (by: -1 | 1) => void;
+  onMore: () => void;
+}) {
   const id = stop.place.id;
   const dim = useAnimatedStyle(() => {
     const a = activeId.get();
     return { opacity: withTiming(a === null || a === id ? 1 : 0.5, { duration: 180 }) };
   });
+  // A regenerated or swapped-in stop glows warm for a moment, so the change is visible at a glance.
+  const glow = useSharedValue(0);
+  useEffect(() => {
+    if (!flash) return;
+    glow.set(1);
+    glow.set(withDelay(250, withTiming(0, { duration: 1200 })));
+  }, [flash, glow]);
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glow.get() }));
+
+  // The row's own press and its buttons are siblings, never nested: a button inside a button is
+  // invalid on web and confusing to screen readers everywhere.
   return (
-    <PressableScale
-      onPress={() => router.push({ pathname: '/place/[id]', params: { id } })}
-      accessibilityRole="button"
-      accessibilityLabel={`Stop ${number}, ${stop.place.name}, ${formatClock(stop.startMinutes)}`}
-    >
-      <Animated.View style={[styles.stop, dim]}>
+    <Animated.View style={[styles.stop, dim]}>
+      <Animated.View pointerEvents="none" style={[styles.glow, glowStyle]} />
+      <PressableScale
+        onPress={editing ? onMore : () => router.push({ pathname: '/place/[id]', params: { id } })}
+        containerStyle={styles.stopMainSlot}
+        style={styles.stopMain}
+        accessibilityRole="button"
+        accessibilityLabel={`Stop ${number}, ${stop.place.name}, ${formatClock(stop.startMinutes)}`}
+      >
         <View style={styles.stopNumber}>
           <Text style={styles.stopNumberText}>{number}</Text>
         </View>
@@ -273,35 +584,54 @@ function StopRow({ stop, number, activeId }: { stop: PlanStop; number: number; a
           <Text variant="data" numberOfLines={1}>
             {formatClock(stop.startMinutes)} · {formatDuration(stop.place.minutes)} · {costLabel(stop.place.cost)}
           </Text>
-          {stop.place.source.kind === 'local' ? (
+          {stop.suggested ? (
             <Text variant="micro" color={light.accent}>
-              Recommended by locals
+              Suggested · local pick
             </Text>
+          ) : stop.pinned ? (
+            <Text variant="micro">Pinned</Text>
           ) : null}
         </View>
-      </Animated.View>
-    </PressableScale>
+      </PressableScale>
+
+      {editing ? (
+          <View style={styles.editTools}>
+            <SmallButton icon="chevron-up" label="Move earlier" disabled={first} onPress={() => onMove(-1)} />
+            <SmallButton icon="chevron-down" label="Move later" disabled={last} onPress={() => onMove(1)} />
+            <SmallButton icon="more-horizontal" label={`More for ${stop.place.name}`} onPress={onMore} />
+          </View>
+        ) : !stop.suggested ? (
+          <SmallButton icon="map-pin" label={stop.pinned ? 'Unpin' : 'Pin'} on={stop.pinned} onPress={onPin} />
+        ) : null}
+    </Animated.View>
   );
 }
 
-function GapCard({ place, onAdd }: { place: Place; onAdd: () => void }) {
+function SmallButton({
+  icon,
+  label,
+  on,
+  disabled,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Feather>['name'];
+  label: string;
+  on?: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
   return (
-    <Animated.View entering={ROW_ENTER} exiting={FADE_OUT} style={styles.gap}>
-      <Text variant="title">Nothing planned for dinner.</Text>
-      <View style={styles.gapRow}>
-        <Image source={place.photo} style={styles.thumb} contentFit="cover" transition={0} />
-        <View style={styles.stopText}>
-          <Text variant="micro" color={light.accent}>
-            Recommended by locals
-          </Text>
-          <Text variant="bodyStrong">{place.name}</Text>
-          <Text variant="body" numberOfLines={2}>
-            {place.why}
-          </Text>
-        </View>
-      </View>
-      <Button kind="secondary" compact label="Add to evening" onPress={onAdd} />
-    </Animated.View>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={6}
+      style={({ pressed }) => [styles.small, on && styles.smallOn, pressed && styles.smallPressed, disabled && styles.smallDisabled]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: on, disabled }}
+    >
+      <Feather name={icon} size={15} color={on ? light.ctaInk : light.ink} />
+    </Pressable>
   );
 }
 
@@ -317,9 +647,51 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     overflow: 'hidden',
   },
-  title: { marginTop: 6, marginBottom: 8 },
-  partHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 24, marginBottom: 10 },
-  stop: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
+  title: { marginTop: 6, marginBottom: 14 },
+  tools: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tool: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: light.canvas,
+    borderWidth: 1,
+    borderColor: light.line,
+  },
+  toolOn: { backgroundColor: light.ink, borderColor: light.ink },
+  note: { marginTop: 10 },
+  thin: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: light.canvas,
+  },
+  thinText: { flex: 1 },
+  thinLink: { color: light.ink, textDecorationLine: 'underline' },
+  days: { marginTop: 18, marginHorizontal: -24 },
+  daysContent: { paddingHorizontal: 24, gap: 8 },
+  dayTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: light.canvas,
+    borderWidth: 1,
+    borderColor: light.line,
+  },
+  dayTabOn: { backgroundColor: light.ink, borderColor: light.ink },
+  list: { marginTop: 6 },
+  busy: { opacity: 0.4 },
+  daySummary: { marginTop: 14 },
+  emptyDay: { marginTop: 14 },
+  partHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 20, marginBottom: 10 },
+  stop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  stopMainSlot: { flex: 1 },
+  stopMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  glow: { position: 'absolute', left: -10, right: -10, top: 0, bottom: 0, borderRadius: 16, backgroundColor: 'rgba(226,118,60,0.14)' },
   stopNumber: {
     width: 24,
     height: 24,
@@ -331,20 +703,26 @@ const styles = StyleSheet.create({
   stopNumberText: { fontFamily: fonts.sansSemi, fontSize: 12, color: light.ctaInk, fontVariant: ['tabular-nums'] },
   thumb: { width: 56, height: 56, borderRadius: 14, backgroundColor: light.canvasTop },
   stopText: { flex: 1, gap: 2 },
+  editTools: { flexDirection: 'row', gap: 6 },
+  small: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: light.canvas,
+    borderWidth: 1,
+    borderColor: light.line,
+  },
+  smallOn: { backgroundColor: light.ink, borderColor: light.ink },
+  smallPressed: { transform: [{ scale: 0.92 }] },
+  smallDisabled: { opacity: 0.3 },
   leg: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 5, paddingVertical: 8 },
   legCompact: { paddingTop: 0 },
   legLine: { width: 2, height: 18, borderRadius: 1, backgroundColor: light.line, marginRight: 4 },
-  gap: {
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: light.lineStrong,
-    backgroundColor: light.canvas,
-    gap: 12,
-  },
-  gapRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  left: { marginTop: 28, gap: 12 },
+  leftRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  leftThumb: { width: 44, height: 44, borderRadius: 12, backgroundColor: light.canvasTop },
   bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   floating: { position: 'absolute', left: 20, right: 20, bottom: 0 },
 });

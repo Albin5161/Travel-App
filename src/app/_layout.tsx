@@ -70,7 +70,8 @@ export default function RootLayout() {
                 The edge swipe is off because it would slide the page away instead of shrinking it. */}
             <Stack.Screen name="city/[id]" options={{ animation: 'none', gestureEnabled: false }} />
             <Stack.Screen name="citymap/[id]" options={{ animation: 'fade' }} />
-            <Stack.Screen name="pick/[id]" />
+            {/* Questions before a plan: its own back handling steps through them, so no edge swipe. */}
+            <Stack.Screen name="trip/[id]" options={{ animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="plan/[id]" />
             <Stack.Screen
               name="place/[id]"

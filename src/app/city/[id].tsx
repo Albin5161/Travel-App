@@ -122,7 +122,9 @@ export default function CityScreen() {
   const reels = collection?.reelIds.length ?? 0;
   const plan = buildPlan([...kept, ...locals].length ? [...kept, ...locals] : collected);
 
-  const start = () => router.push({ pathname: planned ? '/plan/[id]' : '/pick/[id]', params: { id } });
+  // An existing plan opens as it was left; otherwise the questions come first.
+  const start = () =>
+    router.push({ pathname: planned || state.tripPlans[id] ? '/plan/[id]' : '/trip/[id]', params: { id } });
 
   // Sections measure themselves inside the panel body; store them in scroll-content coordinates.
   const setSectionY = (i: number, y: number) => {

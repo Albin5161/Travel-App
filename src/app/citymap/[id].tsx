@@ -124,17 +124,13 @@ export default function CityMapScreen() {
           {collected.length} places{firstReel ? ` · from ${firstReel.creator}` : ''}
         </Text>
         <Text variant="display">{city.name}</Text>
-        <Text variant="body">Tap a pin to see a place, or go through them one by one.</Text>
+        <Text variant="body">Tap a pin to see a place, or turn them into a plan.</Text>
         <Button
-          label={`Review ${collected.length} places`}
-          onPress={() => router.push({ pathname: '/pick/[id]', params: { id } })}
+          label={state.tripPlans[id] ? 'Open your plan' : `Plan a trip with ${kept} places`}
+          onPress={() =>
+            router.push({ pathname: state.tripPlans[id] ? '/plan/[id]' : '/trip/[id]', params: { id } })
+          }
           style={styles.cta}
-        />
-        <Button
-          kind="text"
-          label={`Plan my day with ${kept} places`}
-          trailingArrow
-          onPress={() => router.push({ pathname: '/plan/[id]', params: { id } })}
         />
       </Animated.View>
     </View>

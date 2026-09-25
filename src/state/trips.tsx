@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, useReducer, type ReactNode } from '
 
 import { getPlace, getCity } from '@/data/api';
 import { allDistricts } from '@/data/regions';
+import type { TripPlan } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
 import { clusterSpots, districtOf } from '@/lib/spots';
 
@@ -33,6 +34,8 @@ interface State {
   skipped: Record<string, boolean>;
   addedLocals: Record<string, string[]>;
   savedTrips: Record<string, boolean>;
+  /** The current plan for each city, as built by the planner and then edited. */
+  tripPlans: Record<string, TripPlan>;
   /** City to fade in once on the home screen. */
   freshCityId: string | null;
   /** Which half of My Collections Home shows. Set after a save, so the new card is on screen. */
@@ -52,6 +55,7 @@ type Action =
   | { type: 'keepAll'; placeIds: string[] }
   | { type: 'addLocal'; cityId: string; placeId: string }
   | { type: 'saveTrip'; cityId: string }
+  | { type: 'setTripPlan'; plan: TripPlan }
   | { type: 'clearFresh' }
   | { type: 'setHomeDistrict'; districtId: string }
   | { type: 'setSpotStatus'; placeId: string; status: SpotStatus }
@@ -72,6 +76,7 @@ const initial: State = {
   skipped: {},
   addedLocals: {},
   savedTrips: {},
+  tripPlans: {},
   freshCityId: null,
   homeTab: 'cities',
 };
@@ -122,6 +127,8 @@ function reducer(state: State, action: Action): State {
       if (list.includes(action.placeId)) return state;
       return { ...state, addedLocals: { ...state.addedLocals, [action.cityId]: [...list, action.placeId] } };
     }
+    case 'setTripPlan':
+      return { ...state, tripPlans: { ...state.tripPlans, [action.plan.cityId]: action.plan } };
     case 'saveTrip':
       return { ...state, savedTrips: { ...state.savedTrips, [action.cityId]: true } };
     case 'clearFresh':

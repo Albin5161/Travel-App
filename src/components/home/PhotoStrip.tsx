@@ -15,53 +15,54 @@ import Animated, {
 
 import { light, shadows } from '@/theme/tokens';
 
-export type ArcPhoto = { id: string; photo: ImageSourcePropType };
+export type StripPhoto = { id: string; photo: ImageSourcePropType };
 
 type Props = {
-  photos: ArcPhoto[];
+  photos: StripPhoto[];
   width: number;
   /** Faded back when these are inspiration rather than the user's own places. */
   muted?: boolean;
 };
 
-const MAX = 7;
-// Where the circles sit on the dome, left to right. The ends dip toward the link box so the box
-// reads as sitting inside the arc, the way a hand holds a fan.
-const ANGLES = [168, 142, 116, 90, 64, 38, 12];
-// Biggest at the crown, smaller toward the ends: depth without any 3D.
-const SIZES = [54, 62, 70, 78, 70, 62, 54];
-// The crown is filled first, so the newest place always takes the top.
-const FILL_ORDER = [3, 2, 4, 1, 5, 0, 6];
+const MAX = 5;
+const W = 62;
+const H = 76;
+// Neighbouring prints overlap by 12pt, like photos dealt onto a table.
+const STEP = 50;
+// Tilt and drop grow toward the ends, so the row reads as a gentle fan rather than a shelf.
+const TILT = 4.5;
+const DROP = 2;
+export const STRIP_HEIGHT = H + 20;
 
 /**
- * The dome of places behind the link box. It is made of the user's own saves (newest at the
- * crown), so Home shows what they've collected before a single word is read. On first run it
- * holds a few inspiration places, muted, that give way as real ones arrive.
+ * A short row of your places as small tilted prints, the newest in front at the centre. Its lower
+ * edge tucks behind the link box below it, so the box reads as sitting on your collection. Works
+ * at any count: three prints look deliberate, where three bubbles on a dome looked unfinished.
+ * On first run it holds a few muted inspiration places that give way as real ones arrive.
  */
-export function PlaceArc({ photos, width, muted }: Props) {
-  const R = Math.min(width * 0.34, 132);
-  const height = R + SIZES[3] / 2 + 8;
-  const cx = width / 2;
-  const base = height - 6;
-
-  const slots = photos.slice(0, MAX).map((p, i) => ({ p, slot: FILL_ORDER[i] }));
+export function PhotoStrip({ photos, width, muted }: Props) {
+  const shown = photos.slice(0, MAX);
+  const n = shown.length;
+  // Slots spread evenly about the centre (-1.5 … 1.5 for four), then handed out nearest-first,
+  // so the newest place always takes the most central slot.
+  const slots = Array.from({ length: n }, (_, i) => i - (n - 1) / 2).sort(
+    (a, b) => Math.abs(a) - Math.abs(b) || a - b,
+  );
 
   return (
-    <View style={{ width, height }} pointerEvents="none">
-      {slots.map(({ p, slot }, i) => {
-        const a = (ANGLES[slot] * Math.PI) / 180;
-        const size = SIZES[slot];
+    <View style={{ width, height: STRIP_HEIGHT }} pointerEvents="none">
+      {shown.map((p, i) => {
+        const off = slots[i];
         return (
-          <Bubble
+          <Print
             key={p.id}
             photo={p.photo}
-            size={size}
-            x={cx + R * Math.cos(a) - size / 2}
-            y={base - R * Math.sin(a) - size / 2}
+            x={width / 2 + off * STEP - W / 2}
+            y={6 + off * off * DROP}
+            tilt={off * TILT}
             order={i}
+            z={10 - Math.round(Math.abs(off) * 2)}
             muted={muted}
-            // The crown sits in front; the ends tuck behind their neighbours.
-            z={10 - Math.abs(slot - 3)}
           />
         );
       })}
@@ -69,22 +70,22 @@ export function PlaceArc({ photos, width, muted }: Props) {
   );
 }
 
-function Bubble({
+function Print({
   photo,
-  size,
   x,
   y,
+  tilt,
   order,
-  muted,
   z,
+  muted,
 }: {
   photo: ImageSourcePropType;
-  size: number;
   x: number;
   y: number;
+  tilt: number;
   order: number;
-  muted?: boolean;
   z: number;
+  muted?: boolean;
 }) {
   const reduced = useReducedMotion();
   const rise = useSharedValue(reduced ? 1 : 0);
@@ -92,8 +93,7 @@ function Bubble({
 
   useEffect(() => {
     if (reduced) return;
-    // Rise in from the centre outward, then drift: each bubble on its own slow period, so the
-    // dome breathes without ever moving in unison.
+    // Dealt in from the centre outward, then each drifts on its own slow period.
     rise.set(withDelay(80 + order * 70, withSpring(1, { duration: 620, dampingRatio: 0.72 })));
     const period = 2600 + order * 330;
     float.set(
@@ -115,22 +115,27 @@ function Bubble({
     const r = rise.get();
     return {
       opacity: Math.min(1, r * 1.4) * (muted ? 0.72 : 1),
-      transform: [{ translateY: (1 - r) * 26 + float.get() * 3 }, { scale: 0.7 + 0.3 * r }],
+      transform: [
+        { translateY: (1 - r) * 28 + float.get() * 2 },
+        { rotate: `${tilt * (0.6 + 0.4 * r)}deg` },
+        { scale: 0.8 + 0.2 * r },
+      ],
     };
   });
 
   return (
-    <Animated.View
-      style={[styles.bubble, { left: x, top: y, width: size, height: size, borderRadius: size / 2, zIndex: z }, style]}
-    >
+    <Animated.View style={[styles.print, { left: x, top: y, zIndex: z }, style]}>
       <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  bubble: {
+  print: {
     position: 'absolute',
+    width: W,
+    height: H,
+    borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 3,
     borderColor: light.panel,

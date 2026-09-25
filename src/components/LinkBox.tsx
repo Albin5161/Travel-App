@@ -150,7 +150,7 @@ const styles = css.create({
   icon: { width: 20, alignItems: 'center', marginRight: 10 },
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 15, color: light.ink },
   hintSlot: { minHeight: 26, justifyContent: 'center' },
-  hint: { textAlign: 'center', marginTop: 8 },
-  exampleRow: { flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 8 },
+  hint: { marginTop: 8, marginLeft: 4 },
+  exampleRow: { flexDirection: 'row', gap: 4, marginTop: 8, marginLeft: 4 },
   exampleLink: { textDecorationLine: 'underline' },
 });

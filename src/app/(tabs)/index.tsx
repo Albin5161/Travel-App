@@ -13,7 +13,7 @@ import { Text } from '@/components/Text';
 import { Segmented } from '@/components/Segmented';
 import { EXAMPLE_LINKS, getCity, getPlace } from '@/data/api';
 import { places, reels } from '@/data/catalog';
-import { PlaceArc } from '@/components/home/PlaceArc';
+import { PhotoStrip } from '@/components/home/PhotoStrip';
 import { allDistricts } from '@/data/regions';
 import type { Platform as SourcePlatform } from '@/data/types';
 import { FADE_IN, fadeUp } from '@/lib/motion';
@@ -22,8 +22,10 @@ import { fonts, light, shadows } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
 const GUTTER = 16;
-// First-run dome: one striking place from each sample video, so the promise is visual.
-const INSPIRATION = ['kochi-mural', 'gok-om', 'meg-falls', 'ktm-illickal', 'kochi-waterfront', 'gok-halfmoon', 'meg-dawki']
+/** How far the photo strip tucks under the link box. */
+const STRIP_TUCK = 22;
+// First-run strip: one striking place from each sample video, so the promise is visual.
+const INSPIRATION = ['meg-dawki', 'kochi-mural', 'gok-om', 'meg-falls', 'gok-halfmoon']
   .map((id) => places[id])
   .filter((p) => !!p)
   .map((p) => ({ id: p.id, photo: p.photo }));
@@ -60,15 +62,15 @@ export default function Home() {
   const tab = state.homeTab;
   const shown = tab === 'near' ? near : away;
   const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? 'home';
-  // The dome over the link box: your own places, newest first. Before the first save it holds a few
-  // inspiration places, muted, so the screen isn't a bare field.
+  // The strip over the link box: your own places, newest first. Before the first save it holds a
+  // few inspiration places, muted, so the screen isn't a bare field.
   const own = collections
     .flatMap((c) => c.placeIds)
     .map((id) => getPlace(id))
     .filter((p) => !!p)
     .map((p) => ({ id: p.id, photo: p.photo }));
   const inspiration = own.length === 0;
-  const arcPhotos = inspiration ? INSPIRATION : own;
+  const stripPhotos = inspiration ? INSPIRATION : own;
   // Offer the first example whose place isn't collected yet, so each tap shows something new.
   const example = EXAMPLE_LINKS.find((e) => !state.collections[e.cityId]) ?? EXAMPLE_LINKS[0];
   const fresh = state.freshCityId;
@@ -99,8 +101,8 @@ export default function Home() {
                 <Text style={styles.questionStrong}>your next trip?</Text>
               </Text>
             </Animated.View>
-            <View style={styles.arc}>
-              <PlaceArc photos={arcPhotos} width={W - GUTTER * 2} muted={inspiration} />
+            <View style={styles.strip}>
+              <PhotoStrip photos={stripPhotos} width={W - GUTTER * 2} muted={inspiration} />
             </View>
           </View>
 
@@ -224,8 +226,10 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   fill: { flex: 1, backgroundColor: light.canvas },
   wash: { position: 'absolute', top: 0, left: 0, right: 0, height: 240 },
-  header: { paddingHorizontal: GUTTER, paddingBottom: 14 },
-  arc: { marginTop: 18, alignItems: 'center' },
+  header: { paddingHorizontal: GUTTER },
+  // The strip's lower edge runs under the sticky link box below it (a later sibling, so it draws
+  // on top), which is what makes the prints read as tucked behind the field.
+  strip: { marginTop: 14, marginBottom: -STRIP_TUCK, alignItems: 'center' },
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: light.ink },
   // Two weights, one line box: a quiet Medium lead-in, then the ask in ExtraBold. The weight change
   // does the emphasis a decorative italic used to.
@@ -242,9 +246,10 @@ const styles = StyleSheet.create({
   // Sized again on purpose: the nested Text is our own component, which would otherwise reset it
   // to body's 15/22 rather than inherit from the line around it.
   questionStrong: { fontFamily: fonts.display, fontSize: 32, lineHeight: 37, color: light.ink, letterSpacing: -1 },
+  // No top padding: the band would cut the photo strip in a flat line above the field instead of
+  // letting the prints disappear behind it.
   sticky: {
     paddingHorizontal: GUTTER,
-    paddingTop: 8,
     backgroundColor: light.canvas,
   },
   panel: {

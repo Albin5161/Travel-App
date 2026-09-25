@@ -23,4 +23,14 @@ export const env = {
   geminiFallback: () => process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.8-flash',
   /** Google photos draw on a free allowance of 1,000 a month; PLACES_PHOTOS=off saves it. */
   placesPhotos: () => process.env.PLACES_PHOTOS !== 'off',
+  /** The same project the app uses. The URL is public; the secret key is server-only. */
+  supabaseUrl: () => process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || null,
+  supabaseSecret: () => process.env.SUPABASE_SECRET_KEY || null,
+  production: () => process.env.NODE_ENV === 'production',
 };
+
+/** A limit from the environment, or its default. */
+export function limit(name: string, fallback: number): number {
+  const n = Number(process.env[name]);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}

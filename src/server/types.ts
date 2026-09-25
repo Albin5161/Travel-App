@@ -41,12 +41,27 @@ export type ExtractResult =
 
 export type MatchRequest = { name: string; area?: string | null; region?: string | null; confidence?: number };
 
+export type PlacePhoto = {
+  uri: string;
+  /** Google requires crediting the photo's author, and linking to the photo on Google Maps. */
+  attributions: { name: string; uri: string }[];
+  googleMapsUri: string | null;
+};
+
 export type MatchedPlace = {
   placeId: string;
   location: { lat: number; lng: number };
-  address: string;
+  /** Only on a fresh lookup: Google's terms don't allow storing addresses or categories. */
+  address: string | null;
   types: string[];
-  photo: { uri: string; attributions: { name: string; uri: string }[] } | null;
+  photo: PlacePhoto | null;
+};
+
+export type FeedbackRequest = {
+  videoId?: string | null;
+  placeName: string;
+  placeId?: string | null;
+  verdict: 'right' | 'wrong' | 'added';
 };
 
 export type MatchResult =

@@ -9,7 +9,7 @@
 //
 // Videos run one after another, not all at once, to stay under the free tiers' per-minute limits.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,11 +26,13 @@ const videos = links.length
       .map((l) => l.trim())
       .filter((l) => l && !l.startsWith('#'));
 
+let auth = {};
+
 async function post(path, body) {
   const t = performance.now();
   const res = await fetch(`${base}${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...auth },
     body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => ({ error: { code: 'not_json', message: `HTTP ${res.status}` } }));
@@ -56,7 +58,39 @@ if (missing.length) {
   console.error(`The server can't see these keys: ${missing.join(', ')}. Add them to .env.local and restart it.`);
   process.exit(1);
 }
-console.log(`API ${base} · model ${health.model} · Google photos ${health.placesPhotos ? 'on' : 'off'}\n`);
+if (health.protected) {
+  // Sign in the way the app does: anonymously, with the project's public URL and key.
+  const envFile = join(here, '..', '.env.local');
+  const fileEnv = existsSync(envFile)
+    ? Object.fromEntries(
+        readFileSync(envFile, 'utf8')
+          .split('\n')
+          .map((l) => l.match(/^([A-Z0-9_]+)=(.*)$/))
+          .filter(Boolean)
+          .map((m) => [m[1], m[2].trim()]),
+      )
+    : {};
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL || fileEnv.EXPO_PUBLIC_SUPABASE_URL;
+  const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || fileEnv.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) {
+    console.error('The API is protected: add EXPO_PUBLIC_SUPABASE_URL and _PUBLISHABLE_KEY to .env.local.');
+    process.exit(1);
+  }
+  const { createClient } = await import('@supabase/supabase-js');
+  // Node 20 has no built-in WebSocket, which the realtime client needs at creation; this script
+  // never uses realtime, so it gets a stand-in.
+  const transport = globalThis.WebSocket ?? class { constructor() { throw new Error('no realtime here'); } };
+  const supabase = createClient(url, key, { auth: { persistSession: false }, realtime: { transport } });
+  const { data, error } = await supabase.auth.signInAnonymously();
+  if (error || !data.session) {
+    console.error(`Couldn't sign in anonymously: ${error?.message ?? 'no session'}`);
+    process.exit(1);
+  }
+  auth = { authorization: `Bearer ${data.session.access_token}` };
+}
+console.log(
+  `API ${base} · ${health.protected ? 'protected' : 'open (development)'} · model ${health.model} · Google photos ${health.placesPhotos ? 'on' : 'off'}\n`,
+);
 
 const results = [];
 for (const url of videos) {
@@ -91,11 +125,17 @@ for (const url of videos) {
     const where = !m.ok
       ? `error ${m.json.error?.code}`
       : m.json.status === 'matched'
-        ? `${m.json.place.address}${m.json.place.photo ? ' · photo' : ''}`
+        ? `${m.json.place.address ?? 'saved place'}${m.json.place.photo ? ' · photo' : ''}${m.json.cached ? ' · from storage' : ''}`
         : 'no match';
     console.log(`  ${mark} ${p.name} [${p.type}${p.area ? `, ${p.area}` : ''}] (${p.confidence.toFixed(2)}) → ${where}`);
   });
   console.log('');
+
+  // One Right answer per video, the way the review screen will send them.
+  if (r.places[0]) {
+    const fb = await post('/api/feedback', { videoId: r.video.id, placeName: r.places[0].name, verdict: 'right' });
+    if (!fb.ok) console.log(`  feedback failed: ${fb.json.error?.code}\n`);
+  }
 
   results.push({
     url,
@@ -123,14 +163,23 @@ const empty = done.filter((x) => x.places.length === 0).length;
 
 console.log('Summary');
 console.log(`  Videos: ${done.length} read, ${empty} with no places, ${failed} failed`);
-console.log(
-  `  Time to all places (fresh runs): typical ${secs(pct(fresh.map((x) => x.totalMs), 50))}, slowest 5% ${secs(pct(fresh.map((x) => x.totalMs), 95))}`,
-);
+const stored = done.filter((x) => x.cached);
+if (fresh.length) {
+  console.log(
+    `  Time to all places, new videos: typical ${secs(pct(fresh.map((x) => x.totalMs), 50))}, slowest 5% ${secs(pct(fresh.map((x) => x.totalMs), 95))}`,
+  );
+}
+if (stored.length) {
+  console.log(
+    `  Time to all places, stored videos: typical ${secs(pct(stored.map((x) => x.totalMs), 50))}, slowest 5% ${secs(pct(stored.map((x) => x.totalMs), 95))}`,
+  );
+}
 console.log(`  Places: ${all.length} found, ${matchedN} matched (${all.length ? Math.round((100 * matchedN) / all.length) : 0}%), ${sure} without a check, ${photos} with a Google photo`);
 console.log(
   `  Tokens: ${fresh.reduce((n, x) => n + x.tokens.inputTokens, 0)} in, ${fresh.reduce((n, x) => n + x.tokens.outputTokens, 0)} out`,
 );
-console.log(`  Free allowance used this run: ~${matchedN} Place Details (of 10,000/month), ~${photos} photos (of 1,000/month)`);
+const lookups = all.filter((p) => p.match.status === 'matched' && !p.match.cached).length;
+console.log(`  Free allowance used this run: ${lookups} Place Details (of 10,000/month), ${photos} photos (of 1,000/month)`);
 
 if (outFile) {
   writeFileSync(outFile, JSON.stringify(results, null, 2));

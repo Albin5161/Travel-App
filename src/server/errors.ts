@@ -5,7 +5,11 @@ export type ErrorCode =
   | 'video_unavailable'
   | 'missing_key'
   | 'upstream'
-  | 'quota';
+  | 'quota'
+  | 'unauthorized'
+  | 'rate_limited'
+  | 'too_large'
+  | 'not_configured';
 
 export class ApiError extends Error {
   constructor(
@@ -51,7 +55,13 @@ export async function respond(run: () => Promise<unknown>): Promise<Response> {
   }
 }
 
+/** Bodies here are a link or a place name; anything past 16 KB isn't a real request. */
+const MAX_BODY = 16 * 1024;
+
 export async function readJson<T>(request: Request): Promise<T> {
+  if (Number(request.headers.get('content-length') ?? 0) > MAX_BODY) {
+    throw new ApiError(413, 'too_large', 'That request is too large.');
+  }
   try {
     return (await request.json()) as T;
   } catch {

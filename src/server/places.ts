@@ -25,6 +25,57 @@ export async function searchPlaceId(query: string, key: string): Promise<string 
   return body.places?.[0]?.id ?? null;
 }
 
+export type Suggestion = {
+  placeId: string;
+  /** The place's name, e.g. "XOXO". */
+  name: string;
+  /** Where it is, e.g. "Kottayam, Kerala, India". */
+  where: string;
+};
+
+/**
+ * Places matching what someone is typing: Autocomplete (New), 10,000 free a month. The requests in
+ * one session (one search, ended by picking a result) are billed for at most 12, however long the
+ * typing. `near` leans results toward the city being reviewed without excluding the rest.
+ */
+export async function searchPlaces(
+  input: string,
+  sessionToken: string,
+  key: string,
+  near?: { lat: number; lng: number } | null,
+): Promise<Suggestion[]> {
+  const res = await fetch(`${BASE}/places:autocomplete`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': key,
+      'X-Goog-FieldMask': 'suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat',
+    },
+    body: JSON.stringify({
+      input,
+      sessionToken,
+      ...(near
+        ? { locationBias: { circle: { center: { latitude: near.lat, longitude: near.lng }, radius: 50000 } } }
+        : {}),
+    }),
+    signal: AbortSignal.timeout(6000),
+  });
+  if (!res.ok) throw await upstreamError('places:autocomplete', res);
+  const body = (await res.json()) as {
+    suggestions?: {
+      placePrediction?: {
+        placeId?: string;
+        structuredFormat?: { mainText?: { text?: string }; secondaryText?: { text?: string } };
+      };
+    }[];
+  };
+  return (body.suggestions ?? []).flatMap((s) => {
+    const p = s.placePrediction;
+    const name = p?.structuredFormat?.mainText?.text;
+    return p?.placeId && name ? [{ placeId: p.placeId, name, where: p.structuredFormat?.secondaryText?.text ?? '' }] : [];
+  });
+}
+
 export type PhotoRef = {
   name: string;
   authorAttributions?: { displayName?: string; uri?: string }[];
@@ -39,8 +90,10 @@ export type Details = {
   photos?: PhotoRef[];
 };
 
-async function details(placeId: string, fields: string, key: string): Promise<Details> {
-  const res = await fetch(`${BASE}/places/${encodeURIComponent(placeId)}`, {
+async function details(placeId: string, fields: string, key: string, sessionToken?: string): Promise<Details> {
+  const url = new URL(`${BASE}/places/${encodeURIComponent(placeId)}`);
+  if (sessionToken) url.searchParams.set('sessionToken', sessionToken);
+  const res = await fetch(url, {
     headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': fields },
     signal: AbortSignal.timeout(8000),
   });
@@ -48,8 +101,12 @@ async function details(placeId: string, fields: string, key: string): Promise<De
   return (await res.json()) as Details;
 }
 
-/** Coordinates, address, categories and photo references: Place Details Essentials. */
-export const getDetails = (placeId: string, key: string) => details(placeId, DETAIL_FIELDS, key);
+/**
+ * Coordinates, address, categories and photo references: Place Details Essentials. After a search,
+ * its session token ends the search session, which caps what the typing costs (see searchPlaces).
+ */
+export const getDetails = (placeId: string, key: string, sessionToken?: string) =>
+  details(placeId, DETAIL_FIELDS, key, sessionToken);
 
 /** Photo references only: no charge. Photo names expire, so they're fetched fresh, never stored. */
 export async function getPhotoRefs(placeId: string, key: string): Promise<PhotoRef[]> {

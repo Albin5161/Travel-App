@@ -3,9 +3,9 @@ import { env } from './env';
 import { ApiError } from './errors';
 import { findPlaces } from './gemini';
 import { getReel, TRANSCRIPT_MAX_SECONDS, type ReelDetails } from './instagram';
-import { allowExtract, allowFeedback, allowReel, beginMatch } from './limits';
+import { allowExtract, allowFeedback, allowReel, allowSearch, beginMatch } from './limits';
 import { parseLink, type ParsedLink } from './links';
-import { getDetails, getPhoto, getPhotoRefs, searchPlaceId, type PhotoRef } from './places';
+import { getDetails, getPhoto, getPhotoRefs, searchPlaceId, searchPlaces, type PhotoRef } from './places';
 import { addFeedback, getExtraction, putExtraction, putMatch, type DoneExtraction } from './store';
 import type {
   AssistReason,
@@ -15,6 +15,8 @@ import type {
   MatchResult,
   PlacePhoto,
   ReelSignals,
+  SearchRequest,
+  SearchResult,
   Timings,
 } from './types';
 import { getVideo } from './youtube';
@@ -89,11 +91,12 @@ async function extractReel(
   who: Caller,
   t: Timer,
 ): Promise<ExtractResult> {
-  const assist = (reason: AssistReason): ExtractResult => ({
+  const assist = (reason: AssistReason, video?: DoneExtraction['video']): ExtractResult => ({
     status: 'assist',
     platform: 'instagram',
     url: link.url,
     reason,
+    ...(video ? { video } : {}),
     timings: t.done(),
   });
   const token = env.apifyToken();
@@ -103,7 +106,7 @@ async function extractReel(
   // Stored under its own prefix: a shortcode and a YouTube ID can't be told apart otherwise.
   const key = `ig:${link.shortcode}`;
   const saved = await t.step('store', () => getExtraction(key));
-  if (saved) return saved.places.length ? { ...saved, cached: true, timings: t.done() } : assist('no_places');
+  if (saved) return saved.places.length ? { ...saved, cached: true, timings: t.done() } : assist('no_places', saved.video);
 
   if (!(await t.step('cap', () => allowReel('reel')))) return assist('daily_limit');
   let reel = await t.step('apify', () => getReel(link.url, token, { transcript: false }));
@@ -161,7 +164,7 @@ async function extractReel(
   const had = Object.entries(signals).filter(([, on]) => on).map(([name]) => name);
   console.log(`[instagram] ${link.shortcode}: ${result.places.length} places from ${had.join(', ') || 'no text'}`);
   if (result.places.length || settled) await t.step('save', () => putExtraction(key, result));
-  return result.places.length ? { ...result, timings: t.done() } : assist('no_places');
+  return result.places.length ? { ...result, timings: t.done() } : assist('no_places', result.video);
 }
 
 function hasText(r: ReelDetails): boolean {
@@ -176,7 +179,10 @@ export async function match(req: Partial<MatchRequest>, who: Caller): Promise<Ma
   const region = clean(req.region, 200);
   // "Om Beach, Gokarna, Karnataka, India": the name plus whatever tells Google where to look.
   const query = [name, area, region].filter(Boolean).join(', ');
-  const key = query.toLowerCase();
+  // A place picked from search is already known: it's stored under its ID, not a name.
+  const pickedId = typeof req.placeId === 'string' && PLACE_ID.test(req.placeId) ? req.placeId : null;
+  const sessionToken = typeof req.sessionToken === 'string' && TOKEN.test(req.sessionToken) ? req.sessionToken : undefined;
+  const key = pickedId ? `id:${pickedId}` : query.toLowerCase();
 
   const placesKey = env.placesKey();
   const begin = await t.step('begin', () => beginMatch(who, key, env.placesPhotos()));
@@ -199,13 +205,13 @@ export async function match(req: Partial<MatchRequest>, who: Caller): Promise<Ma
   }
 
   // New, or its coordinates are past 30 days. The place ID is kept forever, so no new search then.
-  const placeId = saved?.placeId ?? (await t.step('search', () => searchPlaceId(query, placesKey)));
+  const placeId = pickedId ?? saved?.placeId ?? (await t.step('search', () => searchPlaceId(query, placesKey)));
   if (!placeId) {
     await putMatch(key, { placeId: null, location: null, needsCheck: true });
     return { status: 'unmatched', needsCheck: true, cached: false, timings: t.done() };
   }
   if (!begin.detailsOk) throw new ApiError(503, 'quota', 'We’ve reached today’s limit. Try again tomorrow.');
-  const d = await t.step('details', () => getDetails(placeId, placesKey));
+  const d = await t.step('details', () => getDetails(placeId, placesKey, sessionToken));
   if (!d.location) return { status: 'unmatched', needsCheck: true, cached: false, timings: t.done() };
 
   const location = { lat: d.location.latitude, lng: d.location.longitude };
@@ -224,6 +230,26 @@ export async function match(req: Partial<MatchRequest>, who: Caller): Promise<Ma
     cached: false,
     timings: t.done(),
   };
+}
+
+/** Place IDs and session tokens as Google and the app write them; anything else isn't sent on. */
+const PLACE_ID = /^[A-Za-z0-9_-]{10,300}$/;
+const TOKEN = /^[A-Za-z0-9_-]{16,64}$/;
+
+/** "Missed one?": places matching what someone is typing, for them to pick from. */
+export async function search(req: Partial<SearchRequest>, who: Caller): Promise<SearchResult> {
+  const input = clean(req.input, 100);
+  const sessionToken = typeof req.sessionToken === 'string' && TOKEN.test(req.sessionToken) ? req.sessionToken : null;
+  if (input.length < 3 || !sessionToken) {
+    throw new ApiError(400, 'bad_request', 'Send {"input": "at least 3 letters", "sessionToken": "..."}.');
+  }
+  const n = req.near;
+  const near =
+    n && Number.isFinite(n.lat) && Number.isFinite(n.lng) && Math.abs(n.lat) <= 90 && Math.abs(n.lng) <= 180
+      ? { lat: n.lat, lng: n.lng }
+      : null;
+  await allowSearch(who);
+  return { suggestions: (await searchPlaces(input, sessionToken, env.placesKey(), near)).slice(0, 6) };
 }
 
 /** The Right / Wrong answers from the review screen: the accuracy measure, and what we learn from. */

@@ -25,6 +25,8 @@ type Props = FaceProps & {
   /** Two lines under the card, e.g. "Instagram reel" / "@slowdays.kochi" */
   captionLabel: string;
   captionValue: string;
+  /** Who took a Google cover photo: Google asks for the credit wherever the photo appears. */
+  photoCredit?: string;
   /** Where the reels came from, shown as small logos before the caption value. */
   sources?: Platform[];
   width: number;
@@ -69,6 +71,7 @@ export function CityTile({
   statValue,
   captionLabel,
   captionValue,
+  photoCredit,
   sources,
   badge,
   width,
@@ -120,6 +123,11 @@ export function CityTile({
         <Text variant="label" numberOfLines={1} style={f.compact && styles.captionText}>
           {captionValue}
         </Text>
+        {photoCredit ? (
+          <Text variant="label" color={light.inkFaint} numberOfLines={1} style={styles.captionText}>
+            Photo: {photoCredit}
+          </Text>
+        ) : null}
       </View>
     </PressableScale>
   );

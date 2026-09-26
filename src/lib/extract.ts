@@ -5,7 +5,14 @@ import type { City, DayPart, Extraction, Place, PlaceType, Reel } from '@/data/t
 import { ApiFailure, post } from '@/lib/api';
 import { deviceStorage } from '@/lib/live/storage';
 import { parseLink } from '@/server/links';
-import type { AssistReason, ExtractResult, FoundPlace, MatchResult, MatchedPlace } from '@/server/types';
+import type {
+  AssistReason,
+  ExtractResult,
+  FoundPlace,
+  MatchResult,
+  MatchedPlace,
+  SearchResult,
+} from '@/server/types';
 
 // A pasted link, read by the API and turned into the app's own places, city and video, so every
 // screen after this one works as it does for the samples. Two kinds of call: one extract per link,
@@ -17,7 +24,7 @@ export type LinkOutcome =
   /** Read, but nothing in it could be placed on a map. */
   | { kind: 'empty'; reel: Reel | null }
   /** An Instagram reel we couldn't read for places; the person adds them by search instead. */
-  | { kind: 'assist'; reason: AssistReason };
+  | { kind: 'assist'; reason: AssistReason; reel: Reel };
 
 /** Up to five places are matched at a time: fast, without a burst of requests from one phone. */
 const MATCH_AT_ONCE = 5;
@@ -41,7 +48,14 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
   }
 
   const res = await post<ExtractResult>('/api/extract', { url }, EXTRACT_MS);
-  if (res.status === 'assist') return { kind: 'assist', reason: res.reason };
+  if (res.status === 'assist') {
+    // What we know of the reel, for the add-them-yourself screen: its title and thumbnail if it
+    // could be read at all, otherwise just that it's a reel.
+    const reel: Reel = res.video
+      ? toReel({ platform: 'instagram', video: res.video }, key, '')
+      : { id: key, platform: 'instagram', creator: 'Instagram reel', title: '', duration: '', thumbnail: 0, cityId: '', placeIds: [] };
+    return { kind: 'assist', reason: res.reason, reel };
+  }
 
   const { city: where, state } = regionParts(res.region, res.places);
   const cityId = `live:${slug(`${where} ${state}`)}`;
@@ -74,11 +88,94 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
   return { kind: 'done', extraction };
 }
 
+// ── "Missed one?": searching for a place and adding it ─────────────────────────────────────────
+
+export type Suggestion = SearchResult['suggestions'][number];
+
+/**
+ * A fresh id for one search: from the first letter typed to the place picked. Google bills a
+ * search's typing as one session when the pick carries the same id. Not a secret, so plain
+ * Math.random is enough.
+ */
+export function newSearchSession(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  return Array.from({ length: 32 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+/** Places matching what's typed, leaning toward `near` when there is one. */
+export async function searchPlaces(input: string, session: string, near: { lat: number; lng: number } | null) {
+  return (await post<SearchResult>('/api/search', { input, sessionToken: session, near }, 8000)).suggestions;
+}
+
+/**
+ * A picked suggestion as one of the app's places, in `cityId`, credited to `reel`. `others` are the
+ * city's places so far, for its spot on the stylised map. Null when Google can't place it.
+ */
+export async function placeFromPick(
+  s: Suggestion,
+  session: string,
+  ctx: { cityId: string; reel: Reel; others: Place[] },
+): Promise<Place | null> {
+  const res = await post<MatchResult>(
+    '/api/match',
+    { name: s.name, area: s.where, placeId: s.placeId, sessionToken: session },
+    MATCH_MS,
+  );
+  if (res.status !== 'matched') return null;
+  const m = res.place;
+  const type = kindOf(m.types);
+  const points = project([...ctx.others.map((p) => p.coords), m.location]);
+  const place: Place = {
+    id: `g:${m.placeId}`,
+    cityId: ctx.cityId,
+    name: s.name,
+    type,
+    area: s.where.split(',')[0]?.trim() ?? '',
+    photo: m.photo ? { uri: m.photo.uri } : ctx.reel.thumbnail,
+    photoCredit: m.photo?.attributions.map((a) => a.name).join(', ') || undefined,
+    why: '',
+    source: { kind: 'reel', reelId: ctx.reel.id, timestamp: '' },
+    ...DEFAULTS[type],
+    coords: m.location,
+    map: points[points.length - 1],
+    order: ctx.others.length,
+  };
+  register({ places: [place] });
+  return place;
+}
+
+/**
+ * The town and state in a search result's "where": "Baker Street, Kottayam, Kerala, India" is
+ * Kottayam, Kerala. The last part is the country, the one before it the state, and the one before
+ * that the town. `id` is the city those places are saved under.
+ */
+export function townOf(where: string): { id: string; name: string; state: string } {
+  const parts = where.split(',').map((p) => p.trim()).filter(Boolean);
+  const name = parts.length >= 3 ? parts[parts.length - 3] : (parts[0] ?? 'Somewhere new');
+  const state = parts.length >= 2 ? parts[parts.length - 2] : '';
+  return { id: `live:${slug(`${name} ${state}`)}`, name, state };
+}
+
+/** The city for places someone added by hand, named after where the first one is. */
+export function cityFromWhere(where: string, reel: Reel, places: Place[]): City {
+  const town = townOf(where);
+  return toCity(town.id, town.name, town.state, places, reel);
+}
+
+/** Google's place types, reduced to the four kinds the app plans with. */
+function kindOf(types: string[]): PlaceType {
+  const has = (...t: string[]) => t.some((x) => types.includes(x));
+  if (has('restaurant', 'cafe', 'bakery', 'bar', 'food', 'meal_takeaway', 'ice_cream_shop', 'coffee_shop')) return 'food';
+  if (has('lodging', 'hotel', 'hostel', 'resort_hotel', 'guest_house', 'campground')) return 'stay';
+  if (has('amusement_park', 'spa', 'water_park', 'zoo', 'aquarium', 'hiking_area', 'marina')) return 'experience';
+  return 'sight';
+}
+
 /**
  * The review screen's answers for a real link, sent once when the checking is done: how we measure
  * whether extraction is getting places right. Best effort; a lost answer costs nothing.
  */
-export function sendVerdicts(reel: Reel, verdicts: { place: Place; verdict: 'right' | 'wrong' }[]) {
+export function sendVerdicts(reel: Reel, verdicts: { place: Place; verdict: 'right' | 'wrong' | 'added' }[]) {
   if (!isLiveReel(reel)) return;
   verdicts.forEach(({ place, verdict }) =>
     post('/api/feedback', {
@@ -104,7 +201,7 @@ const DEFAULTS: Record<PlaceType, { bestTime: DayPart; cost: Place['cost']; minu
   experience: { bestTime: 'afternoon', cost: 1, minutes: 90 },
 };
 
-function toReel(res: Extract<ExtractResult, { status: 'done' }>, id: string, cityId: string): Reel {
+function toReel(res: Pick<Extract<ExtractResult, { status: 'done' }>, 'platform' | 'video'>, id: string, cityId: string): Reel {
   const v = res.video;
   return {
     id,
@@ -217,10 +314,13 @@ async function eachAtOnce<T, R>(items: T[], n: number, fn: (item: T) => Promise<
 // Google allows keeping coordinates for up to 30 days, so that's as long as a result is reused.
 
 const CACHE_DAYS = 30;
+// Bumped whenever what's kept changes shape, so an older copy is read afresh instead of shown
+// without its new parts (v2: photo credits on the city cover).
+const CACHE_PREFIX = 'xplore.link.v2.';
 const cache = {
   read(key: string): Extraction | null {
     try {
-      const raw = deviceStorage?.getItem(`xplore.link.${key}`);
+      const raw = deviceStorage?.getItem(`${CACHE_PREFIX}${key}`);
       if (!raw) return null;
       const { at, extraction } = JSON.parse(raw) as { at: number; extraction: Extraction };
       return Date.now() - at < CACHE_DAYS * 86400_000 ? extraction : null;
@@ -230,7 +330,7 @@ const cache = {
   },
   write(key: string, extraction: Extraction) {
     try {
-      deviceStorage?.setItem(`xplore.link.${key}`, JSON.stringify({ at: Date.now(), extraction }));
+      deviceStorage?.setItem(`${CACHE_PREFIX}${key}`, JSON.stringify({ at: Date.now(), extraction }));
     } catch {
       // Storage full or unavailable: the link is just read again next time.
     }

@@ -12,7 +12,8 @@ const DAY = 86400;
 // monthly allowances, so the API stops before it spends money: 300 place lookups a day is about
 // 9,000 a month (free up to 10,000), 30 photos a day is about 900 (free up to 1,000). The
 // Instagram caps spread Apify's $5 of free monthly credit over the month: 20 reels a day is about
-// $2.20, one transcript a day at most about $3.
+// $2.20, one transcript a day at most about $3. 300 searches a day (one per typed pause) is about
+// 9,000 a month, under Autocomplete's 10,000 free.
 // Each can be changed from the environment.
 const L = {
   extractPerUser: () => limit('LIMIT_EXTRACT_PER_HOUR', 20),
@@ -23,6 +24,9 @@ const L = {
   feedbackPerUser: () => limit('LIMIT_FEEDBACK_PER_HOUR', 500),
   detailsPerDay: () => limit('LIMIT_PLACE_DETAILS_PER_DAY', 300),
   photosPerDay: () => limit('LIMIT_PHOTOS_PER_DAY', 30),
+  searchPerUser: () => limit('LIMIT_SEARCH_PER_HOUR', 150),
+  searchPerIp: () => limit('LIMIT_SEARCH_PER_IP_HOUR', 450),
+  searchPerDay: () => limit('LIMIT_SEARCH_PER_DAY', 300),
   reelsPerDay: () => limit('LIMIT_INSTAGRAM_REELS_PER_DAY', 20),
   transcriptsPerDay: () => limit('LIMIT_INSTAGRAM_TRANSCRIPTS_PER_DAY', 1),
 };
@@ -91,6 +95,16 @@ export async function allowExtract(c: Caller) {
 export async function allowReel(kind: 'reel' | 'transcript'): Promise<boolean> {
   const max = kind === 'reel' ? L.reelsPerDay() : L.transcriptsPerDay();
   return !(await consume([{ key: `global:instagram-${kind}`, seconds: DAY, max }]));
+}
+
+/** One search request: typing in "Missed one?", counted per person, per network and per day. */
+export async function allowSearch(c: Caller) {
+  const over = await consume([
+    { key: `user:${c.userId}:search`, seconds: HOUR, max: L.searchPerUser() },
+    { key: `ip:${c.ip}:search`, seconds: HOUR, max: L.searchPerIp() },
+    { key: 'global:search', seconds: DAY, max: L.searchPerDay() },
+  ]);
+  if (over) refuse(over);
 }
 
 export async function allowFeedback(c: Caller) {

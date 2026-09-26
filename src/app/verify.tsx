@@ -14,7 +14,7 @@ import { Text } from '@/components/Text';
 import { PlaceSearchSheet } from '@/components/verify/PlaceSearchSheet';
 import { places as catalogPlaces } from '@/data/catalog';
 import type { Place } from '@/data/types';
-import { sendVerdicts } from '@/lib/extract';
+import { isLiveReel, placeFromPick, sendVerdicts, type Suggestion } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
 import { FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips } from '@/state/trips';
@@ -97,6 +97,7 @@ export default function Verify() {
     if (sheet?.wrong) setFixes((f) => ({ ...f, [sheet.wrong!.id]: place }));
     else setExtras((e) => [...e, place]);
     if (committed.current) dispatch({ type: 'commitExtraction', extraction, placeIds: [place.id] });
+    sendVerdicts(extraction.reel, [{ place, verdict: 'added' }]);
     setSheet(null);
   };
 
@@ -107,6 +108,14 @@ export default function Verify() {
 
   if (!extraction) return null;
   const { city, reel } = extraction;
+  // A real link searches Google, leaning toward where its places are; the samples search the catalog.
+  const live = isLiveReel(reel)
+    ? {
+        near: centreOf(places),
+        resolve: (s: Suggestion, session: string) =>
+          placeFromPick(s, session, { cityId: city.id, reel, others: [...places, ...extras] }),
+      }
+    : undefined;
 
   const commit = (place: Place, dir: Dir) => {
     haptic.light();
@@ -239,6 +248,7 @@ export default function Verify() {
         wrong={sheet?.wrong}
         cityName={city.name}
         candidates={candidates}
+        live={live}
         onPick={add}
         onNotAPlace={() => {
           if (sheet?.wrong) setFixes((f) => ({ ...f, [sheet.wrong!.id]: null }));
@@ -248,6 +258,15 @@ export default function Verify() {
       />
     </View>
   );
+}
+
+/** The middle of a set of places, to lean a search toward; null when there are none. */
+function centreOf(list: Place[]) {
+  if (list.length === 0) return null;
+  return {
+    lat: list.reduce((sum, p) => sum + p.coords.lat, 0) / list.length,
+    lng: list.reduce((sum, p) => sum + p.coords.lng, 0) / list.length,
+  };
 }
 
 function uniq(list: Place[]) {

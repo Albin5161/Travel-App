@@ -22,6 +22,7 @@ import { ReelTimeline, seconds } from '@/components/motion/ReelTimeline';
 import { PhotoCard } from '@/components/PhotoCard';
 import { Text } from '@/components/Text';
 import { extractPlaces, getLinkPreview, isSampleLink } from '@/data/api';
+import { register } from '@/data/registry';
 import { SAMPLE_LINK } from '@/data/catalog';
 import type { Extraction, Place, Reel } from '@/data/types';
 import { ApiFailure } from '@/lib/api';
@@ -121,7 +122,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   };
 
   if (failure) {
-    return <ReadFailed failure={failure} onRetry={retry} insetTop={insets.top} insetBottom={insets.bottom} />;
+    return <ReadFailed url={url} failure={failure} onRetry={retry} insetTop={insets.top} insetBottom={insets.bottom} />;
   }
 
   const check = () => {
@@ -247,7 +248,7 @@ type Credit = { id: string; name: string; area: string; stamp?: string };
 type Failure =
   | { kind: 'error'; error: ApiFailure }
   | { kind: 'empty' }
-  | { kind: 'assist'; reason: AssistReason };
+  | { kind: 'assist'; reason: AssistReason; reel: Reel };
 
 const creditOf = (p: Place, i: number): Credit => ({
   id: p.id || `n${i}`,
@@ -287,7 +288,8 @@ function useReading(url: string) {
         .then((outcome) => {
           if (cancelled) return;
           if (outcome.kind === 'done') done(outcome.extraction);
-          else setFailure(outcome.kind === 'empty' ? { kind: 'empty' } : { kind: 'assist', reason: outcome.reason });
+          else if (outcome.kind === 'empty') setFailure({ kind: 'empty' });
+          else setFailure({ kind: 'assist', reason: outcome.reason, reel: outcome.reel });
         })
         .catch((e: unknown) => {
           if (cancelled) return;
@@ -309,11 +311,13 @@ function useReading(url: string) {
  * again" only where trying again can help (our side or the connection), never for the link itself.
  */
 function ReadFailed({
+  url,
   failure,
   onRetry,
   insetTop,
   insetBottom,
 }: {
+  url: string;
   failure: Failure;
   onRetry: () => void;
   insetTop: number;
@@ -321,6 +325,13 @@ function ReadFailed({
 }) {
   const copy = failureCopy(failure);
   const canRetry = failure.kind === 'error' && failure.error.retryable;
+  // A reel we couldn't read can still be saved: the person watches it and adds what they spot.
+  const addYourself = () => {
+    if (failure.kind !== 'assist') return;
+    haptic.light();
+    register({ reel: failure.reel });
+    router.replace({ pathname: '/addplaces', params: { reel: failure.reel.id, url } });
+  };
   const another = () => {
     haptic.light();
     if (router.canGoBack()) router.back();
@@ -340,7 +351,12 @@ function ReadFailed({
       </Animated.View>
       <View style={[styles.choice, styles.failedActions, { paddingBottom: insetBottom + 12 }]}>
         {canRetry ? <Button label="Try again" onPress={onRetry} /> : null}
-        <Button label="Paste another link" kind={canRetry ? 'secondary' : 'primary'} onPress={another} />
+        {failure.kind === 'assist' ? <Button label="Add the places yourself" onPress={addYourself} /> : null}
+        <Button
+          label="Paste another link"
+          kind={canRetry || failure.kind === 'assist' ? 'secondary' : 'primary'}
+          onPress={another}
+        />
       </View>
     </View>
   );
@@ -356,10 +372,10 @@ function failureCopy(f: Failure): { icon: keyof typeof Feather.glyphMap; title: 
   }
   if (f.kind === 'assist') {
     const body: Record<AssistReason, string> = {
-      no_places: 'We read this reel, but it doesn’t say where it was filmed. Reels that name their spots in the caption work best.',
-      unreadable: 'We couldn’t open this reel. It may be private or deleted, or Instagram didn’t let us in this time.',
-      daily_limit: 'We’ve read as many Instagram reels as we can today. Try again tomorrow, or paste a YouTube link.',
-      not_configured: 'Reading Instagram reels isn’t switched on yet. YouTube links work.',
+      no_places: 'We read this reel, but it doesn’t say where it was filmed. Watch it and add the places you spot.',
+      unreadable: 'We couldn’t open this reel. It may be private, or Instagram didn’t let us in this time. You can still add its places yourself.',
+      daily_limit: 'We’ve read as many Instagram reels as we can today. You can add this one’s places yourself.',
+      not_configured: 'We can’t read Instagram reels for you yet. Watch it and add the places you spot.',
     };
     return { icon: 'instagram', title: 'We couldn’t find the places', body: body[f.reason] };
   }

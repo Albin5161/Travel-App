@@ -59,10 +59,26 @@ export type ExtractResult =
       platform: 'instagram';
       url: string;
       reason: AssistReason;
+      /** The reel's title and thumbnail, when it could be read at all. */
+      video?: Extract<ExtractResult, { status: 'done' }>['video'];
       timings: Timings;
     };
 
-export type MatchRequest = { name: string; area?: string | null; region?: string | null; confidence?: number };
+export type MatchRequest = {
+  name: string;
+  area?: string | null;
+  region?: string | null;
+  confidence?: number;
+  /** A place picked from search: skip finding it by name. */
+  placeId?: string | null;
+  /** The search session the pick ends (see places.searchPlaces). */
+  sessionToken?: string | null;
+};
+
+/** What someone is typing in "Missed one?", and where the reel is, to lean results toward it. */
+export type SearchRequest = { input: string; sessionToken: string; near?: { lat: number; lng: number } | null };
+
+export type SearchResult = { suggestions: { placeId: string; name: string; where: string }[] };
 
 export type PlacePhoto = {
   uri: string;

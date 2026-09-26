@@ -67,6 +67,7 @@ export default function RootLayout() {
             <Stack.Screen name="analysing" options={{ animation: 'fade', gestureEnabled: false }} />
             {/* No edge swipe: it would fight the card swipe, and leaving mid-check saves nothing. */}
             <Stack.Screen name="verify" options={{ animation: 'fade', gestureEnabled: false }} />
+            <Stack.Screen name="addplaces" options={{ animation: 'fade', gestureEnabled: false }} />
             {/* Home's card grows into this page itself (CityOpenOverlay), so the screen doesn't animate.
                 The edge swipe is off because it would slide the page away instead of shrinking it. */}
             <Stack.Screen name="city/[id]" options={{ animation: 'none', gestureEnabled: false }} />

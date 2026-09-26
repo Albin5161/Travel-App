@@ -11,8 +11,8 @@ import { CityTile } from '@/components/CityTile';
 import { FIELD_TRAILING, LinkBox } from '@/components/LinkBox';
 import { Text } from '@/components/Text';
 import { Segmented } from '@/components/Segmented';
-import { EXAMPLE_LINKS, getCity, getPlace } from '@/data/api';
-import { places, reels } from '@/data/catalog';
+import { EXAMPLE_LINKS, getCity, getPlace, getReel } from '@/data/api';
+import { places } from '@/data/catalog';
 import { PhotoStrip } from '@/components/home/PhotoStrip';
 import { allDistricts } from '@/data/regions';
 import type { Platform as SourcePlatform } from '@/data/types';
@@ -68,6 +68,8 @@ export default function Home() {
     .flatMap((c) => c.placeIds)
     .map((id) => getPlace(id))
     .filter((p) => !!p)
+    // Google's photos need their credit shown with them, which these small prints can't carry.
+    .filter((p) => !p.photoCredit)
     .map((p) => ({ id: p.id, photo: p.photo }));
   const inspiration = own.length === 0;
   const stripPhotos = inspiration ? INSPIRATION : own;
@@ -136,7 +138,7 @@ export default function Home() {
                     if (!city) return null;
                     const planned = !!state.savedTrips[c.cityId];
                     const nReels = c.reelIds.length;
-                    const sources = c.reelIds.map((id) => reels[id]).filter((r) => !!r);
+                    const sources = c.reelIds.map((id) => getReel(id)).filter((r) => !!r);
                     return (
                       <Animated.View key={c.cityId} entering={c.cityId === fresh ? ENTER[3] : undefined}>
                         <CityTile
@@ -147,6 +149,7 @@ export default function Home() {
                           statValue={String(c.placeIds.length)}
                           captionLabel={sourceLabel(sources.map((r) => r.platform))}
                           captionValue={creators(sources.map((r) => r.creator))}
+                          photoCredit={city.heroCredit}
                           sources={[...new Set(sources.map((r) => r.platform))]}
                           lifted={cityOpen.card?.city.id === city.id}
                           onPress={(rect) =>

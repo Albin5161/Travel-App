@@ -173,6 +173,18 @@ export default function Onboarding() {
           onPress={() => (last ? finish() : go(page + 1))}
           accessibilityHint={last ? 'Opens the app, ready for your first video' : undefined}
         />
+        {/* On every page, since Skip leaves from any of them. */}
+        <Text variant="label" color={light.inkFaint} style={styles.consent}>
+          By using Xplore you agree to the{' '}
+          <Text variant="label" style={styles.consentLink} onPress={() => router.push('/terms')} accessibilityRole="link">
+            terms
+          </Text>{' '}
+          and{' '}
+          <Text variant="label" style={styles.consentLink} onPress={() => router.push('/privacy')} accessibilityRole="link">
+            privacy policy
+          </Text>
+          , and that you’re 18 or over.
+        </Text>
       </View>
     </View>
   );
@@ -327,6 +339,8 @@ function Dot({ index, p }: { index: number; p: SharedValue<number> }) {
 }
 
 const styles = StyleSheet.create({
+  consent: { textAlign: 'center', marginTop: 12 },
+  consentLink: { color: light.inkSoft, textDecorationLine: 'underline' },
   fill: { flex: 1, backgroundColor: light.canvas },
   wash: { position: 'absolute', top: 0, left: 0, right: 0, height: 280 },
   top: {

@@ -10,7 +10,7 @@ import { useFonts } from 'expo-font';
 import { DefaultTheme, router, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
@@ -45,6 +45,7 @@ export default function RootLayout() {
     Geist_600SemiBold,
   });
   const reduced = useReducedMotion();
+  const inBrowser = useInBrowser();
   // The opening animation plays once per launch, over home; skipped with Reduce Motion.
   const [intro, setIntro] = useState(true);
 
@@ -52,7 +53,7 @@ export default function RootLayout() {
     if (loaded) SplashScreen.hideAsync();
   }, [loaded]);
 
-  if (!loaded) return null;
+  if (!loaded || !inBrowser) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: light.canvas }}>
@@ -130,6 +131,18 @@ export default function RootLayout() {
  * If anything crashes, this instead of a blank page. Trips and places are saved on the phone as they
  * change, so starting again from home loses nothing but the screen you were on.
  */
+/**
+ * On the web each page is also built ahead of time as HTML, where there's no screen: every size
+ * reads 0 there, and when the browser takes that HTML over, React keeps sizes it finds in it rather
+ * than correcting them. Opened directly (a reload, a reopened tab), the intro came out 0 wide, one
+ * letter per line. So the app draws nothing in that HTML, and draws itself once it's running in the
+ * browser, with the real screen. The fonts load in that moment anyway; nothing shows any later.
+ */
+const noSubscribe = () => () => {};
+function useInBrowser() {
+  return useSyncExternalStore(noSubscribe, () => true, () => Platform.OS !== 'web');
+}
+
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   useEffect(() => {
     track('app crashed', { kind: error.name || 'Error' });

@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Avatar } from '@/components/group/Avatar';
 import { Confetti } from '@/components/group/Confetti';
+import { JoinWelcome } from '@/components/group/JoinWelcome';
 import { StopVote } from '@/components/group/StopVote';
 import { IconButton } from '@/components/IconButton';
 import { Text } from '@/components/Text';
@@ -38,7 +39,9 @@ const TOAST_OUT = web ? undefined : FadeOut.duration(200);
 // share screen, a trip in the Trips tab, or cold from the shared link. When every stop is decided,
 // confetti (once, whenever you first see it), and "Lock it in" applies the swaps and drops.
 export default function GroupScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, welcome } = useLocalSearchParams<{ id: string; welcome?: string }>();
+  // Once, straight after joining from a link: what this is and what to do. Not on later visits.
+  const [welcoming, setWelcoming] = useState(welcome === '1');
   const city = getCity(id);
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
@@ -140,6 +143,20 @@ export default function GroupScreen() {
           </Text>
           <Text variant="data">{sub}</Text>
         </Animated.View>
+
+        {welcoming && remote && !isOwner && !locked && plan ? (
+          <JoinWelcome
+            ownerName={remote.ownerName}
+            cityName={city.name}
+            stops={stops.length}
+            days={plan.days.length}
+            onStart={() => {
+              setWelcoming(false);
+              vote();
+            }}
+            onDismiss={() => setWelcoming(false)}
+          />
+        ) : null}
 
         <View style={styles.people}>
           <View style={styles.avatars}>

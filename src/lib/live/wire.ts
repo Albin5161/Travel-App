@@ -1,11 +1,14 @@
 import { getPlace } from '@/data/api';
 import { customPlace } from '@/data/custom';
+import { live, restore, snapshot, type LiveSnapshot } from '@/data/registry';
 import type { TripPlan, TripStop } from '@/data/planner';
 import type { DayPart, Place } from '@/data/types';
 
 // A plan as it travels between phones. Places can't go as they are: their photos are bundle asset
 // ids, which differ between a phone build and the web build. So a place goes as its catalog id and
-// is looked up again on arrival; a custom stop goes with everything needed to rebuild it.
+// is looked up again on arrival; a custom stop goes with everything needed to rebuild it. A place
+// from a pasted link isn't in anyone else's catalog, so it travels whole, with its city and video,
+// and is added to the other phone's records before the plan is rebuilt.
 
 type WireCustom = { title: string; note?: string; by: string; bestTime: DayPart; minutes: number; near?: string };
 
@@ -25,9 +28,14 @@ export type WirePlan = {
   left: string[];
   removed: string[];
   seed: number;
+  /** The real places, city and videos the plan uses, for phones that haven't seen them. */
+  live?: LiveSnapshot;
 };
 
 export function toWire(plan: TripPlan): WirePlan {
+  const places = [...plan.days.flatMap((d) => d.stops.map((s) => s.place)), ...plan.left];
+  const real = places.filter((p) => live.places[p.id]);
+  const reelIds = real.flatMap((p) => (p.source.kind === 'reel' ? [p.source.reelId] : []));
   return {
     cityId: plan.cityId,
     prefs: plan.prefs,
@@ -56,10 +64,15 @@ export function toWire(plan: TripPlan): WirePlan {
     left: plan.left.map((p) => p.id),
     removed: plan.removed,
     seed: plan.seed,
+    ...(real.length || live.cities[plan.cityId]
+      ? { live: snapshot(real.map((p) => p.id), [plan.cityId], reelIds) }
+      : {}),
   };
 }
 
 export function fromWire(wire: WirePlan): TripPlan {
+  // A friend's real places first: everything below looks places up by id.
+  if (wire.live) restore(wire.live);
   const placeOf = (s: WireStop): Place | undefined =>
     s.custom
       ? customPlace(

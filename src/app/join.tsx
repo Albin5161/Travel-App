@@ -28,6 +28,8 @@ export default function Join() {
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useTrips();
   const [code, setCode] = useState((params.code ?? '').toUpperCase());
+  // Came from a shared link (the code is in it), not typed in from Trips.
+  const invited = !!params.code;
   const [name, setName] = useState(state.myName ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export default function Join() {
       });
       startGroup(dispatch, plan, true, row.swap_for);
       haptic.success();
-      router.replace({ pathname: '/group/[id]', params: { id: row.city_id } });
+      router.replace({ pathname: '/group/[id]', params: { id: row.city_id, welcome: '1' } });
     } catch (e) {
       haptic.error();
       const message = e instanceof Error ? e.message : '';
@@ -80,9 +82,13 @@ export default function Join() {
         <Animated.View entering={ENTER[0]}>
           <Text variant="micro">Plan it together</Text>
           <Text variant="display" style={styles.title}>
-            Join a trip
+            {invited ? 'You’re invited' : 'Join a trip'}
           </Text>
-          <Text variant="body">Keep, swap or drop each stop, add your own, and see everyone else&rsquo;s votes as they land.</Text>
+          <Text variant="body">
+            {invited
+              ? 'A friend is planning a trip and wants your say. Add your name to see the places they picked and vote on each one.'
+              : 'Keep, swap or drop each stop, add your own, and see everyone else’s votes as they land.'}
+          </Text>
         </Animated.View>
 
         {!liveEnabled ? (

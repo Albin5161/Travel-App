@@ -15,6 +15,7 @@ import { PlaceSearchSheet } from '@/components/verify/PlaceSearchSheet';
 import { places as catalogPlaces } from '@/data/catalog';
 import type { Place } from '@/data/types';
 import { isLiveReel, placeFromPick, sendVerdicts, type Suggestion } from '@/lib/extract';
+import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips } from '@/state/trips';
@@ -78,6 +79,7 @@ export default function Verify() {
     if (!done || !extraction || committed.current) return;
     committed.current = true;
     dispatch({ type: 'commitExtraction', extraction, placeIds: saved.map((p) => p.id) });
+    track('places saved', { count: saved.length, wrong: wrong.length, from: 'video' });
     sendVerdicts(
       extraction.reel,
       places.map((place) => ({ place, verdict: wrong.includes(place) ? 'wrong' : 'right' })),

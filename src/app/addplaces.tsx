@@ -16,6 +16,7 @@ import { register } from '@/data/registry';
 import { allDistricts } from '@/data/regions';
 import type { Place } from '@/data/types';
 import { cityFromWhere, placeFromPick, sendVerdicts, townOf, type Suggestion } from '@/lib/extract';
+import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { fadeUp } from '@/lib/motion';
 import { useTrips } from '@/state/trips';
@@ -81,6 +82,7 @@ export default function AddPlaces() {
     const saved = { ...reel, cityId: city.id, placeIds: places.map((p) => p.id) };
     register({ city, reel: saved });
     dispatch({ type: 'commitExtraction', extraction: { reel: saved, city, places } });
+    track('places saved', { count: places.length, wrong: 0, from: 'by hand' });
     sendVerdicts(saved, places.map((place) => ({ place, verdict: 'added' as const })));
     router.replace('/');
   };

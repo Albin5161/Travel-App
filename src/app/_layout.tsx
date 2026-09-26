@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { LaunchIntro } from '@/components/motion/LaunchIntro';
+import { ScreenViews } from '@/lib/analytics';
 // Imported for its side effect: expo-location needs the geofencing task defined at module scope,
 // before any arrival event can reach the app.
 import '@/lib/arrival';
@@ -114,6 +115,7 @@ export default function RootLayout() {
             />
           </Stack>
           <GroupScripts />
+          <ScreenViews />
           {intro && !reduced ? <LaunchIntro onDone={() => setIntro(false)} /> : null}
         </TripsProvider>
       </ThemeProvider>

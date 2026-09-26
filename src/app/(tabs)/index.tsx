@@ -16,6 +16,7 @@ import { places } from '@/data/catalog';
 import { PhotoStrip } from '@/components/home/PhotoStrip';
 import { allDistricts } from '@/data/regions';
 import type { Platform as SourcePlatform } from '@/data/types';
+import { platformOfLink, track } from '@/lib/analytics';
 import { FADE_IN, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips, type HomeTab } from '@/state/trips';
 import { fonts, light, shadows } from '@/theme/tokens';
@@ -227,6 +228,7 @@ function useStartFromLink() {
   const { dispatch } = useTrips();
   return (url: string) => {
     dispatch({ type: 'setPendingLink', url });
+    track('link pasted', { platform: platformOfLink(url), example: EXAMPLE_LINKS.some((e) => e.url === url) });
     router.push('/analysing');
   };
 }

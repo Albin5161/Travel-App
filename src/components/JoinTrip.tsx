@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
 import { Text } from '@/components/Text';
+import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { joinTrip, loadTrip, planFromRow } from '@/lib/live/api';
 import { ensureUser, liveEnabled } from '@/lib/live/client';
@@ -58,6 +59,7 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
         },
       });
       startGroup(dispatch, plan, true, row.swap_for);
+      track('trip joined', { via: linkCode ? 'link' : 'code' });
       haptic.success();
       router.replace({ pathname: '/group/[id]', params: { id: row.city_id, welcome: '1' } });
     } catch (e) {

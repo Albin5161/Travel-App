@@ -11,6 +11,7 @@ import { Text } from '@/components/Text';
 import { getCity } from '@/data/api';
 import { PARTY_COPY, swapCandidates } from '@/data/group';
 import { partyOf } from '@/data/planner';
+import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { FADE_IN, fadeUp } from '@/lib/motion';
 import { createTrip } from '@/lib/live/api';
@@ -88,6 +89,7 @@ export default function ShareScreen() {
       if (result === 'shared') haptic.success();
       else haptic.light();
       setSent(true);
+      track('plan shared', { party, live, how: result });
       // The vote starts the moment it's out: people begin joining while you're still in the chat.
       if (!live) startGroup(dispatch, plan);
       const chat = party === 'family' ? 'family chat' : party === 'partner' ? 'chat' : 'group';

@@ -12,6 +12,7 @@ import { Text } from '@/components/Text';
 import { getPlace } from '@/data/api';
 import { QUICK_NOTES, member, type VoteKind } from '@/data/group';
 import { formatClock } from '@/lib/geo';
+import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT } from '@/lib/motion';
 import { useGroupVote } from '@/state/group';
@@ -57,6 +58,7 @@ export default function VoteSheet() {
     const { stop } = stops[index];
     haptic.selection();
     const vote = { kind, emoji: emoji ?? DEFAULT_EMOJI[kind], note: note?.trim() || undefined };
+    track('vote cast', { kind, live: !!(group.live && live), note: !!vote.note });
     if (group.live && live) live.cast(stop.place.id, vote);
     else dispatch({ type: 'groupVote', cityId: id, placeId: stop.place.id, memberId: voter, vote });
     setEmoji(null);

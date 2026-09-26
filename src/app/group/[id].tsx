@@ -16,6 +16,7 @@ import { getCity, getPlace } from '@/data/api';
 import { member, PARTY_COPY, whoLine } from '@/data/group';
 import { formatDay, removeStop, swapStop } from '@/data/planner';
 import { formatClock } from '@/lib/geo';
+import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT, fadeUp } from '@/lib/motion';
 import { useGroupVote } from '@/state/group';
@@ -102,6 +103,7 @@ export default function GroupScreen() {
     }
     haptic.success();
     dispatch({ type: 'groupLock', cityId: id });
+    track('plan locked', { live: !!group.live });
     writePlan(next, true);
   };
 

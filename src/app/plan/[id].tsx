@@ -47,6 +47,7 @@ import {
 } from '@/data/planner';
 import type { DayPart, Place } from '@/data/types';
 import { formatClock, formatDuration, smoothPath, smoothPathLength } from '@/lib/geo';
+import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_IN_OUT, FADE_IN, FADE_OUT, fadeUp, REFLOW } from '@/lib/motion';
 import { customStops } from '@/data/custom';
@@ -223,6 +224,7 @@ export default function PlanScreen() {
   const save = () => setStamping(true);
   const saved = () => {
     dispatch({ type: 'saveTrip', cityId: id });
+    track('trip planned', { days: plan.days.length });
     router.replace({ pathname: '/share/[id]', params: { id } });
   };
 

@@ -26,6 +26,7 @@ import { register } from '@/data/registry';
 import { SAMPLE_LINK } from '@/data/catalog';
 import type { Extraction, Place, Reel } from '@/data/types';
 import { ApiFailure } from '@/lib/api';
+import { platformOfLink, track } from '@/lib/analytics';
 import { readLink } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
 import { sound } from '@/lib/sound';
@@ -269,8 +270,14 @@ function useReading(url: string) {
 
   useEffect(() => {
     let cancelled = false;
+    // How long the wait was, and how each read ended: the numbers behind "does pasting work?".
+    const startedAt = Date.now();
+    const measure = { platform: platformOfLink(url), example: isSampleLink(url) };
+    const took = () => Math.round((Date.now() - startedAt) / 1000);
+    const failed = (reason: string) => track('link failed', { ...measure, reason, seconds: took() });
     const done = (r: Extraction) => {
       if (cancelled) return;
+      track('places found', { ...measure, count: r.places.length, seconds: took() });
       setPreview(r.reel);
       setNames((n) => (n.length ? n : r.places.map(creditOf)));
       setResult(r);
@@ -288,13 +295,19 @@ function useReading(url: string) {
         .then((outcome) => {
           if (cancelled) return;
           if (outcome.kind === 'done') done(outcome.extraction);
-          else if (outcome.kind === 'empty') setFailure({ kind: 'empty' });
-          else setFailure({ kind: 'assist', reason: outcome.reason, reel: outcome.reel });
+          else if (outcome.kind === 'empty') {
+            failed('empty');
+            setFailure({ kind: 'empty' });
+          } else {
+            failed(outcome.reason);
+            setFailure({ kind: 'assist', reason: outcome.reason, reel: outcome.reel });
+          }
         })
         .catch((e: unknown) => {
           if (cancelled) return;
           const error =
             e instanceof ApiFailure ? e : new ApiFailure('upstream', 'Something went wrong on our side. Try again.', true);
+          failed(error.code);
           setFailure({ kind: 'error', error });
         });
     }

@@ -24,6 +24,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { Chips } from '@/components/spots/Chips';
 import { allDistricts } from '@/data/regions';
+import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT, project, SPRING_DRAG } from '@/lib/motion';
 import { useTrips } from '@/state/trips';
@@ -83,6 +84,7 @@ export default function Onboarding() {
     haptic.success();
     if (name.trim()) dispatch({ type: 'setMyName', name });
     dispatch({ type: 'finishOnboarding' });
+    track('onboarding completed', { named: !!name.trim(), skipped: page < PAGES - 1 });
     router.replace('/');
   };
 

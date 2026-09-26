@@ -26,7 +26,8 @@ export interface Place {
   why: string;
   source: PlaceSource;
   bestTime: DayPart;
-  cost: 0 | 1 | 2 | 3;
+  /** 0 free, 1–3 for ₹ to ₹₹₹; null when it isn't known, so nothing claims a price it doesn't have. */
+  cost: 0 | 1 | 2 | 3 | null;
   minutes: number;
   coords: LatLng;
   /** Position on the city's stylised map, in world units. */

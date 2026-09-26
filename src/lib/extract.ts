@@ -220,14 +220,24 @@ export const isLiveReel = (reel: Reel) => reel.id.startsWith('yt:') || reel.id.s
 
 // ── From the API's shapes to the app's ───────────────────────────────────────────────────────────
 
-// What the planner needs and a video never says, by kind of place: when it's best, a rough cost
-// (0 free to 3 pricey) and how long people stay.
+// What the planner needs when nothing better is known, by kind of place: when it's best and how long
+// people stay. The price is left unknown: a guess from the kind of place would be shown as fact.
 const DEFAULTS: Record<PlaceType, { bestTime: DayPart; cost: Place['cost']; minutes: number }> = {
-  food: { bestTime: 'afternoon', cost: 1, minutes: 60 },
-  stay: { bestTime: 'evening', cost: 2, minutes: 30 },
-  sight: { bestTime: 'morning', cost: 0, minutes: 75 },
-  experience: { bestTime: 'afternoon', cost: 1, minutes: 90 },
+  food: { bestTime: 'afternoon', cost: null, minutes: 60 },
+  stay: { bestTime: 'evening', cost: null, minutes: 30 },
+  sight: { bestTime: 'morning', cost: null, minutes: 75 },
+  experience: { bestTime: 'afternoon', cost: null, minutes: 90 },
 };
+
+/** The model's knowledge of the place where it had some, the kind-of-place defaults where not. */
+function planningDetails(found: FoundPlace) {
+  const d = DEFAULTS[found.type];
+  return {
+    bestTime: found.bestTime ?? d.bestTime,
+    cost: found.price ?? d.cost,
+    minutes: found.visitMinutes ?? d.minutes,
+  };
+}
 
 function toReel(res: Pick<Extract<ExtractResult, { status: 'done' }>, 'platform' | 'video'>, id: string, cityId: string): Reel {
   const v = res.video;
@@ -263,7 +273,7 @@ function toPlaces(pairs: { found: FoundPlace; match: MatchedPlace }[], reel: Ree
         photoCredit: match.photo?.attributions.map((a) => a.name).join(', ') || undefined,
         why: found.why,
         source: { kind: 'reel', reelId: reel.id, timestamp: found.timestamp ?? '' },
-        ...DEFAULTS[found.type],
+        ...planningDetails(found),
         coords: match.location,
         map: points[i],
         order: i,

@@ -10,6 +10,13 @@ export type FoundPlace = {
   why: string;
   timestamp: string | null;
   confidence: number;
+  // From the model's general knowledge of the place, not the video, for planning. Null when it
+  // doesn't know the place well enough. Absent on results read before these were asked for.
+  /** Typical time spent at the place itself, travel excluded. */
+  visitMinutes?: number | null;
+  bestTime?: 'morning' | 'afternoon' | 'evening' | null;
+  /** 0 free, 1–3 for ₹ to ₹₹₹. */
+  price?: 0 | 1 | 2 | 3 | null;
 };
 
 export type Timings = Record<string, number>;

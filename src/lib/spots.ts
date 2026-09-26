@@ -117,8 +117,8 @@ export interface WeekendRoute {
   /** Drive time out, plus time at each spot, plus the drive back. */
   totalMinutes: number;
   driveMinutes: number;
-  /** Rupee band, summed from each spot's cost tier. */
-  cost: number;
+  /** Rupee band, summed from each spot's cost tier; null when any spot's price isn't known. */
+  cost: number | null;
 }
 
 const COST_BAND = [0, 250, 700, 1600];
@@ -148,7 +148,7 @@ export function weekendRoutes(from: LatLng, spots: Place[], budgetMinutes = 330)
         spots: ordered,
         driveMinutes: drive,
         totalMinutes: drive + atSpots,
-        cost: ordered.reduce((n, p) => n + COST_BAND[p.cost], 0),
+        cost: ordered.some((p) => p.cost === null) ? null : ordered.reduce((n, p) => n + COST_BAND[p.cost ?? 0], 0),
       };
     })
     .filter((r) => r.totalMinutes <= budgetMinutes)

@@ -620,7 +620,7 @@ function StopRow({
             {stop.place.name}
           </Text>
           <Text variant="data" numberOfLines={1}>
-            {formatClock(stop.startMinutes)} · {formatDuration(stop.place.minutes)} · {costLabel(stop.place.cost)}
+            {[formatClock(stop.startMinutes), formatDuration(stop.place.minutes), costLabel(stop.place.cost)].filter(Boolean).join(' · ')}
           </Text>
           {stop.suggested ? (
             <Text variant="micro" color={light.accent}>

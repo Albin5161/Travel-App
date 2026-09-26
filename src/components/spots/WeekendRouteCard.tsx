@@ -56,9 +56,11 @@ export function WeekendRouteCard({
         <Text variant="data">
           {formatDuration(route.totalMinutes)} out and back · {formatDuration(route.driveMinutes)} driving
         </Text>
-        <Text variant="data" color={light.inkFaint}>
-          {route.cost === 0 ? 'Free' : `About ₹${route.cost.toLocaleString('en-IN')}`}
-        </Text>
+        {route.cost === null ? null : (
+          <Text variant="data" color={light.inkFaint}>
+            {route.cost === 0 ? 'Free' : `About ₹${route.cost.toLocaleString('en-IN')}`}
+          </Text>
+        )}
       </View>
     </PressableScale>
   );

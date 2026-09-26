@@ -282,6 +282,11 @@ type SavedTrips = {
   remote: State['remote'];
   homeTab: HomeTab;
   live: LiveSnapshot;
+  /**
+   * Set once real places' prices stopped being guessed. Copies saved before that have every real
+   * place priced from its kind ("Free" for any sight), so those guesses are cleared on load.
+   */
+  pricesHonest?: true;
 };
 
 function loadTrips(): Partial<State> {
@@ -290,6 +295,11 @@ function loadTrips(): Partial<State> {
   try {
     const s = JSON.parse(raw) as SavedTrips;
     if (s.v !== 1) return {};
+    if (!s.pricesHonest) {
+      const unguess = (places: LiveSnapshot['places'] = []) => places.forEach((p) => (p.cost = null));
+      unguess(s.live.places);
+      Object.values(s.tripPlans).forEach((w) => unguess(w.live?.places));
+    }
     // Real places first: the plans below are rebuilt from their ids.
     restore(s.live);
     const tripPlans = Object.fromEntries(Object.entries(s.tripPlans).map(([cityId, w]) => [cityId, fromWire(w)]));
@@ -318,6 +328,7 @@ function saveTrips(state: State) {
   const collections = Object.values(state.collections);
   const saved: SavedTrips = {
     v: 1,
+    pricesHonest: true,
     homeDistrictId: state.homeDistrictId,
     spotStatus: state.spotStatus,
     notifyOnArrival: state.notifyOnArrival,

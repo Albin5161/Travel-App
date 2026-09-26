@@ -5,6 +5,8 @@ import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 
 import { getDistrict } from '@/data/regions';
+import { nearestTown } from '@/data/towns';
+import { track } from '@/lib/analytics';
 import type { LatLng } from '@/lib/geo';
 
 import { useTrips } from './trips';
@@ -42,4 +44,54 @@ export function useWhereIAm(): Where {
   if (device) return { at: device, source: 'device', label: 'from where you are' };
   const fallback = home?.centre ?? { lat: 9.62, lng: 76.55 };
   return { at: fallback, source: 'home', label: `from ${home?.name ?? 'home'}` };
+}
+
+export type Here =
+  | { status: 'unknown' }
+  | { status: 'finding' }
+  | { status: 'found'; town: string | null }
+  | { status: 'off' };
+
+/**
+ * The town you're in, for the home screen's location chip. Asks for location only when `find` is
+ * called (a tap), never on its own: an unasked-for prompt on launch mostly gets "Don't allow". If
+ * it was allowed before, it looks straight away. The position is turned into a town name on the
+ * phone (data/towns) and goes nowhere else.
+ */
+export function useHere(): { here: Here; find: () => void } {
+  const [here, setHere] = useState<Here>({ status: 'unknown' });
+
+  const locate = async () => {
+    setHere({ status: 'finding' });
+    const last = await Location.getLastKnownPositionAsync({ maxAge: 10 * 60 * 1000 }).catch(() => null);
+    const fix = last ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }).catch(() => null));
+    const town = fix ? nearestTown({ lat: fix.coords.latitude, lng: fix.coords.longitude }) : null;
+    setHere(fix ? { status: 'found', town } : { status: 'off' });
+    return fix ? (town ? 'town' : 'no town') : 'no fix';
+  };
+
+  useEffect(() => {
+    let alive = true;
+    Location.getForegroundPermissionsAsync()
+      .then((p) => {
+        if (alive && p.granted) void locate();
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const find = async () => {
+    if (here.status === 'finding') return;
+    const asked = await Location.requestForegroundPermissionsAsync().catch(() => null);
+    if (!asked?.granted) {
+      setHere({ status: 'off' });
+      track('location asked', { result: 'denied' });
+      return;
+    }
+    track('location asked', { result: await locate() });
+  };
+
+  return { here, find: () => void find() };
 }

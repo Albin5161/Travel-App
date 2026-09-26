@@ -39,7 +39,8 @@ export type AnalyticsEvent =
   | 'plan shared'
   | 'trip joined'
   | 'vote cast'
-  | 'plan locked';
+  | 'plan locked'
+  | 'location asked';
 
 export function track(event: AnalyticsEvent, properties?: Record<string, string | number | boolean>) {
   client?.capture(event, properties);

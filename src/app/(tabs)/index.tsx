@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
@@ -9,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CityOpenOverlay, useCityOpen } from '@/components/CityOpenOverlay';
 import { CityTile } from '@/components/CityTile';
 import { FIELD_TRAILING, LinkBox } from '@/components/LinkBox';
+import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { Segmented } from '@/components/Segmented';
 import { EXAMPLE_LINKS, getCity, getPlace, getReel } from '@/data/api';
@@ -19,6 +21,7 @@ import type { Platform as SourcePlatform } from '@/data/types';
 import { platformOfLink, track } from '@/lib/analytics';
 import { FADE_IN, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips, type HomeTab } from '@/state/trips';
+import { useHere } from '@/state/where';
 import { fonts, light, shadows } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
@@ -63,6 +66,8 @@ export default function Home() {
   const tab = state.homeTab;
   const shown = tab === 'near' ? near : away;
   const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? 'home';
+  // First name only: the greeting is a hello, not a form letter.
+  const firstName = state.myName?.split(/\s+/)[0];
   // The strip over the link box: your own places, newest first. Before the first save it holds a
   // few inspiration places, muted, so the screen isn't a bare field.
   const own = collections
@@ -97,11 +102,14 @@ export default function Home() {
           contentContainerStyle={{ flexGrow: 1, paddingTop: 12 }}
         >
           <View style={styles.header}>
-            <Text style={styles.wordmark}>Xplore</Text>
+            <View style={styles.topRow}>
+              <Text style={styles.wordmark}>Xplore</Text>
+              <HereChip />
+            </View>
             <Animated.View entering={ENTER[0]}>
               <Text style={styles.question}>
-                Which video is{'\n'}
-                <Text style={styles.questionStrong}>your next trip?</Text>
+                {firstName ? `Hey ${firstName},\nwhich video is\n` : 'Which video is\n'}
+                <Text style={styles.questionStrong}>your next plan?</Text>
               </Text>
             </Animated.View>
             {/* Centred on the field, not the screen: the paste button takes the right of the row, and
@@ -194,6 +202,38 @@ function creators(handles: string[]) {
   return unique.length > 1 ? `${unique[0]} +${unique.length - 1}` : (unique[0] ?? '');
 }
 
+/**
+ * Where you are, as a town, like a delivery app's header. Asks for location only when tapped; the
+ * town is worked out on the phone and the position goes nowhere (state/where).
+ */
+function HereChip() {
+  const { here, find } = useHere();
+  const label =
+    here.status === 'found'
+      ? (here.town ?? 'Location on')
+      : here.status === 'finding'
+        ? 'Finding you…'
+        : here.status === 'off'
+          ? 'Location off'
+          : 'Use my location';
+  const quiet = here.status === 'off' || here.status === 'finding';
+  return (
+    <PressableScale
+      onPress={find}
+      disabled={here.status === 'finding'}
+      style={styles.herePill}
+      accessibilityRole="button"
+      accessibilityLabel={here.status === 'found' && here.town ? `You're in ${here.town}. Tap to check again.` : label}
+      accessibilityHint={here.status === 'unknown' ? 'Asks to use your location. It stays on your phone.' : undefined}
+    >
+      <Feather name="map-pin" size={13} color={quiet ? light.inkFaint : light.ink} />
+      <Text variant="label" color={quiet ? light.inkFaint : light.ink} numberOfLines={1} style={styles.hereText}>
+        {label}
+      </Text>
+    </PressableScale>
+  );
+}
+
 function Empty({ tab, homeName }: { tab: HomeTab; homeName: string }) {
   return (
     <View style={styles.empty}>
@@ -241,6 +281,21 @@ const styles = StyleSheet.create({
   // The strip's lower edge runs under the sticky link box below it (a later sibling, so it draws
   // on top), which is what makes the prints read as tucked behind the field.
   strip: { marginTop: 14, marginBottom: -STRIP_TUCK },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  // Same pill as Trips' Join button, so the header reads as one family of controls.
+  herePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 34,
+    maxWidth: 200,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: light.lineStrong,
+    backgroundColor: light.panel,
+  },
+  hereText: { flexShrink: 1 },
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: light.ink },
   // Two weights, one line box: a quiet Medium lead-in, then the ask in ExtraBold. The weight change
   // does the emphasis a decorative italic used to.

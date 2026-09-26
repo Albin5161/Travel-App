@@ -15,8 +15,9 @@ const TYPE_LABEL = { food: 'Food', stay: 'Stay', sight: 'Sight', experience: 'Ex
 /** "Free", "₹" to "₹₹₹", or null when the price isn't known: better said nowhere than guessed. */
 export const costLabel = (c: Place['cost']) => (c === null ? null : c === 0 ? 'Free' : '₹'.repeat(c));
 
+/** "Sight · Fort Kochi", or just "Sight" when the place has no neighbourhood name. */
 export function typeLine(p: Place) {
-  return `${TYPE_LABEL[p.type]} · ${p.area}`;
+  return [TYPE_LABEL[p.type], p.area.trim()].filter(Boolean).join(' · ');
 }
 
 export function MetaPills({ place, onPhoto }: { place: Place; onPhoto?: boolean }) {

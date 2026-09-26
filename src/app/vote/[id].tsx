@@ -137,7 +137,7 @@ export default function VoteSheet() {
         </Text>
         <Text variant="data">
           {multiDay ? `Day ${day + 1} · ` : ''}
-          {formatClock(stop.startMinutes)} · {stop.place.area}
+          {[formatClock(stop.startMinutes), stop.place.area.trim()].filter(Boolean).join(' · ')}
         </Text>
 
         <Text variant="micro" style={styles.section}>

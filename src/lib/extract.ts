@@ -264,6 +264,9 @@ export function sendVerdicts(reel: Reel, verdicts: { place: Place; verdict: 'rig
   );
 }
 
+/** From this many places, checking them one card at a time is a chore: they're a ticked list instead. */
+export const CHECK_AS_LIST_FROM = 6;
+
 /** Whether a video came from a pasted link (not the samples). */
 export const isLiveReel = (reel: Reel) => reel.id.startsWith('yt:') || reel.id.startsWith('ig:');
 

@@ -16,8 +16,10 @@ import {
   formatRange,
   fromIso,
   isoDay,
+  daysNeeded,
   PACE_HOURS,
   PACE_STOPS,
+  placesThatFit,
   rulePlanner,
   weekend,
   type Pace,
@@ -104,6 +106,25 @@ export default function TripSetup() {
   if (!city) return null;
   const thisW = weekend(today, 'this');
   const nextW = weekend(today, 'next');
+  // How many days these places need, and how many fit each pace, said before anything is chosen:
+  // eleven places won't fit two relaxed days, and that's better heard here than found in the plan.
+  const terrain = city.terrain ?? terrainOf(collected.map((p) => p.coords));
+  const count = collected.length;
+  const needed = daysNeeded(collected, terrain, 'balanced', prefs.getting);
+  const fitting = (pace: Pace) => placesThatFit(collected, { ...prefs, pace, terrain, stay: null });
+  const fitLine = (pace: Pace) => {
+    if (count < 2) return '';
+    const k = fitting(pace);
+    return k >= count ? ` · fits all ${count} places` : ` · fits ${k} of your ${count}`;
+  };
+  const hint =
+    count < 2
+      ? null
+      : needed <= 1
+        ? `Your ${count} places fit in a day.`
+        : `Your ${count} places need about ${needed} days at a balanced pace.`;
+  // The fewest days that fit everything, marked on the days question; past four, "4 or more".
+  const suggested = Math.min(Math.max(needed, 1), 4);
 
   return (
     <View style={[styles.fill, { paddingTop: insets.top + 8 }]}>
@@ -121,8 +142,7 @@ export default function TripSetup() {
             // New answers rebuild the plan; stops people typed in stay, on their day where it still exists.
             const custom = customStops(state.tripPlans[id]);
             const points = collected.map((p) => p.coords);
-            const terrain = city.terrain ?? terrainOf(points);
-            const kept = previous?.stay && Date.now() - previous.stay.at < STAY_KEEP_MS ? previous.stay : null;
+            const kept = freshStay(previous?.stay);
             const stay = stayInTown ? (kept ?? (await findStay(`${city.name}, ${city.state}`, centre(points)))) : null;
             const plan = await rulePlanner.plan({
               cityId: id,
@@ -149,6 +169,13 @@ export default function TripSetup() {
                 {QUESTION[step]}
               </Text>
             </Animated.View>
+            {hint && (step === 'when' || step === 'days' || step === 'dates') ? (
+              <Animated.View entering={ENTER[1]}>
+                <Text variant="body" color={light.inkSoft} style={styles.hint}>
+                  {hint}
+                </Text>
+              </Animated.View>
+            ) : null}
 
             {step === 'who' ? (
               <Options
@@ -183,7 +210,9 @@ export default function TripSetup() {
                 options={[1, 2, 3, 4].map((d) => ({
                   key: String(d),
                   title: d === 4 ? '4 days or more' : `${d} ${d === 1 ? 'day' : 'days'}`,
-                  detail: d === 1 ? 'A day trip' : d === 2 ? 'A weekend' : d === 3 ? 'A long weekend' : "We'll plan four; add more after",
+                  detail:
+                    (d === 1 ? 'A day trip' : d === 2 ? 'A weekend' : d === 3 ? 'A long weekend' : "We'll plan four; add more after") +
+                    (count >= 2 && d === suggested ? ' · Fits all your places' : ''),
                 }))}
               />
             ) : null}
@@ -202,9 +231,9 @@ export default function TripSetup() {
                 selected={answered.pace || prefs.party === 'family' ? prefs.pace : null}
                 onPick={(k) => answer({ pace: k as Pace }, 'pace', 'getting')}
                 options={[
-                  { key: 'relaxed', title: 'Relaxed', detail: `Up to ${PACE_STOPS.relaxed} stops, about ${PACE_HOURS.relaxed} hours out, late starts` },
-                  { key: 'balanced', title: 'Balanced', detail: `Up to ${PACE_STOPS.balanced} stops, about ${PACE_HOURS.balanced} hours out` },
-                  { key: 'packed', title: 'Packed', detail: `Up to ${PACE_STOPS.packed} stops, about ${PACE_HOURS.packed} hours, out by seven` },
+                  { key: 'relaxed', title: 'Relaxed', detail: `Up to ${PACE_STOPS.relaxed} stops a day, about ${PACE_HOURS.relaxed} hours out${fitLine('relaxed')}` },
+                  { key: 'balanced', title: 'Balanced', detail: `Up to ${PACE_STOPS.balanced} stops a day, about ${PACE_HOURS.balanced} hours out${fitLine('balanced')}` },
+                  { key: 'packed', title: 'Packed', detail: `Up to ${PACE_STOPS.packed} stops a day, about ${PACE_HOURS.packed} hours out${fitLine('packed')}` },
                 ]}
               />
             ) : null}
@@ -265,6 +294,7 @@ const QUESTION: Record<Exclude<Step, 'build'>, string> = {
 
 /** Google lets a place's coordinates be kept 30 days; after that the stay is looked up again. */
 const STAY_KEEP_MS = 30 * 24 * 60 * 60 * 1000;
+const freshStay = (stay: TripPrefs['stay']) => (stay && Date.now() - stay.at < STAY_KEEP_MS ? stay : null);
 
 function centre(points: LatLng[]): LatLng | null {
   if (points.length === 0) return null;
@@ -467,6 +497,7 @@ function Build({ cityName, count, prefs, onBuilt }: { cityName: string; count: n
 const CELL = 44;
 
 const styles = StyleSheet.create({
+  hint: { marginTop: 10 },
   fill: { flex: 1, backgroundColor: light.canvas },
   header: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 16 },
   progress: { flex: 1, flexDirection: 'row', gap: 6, paddingRight: 8 },

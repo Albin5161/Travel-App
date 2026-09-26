@@ -13,7 +13,7 @@ import { FIELD_TRAILING, LinkBox } from '@/components/LinkBox';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { Segmented } from '@/components/Segmented';
-import { EXAMPLE_LINKS, getCity, getPlace, getReel } from '@/data/api';
+import { EXAMPLE_LINKS, getCity, getReel } from '@/data/api';
 import { places } from '@/data/catalog';
 import { PhotoStrip } from '@/components/home/PhotoStrip';
 import { allDistricts } from '@/data/regions';
@@ -73,17 +73,12 @@ export default function Home() {
     typedFirst && typedFirst.length > 1 && typedFirst === typedFirst.toUpperCase()
       ? typedFirst[0] + typedFirst.slice(1).toLowerCase()
       : typedFirst;
-  // The strip over the link box: your own places, newest first. Before the first save it holds a
-  // few inspiration places, muted, so the screen isn't a bare field.
-  const own = collections
-    .flatMap((c) => c.placeIds)
-    .map((id) => getPlace(id))
-    .filter((p) => !!p)
-    // Google's photos need their credit shown with them, which these small prints can't carry.
-    .filter((p) => !p.photoCredit)
-    .map((p) => ({ id: p.id, photo: p.photo }));
-  const inspiration = own.length === 0;
-  const stripPhotos = inspiration ? INSPIRATION : own;
+  // The strip over the link box: always the same few bundled photos (credited on the Credits page).
+  // Your own places can't go here: their photos from Google and Wikimedia need a credit these small
+  // prints can't carry, and a video's frames or thumbnail made a strip that changed with every
+  // paste. Muted before the first save, when nothing is yours yet.
+  const inspiration = collections.length === 0;
+  const stripPhotos = INSPIRATION;
   // Offer the first example whose place isn't collected yet, so each tap shows something new.
   const example = EXAMPLE_LINKS.find((e) => !state.collections[e.cityId]) ?? EXAMPLE_LINKS[0];
   const fresh = state.freshCityId;

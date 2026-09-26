@@ -59,6 +59,21 @@ export const REACH_LABEL: Record<string, string> = {
  */
 export const driveMinutes = (from: LatLng, p: Place) => travelLeg(from, p.coords).minutes;
 
+/**
+ * Past this, a drive time stops meaning anything ("78 hr away" to Delhi): the distance is said once
+ * for the whole city instead, and its spots show no time.
+ */
+export const DAY_TRIP_MINUTES = 240;
+
+/** How far a set of spots is, as a person would say it: "about 2,600 km". */
+export function kmAway(from: LatLng, spots: Place[]) {
+  const lat = spots.reduce((n, p) => n + p.coords.lat, 0) / spots.length;
+  const lng = spots.reduce((n, p) => n + p.coords.lng, 0) / spots.length;
+  const km = distanceKm(from, { lat, lng });
+  const rounded = km < 100 ? Math.round(km) : Math.round(km / 10) * 10;
+  return `about ${rounded.toLocaleString('en-IN')} km`;
+}
+
 export function withinReach(from: LatLng, p: Place, reach: ReachMinutes) {
   return reach === null || driveMinutes(from, p) <= reach;
 }
@@ -91,10 +106,11 @@ export function clusterSpots(spots: Place[], radiusKm = 6): Cluster[] {
     .map((spots) => {
       const lat = spots.reduce((n, p) => n + p.coords.lat, 0) / spots.length;
       const lng = spots.reduce((n, p) => n + p.coords.lng, 0) / spots.length;
-      // The area name the spots agree on most often is the cluster's name.
+      // The area name the spots agree on most often is the cluster's name; empty when none has one
+      // (places from a link often don't), and then no heading is shown for it.
       const tally = new Map<string, number>();
-      spots.forEach((p) => tally.set(p.area, (tally.get(p.area) ?? 0) + 1));
-      const label = [...tally.entries()].sort((a, b) => b[1] - a[1])[0][0];
+      spots.forEach((p) => p.area.trim() && tally.set(p.area.trim(), (tally.get(p.area.trim()) ?? 0) + 1));
+      const label = [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
       return {
         id: spots.map((p) => p.id).join('+'),
         label,

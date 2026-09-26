@@ -562,7 +562,7 @@ export function useArrivalTargets() {
             centre: district.centre,
             radiusKm: district.radiusKm,
             spots: g.spots.length,
-            topArea: biggest?.label ?? null,
+            topArea: biggest?.label || null,
             topAreaSpots: biggest?.spots.length ?? 0,
           },
         ];

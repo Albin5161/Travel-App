@@ -37,6 +37,7 @@ import {
   moveToDay,
   partOf,
   pinsOf,
+  planNow,
   removeStop,
   reorder,
   rulePlanner,
@@ -57,6 +58,9 @@ import { fonts, light } from '@/theme/tokens';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const PART_TITLE: Record<DayPart, string> = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening' };
+/** A trip's longest: the planning questions offer up to a week too. */
+const MAX_DAYS = 7;
+
 const PACE_LABEL = { relaxed: 'Relaxed', balanced: 'Balanced', packed: 'Packed' } as const;
 const GETTING_LABEL = { local: 'Walking and autos', drive: 'Own vehicle', bus: 'By bus' } as const;
 const ROW_ENTER = fadeUp(0);
@@ -248,6 +252,30 @@ export default function PlanScreen() {
   // Asking for more days than there are places is easy; say so rather than show empty days bare.
   const emptyDays = plan.days.filter((d) => d.stops.length === 0).length;
   const placed = plan.days.reduce((sum, d) => sum + d.stops.filter((s) => !s.suggested).length, 0);
+  // One more day, worked out before it's offered: how many of the places the planner couldn't fit
+  // it would really take. Some may be too far for any day; places taken out by hand don't count.
+  const unfit = left.filter((p) => !plan.removed.includes(p.id));
+  const bigger =
+    unfit.length > 0 && n < MAX_DAYS
+      ? planNow({
+          cityId: id,
+          saved: [...collected, ...customStops(plan).map((c) => c.place)],
+          suggestions: locals,
+          prefs: { ...prefs, days: n + 1 },
+          pins: pinsOf(plan),
+          removed: plan.removed,
+          seed: plan.seed,
+        })
+      : null;
+  const gain = bigger ? bigger.days.reduce((sum, d) => sum + d.stops.filter((s) => !s.suggested).length, 0) - placed : 0;
+  const addDay = () => {
+    if (!bigger) return;
+    haptic.success();
+    const changed = changedStops(plan, bigger);
+    update(bigger);
+    setFlash(changed);
+    setDay(n);
+  };
 
   return (
     <View style={styles.fill}>
@@ -431,6 +459,17 @@ export default function PlanScreen() {
             {left.length > 0 ? (
               <View style={styles.left}>
                 <Text variant="micro">Not in this plan · {left.length}</Text>
+                {gain > 0 ? (
+                  <Button
+                    kind="secondary"
+                    label={
+                      gain >= unfit.length
+                        ? `Add a day for ${unfit.length === 1 ? 'it' : `these ${unfit.length}`}`
+                        : `Add a day: fits ${gain} of these ${unfit.length}`
+                    }
+                    onPress={addDay}
+                  />
+                ) : null}
                 {left.map((p) => (
                   <Animated.View key={p.id} entering={ROW_ENTER} exiting={FADE_OUT} layout={REFLOW} style={styles.leftRow}>
                     <Image source={p.photo} style={styles.leftThumb} contentFit="cover" transition={0} />

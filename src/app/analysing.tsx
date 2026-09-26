@@ -27,7 +27,7 @@ import { SAMPLE_LINK } from '@/data/catalog';
 import type { Extraction, Place, Reel } from '@/data/types';
 import { ApiFailure } from '@/lib/api';
 import { platformOfLink, track } from '@/lib/analytics';
-import { readLink } from '@/lib/extract';
+import { CHECK_AS_LIST_FROM, readLink } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
 import { sound } from '@/lib/sound';
 import { CARD_IN, CREDIT_IN, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
@@ -54,6 +54,9 @@ const STATUS: Record<Exclude<Phase, 'reading'>, string> = {
 };
 // One place per beat, slow enough that each marker's pop and each pin's drop read on their own.
 const CREDIT_GAP_MS = 300;
+/** Names listed one by one; past this, the rest roll into a "+9 more" line, quicker. */
+const CREDITS_SHOWN = 5;
+const MORE_GAP_MS = 90;
 const WATCH_MS = STAGES.length * STAGE_MS;
 const CHOICE_ENTER = [0, 1].map((i) => fadeUp(i * 60));
 const SCANNER = 132;
@@ -108,7 +111,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
       const t = setTimeout(() => {
         haptic.selection();
         setShown((n) => n + 1);
-      }, shown === 0 ? 360 : CREDIT_GAP_MS);
+      }, shown === 0 ? 360 : shown >= CREDITS_SHOWN ? MORE_GAP_MS : CREDIT_GAP_MS);
       return () => clearTimeout(t);
     }
     if (!result) return;
@@ -200,7 +203,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
         </View>
 
         <View style={styles.credits}>
-          {found.slice(0, shown).map((p) => {
+          {found.slice(0, Math.min(shown, CREDITS_SHOWN)).map((p) => {
             const missing = !!result && !placed.has(p.name.toLowerCase());
             return (
               <Animated.View key={p.id} entering={CREDIT_IN} style={[styles.creditRow, missing && styles.missing]}>
@@ -220,6 +223,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
               </Animated.View>
             );
           })}
+          {shown > CREDITS_SHOWN ? <MoreCredits rest={found.slice(CREDITS_SHOWN, shown)} placed={placed} done={!!result} /> : null}
         </View>
       </View>
 
@@ -227,7 +231,9 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
         <View style={[styles.choice, { paddingBottom: insets.bottom + 12 }]}>
           <Animated.View entering={CHOICE_ENTER[0]}>
             <Text variant="label" color={light.inkSoft} style={styles.center}>
-              Swipe through them. Right if we got it right.
+              {result.places.length >= CHECK_AS_LIST_FROM
+                ? 'Untick any we got wrong, then save.'
+                : 'Swipe through them. Right if we got it right.'}
             </Text>
           </Animated.View>
           <Animated.View entering={CHOICE_ENTER[1]}>
@@ -317,6 +323,33 @@ function useReading(url: string) {
   }, [url]);
 
   return { preview, names, result, failure };
+}
+
+/** The names past the first few, as one line: "+9 more places", and how many weren't found. */
+function MoreCredits({ rest, placed, done }: { rest: Credit[]; placed: Set<string>; done: boolean }) {
+  const missing = done ? rest.filter((p) => !placed.has(p.name.toLowerCase())).length : 0;
+  return (
+    <Animated.View entering={CREDIT_IN} style={styles.creditRow}>
+      <View style={styles.moreDot}>
+        <Text variant="data" color={light.inkSoft}>
+          +{rest.length}
+        </Text>
+      </View>
+      <View style={styles.creditName}>
+        <Text variant="title" numberOfLines={1}>
+          {rest.length} more {rest.length === 1 ? 'place' : 'places'}
+        </Text>
+        <Text variant="micro" numberOfLines={1}>
+          {missing > 0
+            ? `${missing} couldn’t be found on the map`
+            : rest
+                .slice(0, 3)
+                .map((p) => p.name)
+                .join(', ') + (rest.length > 3 ? '…' : '')}
+        </Text>
+      </View>
+    </Animated.View>
+  );
 }
 
 /**
@@ -484,6 +517,7 @@ const styles = StyleSheet.create({
   creditRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   creditTime: { flexShrink: 0 },
   creditName: { flex: 1, gap: 1 },
+  moreDot: { minWidth: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: light.line },
   pin: { width: 14, alignItems: 'center', alignSelf: 'flex-start', marginTop: 4 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   glyph: { width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },

@@ -23,7 +23,9 @@ import {
   KIND_LABEL,
   REACH_LABEL,
   clusterSpots,
+  DAY_TRIP_MINUTES,
   driveMinutes,
+  kmAway,
   matchesKind,
   weekendRoutes,
   withinReach,
@@ -273,9 +275,7 @@ function HomeScope({
       </View>
       {clusters.map((c) => (
         <View key={c.id} style={styles.block}>
-          <Text variant="label" color={light.inkSoft}>
-            {c.label} · {c.spots.length}
-          </Text>
+          <ClusterHead label={c.label} count={c.spots.length} alone={clusters.length === 1} />
           {c.spots.map((s) => (
             <SpotRow
               key={s.id}
@@ -289,6 +289,19 @@ function HomeScope({
         </View>
       ))}
     </>
+  );
+}
+
+/**
+ * A group's heading inside a city: its neighbourhood and how many spots. Left out when it would say
+ * nothing: the only group (the city heading covers it), no neighbourhood name, or the city's own name.
+ */
+function ClusterHead({ label, count, alone, same }: { label: string; count: number; alone: boolean; same?: boolean }) {
+  if (!label || alone || same) return null;
+  return (
+    <Text variant="label" color={light.inkSoft}>
+      {label} · {count}
+    </Text>
   );
 }
 
@@ -331,6 +344,8 @@ function AwayScope({
       {shown.map((g) => {
         const cityId = g.spots[0].cityId;
         const watched = !!getDistrict(g.districtId ?? undefined);
+        const far = Math.min(...g.spots.map((s) => driveMinutes(from, s))) > DAY_TRIP_MINUTES;
+        const clusters = clusterSpots(g.spots);
         return (
           <View key={g.name} style={styles.block}>
             <View style={styles.districtHead}>
@@ -338,6 +353,7 @@ function AwayScope({
                 <Text variant="headline">{g.name}</Text>
                 <Text variant="data">
                   {g.spots.length} {g.spots.length === 1 ? 'spot' : 'spots'} · {g.state}
+                  {far ? ` · ${kmAway(from, g.spots)} away` : ''}
                   {watched ? ' · we’ll tell you when you arrive' : ''}
                 </Text>
               </View>
@@ -350,16 +366,14 @@ function AwayScope({
                 <Feather name="map" size={15} color={light.ink} />
               </PressableScale>
             </View>
-            {clusterSpots(g.spots).map((c) => (
+            {clusters.map((c) => (
               <View key={c.id} style={styles.cluster}>
-                <Text variant="label" color={light.inkSoft}>
-                  {c.label} · {c.spots.length}
-                </Text>
+                <ClusterHead label={c.label} count={c.spots.length} alone={clusters.length === 1} same={c.label === g.name} />
                 {c.spots.map((s) => (
                   <SpotRow
                     key={s.id}
                     spot={s}
-                    minutes={driveMinutes(from, s)}
+                    minutes={far ? null : driveMinutes(from, s)}
                     status={statusOf(s.id)}
                     onToggleStatus={() => toggle(s.id)}
                     onPress={() => router.push({ pathname: '/place/[id]', params: { id: s.id } })}

@@ -22,7 +22,8 @@ export function SpotRow({
   onToggleStatus,
 }: {
   spot: Place;
-  minutes: number;
+  /** Drive time from where you are; null for a far city, whose distance is said once above. */
+  minutes: number | null;
   status: SpotStatus;
   onPress: () => void;
   onToggleStatus: () => void;
@@ -39,7 +40,7 @@ export function SpotRow({
         <Text variant="data" numberOfLines={1}>
           {/* The cluster heading above already names the area, so the second half of this line
               goes to the creator — which is what makes you remember why you saved it. */}
-          {formatDuration(minutes)} away · {creator ?? spot.area}
+          {[minutes === null ? null : `${formatDuration(minutes)} away`, creator ?? spot.area].filter(Boolean).join(' · ')}
         </Text>
       </View>
       <Pressable

@@ -1,7 +1,8 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,7 +15,7 @@ import { Text } from '@/components/Text';
 import { PlaceSearchSheet } from '@/components/verify/PlaceSearchSheet';
 import { places as catalogPlaces } from '@/data/catalog';
 import type { Place } from '@/data/types';
-import { isLiveReel, placeFromPick, sendVerdicts, type Suggestion } from '@/lib/extract';
+import { CHECK_AS_LIST_FROM, isLiveReel, placeFromPick, sendVerdicts, type Suggestion } from '@/lib/extract';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
@@ -25,6 +26,7 @@ const DONE_ENTER = [0, 1, 2, 3].map((i) => fadeUp(i * 60));
 const OFFER_IN = fadeUp(0);
 // Long enough to read "Removed X · Fix it" and reach for it; short enough not to nag.
 const OFFER_MS = 3500;
+
 
 /**
  * The extraction, checked one card at a time: right if we got it right, left if we didn't. Nothing
@@ -56,6 +58,9 @@ export default function Verify() {
 
   const places = useMemo(() => extraction?.places ?? [], [extraction]);
   const done = index >= places.length;
+  const listMode = places.length >= CHECK_AS_LIST_FROM;
+  // In the list, every place starts ticked; these are the ones untaken.
+  const [unticked, setUnticked] = useState<Set<string>>(() => new Set());
   const wrong = places.filter((p) => history.some((h) => h.id === p.id && h.dir === 'skip'));
   const saved = uniq([
     ...places.filter((p) => !wrong.includes(p)),
@@ -141,20 +146,27 @@ export default function Verify() {
     setIndex((i) => i - 1);
   };
 
+  // Saving the list is the same as swiping through it: ticked is right, unticked is wrong.
+  const saveList = () => {
+    haptic.light();
+    setHistory(places.map((p) => ({ id: p.id, dir: unticked.has(p.id) ? 'skip' : 'keep' })));
+    setIndex(places.length);
+  };
+
   const cardW = W - 40;
   const cardH = Math.min(H - insets.top - insets.bottom - 250, 580);
   const visible = places.slice(index, index + 3);
 
   return (
     <View style={[styles.fill, { paddingTop: insets.top + 8 }]}>
-      {!done ? <AmbientBackdrop current={places[index]} next={places[index + 1]} x={dragX} width={W} /> : null}
+      {!done && !listMode ? <AmbientBackdrop current={places[index]} next={places[index + 1]} x={dragX} width={W} /> : null}
       <View style={styles.header}>
         <IconButton
           icon="x"
           onPress={() => router.back()}
           accessibilityLabel={done ? 'Close' : 'Stop checking. Nothing is saved.'}
         />
-        {!done ? (
+        {!done && !listMode ? (
           <View style={styles.headerRight}>
             <Animated.View key={index} entering={FADE_IN}>
               <Text variant="data">
@@ -179,6 +191,27 @@ export default function Verify() {
           fixes={fixes}
           onFix={(p) => setSheet({ wrong: p })}
           onAdd={() => setSheet({ wrong: null })}
+          bottomInset={insets.bottom}
+        />
+      ) : listMode ? (
+        <CheckList
+          places={[...places, ...extras]}
+          extras={extras}
+          creator={reel.creator}
+          city={city.name}
+          platform={reel.platform}
+          unticked={unticked}
+          onToggle={(id) => {
+            haptic.selection();
+            setUnticked((u) => {
+              const next = new Set(u);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            });
+          }}
+          onAdd={() => setSheet({ wrong: null })}
+          onSave={saveList}
           bottomInset={insets.bottom}
         />
       ) : (
@@ -261,6 +294,94 @@ export default function Verify() {
     </View>
   );
 }
+
+/**
+ * Six or more places, checked as one list: all ticked, untick the ones that aren't right, save once.
+ * Places added with "Missed one?" join the list ticked. Nothing is saved until Save, as with cards.
+ */
+function CheckList({
+  places,
+  extras,
+  creator,
+  city,
+  platform,
+  unticked,
+  onToggle,
+  onAdd,
+  onSave,
+  bottomInset,
+}: {
+  places: Place[];
+  extras: Place[];
+  creator: string;
+  city: string;
+  platform: 'youtube' | 'instagram';
+  unticked: Set<string>;
+  onToggle: (id: string) => void;
+  onAdd: () => void;
+  onSave: () => void;
+  bottomInset: number;
+}) {
+  // Added places can't be unticked here: adding one was the answer. They're saved with the rest.
+  const ticked = places.filter((p) => extras.includes(p) || !unticked.has(p.id)).length;
+  return (
+    <View style={styles.list}>
+      <ScrollView contentContainerStyle={{ paddingBottom: bottomInset + 110 }} showsVerticalScrollIndicator={false}>
+        <View style={styles.titleBlock}>
+          <View style={styles.source}>
+            <Ionicons name={platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'} size={13} color={light.inkFaint} />
+            <Text variant="micro" numberOfLines={1}>
+              {creator} · {city}
+            </Text>
+          </View>
+          <Text variant="display">Did we get these right?</Text>
+          <Text variant="body" color={light.inkSoft}>
+            {`We found ${places.length - extras.length} places. Untick any that are wrong.`}
+          </Text>
+        </View>
+        <View style={styles.rows}>
+          {places.map((p) => {
+            const added = extras.includes(p);
+            const on = added || !unticked.has(p.id);
+            return (
+              <Pressable
+                key={p.id}
+                onPress={() => !added && onToggle(p.id)}
+                style={({ pressed }) => [styles.row, pressed && !added && styles.rowPressed]}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on, disabled: added }}
+                accessibilityLabel={`${p.name}, ${p.area || city}`}
+              >
+                <Image source={p.photo} style={[styles.thumb, !on && styles.thumbOff]} contentFit="cover" transition={0} />
+                <View style={styles.rowText}>
+                  <Text variant="bodyStrong" numberOfLines={1} color={on ? light.ink : light.inkFaint}>
+                    {p.name}
+                  </Text>
+                  <Text variant="label" color={light.inkSoft} numberOfLines={1}>
+                    {added ? 'Added by you' : [TYPE[p.type], p.area].filter(Boolean).join(' · ')}
+                  </Text>
+                </View>
+                <View style={[styles.check, on && styles.checkOn]}>
+                  {on ? <Feather name="check" size={14} color={light.ctaInk} /> : null}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Button kind="text" label="Missed one? Add a place" onPress={onAdd} />
+      </ScrollView>
+      <View style={[styles.actions, { paddingBottom: bottomInset + 8 }]}>
+        <Button
+          label={ticked === 0 ? 'Tick at least one place' : `Save ${ticked} ${ticked === 1 ? 'place' : 'places'}`}
+          onPress={onSave}
+          disabled={ticked === 0}
+        />
+      </View>
+    </View>
+  );
+}
+
+const TYPE: Record<Place['type'], string> = { food: 'Food', stay: 'Stay', sight: 'Sight', experience: 'Experience' };
 
 /** The middle of a set of places, to lean a search toward; null when there are none. */
 function centreOf(list: Place[]) {
@@ -402,4 +523,21 @@ const styles = StyleSheet.create({
   struck: { textDecorationLine: 'line-through', color: light.inkFaint },
   link: { textDecorationLine: 'underline' },
   doneActions: { gap: 4 },
+  list: { flex: 1 },
+  rows: { marginTop: 20, marginBottom: 8, paddingHorizontal: 16, gap: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 16 },
+  rowPressed: { backgroundColor: light.line },
+  thumb: { width: 56, height: 56, borderRadius: 14, backgroundColor: light.canvasTop },
+  thumbOff: { opacity: 0.35 },
+  rowText: { flex: 1, gap: 2 },
+  check: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: light.lineStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkOn: { backgroundColor: light.ink, borderColor: light.ink },
 });

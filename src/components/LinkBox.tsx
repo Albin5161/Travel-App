@@ -1,11 +1,12 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Keyboard, Platform, Pressable, TextInput, View, type TextStyle } from 'react-native';
 import Animated, { css, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { CIRCLE, PasteButton } from '@/components/PasteButton';
 import { Text } from '@/components/Text';
 import { detectPlatform } from '@/data/api';
+import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { FADE_IN, FADE_OUT } from '@/lib/motion';
 import { fonts, light, shadows } from '@/theme/tokens';
@@ -23,12 +24,16 @@ const GAP = 10;
 /** Width the paste button and its gap take from the row: the field is the rest. */
 export const FIELD_TRAILING = CIRCLE + GAP;
 const ERROR = "That's not an Instagram or YouTube link.";
+const UNREADABLE = 'Tap and hold the box, then Paste.';
 
 // The home screen's link field: type or paste a video link, or tap the system Paste button beside it.
 export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The paste button couldn't read the clipboard: the field is focused and says how to paste by hand.
+  const [unreadable, setUnreadable] = useState(false);
+  const input = useRef<TextInput>(null);
   const platform = detectPlatform(value);
 
   const shake = useSharedValue(0);
@@ -59,10 +64,18 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
     Keyboard.dismiss();
     setValue('');
     setError(null);
+    setUnreadable(false);
     onSubmit(url);
   };
 
-  const hint = error ?? (clipboardHasLink && !value ? 'You copied a link. Tap paste to add it.' : null);
+  const pasteByHand = () => {
+    haptic.light();
+    setUnreadable(true);
+    input.current?.focus();
+    track('paste failed');
+  };
+
+  const hint = error ?? (unreadable && !value ? UNREADABLE : null) ?? (clipboardHasLink && !value ? 'You copied a link. Tap paste to add it.' : null);
 
   return (
     <View>
@@ -82,8 +95,15 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
             )}
           </View>
           <TextInput
+            ref={input}
             value={value}
             onChangeText={(t) => {
+              // A whole link arriving at once is a paste: go straight away, as the button would.
+              // Typing one out still waits for Go.
+              if (t.length - value.length > 12 && detectPlatform(t.trim())) {
+                submit(t);
+                return;
+              }
               setValue(t);
               setError(null);
             }}
@@ -101,7 +121,7 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
             accessibilityLabel="Link to an Instagram reel or YouTube video"
           />
         </Animated.View>
-        <PasteButton shape="circle" onText={submit} />
+        <PasteButton shape="circle" onText={submit} onUnreadable={pasteByHand} />
       </View>
       <View style={styles.hintSlot}>
         {hint ? (

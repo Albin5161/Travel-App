@@ -43,8 +43,9 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
 
   const saved = cache.read(key);
   if (saved) {
-    register(saved);
-    return { kind: 'done', extraction: saved };
+    // The places' coordinates are as old as the saved result, not as old as this paste.
+    register(saved.extraction, saved.at);
+    return { kind: 'done', extraction: saved.extraction };
   }
 
   const res = await post<ExtractResult>('/api/extract', { url }, EXTRACT_MS);
@@ -143,6 +144,24 @@ export async function placeFromPick(
   };
   register({ places: [place] });
   return place;
+}
+
+/**
+ * A saved place from a link, asked of Google again: its coordinates may only be kept 30 days, and
+ * its photo link may have run out. Null when Google can't place it any more (it stays as it was).
+ */
+export async function refreshPlace(place: Place): Promise<Place | null> {
+  if (!place.id.startsWith('g:')) return null;
+  const res = await post<MatchResult>('/api/match', { name: place.name, placeId: place.id.slice(2) }, MATCH_MS);
+  if (res.status !== 'matched') return null;
+  const m = res.place;
+  return {
+    ...place,
+    coords: m.location,
+    ...(m.photo
+      ? { photo: { uri: m.photo.uri }, photoCredit: m.photo.attributions.map((a) => a.name).join(', ') || undefined }
+      : {}),
+  };
 }
 
 /**
@@ -327,12 +346,12 @@ const CACHE_DAYS = 30;
 // without its new parts (v2: photo credits on the city cover).
 const CACHE_PREFIX = 'xplore.link.v2.';
 const cache = {
-  read(key: string): Extraction | null {
+  read(key: string): { at: number; extraction: Extraction } | null {
     try {
       const raw = deviceStorage?.getItem(`${CACHE_PREFIX}${key}`);
       if (!raw) return null;
-      const { at, extraction } = JSON.parse(raw) as { at: number; extraction: Extraction };
-      return Date.now() - at < CACHE_DAYS * 86400_000 ? extraction : null;
+      const kept = JSON.parse(raw) as { at: number; extraction: Extraction };
+      return Date.now() - kept.at < CACHE_DAYS * 86400_000 ? kept : null;
     } catch {
       return null;
     }

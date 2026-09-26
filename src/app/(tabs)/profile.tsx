@@ -189,7 +189,7 @@ export default function Profile() {
       </Animated.View>
 
       <Animated.View entering={ENTER[5]}>
-        <Section title="About" footer="Everything you save lives on this phone for now, and resets when the app restarts.">
+        <Section title="About" footer="Everything you save stays on this phone, or in this browser. No account needed.">
           <Row icon="image" label="Photo credits" onPress={() => router.push('/credits')} />
           <Row icon="shield" label="Privacy policy" onPress={() => router.push('/privacy')} />
           <Row icon="file-text" label="Terms of use" onPress={() => router.push('/terms')} />

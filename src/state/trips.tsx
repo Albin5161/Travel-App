@@ -1,11 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 
 import { getPlace, getCity } from '@/data/api';
+import { live, refreshed, restore, snapshot, type LiveSnapshot } from '@/data/registry';
 import { allDistricts } from '@/data/regions';
 import type { Group, GroupState, Member, Vote } from '@/data/group';
 import type { TripPlan } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
+import { refreshPlace } from '@/lib/extract';
 import { deviceStorage } from '@/lib/live/storage';
+import { fromWire, toWire, type WirePlan } from '@/lib/live/wire';
 import { clusterSpots, districtOf } from '@/lib/spots';
 
 export interface CityCollection {
@@ -29,7 +32,7 @@ interface State {
   notifyOnArrival: boolean;
   /** A district just arrived in, for the in-app banner. Cleared when dismissed or acted on. */
   arrivedDistrictId: string | null;
-  /** Onboarding runs once. In memory for now, so it replays on every restart in the demo. */
+  /** Onboarding runs once. */
   onboarded: boolean;
   lastExtraction: Extraction | null;
   collections: Record<string, CityCollection>;
@@ -50,6 +53,8 @@ interface State {
   freshCityId: string | null;
   /** Which half of My Collections Home shows. Set after a save, so the new card is on screen. */
   homeTab: HomeTab;
+  /** Bumped when saved places come back refreshed from Google, so screens and the saved copy update. */
+  liveVersion: number;
 }
 
 export type HomeTab = 'near' | 'cities';
@@ -92,7 +97,8 @@ type Action =
   | { type: 'setNotifyOnArrival'; on: boolean }
   | { type: 'arrived'; districtId: string }
   | { type: 'clearArrival' }
-  | { type: 'finishOnboarding' };
+  | { type: 'finishOnboarding' }
+  | { type: 'livePlacesRefreshed' };
 
 const initial: State = {
   pendingLink: null,
@@ -113,6 +119,7 @@ const initial: State = {
   remote: {},
   freshCityId: null,
   homeTab: 'cities',
+  liveVersion: 0,
 };
 
 /** Home-district places live under Near Home; everywhere else is a City. */
@@ -214,6 +221,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, arrivedDistrictId: null };
     case 'finishOnboarding':
       return { ...state, onboarded: true };
+    case 'livePlacesRefreshed':
+      return { ...state, liveVersion: state.liveVersion + 1 };
   }
 }
 
@@ -247,10 +256,92 @@ function groupReducer(g: GroupState, action: GroupAction): GroupState {
 
 const TripsContext = createContext<{ state: State; dispatch: (a: Action) => void } | null>(null);
 
-// Who you are is the one thing kept on the device so far: your name and photo survive a restart.
-// Everything else still lives in memory.
+// Kept on the phone, so a reload or a restart doesn't lose anything: your name and photo on their
+// own, and your trips in one saved copy. Still per phone (or browser); nothing here needs an account.
 const NAME_KEY = 'xplore.name';
 const PHOTO_KEY = 'xplore.photo';
+const TRIPS_KEY = 'xplore.trips.v1';
+/** Google allows keeping a place's coordinates for 30 days; older ones are asked for again. */
+const COORDS_DAYS = 30;
+
+// The saved copy. Plans go as place ids (their catalog photos are build-specific asset ids that
+// can't be stored), and the real places the trips point at go alongside, since they aren't in the
+// catalog. What's only on screen for a moment (a pending link, a fresh extraction) isn't kept.
+type SavedTrips = {
+  v: 1;
+  homeDistrictId: string | null;
+  spotStatus: State['spotStatus'];
+  notifyOnArrival: boolean;
+  onboarded: boolean;
+  collections: State['collections'];
+  skipped: State['skipped'];
+  addedLocals: State['addedLocals'];
+  savedTrips: State['savedTrips'];
+  tripPlans: Record<string, WirePlan>;
+  groups: State['groups'];
+  remote: State['remote'];
+  homeTab: HomeTab;
+  live: LiveSnapshot;
+};
+
+function loadTrips(): Partial<State> {
+  const raw = read(TRIPS_KEY);
+  if (!raw) return {};
+  try {
+    const s = JSON.parse(raw) as SavedTrips;
+    if (s.v !== 1) return {};
+    // Real places first: the plans below are rebuilt from their ids.
+    restore(s.live);
+    const tripPlans = Object.fromEntries(Object.entries(s.tripPlans).map(([cityId, w]) => [cityId, fromWire(w)]));
+    return {
+      homeDistrictId: s.homeDistrictId,
+      spotStatus: s.spotStatus,
+      notifyOnArrival: s.notifyOnArrival,
+      onboarded: s.onboarded,
+      collections: s.collections,
+      skipped: s.skipped,
+      addedLocals: s.addedLocals,
+      savedTrips: s.savedTrips,
+      tripPlans,
+      groups: s.groups,
+      remote: s.remote,
+      homeTab: s.homeTab,
+    };
+  } catch {
+    // A copy from an older version, or damaged: start fresh rather than crash.
+    return {};
+  }
+}
+
+function saveTrips(state: State) {
+  const plans = Object.values(state.tripPlans);
+  const collections = Object.values(state.collections);
+  const saved: SavedTrips = {
+    v: 1,
+    homeDistrictId: state.homeDistrictId,
+    spotStatus: state.spotStatus,
+    notifyOnArrival: state.notifyOnArrival,
+    onboarded: state.onboarded,
+    collections: state.collections,
+    skipped: state.skipped,
+    addedLocals: state.addedLocals,
+    savedTrips: state.savedTrips,
+    tripPlans: Object.fromEntries(plans.map((p) => [p.cityId, toWire(p)])),
+    groups: state.groups,
+    remote: state.remote,
+    homeTab: state.homeTab,
+    live: snapshot(
+      [
+        ...collections.flatMap((c) => c.placeIds),
+        ...Object.values(state.addedLocals).flat(),
+        ...plans.flatMap((p) => [...p.days.flatMap((d) => d.stops.map((st) => st.place.id)), ...p.left.map((l) => l.id)]),
+      ],
+      [...collections.map((c) => c.cityId), ...plans.map((p) => p.cityId)],
+      collections.flatMap((c) => c.reelIds),
+    ),
+  };
+  write(TRIPS_KEY, JSON.stringify(saved));
+}
 
 function read(key: string) {
   try {
@@ -270,9 +361,60 @@ function write(key: string, value: string | null) {
 }
 
 export function TripsProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initial, (s) => ({ ...s, myName: read(NAME_KEY), myPhoto: read(PHOTO_KEY) }));
+  // Read before the first render, not after: the tabs decide at once whether onboarding is due.
+  const [state, dispatch] = useReducer(reducer, initial, (s) => ({
+    ...s,
+    ...loadTrips(),
+    myName: read(NAME_KEY),
+    myPhoto: read(PHOTO_KEY),
+  }));
   useEffect(() => write(NAME_KEY, state.myName), [state.myName]);
   useEffect(() => write(PHOTO_KEY, state.myPhoto), [state.myPhoto]);
+  useEffect(
+    () => saveTrips(state),
+    // Only what's kept; a pending link or a fresh extraction changing needn't write anything.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      state.homeDistrictId,
+      state.spotStatus,
+      state.notifyOnArrival,
+      state.onboarded,
+      state.collections,
+      state.skipped,
+      state.addedLocals,
+      state.savedTrips,
+      state.tripPlans,
+      state.groups,
+      state.remote,
+      state.homeTab,
+      state.liveVersion,
+    ],
+  );
+
+  // Saved real places whose coordinates are more than 30 days old are asked of Google again, a few
+  // at a time, once per launch. One that can't be refreshed (offline, today's cap) stays as it was.
+  useEffect(() => {
+    const cutoff = Date.now() - COORDS_DAYS * 86400_000;
+    const stale = Object.values(live.places)
+      .filter((p) => (live.placedAt[p.id] ?? 0) < cutoff)
+      .slice(0, 10);
+    if (stale.length === 0) return;
+    let stopped = false;
+    (async () => {
+      for (const place of stale) {
+        const fresh = await refreshPlace(place).catch(() => null);
+        if (stopped) return;
+        if (fresh) {
+          refreshed(fresh);
+          dispatch({ type: 'livePlacesRefreshed' });
+        }
+      }
+    })();
+    return () => {
+      stopped = true;
+    };
+  }, []);
+
   return <TripsContext.Provider value={{ state, dispatch }}>{children}</TripsContext.Provider>;
 }
 

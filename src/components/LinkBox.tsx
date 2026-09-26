@@ -171,7 +171,8 @@ const styles = css.create({
   },
   fieldFocused: { borderColor: light.lineStrong },
   icon: { width: 20, alignItems: 'center', marginRight: 10 },
-  input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 15, color: light.ink },
+  // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
+  input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },
   hintSlot: { minHeight: 26, justifyContent: 'center' },
   hint: { marginTop: 8, marginLeft: 4 },
   exampleRow: { flexDirection: 'row', gap: 4, marginTop: 8, marginLeft: 4 },

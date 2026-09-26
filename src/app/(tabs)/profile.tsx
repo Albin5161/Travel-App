@@ -380,7 +380,8 @@ const styles = StyleSheet.create({
     minWidth: 140,
     textAlign: 'right',
     fontFamily: fonts.sansMedium,
-    fontSize: 15,
+    // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
+    fontSize: 16,
     color: light.inkSoft,
     paddingVertical: 6,
   },

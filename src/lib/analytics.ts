@@ -41,7 +41,8 @@ export type AnalyticsEvent =
   | 'vote cast'
   | 'plan locked'
   | 'location asked'
-  | 'paste failed';
+  | 'paste failed'
+  | 'app crashed';
 
 export function track(event: AnalyticsEvent, properties?: Record<string, string | number | boolean>) {
   client?.capture(event, properties);

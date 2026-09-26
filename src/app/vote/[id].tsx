@@ -236,7 +236,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: light.canvas,
     fontFamily: fonts.sans,
-    fontSize: 15,
+    // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
+    fontSize: 16,
     color: light.ink,
   },
   cast: { marginTop: 22, gap: 8 },

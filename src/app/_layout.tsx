@@ -7,15 +7,18 @@ import {
   PlusJakartaSans_800ExtraBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { useFonts } from 'expo-font';
-import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DefaultTheme, router, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 
+import { Button } from '@/components/Button';
 import { LaunchIntro } from '@/components/motion/LaunchIntro';
-import { ScreenViews } from '@/lib/analytics';
+import { Text } from '@/components/Text';
+import { ScreenViews, track } from '@/lib/analytics';
 // Imported for its side effect: expo-location needs the geofencing task defined at module scope,
 // before any arrival event can reach the app.
 import '@/lib/arrival';
@@ -122,3 +125,41 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+/**
+ * If anything crashes, this instead of a blank page. Trips and places are saved on the phone as they
+ * change, so starting again from home loses nothing but the screen you were on.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    track('app crashed', { kind: error.name || 'Error' });
+  }, [error]);
+  const home = () => {
+    // On the web a fresh load is the surest reset; the saved trips come back from storage.
+    if (Platform.OS === 'web') window.location.assign('/');
+    else {
+      router.replace('/');
+      void retry();
+    }
+  };
+  return (
+    <View style={crash.fill}>
+      <Text variant="headline" style={crash.center}>
+        Something went wrong
+      </Text>
+      <Text variant="body" color={light.inkSoft} style={crash.center}>
+        Your saved places and plans are safe. Try again, or start from home.
+      </Text>
+      <View style={crash.actions}>
+        <Button label="Try again" onPress={() => void retry()} />
+        <Button kind="text" label="Go home" onPress={home} />
+      </View>
+    </View>
+  );
+}
+
+const crash = StyleSheet.create({
+  fill: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 32, backgroundColor: light.canvas },
+  center: { textAlign: 'center' },
+  actions: { alignSelf: 'stretch', marginTop: 18, gap: 4 },
+});

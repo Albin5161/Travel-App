@@ -66,8 +66,13 @@ export default function Home() {
   const tab = state.homeTab;
   const shown = tab === 'near' ? near : away;
   const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? 'home';
-  // First name only: the greeting is a hello, not a form letter.
-  const firstName = state.myName?.split(/\s+/)[0];
+  // First name only: the greeting is a hello, not a form letter. A name typed in capitals ("ALBIN")
+  // is softened to "Albin" so the hello doesn't shout; any other spelling is kept as typed.
+  const typedFirst = state.myName?.split(/\s+/)[0];
+  const firstName =
+    typedFirst && typedFirst.length > 1 && typedFirst === typedFirst.toUpperCase()
+      ? typedFirst[0] + typedFirst.slice(1).toLowerCase()
+      : typedFirst;
   // The strip over the link box: your own places, newest first. Before the first save it holds a
   // few inspiration places, muted, so the screen isn't a bare field.
   const own = collections

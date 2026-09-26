@@ -326,7 +326,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: light.line,
   },
-  input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 15, color: light.ink },
+  // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
+  input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },
   list: { paddingVertical: 14, gap: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingHorizontal: 6, borderRadius: 14 },
   rowPressed: { backgroundColor: light.canvas },

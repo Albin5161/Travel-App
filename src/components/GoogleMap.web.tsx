@@ -1,5 +1,5 @@
 import { AdvancedMarker, APIProvider, Map, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
-import { useEffect } from 'react';
+import { Component, useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import type { ImageSourcePropType } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 
@@ -16,7 +16,48 @@ import type { GoogleMapProps } from './GoogleMap';
 const KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_KEY;
 const MAP_ID = process.env.EXPO_PUBLIC_GOOGLE_MAP_ID || 'DEMO_MAP_ID';
 
-export function GoogleMap({ pins, width, height, route, padding, onPinPress }: GoogleMapProps) {
+// When Google turns the key down (an address it isn't allowed on, like an EAS preview, or a quota
+// or billing problem), it calls this global and writes its own error box into the map. Leaving that
+// map in place is what hurt: in the production build, taking the screen down afterwards threw from
+// inside Google's script and blanked the whole app. So the moment it fails, every map is swapped for
+// a plain panel, inside a boundary that catches anything the swap itself throws.
+let authFailed = false;
+const failureListeners = new Set<() => void>();
+if (typeof window !== 'undefined') {
+  const w = window as unknown as { gm_authFailure?: () => void };
+  const previous = w.gm_authFailure;
+  w.gm_authFailure = () => {
+    authFailed = true;
+    failureListeners.forEach((l) => l());
+    previous?.();
+  };
+}
+const subscribeToFailure = (l: () => void) => {
+  failureListeners.add(l);
+  return () => void failureListeners.delete(l);
+};
+const useAuthFailed = () => useSyncExternalStore(subscribeToFailure, () => authFailed, () => false);
+
+export function GoogleMap(props: GoogleMapProps) {
+  const unavailable = <MapUnavailable width={props.width} height={props.height} />;
+  return (
+    <MapBoundary fallback={unavailable}>
+      <GoogleMapOrPanel {...props} unavailable={unavailable} />
+    </MapBoundary>
+  );
+}
+
+function GoogleMapOrPanel({
+  pins,
+  width,
+  height,
+  route,
+  padding,
+  onPinPress,
+  unavailable,
+}: GoogleMapProps & { unavailable: ReactNode }) {
+  const failed = useAuthFailed();
+  if (failed) return unavailable;
   if (!KEY) {
     return (
       <View style={[styles.missing, { width, height }]}>
@@ -66,6 +107,28 @@ export function GoogleMap({ pins, width, height, route, padding, onPinPress }: G
         {route && pins.length > 1 ? <Route path={pins.map((p) => p.coords)} /> : null}
       </Map>
     </APIProvider>
+  );
+}
+
+/** Anything thrown by the map or by taking it down stays here, instead of blanking the app. */
+class MapBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
+/** In the map's place when Google won't draw it. The places and the plan below work the same. */
+function MapUnavailable({ width, height }: { width: number; height: number }) {
+  return (
+    <View style={[styles.missing, { width, height }]}>
+      <Text variant="label" color={light.inkSoft} style={styles.missingText}>
+        The map couldn’t load here. Your places and plan still work.
+      </Text>
+    </View>
   );
 }
 
@@ -137,4 +200,5 @@ function PhotoPin({ photo, number }: { photo: ImageSourcePropType; number?: numb
 
 const styles = StyleSheet.create({
   missing: { alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: light.canvasTop },
+  missingText: { textAlign: 'center', maxWidth: 260 },
 });

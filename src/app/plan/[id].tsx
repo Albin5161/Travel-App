@@ -391,7 +391,9 @@ export default function PlanScreen() {
                   layout={REFLOW}
                   onLayout={(e) => setRowY(i, e.nativeEvent.layout.y)}
                 >
-                  {stop.legBefore ? <Leg stop={stop} compact={j === 0} /> : null}
+                  {stop.legBefore ? (
+                    <Leg leg={stop.legBefore} compact={j === 0} from={i === 0 ? plan.prefs.stay?.name : undefined} />
+                  ) : null}
                   <StopRow
                     stop={stop}
                     number={i + 1}
@@ -414,6 +416,8 @@ export default function PlanScreen() {
               )),
             ])}
 
+            {today.home && stops.length > 0 ? <Leg leg={today.home} to={plan.prefs.stay?.name} /> : null}
+
             <PressableScale
               onPress={() => router.push({ pathname: '/addstop/[id]', params: { id, day: String(dayIndex) } })}
               style={styles.addOwn}
@@ -435,7 +439,7 @@ export default function PlanScreen() {
                         {p.name}
                       </Text>
                       {/* Why the planner left it out, when it did: too far, or the days are full. */}
-                      <Text variant="label" color={light.inkSoft} numberOfLines={plan.leftWhy?.[p.id] ? 3 : 1}>
+                      <Text variant="label" color={light.inkSoft} numberOfLines={plan.leftWhy?.[p.id] ? 4 : 1}>
                         {plan.leftWhy?.[p.id] ?? typeLine(p)}
                       </Text>
                     </View>
@@ -547,12 +551,13 @@ function Route({ d, length, progress, width }: { d: string; length: number; prog
   );
 }
 
-function Leg({ stop, compact }: { stop: TripStop; compact?: boolean }) {
-  const leg = stop.legBefore!;
-  const label =
+/** A drive or walk between stops; the day's first one says where from, the last one where back to. */
+function Leg({ leg, compact, from, to }: { leg: NonNullable<TripStop['legBefore']>; compact?: boolean; from?: string; to?: string }) {
+  const how =
     leg.mode === 'walk'
       ? `${leg.minutes} min walk · ${leg.km.toFixed(1)} km`
       : `${formatDuration(leg.minutes)} by ${leg.mode} · ${leg.km.toFixed(1)} km`;
+  const label = from ? `${how} from ${from}` : to ? `Back to ${to} · ${how}` : how;
   return (
     <View style={[styles.leg, compact && styles.legCompact]}>
       <View style={styles.legLine} />

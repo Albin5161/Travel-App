@@ -1,8 +1,10 @@
 import type { ImageSourcePropType } from 'react-native';
 
+import type { Stay } from '@/data/planner';
 import { register } from '@/data/registry';
 import type { City, DayPart, Extraction, Place, PlaceType, Reel } from '@/data/types';
 import { ApiFailure, post } from '@/lib/api';
+import type { LatLng, Terrain } from '@/lib/geo';
 import { deviceStorage } from '@/lib/live/storage';
 import { parseLink } from '@/server/links';
 import type {
@@ -82,7 +84,7 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
 
   const places = toPlaces(pairs, reel, cityId);
   reel.placeIds = places.map((p) => p.id);
-  const city = toCity(cityId, where, state, places, reel);
+  const city = toCity(cityId, where, state, places, reel, res.terrain ?? undefined);
   const extraction: Extraction = { reel, city, places };
   register({ places, city, reel });
   cache.write(key, extraction);
@@ -144,6 +146,24 @@ export async function placeFromPick(
   };
   register({ places: [place] });
   return place;
+}
+
+/**
+ * Where someone's staying, as a point to start and end each day from: the town looked up with
+ * Google, the same search as "Missed one?" and one lookup for its position. Null when it can't be
+ * found; the plan then starts each day at its first place, as before.
+ */
+export async function findStay(town: string, near: LatLng | null): Promise<Stay | null> {
+  try {
+    const session = newSearchSession();
+    const [first] = await searchPlaces(town, session, near);
+    if (!first) return null;
+    const res = await post<MatchResult>('/api/match', { name: first.name, area: first.where, placeId: first.placeId, sessionToken: session }, MATCH_MS);
+    if (res.status !== 'matched') return null;
+    return { name: first.name, coords: res.place.location, at: Date.now() };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -282,7 +302,7 @@ function toPlaces(pairs: { found: FoundPlace; match: MatchedPlace }[], reel: Ree
   });
 }
 
-function toCity(id: string, name: string, state: string, places: Place[], reel: Reel): City {
+function toCity(id: string, name: string, state: string, places: Place[], reel: Reel, terrain?: Terrain): City {
   // The first place with its own photo makes the cover; the video's thumbnail if none has one.
   const covered = places.find((p) => p.photoCredit);
   return {
@@ -294,6 +314,7 @@ function toCity(id: string, name: string, state: string, places: Place[], reel: 
     hero: covered?.photo ?? reel.thumbnail,
     heroCredit: covered?.photoCredit,
     map: { roads: [], hills: [], labels: [] },
+    terrain,
   };
 }
 

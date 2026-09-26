@@ -300,6 +300,15 @@ function loadTrips(): Partial<State> {
       unguess(s.live.places);
       Object.values(s.tripPlans).forEach((w) => unguess(w.live?.places));
     }
+    // Where someone's staying came from Google, whose coordinates may be kept 30 days: an older
+    // one is dropped with the drives out and back, and the next plan looks it up again.
+    const STAY_KEEP_MS = 30 * 24 * 60 * 60 * 1000;
+    const staleStay = (w: WirePlan) => !!w.prefs.stay && Date.now() - w.prefs.stay.at >= STAY_KEEP_MS;
+    Object.values(s.tripPlans).forEach((w) => {
+      if (!staleStay(w)) return;
+      w.prefs = { ...w.prefs, stay: null };
+      w.days = w.days.map((d) => ({ ...d, home: undefined, stops: d.stops.map((st, i) => (i === 0 ? { ...st, leg: undefined } : st)) }));
+    });
     // Real places first: the plans below are rebuilt from their ids.
     restore(s.live);
     const tripPlans = Object.fromEntries(Object.entries(s.tripPlans).map(([cityId, w]) => [cityId, fromWire(w)]));

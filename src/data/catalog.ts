@@ -101,6 +101,7 @@ export const cities: Record<string, City> = {
     state: 'Meghalaya',
     district: 'East Khasi Hills',
     hero: photos.megValley,
+    terrain: 'hilly',
     map: {
       rivers: [[[700, 1500], [760, 1150], [820, 1020], [900, 850], [980, 600], [1100, 300], [1200, -200]]],
       roads: [

@@ -54,6 +54,8 @@ export type ExtractResult =
         thumbnail: string | null;
       };
       region: string | null;
+      /** The lie of the land in the region, for travel times. Absent on results read before it was asked. */
+      terrain?: 'flat' | 'hilly' | 'mountain' | null;
       places: FoundPlace[];
       usage: { model: string; inputTokens: number; outputTokens: number };
       /** Instagram only. */

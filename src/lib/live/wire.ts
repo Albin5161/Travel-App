@@ -24,8 +24,9 @@ type WireStop = {
 export type WirePlan = {
   cityId: string;
   prefs: TripPlan['prefs'];
-  days: { date: string | null; totalKm: number; stops: WireStop[] }[];
+  days: { date: string | null; totalKm: number; stops: WireStop[]; home?: TripPlan['days'][number]['home'] }[];
   left: string[];
+  leftWhy?: TripPlan['leftWhy'];
   removed: string[];
   seed: number;
   /** The real places, city and videos the plan uses, for phones that haven't seen them. */
@@ -42,6 +43,7 @@ export function toWire(plan: TripPlan): WirePlan {
     days: plan.days.map((d) => ({
       date: d.date,
       totalKm: d.totalKm,
+      ...(d.home ? { home: d.home } : {}),
       stops: d.stops.map((s, i) => ({
         id: s.place.id,
         start: s.startMinutes,
@@ -62,6 +64,7 @@ export function toWire(plan: TripPlan): WirePlan {
       })),
     })),
     left: plan.left.map((p) => p.id),
+    ...(plan.leftWhy ? { leftWhy: plan.leftWhy } : {}),
     removed: plan.removed,
     seed: plan.seed,
     ...(real.length || live.cities[plan.cityId]
@@ -95,12 +98,14 @@ export function fromWire(wire: WirePlan): TripPlan {
     days: wire.days.map((d) => ({
       date: d.date,
       totalKm: d.totalKm,
+      ...(d.home ? { home: d.home } : {}),
       stops: d.stops.flatMap((s) => {
         const place = placeOf(s);
         return place ? [{ place, startMinutes: s.start, legBefore: s.leg, pinned: s.pinned, suggested: s.suggested }] : [];
       }),
     })),
     left: wire.left.map((id) => getPlace(id)).filter((p): p is Place => !!p),
+    ...(wire.leftWhy ? { leftWhy: wire.leftWhy } : {}),
     removed: wire.removed,
     seed: wire.seed,
   };

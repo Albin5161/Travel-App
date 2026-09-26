@@ -1,6 +1,6 @@
 import type { ImageSourcePropType } from 'react-native';
 
-import type { LatLng, Point } from '@/lib/geo';
+import type { LatLng, Point, Terrain } from '@/lib/geo';
 
 export type PlaceType = 'food' | 'stay' | 'sight' | 'experience';
 /** Where a saved spot stands with you. Everything starts as 'want'. */
@@ -80,6 +80,8 @@ export interface City {
   /** Who took a Google cover photo; shown with it, as Google requires. */
   heroCredit?: string;
   map: CityMapArt;
+  /** Mountains, hills or flat, for travel times. Guessed from the places when absent. */
+  terrain?: Terrain;
 }
 
 /** A district, as the app indexes it: a name plus a circle to test arrival against. */

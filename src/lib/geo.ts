@@ -17,25 +17,70 @@ export type TravelMode = 'walk' | 'auto' | 'cab' | 'car' | 'bus';
 /** How someone gets around on a trip, as asked when planning. */
 export type Getting = 'local' | 'drive' | 'bus';
 
-export function travelLeg(a: LatLng, b: LatLng): { km: number; minutes: number; mode: TravelMode } {
-  const km = distanceKm(a, b) * 1.3;
+/**
+ * The lie of the land where a trip is. Roads in the hills wind: the road is much longer than the
+ * straight line between two places, and slower. Without real routes, this is what keeps a Himalayan
+ * drive from looking like a Kerala one.
+ */
+export type Terrain = 'flat' | 'hilly' | 'mountain';
+
+// How much longer the road is than the straight line, and door-to-door speeds in km/h. Checked
+// against real drives: Leh to Pangong about 5.5 h, Kochi to Munnar about 4 h.
+const ROADS: Record<Terrain, { detour: number; car: number; carLong: number; cab: number; bus: number; busWait: number }> = {
+  flat: { detour: 1.3, car: 30, carLong: 40, cab: 35, bus: 18, busWait: 12 },
+  hilly: { detour: 1.5, car: 28, carLong: 30, cab: 28, bus: 16, busWait: 15 },
+  mountain: { detour: 1.9, car: 30, carLong: 30, cab: 28, bus: 15, busWait: 20 },
+};
+/** Beyond this, a flat-country drive is mostly highway. */
+const LONG_KM = 40;
+
+/**
+ * A rough guess from where a place is, for trips saved before the terrain was asked for: the
+ * Himalaya and the hills of the North East. Hill stations elsewhere (the Western Ghats) can't be
+ * told from coordinates alone; for new videos the terrain comes with the places instead.
+ */
+export function guessTerrain({ lat, lng }: LatLng): Terrain {
+  if (lat >= 31.8 && lng <= 80.5) return 'mountain'; // Ladakh, Kashmir, northern Himachal
+  if (lat >= 30.7 && lng >= 76.9 && lng <= 81) return 'mountain'; // Shimla and the rest of Himachal
+  if (lat >= 29.4 && lng >= 78.2 && lng <= 81) return 'mountain'; // the Uttarakhand hills
+  if (lat >= 26.8 && lng >= 88) return 'mountain'; // Sikkim, Darjeeling, Arunachal
+  if (lat >= 23 && lat < 26 && lng >= 91.2) return 'hilly'; // Meghalaya, Mizoram, Manipur, Nagaland
+  return 'flat';
+}
+
+/** The guess for a set of places, from their middle. */
+export function terrainOf(points: LatLng[]): Terrain {
+  if (points.length === 0) return 'flat';
+  const lat = points.reduce((n, p) => n + p.lat, 0) / points.length;
+  const lng = points.reduce((n, p) => n + p.lng, 0) / points.length;
+  return guessTerrain({ lat, lng });
+}
+
+export function travelLeg(a: LatLng, b: LatLng, terrain: Terrain = 'flat'): { km: number; minutes: number; mode: TravelMode } {
+  const road = ROADS[terrain];
+  const km = distanceKm(a, b) * road.detour;
   if (km <= 2.5) return { km, minutes: Math.max(3, Math.round((km / 4.8) * 60)), mode: 'walk' };
-  if (km <= 15) return { km, minutes: Math.round((km / 22) * 60) + 4, mode: 'auto' };
-  return { km, minutes: Math.round((km / 35) * 60) + 5, mode: 'cab' };
+  if (km <= 15 && terrain === 'flat') return { km, minutes: Math.round((km / 22) * 60) + 4, mode: 'auto' };
+  return { km, minutes: Math.round((km / road.cab) * 60) + 5, mode: 'cab' };
 }
 
 /**
  * A leg priced for how the traveller is actually moving. Walking-and-autos is the default above.
- * Own vehicle is slower than it sounds on Kerala roads (about 30 km/h door to door, plus parking);
- * the bus adds a wait at the stop, and anything under a kilometre is walked either way.
+ * Own vehicle is slower than it sounds on Kerala roads (about 30 km/h door to door, plus parking),
+ * quicker on a long highway run, and slow in the hills whatever the distance; the bus adds a wait
+ * at the stop, and anything under a kilometre is walked either way.
  */
-export function travelLegFor(a: LatLng, b: LatLng, getting: Getting) {
-  if (getting === 'local') return travelLeg(a, b);
-  const km = distanceKm(a, b) * 1.3;
+export function travelLegFor(a: LatLng, b: LatLng, getting: Getting, terrain: Terrain = 'flat') {
+  if (getting === 'local') return travelLeg(a, b, terrain);
+  const road = ROADS[terrain];
+  const km = distanceKm(a, b) * road.detour;
   const walkable = getting === 'drive' ? 0.8 : 1.2;
   if (km <= walkable) return { km, minutes: Math.max(3, Math.round((km / 4.8) * 60)), mode: 'walk' as TravelMode };
-  if (getting === 'drive') return { km, minutes: Math.round((km / 30) * 60) + 5, mode: 'car' as TravelMode };
-  return { km, minutes: Math.round((km / 18) * 60) + 12, mode: 'bus' as TravelMode };
+  if (getting === 'drive') {
+    const speed = km > LONG_KM ? road.carLong : road.car;
+    return { km, minutes: Math.round((km / speed) * 60) + 5, mode: 'car' as TravelMode };
+  }
+  return { km, minutes: Math.round((km / road.bus) * 60) + road.busWait, mode: 'bus' as TravelMode };
 }
 
 export function formatDuration(minutes: number) {

@@ -2,7 +2,7 @@
 // it. The Planner interface is the seam: the rule-based engine below drives it for now, and a
 // Gemini engine (behind a server function, so no key ships in the app) replaces it without any
 // screen changing. Whatever engine arranges the places, travel times are always computed here.
-import { travelLegFor, type Getting, type TravelMode } from '@/lib/geo';
+import { travelLegFor, type Getting, type LatLng, type Terrain, type TravelMode } from '@/lib/geo';
 
 import type { DayPart, Place } from './types';
 
@@ -20,7 +20,27 @@ export interface TripPrefs {
   days: number;
   pace: Pace;
   getting: Getting;
+  /** Mountains, hills or flat, for travel times: the city's, or guessed from its places. */
+  terrain?: Terrain;
+  /** Where the traveller sleeps: each day starts and ends here. Absent or null when not known. */
+  stay?: Stay | null;
 }
+
+/** A place to sleep, found with Google. Its coordinates may be kept 30 days (`at`), then looked up again. */
+export interface Stay {
+  name: string;
+  coords: LatLng;
+  at: number;
+}
+
+/** The travel side of a trip's answers: how to get around, over what land, from where. */
+type Trip = { getting: Getting; terrain: Terrain; base: LatLng | null };
+const tripOf = (prefs: TripPrefs): Trip => ({
+  getting: prefs.getting,
+  terrain: prefs.terrain ?? 'flat',
+  base: prefs.stay?.coords ?? null,
+});
+const leg = (a: LatLng, b: LatLng, t: Trip) => travelLegFor(a, b, t.getting, t.terrain);
 
 export interface TripStop {
   place: Place;
@@ -36,6 +56,8 @@ export interface TripDay {
   date: string | null;
   stops: TripStop[];
   totalKm: number;
+  /** Back to where you're staying after the last stop, when that's known. */
+  home?: { minutes: number; km: number; mode: TravelMode };
 }
 
 export interface TripPlan {
@@ -150,11 +172,13 @@ type Placed = { place: Place; pinned: boolean; suggested: boolean };
  * of the day, so an evening place moved to the front waits for the evening: honest, if not ideal.
  */
 export function timeDay(stops: Placed[], prefs: TripPrefs, date: string | null): TripDay {
+  const t = tripOf(prefs);
+  // The day starts when you set out: from where you're staying when that's known.
   let cursor = DAY_START[prefs.pace];
   let totalKm = 0;
   const timed = stops.map((s, i) => {
-    const prev = stops[i - 1];
-    const legBefore = prev ? travelLegFor(prev.place.coords, s.place.coords, prefs.getting) : undefined;
+    const from = i > 0 ? stops[i - 1].place.coords : t.base;
+    const legBefore = from ? leg(from, s.place.coords, t) : undefined;
     if (legBefore) {
       cursor += legBefore.minutes;
       totalKm += legBefore.km;
@@ -164,7 +188,10 @@ export function timeDay(stops: Placed[], prefs: TripPrefs, date: string | null):
     cursor = start + s.place.minutes;
     return { ...s, startMinutes: start, legBefore };
   });
-  return { date, stops: timed, totalKm };
+  const last = stops[stops.length - 1];
+  const home = t.base && last ? leg(last.place.coords, t.base, t) : undefined;
+  if (home) totalKm += home.km;
+  return { date, stops: timed, totalKm, ...(home ? { home } : {}) };
 }
 
 function retime(plan: TripPlan): TripPlan {
@@ -187,22 +214,23 @@ function random(seed: number) {
 }
 
 const PARTS: DayPart[] = ['morning', 'afternoon', 'evening'];
-const legMinutes = (a: Place, b: Place, getting: Getting) => travelLegFor(a.coords, b.coords, getting).minutes;
+const legMinutes = (a: LatLng, b: LatLng, t: Trip) => leg(a, b, t).minutes;
 
 /**
  * The order to visit a day's stops: morning places first, then afternoon, then evening, and within
  * each part always the nearest next stop, so the route doesn't zigzag. The first stop is whichever
  * gives the shortest morning. `flip` walks each part the other way round, for a regenerate.
  */
-export function routeOrder<T extends { place: Place }>(stops: T[], getting: Getting, flip = false): T[] {
+export function routeOrder<T extends { place: Place }>(stops: T[], t: Trip, flip = false): T[] {
   const out: T[] = [];
   for (const part of PARTS) {
     const group = stops.filter((s) => s.place.bestTime === part);
     if (group.length === 0) continue;
-    const chain = (first: T | null) => {
+    const chainFrom = (start: LatLng | null) => chain(null, start).path;
+    const chain = (first: T | null, start: LatLng | null = null) => {
       const rest = [...group];
       const path: T[] = [];
-      let at = first ?? out[out.length - 1] ?? null;
+      let at: LatLng | null = first?.place.coords ?? out[out.length - 1]?.place.coords ?? start;
       if (first) {
         rest.splice(rest.indexOf(first), 1);
         path.push(first);
@@ -212,31 +240,42 @@ export function routeOrder<T extends { place: Place }>(stops: T[], getting: Gett
         let best = 0;
         if (at) {
           for (let i = 1; i < rest.length; i++) {
-            if (legMinutes(at.place, rest[i].place, getting) < legMinutes(at.place, rest[best].place, getting)) best = i;
+            if (legMinutes(at, rest[i].place.coords, t) < legMinutes(at, rest[best].place.coords, t)) best = i;
           }
-          minutes += legMinutes(at.place, rest[best].place, getting);
+          minutes += legMinutes(at, rest[best].place.coords, t);
         }
-        at = rest.splice(best, 1)[0];
-        path.push(at);
+        const next = rest.splice(best, 1)[0];
+        at = next.place.coords;
+        path.push(next);
       }
       return { path, minutes };
     };
-    // Carrying on from the last part's final stop, or, at the start of the day, the best first stop.
-    const path = out.length
-      ? chain(null).path
-      : group.map((g) => chain(g)).sort((a, b) => a.minutes - b.minutes)[0].path;
+    // Carrying on from the last part's final stop; at the start of the day, the nearest stop to where
+    // you're staying, or without one, whichever first stop gives the shortest morning.
+    const path =
+      out.length || t.base
+        ? chainFrom(t.base)
+        : group.map((g) => chain(g)).sort((a, b) => a.minutes - b.minutes)[0].path;
     out.push(...(flip && !out.length ? path.reverse() : path));
   }
   return out;
 }
 
-/** Minutes a day of these stops takes: time at each place plus getting between them, in route order. */
-export function dayMinutes(places: Place[], getting: Getting) {
-  const ordered = routeOrder(places.map((place) => ({ place })), getting);
-  return ordered.reduce(
-    (sum, s, i) => sum + s.place.minutes + (i > 0 ? legMinutes(ordered[i - 1].place, s.place, getting) : 0),
+/**
+ * Minutes a day of these stops takes: time at each place plus getting between them, in route order,
+ * and out from and back to where you're staying when that's known.
+ */
+export function dayMinutes(places: Place[], t: Trip) {
+  if (places.length === 0) return 0;
+  const ordered = routeOrder(places.map((place) => ({ place })), t);
+  const between = ordered.reduce(
+    (sum, s, i) => sum + s.place.minutes + (i > 0 ? legMinutes(ordered[i - 1].place.coords, s.place.coords, t) : 0),
     0,
   );
+  const outAndBack = t.base
+    ? legMinutes(t.base, ordered[0].place.coords, t) + legMinutes(ordered[ordered.length - 1].place.coords, t.base, t)
+    : 0;
+  return between + outAndBack;
 }
 
 function hours(minutes: number) {
@@ -274,10 +313,11 @@ function joinIntoDays(start: Group[], days: number, fits: (ps: Place[]) => boole
 }
 
 /** How many days these places need at a pace: the fewest days they all fit into. */
-export function daysNeeded(places: Place[], pace: Pace = 'balanced', getting: Getting = 'local') {
+export function daysNeeded(places: Place[], terrain: Terrain = 'flat', pace: Pace = 'balanced', getting: Getting = 'local') {
   if (places.length === 0) return 0;
-  const fits = (ps: Place[]) => ps.length <= PACE_STOPS[pace] && dayMinutes(ps, getting) <= PACE_HOURS[pace] * 60;
-  const length = (ps: Place[]) => dayMinutes(ps, getting);
+  const t: Trip = { getting, terrain, base: null };
+  const fits = (ps: Place[]) => ps.length <= PACE_STOPS[pace] && dayMinutes(ps, t) <= PACE_HOURS[pace] * 60;
+  const length = (ps: Place[]) => dayMinutes(ps, t);
   return joinIntoDays(places.map((p) => ({ places: [p] })), 1, fits, length, () => 0).length;
 }
 
@@ -297,13 +337,13 @@ export const rulePlanner: Planner = {
     const rand = random(seed);
     const cap = PACE_STOPS[prefs.pace];
     const budget = PACE_HOURS[prefs.pace] * 60;
-    const getting = prefs.getting;
+    const t = tripOf(prefs);
     const n = Math.max(1, prefs.days);
     const pinnedTo = new Map(pins.map((p) => [p.placeId, p.day]));
     const pool = saved.filter((p) => !removed.includes(p.id));
     const isPinned = (p: Place) => (pinnedTo.get(p.id) ?? n) < n;
 
-    const length = (ps: Place[]) => dayMinutes(ps, getting);
+    const length = (ps: Place[]) => dayMinutes(ps, t);
     const fitsDay = (ps: Place[]) => ps.length <= cap && length(ps) <= budget;
 
     const startGroups: Group[] = [];
@@ -339,11 +379,17 @@ export const rulePlanner: Planner = {
         }
         left.push(place);
         const others = pool.filter((p) => p.id !== place.id);
-        const nearest = others.length ? Math.min(...others.map((o) => legMinutes(o, place, getting))) : 0;
+        const nearest = others.length ? Math.min(...others.map((o) => legMinutes(o.coords, place.coords, t))) : 0;
+        const each = t.base ? legMinutes(t.base, place.coords, t) : 0;
+        const stayName = prefs.stay?.name ?? 'where you’re staying';
         leftWhy[place.id] =
           place.minutes > budget
             ? 'Takes longer than a whole day at this pace.'
-            : nearest > NEARBY_MINUTES
+            : t.base && length([place]) > budget
+              ? length([place]) <= PACE_HOURS.packed * 60
+                ? `About ${hours(each)} each way from ${stayName}: a long day there and back. It fits at a packed pace.`
+                : `About ${hours(each)} each way from ${stayName}, too far to get there and back in a day. It’s worth a night nearby.`
+              : nearest > NEARBY_MINUTES
               ? `About ${hours(nearest)} from your other places, so it needs a day of its own. Add a day, or pick a faster pace.`
               : 'Your days are full at this pace. Add a day, or pick a faster pace.';
       }
@@ -362,11 +408,12 @@ export const rulePlanner: Planner = {
       }
     });
 
-    const flip = rand() < 0.5;
+    // Walking a day the other way round is as good, unless it starts from where you're staying.
+    const flip = !t.base && rand() < 0.5;
     const plan: TripPlan = {
       cityId,
       prefs,
-      days: placed.map((d, i) => timeDay(routeOrder(d, getting, flip), prefs, prefs.start ? addDays(prefs.start, i) : null)),
+      days: placed.map((d, i) => timeDay(routeOrder(d, t, flip), prefs, prefs.start ? addDays(prefs.start, i) : null)),
       left,
       leftWhy,
       removed,

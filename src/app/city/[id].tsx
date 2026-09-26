@@ -26,6 +26,7 @@ import { formatRupees, getCityInfo } from '@/data/cityInfo';
 import { useCityNotes } from '@/lib/details';
 import { buildPlan } from '@/data/plan';
 import { daysNeeded } from '@/data/planner';
+import { terrainOf } from '@/lib/geo';
 import { haptic } from '@/lib/haptics';
 import { useCityPlaces, useTrips } from '@/state/trips';
 import { light, shadows } from '@/theme/tokens';
@@ -126,7 +127,7 @@ export default function CityScreen() {
   const previewed = [...kept, ...locals].length ? [...kept, ...locals] : collected;
   const plan = buildPlan(previewed);
   // A saved trip shows its own length; otherwise, how many days these places need at an easy pace.
-  const tripDays = planned && state.tripPlans[id] ? state.tripPlans[id].days.length : daysNeeded(previewed);
+  const tripDays = planned && state.tripPlans[id] ? state.tripPlans[id].days.length : daysNeeded(previewed, city.terrain ?? terrainOf(previewed.map((p) => p.coords)));
 
   // An existing plan opens as it was left; otherwise the questions come first.
   const start = () =>

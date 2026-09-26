@@ -21,6 +21,7 @@ Rules:
 - One entry per place; merge repeats.
 - "area" is the town, neighbourhood or district the text puts it in, if it says.
 - "region" is the one city or area most of the video is about, written as "City, State, Country", or null.
+- "terrain" is the lie of the land in that region, from what you know of it: "mountain" for high ranges and passes (Ladakh, Spiti, Sikkim), "hilly" for hill country and hill stations (Munnar, Coorg, Meghalaya), "flat" for plains, coasts and cities. Null when there's no region or you don't know it.
 - "why" is one short line (under 90 characters) on why to go, taken from what the text says. Empty if the text gives no reason.
 - "timestamp" is the chapter time for the place if the description lists chapters, as m:ss or h:mm:ss, else null.
 - "visitMinutes", "bestTime" and "price" come from what you know about the place in general, not from the text, to help plan a day there. Use null for any of them when you don't know this particular place well; never guess from its type alone.
@@ -43,12 +44,14 @@ const SYSTEM = {
 
 const KINDS: PlaceKind[] = ['food', 'stay', 'sight', 'experience'];
 const TIMES = ['morning', 'afternoon', 'evening'] as const;
+const TERRAINS = ['flat', 'hilly', 'mountain'] as const;
 
 // Gemini's schema dialect (an OpenAPI subset): upper-case types, `nullable` instead of unions.
 const SCHEMA = {
   type: 'OBJECT',
   properties: {
     region: { type: 'STRING', nullable: true },
+    terrain: { type: 'STRING', enum: TERRAINS, nullable: true },
     places: {
       type: 'ARRAY',
       items: {
@@ -68,11 +71,12 @@ const SCHEMA = {
       },
     },
   },
-  required: ['region', 'places'],
+  required: ['region', 'terrain', 'places'],
 };
 
 export type ModelResult = {
   region: string | null;
+  terrain: (typeof TERRAINS)[number] | null;
   places: FoundPlace[];
   usage: { model: string; inputTokens: number; outputTokens: number };
 };
@@ -113,6 +117,7 @@ export async function findPlaces(source: Source, key: string, model: string, fal
   const { parsed, usage } = await generate(SYSTEM[source.kind], sourceText(source), SCHEMA, key, model, fallback);
   return {
     region: typeof parsed?.region === 'string' && parsed.region.trim() ? parsed.region.trim() : null,
+    terrain: TERRAINS.includes(parsed?.terrain as (typeof TERRAINS)[number]) ? (parsed?.terrain as (typeof TERRAINS)[number]) : null,
     places: cleanPlaces(parsed?.places),
     usage,
   };

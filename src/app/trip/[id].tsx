@@ -26,20 +26,21 @@ import {
   type When,
 } from '@/data/planner';
 import { haptic } from '@/lib/haptics';
-import type { Getting } from '@/lib/geo';
+import { findStay } from '@/lib/extract';
+import { terrainOf, type Getting, type LatLng } from '@/lib/geo';
 import { FADE_IN, FADE_OUT, fadeUp, SPRING_SETTLE } from '@/lib/motion';
 import { useCityPlaces, useTrips } from '@/state/trips';
 import { light } from '@/theme/tokens';
 
-type Step = 'who' | 'when' | 'dates' | 'days' | 'pace' | 'getting' | 'build';
+type Step = 'who' | 'when' | 'dates' | 'days' | 'pace' | 'getting' | 'stay' | 'build';
 const ADVANCE_MS = 260;
 const MAX_DAYS = 7;
 const CALENDAR_WEEKS = 4;
 const ENTER = [0, 1, 2, 3, 4].map((i) => fadeUp(60 + i * 50));
 
 /**
- * Five quick questions before a plan: who's going, when, how long (only if the dates don't say),
- * what pace, and how you're getting around. Who's going decides whether sharing the plan starts a
+ * Six quick questions before a plan: who's going, when, how long (only if the dates don't say),
+ * what pace, how you're getting around, and where you're staying. Who's going decides whether sharing the plan starts a
  * vote, and who's in it. One per screen, answered with a tap that moves you on, so it
  * feels like a conversation rather than a form. The last step builds the plan in place.
  */
@@ -59,14 +60,16 @@ export default function TripSetup() {
     previous ?? { party: 'friends', when: 'this-weekend', start: null, days: 2, pace: 'balanced', getting: 'local' },
   );
   const [answered, setAnswered] = useState<Partial<Record<Step, boolean>>>(
-    previous ? { who: !!previous.party, when: true, pace: true, getting: true } : {},
+    previous ? { who: !!previous.party, when: true, pace: true, getting: true, stay: previous.stay !== undefined } : {},
   );
+  // "In town" is looked up when the plan is built; a stay found before is kept while it's fresh.
+  const [stayInTown, setStayInTown] = useState(!!previous?.stay);
   const [history, setHistory] = useState<Step[]>(['who']);
   const step = history[history.length - 1];
 
   // The middle question only exists for "Pick dates" and "Not sure yet".
   const middle: Step | null = prefs.when === 'dates' ? 'dates' : prefs.when === 'flexible' ? 'days' : null;
-  const sequence: Step[] = ['who', 'when', ...(middle ? [middle] : []), 'pace', 'getting'];
+  const sequence: Step[] = ['who', 'when', ...(middle ? [middle] : []), 'pace', 'getting', 'stay'];
   const position = step === 'build' ? sequence.length : sequence.indexOf(step);
 
   const go = (next: Step) => setHistory((h) => [...h, next]);
@@ -117,11 +120,15 @@ export default function TripSetup() {
           onBuilt={async () => {
             // New answers rebuild the plan; stops people typed in stay, on their day where it still exists.
             const custom = customStops(state.tripPlans[id]);
+            const points = collected.map((p) => p.coords);
+            const terrain = city.terrain ?? terrainOf(points);
+            const kept = previous?.stay && Date.now() - previous.stay.at < STAY_KEEP_MS ? previous.stay : null;
+            const stay = stayInTown ? (kept ?? (await findStay(`${city.name}, ${city.state}`, centre(points)))) : null;
             const plan = await rulePlanner.plan({
               cityId: id,
               saved: [...collected, ...custom.map((c) => c.place)],
               suggestions: getLocalPicks(id),
-              prefs,
+              prefs: { ...prefs, terrain, stay },
               pins: custom.map((c) => ({ placeId: c.place.id, day: Math.min(c.day, prefs.days - 1) })),
               removed: [],
               seed: 1,
@@ -205,11 +212,24 @@ export default function TripSetup() {
             {step === 'getting' ? (
               <Options
                 selected={answered.getting ? prefs.getting : null}
-                onPick={(k) => answer({ getting: k as Getting }, 'getting', 'build')}
+                onPick={(k) => answer({ getting: k as Getting }, 'getting', 'stay')}
                 options={[
                   { key: 'local', title: 'Walking and autos', detail: 'Walk the short hops, auto or cab the rest' },
                   { key: 'drive', title: 'Own vehicle', detail: 'Car or bike, door to door' },
                   { key: 'bus', title: 'Bus', detail: 'Slower, with waits at the stop' },
+                ]}
+              />
+            ) : null}
+            {step === 'stay' ? (
+              <Options
+                selected={answered.stay ? (stayInTown ? 'town' : 'none') : null}
+                onPick={(k) => {
+                  setStayInTown(k === 'town');
+                  answer({}, 'stay', 'build');
+                }}
+                options={[
+                  { key: 'town', title: `In ${city.name}`, detail: 'Each day starts and ends there, drive out and back included' },
+                  { key: 'none', title: 'Not sure yet', detail: 'Each day starts at its first place' },
                 ]}
               />
             ) : null}
@@ -240,7 +260,19 @@ const QUESTION: Record<Exclude<Step, 'build'>, string> = {
   days: 'How many days?',
   pace: 'What pace suits you?',
   getting: 'How are you getting around?',
+  stay: 'Where are you staying?',
 };
+
+/** Google lets a place's coordinates be kept 30 days; after that the stay is looked up again. */
+const STAY_KEEP_MS = 30 * 24 * 60 * 60 * 1000;
+
+function centre(points: LatLng[]): LatLng | null {
+  if (points.length === 0) return null;
+  return {
+    lat: points.reduce((n, p) => n + p.lat, 0) / points.length,
+    lng: points.reduce((n, p) => n + p.lng, 0) / points.length,
+  };
+}
 
 /** One segment per question; the current one fills as you arrive on it. */
 function Progress({ total, at }: { total: number; at: number }) {

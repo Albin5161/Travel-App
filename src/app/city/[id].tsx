@@ -114,7 +114,7 @@ export default function CityScreen() {
     return { opacity: t, transform: [{ translateY: (1 - t) * 24 }] };
   });
 
-  if (!city || !info) return null;
+  if (!city) return null;
 
   const collection = state.collections[id];
   const planned = !!state.savedTrips[id];
@@ -212,9 +212,11 @@ export default function CityScreen() {
           <Text variant="bodyStrong">
             {places} {places === 1 ? 'place' : 'places'} from {reels} {reels === 1 ? 'video' : 'videos'}
           </Text>
-          <Text variant="data">
-            {formatRupees(info.costPerDay.low)} – {formatRupees(info.costPerDay.high)} a day
-          </Text>
+          {info ? (
+            <Text variant="data">
+              {formatRupees(info.costPerDay.low)} – {formatRupees(info.costPerDay.high)} a day
+            </Text>
+          ) : null}
         </View>
         <Button compact label={planned ? 'See your day' : 'Start planning'} onPress={start} />
       </Animated.View>

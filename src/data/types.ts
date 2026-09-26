@@ -21,6 +21,8 @@ export interface Place {
   type: PlaceType;
   area: string;
   photo: ImageSourcePropType;
+  /** Who took a Google photo. Google requires the credit wherever the photo is shown. */
+  photoCredit?: string;
   why: string;
   source: PlaceSource;
   bestTime: DayPart;
@@ -74,6 +76,8 @@ export interface City {
   /** The region map this city's spots are drawn on, if any. See `src/data/regions.ts`. */
   regionId?: string;
   hero: ImageSourcePropType;
+  /** Who took a Google cover photo; shown with it, as Google requires. */
+  heroCredit?: string;
   map: CityMapArt;
 }
 

@@ -14,6 +14,7 @@ import { Text } from '@/components/Text';
 import { PlaceSearchSheet } from '@/components/verify/PlaceSearchSheet';
 import { places as catalogPlaces } from '@/data/catalog';
 import type { Place } from '@/data/types';
+import { sendVerdicts } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
 import { FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips } from '@/state/trips';
@@ -77,8 +78,12 @@ export default function Verify() {
     if (!done || !extraction || committed.current) return;
     committed.current = true;
     dispatch({ type: 'commitExtraction', extraction, placeIds: saved.map((p) => p.id) });
+    sendVerdicts(
+      extraction.reel,
+      places.map((place) => ({ place, verdict: wrong.includes(place) ? 'wrong' : 'right' })),
+    );
     if (saved.length > 0) haptic.success();
-  }, [dispatch, done, extraction, saved]);
+  }, [dispatch, done, extraction, saved, places, wrong]);
 
   useEffect(() => {
     if (!offer) return;

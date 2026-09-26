@@ -78,6 +78,12 @@ export function CityHeroContent({
           </View>
         )}
 
+        {city.heroCredit ? (
+          <Text variant="micro" color={light.photoInkSoft} numberOfLines={1} style={[styles.credit, { top: insetTop + 22 }]}>
+            Photo: {city.heroCredit}
+          </Text>
+        ) : null}
+
         <View style={[styles.block, { bottom: restPeek(insetBottom) + 26 }]}>
           <Text variant="micro" color={light.photoInkSoft}>
             {cityPlaceLine(city)}
@@ -118,6 +124,7 @@ export function CityHeroContent({
 const noop = () => {};
 
 const styles = StyleSheet.create({
+  credit: { position: 'absolute', right: 20, maxWidth: '55%' },
   top: { position: 'absolute', left: 16 },
   block: { position: 'absolute', left: 24, right: 24, alignItems: 'center', gap: 6 },
   name: {

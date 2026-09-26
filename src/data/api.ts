@@ -1,5 +1,7 @@
-// Mock API. Shaped like the real one so a backend can replace it without touching screens.
-import { cities, localPicks, places, reels } from './catalog';
+// The catalog's sample videos, and lookups that also find what real links brought in (registry.ts).
+// Real links go through src/lib/extract.ts; the example links on Home still play the samples.
+import { cities, localPicks, places, reels, SAMPLE_LINK } from './catalog';
+import { live } from './registry';
 import type { City, Extraction, Place, Platform, Reel } from './types';
 
 // Long enough for the loader to show every stage of what extraction really does.
@@ -39,6 +41,9 @@ export const EXAMPLE_LINKS: { cityId: string; url: string }[] = [
   { cityId: 'meghalaya', url: 'https://www.instagram.com/reel/meghalaya-4-stops/' },
 ];
 
+/** Whether a link is one of the samples, played from the catalog instead of the API. */
+export const isSampleLink = (url: string) => url === SAMPLE_LINK || EXAMPLE_LINKS.some((e) => e.url === url);
+
 /** Title, creator and thumbnail. Fast, like an oEmbed lookup. */
 export async function getLinkPreview(url: string): Promise<Reel> {
   await new Promise((r) => setTimeout(r, 250));
@@ -55,7 +60,7 @@ export async function extractPlaces(url: string): Promise<Extraction> {
   };
 }
 
-export const getCity = (id: string): City | undefined => cities[id];
+export const getCity = (id: string): City | undefined => cities[id] ?? live.cities[id];
 
 /**
  * The line under a city's name. District and state, minus whichever of them just repeats the name
@@ -64,6 +69,6 @@ export const getCity = (id: string): City | undefined => cities[id];
 export function cityPlaceLine(city: City): string {
   return [city.district, city.state].filter((part, i, all) => part !== city.name && all.indexOf(part) === i).join(' · ');
 }
-export const getPlace = (id: string): Place | undefined => places[id];
-export const getReel = (id: string): Reel | undefined => reels[id];
+export const getPlace = (id: string): Place | undefined => places[id] ?? live.places[id];
+export const getReel = (id: string): Reel | undefined => reels[id] ?? live.reels[id];
 export const getLocalPicks = (cityId: string): Place[] => (localPicks[cityId] ?? []).map((id) => places[id]);

@@ -22,6 +22,11 @@ export function PlaceCard({ place, style, overlay }: Props) {
     <Tone value="dark">
       <PhotoCard source={place.photo} gradient="pick" style={style}>
         <GlassPill onPhoto label={typeLine(place)} style={styles.topPill} />
+        {place.photoCredit ? (
+          <Text variant="micro" color="rgba(238,234,227,0.72)" numberOfLines={1} style={styles.credit}>
+            Photo: {place.photoCredit}
+          </Text>
+        ) : null}
         <View style={styles.content}>
           <Text variant="displayXL" numberOfLines={2}>
             {place.name}
@@ -40,5 +45,6 @@ export function PlaceCard({ place, style, overlay }: Props) {
 
 const styles = StyleSheet.create({
   topPill: { position: 'absolute', top: 16, left: 16 },
+  credit: { position: 'absolute', top: 22, right: 16, maxWidth: '45%' },
   content: { position: 'absolute', left: 20, right: 20, bottom: 20, gap: 12 },
 });

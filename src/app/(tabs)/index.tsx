@@ -241,7 +241,6 @@ const styles = StyleSheet.create({
   // does the emphasis a decorative italic used to.
   question: {
     marginTop: 28,
-    textAlign: 'center',
     fontFamily: fonts.displayMedium,
     fontSize: 32,
     lineHeight: 37,

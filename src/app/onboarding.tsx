@@ -117,7 +117,7 @@ export default function Onboarding() {
               <Copy
                 lead={'Saw it in a video?\n'}
                 title="Go there for real."
-                body="Paste any Instagram or YouTube link: a hidden beach, a new café, a street-food lane. Xplore finds every place in it, pins it on your map and plans the day around it."
+                body="Paste an Instagram or YouTube link: a hidden beach, a new café, a street-food lane. Xplore finds the places it names, pins them on your map and plans the day around them."
               />
             </Page>
 

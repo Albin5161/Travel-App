@@ -35,7 +35,9 @@ function Section({
   );
 }
 
-export function OverviewSection({ cityName, info, onLayout }: SectionProps & { cityName: string; info: CityInfo }) {
+export function OverviewSection({ cityName, info, onLayout }: SectionProps & { cityName: string; info?: CityInfo }) {
+  // Cities that came from a pasted link have no notes of ours yet; say so rather than guess.
+  if (!info) return <NoNotes title={`About ${cityName}`} cityName={cityName} onLayout={onLayout} />;
   const max = Math.max(...info.costBreakdown.map((c) => c.amount));
   return (
     <Section title={`About ${cityName}`} onLayout={onLayout}>
@@ -181,12 +183,21 @@ export function PlanSection({ plan, planned, onLayout }: SectionProps & { plan: 
   );
 }
 
+function NoNotes({ title, cityName, onLayout }: SectionProps & { title: string; cityName: string }) {
+  return (
+    <Section title={title} onLayout={onLayout}>
+      <Text variant="body">We don’t have notes on {cityName} yet. Your places and your plan work all the same.</Text>
+    </Section>
+  );
+}
+
 export function GoodToKnowSection({
   cityName,
   info,
   play,
   onLayout,
-}: SectionProps & { cityName: string; info: CityInfo; play: boolean }) {
+}: SectionProps & { cityName: string; info?: CityInfo; play: boolean }) {
+  if (!info) return <NoNotes title="Good to know" cityName={cityName} onLayout={onLayout} />;
   return (
     <Section title="Good to know" onLayout={onLayout}>
       <Text variant="micro" style={styles.group}>

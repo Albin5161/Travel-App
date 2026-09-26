@@ -2,7 +2,7 @@ import { caller } from '@/server/auth';
 import { readJson, respond } from '@/server/errors';
 import { extract } from '@/server/pipeline';
 
-/** POST {url}: reads a YouTube link and lists the places in it; Instagram links come back as `assist`. */
+/** POST {url}: reads a YouTube or Instagram link and lists the places in it; Instagram falls back to `assist`. */
 export async function POST(request: Request) {
   return respond(async () => {
     const who = await caller(request);

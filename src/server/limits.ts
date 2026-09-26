@@ -10,7 +10,9 @@ const DAY = 86400;
 // Two kinds of limit. Per person and per network, so one install (or one script minting anonymous
 // sign-ins from one address) can't hog the service. And global daily caps, set under Google's free
 // monthly allowances, so the API stops before it spends money: 300 place lookups a day is about
-// 9,000 a month (free up to 10,000), 30 photos a day is about 900 (free up to 1,000).
+// 9,000 a month (free up to 10,000), 30 photos a day is about 900 (free up to 1,000). The
+// Instagram caps spread Apify's $5 of free monthly credit over the month: 20 reels a day is about
+// $2.20, one transcript a day at most about $3.
 // Each can be changed from the environment.
 const L = {
   extractPerUser: () => limit('LIMIT_EXTRACT_PER_HOUR', 20),
@@ -21,6 +23,8 @@ const L = {
   feedbackPerUser: () => limit('LIMIT_FEEDBACK_PER_HOUR', 500),
   detailsPerDay: () => limit('LIMIT_PLACE_DETAILS_PER_DAY', 300),
   photosPerDay: () => limit('LIMIT_PHOTOS_PER_DAY', 30),
+  reelsPerDay: () => limit('LIMIT_INSTAGRAM_REELS_PER_DAY', 20),
+  transcriptsPerDay: () => limit('LIMIT_INSTAGRAM_TRANSCRIPTS_PER_DAY', 1),
 };
 
 type Bucket = { key: string; seconds: number; max: number };
@@ -78,6 +82,15 @@ export async function allowExtract(c: Caller) {
     true,
   );
   if (over) refuse(over);
+}
+
+/**
+ * Whether today's cap allows one more paid Instagram read. Unlike the other limits, being over
+ * isn't an error: the app just falls back to adding places by search.
+ */
+export async function allowReel(kind: 'reel' | 'transcript'): Promise<boolean> {
+  const max = kind === 'reel' ? L.reelsPerDay() : L.transcriptsPerDay();
+  return !(await consume([{ key: `global:instagram-${kind}`, seconds: DAY, max }]));
 }
 
 export async function allowFeedback(c: Caller) {

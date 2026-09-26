@@ -23,6 +23,10 @@ export const env = {
   geminiFallback: () => process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.8-flash',
   /** Google photos draw on a free allowance of 1,000 a month; PLACES_PHOTOS=off saves it. */
   placesPhotos: () => process.env.PLACES_PHOTOS !== 'off',
+  /** Apify, for reading Instagram reels. Optional: without it, Instagram links go straight to search. */
+  apifyToken: () => process.env.APIFY_TOKEN || null,
+  /** A reel's spoken words, fetched when its text names nothing. INSTAGRAM_TRANSCRIPTS=off skips it. */
+  instagramTranscripts: () => process.env.INSTAGRAM_TRANSCRIPTS !== 'off',
   /** The same project the app uses. The URL is public; the secret key is server-only. */
   supabaseUrl: () => process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || null,
   supabaseSecret: () => process.env.SUPABASE_SECRET_KEY || null,

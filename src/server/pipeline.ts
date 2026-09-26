@@ -2,11 +2,21 @@ import type { Caller } from './auth';
 import { env } from './env';
 import { ApiError } from './errors';
 import { findPlaces } from './gemini';
-import { allowExtract, allowFeedback, beginMatch } from './limits';
-import { parseLink } from './links';
+import { getReel, TRANSCRIPT_MAX_SECONDS, type ReelDetails } from './instagram';
+import { allowExtract, allowFeedback, allowReel, beginMatch } from './limits';
+import { parseLink, type ParsedLink } from './links';
 import { getDetails, getPhoto, getPhotoRefs, searchPlaceId, type PhotoRef } from './places';
 import { addFeedback, getExtraction, putExtraction, putMatch, type DoneExtraction } from './store';
-import type { ExtractResult, FeedbackRequest, MatchRequest, MatchResult, PlacePhoto, Timings } from './types';
+import type {
+  AssistReason,
+  ExtractResult,
+  FeedbackRequest,
+  MatchRequest,
+  MatchResult,
+  PlacePhoto,
+  ReelSignals,
+  Timings,
+} from './types';
 import { getVideo } from './youtube';
 
 // The jobs the API does, split so each request stays small: extract reads a link and lists its
@@ -32,14 +42,14 @@ function timer() {
   };
 }
 
+type Timer = ReturnType<typeof timer>;
+
 export async function extract(input: unknown, who: Caller): Promise<ExtractResult> {
   const t = timer();
   if (typeof input !== 'string') throw new ApiError(400, 'bad_request', 'Send {"url": "<a YouTube or Instagram link>"}.');
   const link = parseLink(input);
   if (!link) throw new ApiError(400, 'unsupported_link', 'That’s not a YouTube or Instagram link.');
-  if (link.platform === 'instagram') {
-    return { status: 'assist', platform: 'instagram', url: link.url, timings: t.done() };
-  }
+  if (link.platform === 'instagram') return extractReel(link, who, t);
 
   await t.step('limits', () => allowExtract(who));
   const saved = await t.step('store', () => getExtraction(link.videoId));
@@ -47,7 +57,7 @@ export async function extract(input: unknown, who: Caller): Promise<ExtractResul
 
   const video = await t.step('youtube', () => getVideo(link.videoId, env.youtubeKey()));
   const found = await t.step('model', () =>
-    findPlaces(video, env.geminiKey(), env.geminiModel(), env.geminiFallback()),
+    findPlaces({ kind: 'youtube', video }, env.geminiKey(), env.geminiModel(), env.geminiFallback()),
   );
   const result: DoneExtraction = {
     status: 'done',
@@ -67,6 +77,95 @@ export async function extract(input: unknown, who: Caller): Promise<ExtractResul
   };
   await t.step('save', () => putExtraction(link.videoId, result));
   return { ...result, timings: t.done() };
+}
+
+/**
+ * An Instagram reel, read through Apify: first its text (caption, location tag, tagged accounts,
+ * comments), then, only when that names nothing and the reel is short, what's said in it. Whatever
+ * doesn't work out falls back to the user adding places by search, with the reason.
+ */
+async function extractReel(
+  link: Extract<ParsedLink, { platform: 'instagram' }>,
+  who: Caller,
+  t: Timer,
+): Promise<ExtractResult> {
+  const assist = (reason: AssistReason): ExtractResult => ({
+    status: 'assist',
+    platform: 'instagram',
+    url: link.url,
+    reason,
+    timings: t.done(),
+  });
+  const token = env.apifyToken();
+  if (!token) return assist('not_configured');
+
+  await t.step('limits', () => allowExtract(who));
+  // Stored under its own prefix: a shortcode and a YouTube ID can't be told apart otherwise.
+  const key = `ig:${link.shortcode}`;
+  const saved = await t.step('store', () => getExtraction(key));
+  if (saved) return saved.places.length ? { ...saved, cached: true, timings: t.done() } : assist('no_places');
+
+  if (!(await t.step('cap', () => allowReel('reel')))) return assist('daily_limit');
+  let reel = await t.step('apify', () => getReel(link.url, token, { transcript: false }));
+  if (!reel) return assist('unreadable');
+  const read = (r: ReelDetails, step: string) =>
+    t.step(step, () =>
+      findPlaces({ kind: 'instagram', reel: r }, env.geminiKey(), env.geminiModel(), env.geminiFallback()),
+    );
+  let found = hasText(reel) ? await read(reel, 'model') : null;
+
+  // Nothing in the text: try what's said in the reel. A miss is only remembered once that's been
+  // tried (or can't be), so a reel turned away by today's cap gets another chance tomorrow.
+  let settled = true;
+  const canHear =
+    env.instagramTranscripts() && reel.durationSeconds !== null && reel.durationSeconds <= TRANSCRIPT_MAX_SECONDS;
+  if (!found?.places.length && canHear) {
+    if (await t.step('cap-transcript', () => allowReel('transcript'))) {
+      const heard = await t.step('apify-transcript', () => getReel(link.url, token, { transcript: true }));
+      if (heard?.transcript) {
+        reel = heard;
+        found = await read(heard, 'model-transcript');
+      } else {
+        settled = !!heard;
+        if (heard) console.warn(`[instagram] ${link.shortcode}: asked for a transcript, none came back`);
+      }
+    } else {
+      settled = false;
+    }
+  }
+
+  const signals: ReelSignals = {
+    caption: !!reel.caption,
+    locationTag: !!reel.location,
+    taggedAccounts: reel.tagged.length > 0 || reel.mentions.length > 0,
+    comments: reel.comments.length > 0,
+    transcript: !!reel.transcript,
+  };
+  const result: DoneExtraction = {
+    status: 'done',
+    platform: 'instagram',
+    cached: false,
+    video: {
+      id: link.shortcode,
+      title: reel.caption.split('\n')[0].slice(0, 120) || `Reel by @${reel.owner}`,
+      channel: `@${reel.owner}`,
+      durationSeconds: reel.durationSeconds,
+      thumbnail: reel.thumbnail,
+    },
+    region: found?.region ?? null,
+    places: found?.places ?? [],
+    usage: found?.usage ?? { model: 'none', inputTokens: 0, outputTokens: 0 },
+    signals,
+    timings: {},
+  };
+  const had = Object.entries(signals).filter(([, on]) => on).map(([name]) => name);
+  console.log(`[instagram] ${link.shortcode}: ${result.places.length} places from ${had.join(', ') || 'no text'}`);
+  if (result.places.length || settled) await t.step('save', () => putExtraction(key, result));
+  return result.places.length ? { ...result, timings: t.done() } : assist('no_places');
+}
+
+function hasText(r: ReelDetails): boolean {
+  return !!(r.caption || r.location || r.tagged.length || r.mentions.length || r.comments.length || r.transcript);
 }
 
 export async function match(req: Partial<MatchRequest>, who: Caller): Promise<MatchResult> {

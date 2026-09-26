@@ -14,10 +14,30 @@ export type FoundPlace = {
 
 export type Timings = Record<string, number>;
 
+/**
+ * What an Instagram reel gave the model to read. Kept with each result, so we can learn which
+ * sources actually name places: `select result->'signals' from api_extractions`.
+ */
+export type ReelSignals = {
+  caption: boolean;
+  locationTag: boolean;
+  taggedAccounts: boolean;
+  comments: boolean;
+  /** The spoken words were fetched: a second, pricier try when the text alone named nothing. */
+  transcript: boolean;
+};
+
+/**
+ * Why an Instagram link falls back to adding places by search: the scraper isn't set up, today's
+ * cap is used, the reel couldn't be read (private, deleted, or the scraper failed), or it was read
+ * but named no places.
+ */
+export type AssistReason = 'not_configured' | 'daily_limit' | 'unreadable' | 'no_places';
+
 export type ExtractResult =
   | {
       status: 'done';
-      platform: 'youtube';
+      platform: 'youtube' | 'instagram';
       cached: boolean;
       video: {
         id: string;
@@ -29,13 +49,16 @@ export type ExtractResult =
       region: string | null;
       places: FoundPlace[];
       usage: { model: string; inputTokens: number; outputTokens: number };
+      /** Instagram only. */
+      signals?: ReelSignals;
       timings: Timings;
     }
   | {
-      /** Instagram can't be read; the app shows the reel and lets the user add places by search. */
+      /** The reel couldn't be read for places; the app shows it and lets the user add them by search. */
       status: 'assist';
       platform: 'instagram';
       url: string;
+      reason: AssistReason;
       timings: Timings;
     };
 

@@ -23,6 +23,11 @@ export interface Place {
   photo: ImageSourcePropType;
   /** Who took a Google photo. Google requires the credit wherever the photo is shown. */
   photoCredit?: string;
+  /**
+   * The picture is a frame from the video (or a reel's cover), not a photo of the place: when a
+   * photo was last looked for, so it's looked for again after 30 days, not on every launch.
+   */
+  photoFromVideo?: number;
   why: string;
   source: PlaceSource;
   bestTime: DayPart;
@@ -48,6 +53,11 @@ export interface Reel {
   title: string;
   duration: string;
   thumbnail: ImageSourcePropType;
+  /**
+   * Frames from the video itself (YouTube's, at about a quarter, half and three quarters in). A place
+   * without a photo of its own shows one of these, never the thumbnail with its title text.
+   */
+  frames?: string[];
   cityId: string;
   placeIds: string[];
 }

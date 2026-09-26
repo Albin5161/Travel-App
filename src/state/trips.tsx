@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 
 import { getPlace, getCity } from '@/data/api';
-import { live, refreshed, restore, snapshot, type LiveSnapshot } from '@/data/registry';
+import { live, refreshed, register, restore, snapshot, type LiveSnapshot } from '@/data/registry';
 import { allDistricts } from '@/data/regions';
 import type { Group, GroupState, Member, Vote } from '@/data/group';
 import type { TripPlan } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
-import { refreshPlace } from '@/lib/extract';
+import { betterPhoto, framePhoto, refreshPlace } from '@/lib/extract';
 import { deviceStorage } from '@/lib/live/storage';
 import { fromWire, toWire, type WirePlan } from '@/lib/live/wire';
 import { clusterSpots, districtOf } from '@/lib/spots';
@@ -429,6 +429,46 @@ export function TripsProvider({ children }: { children: ReactNode }) {
           dispatch({ type: 'livePlacesRefreshed' });
         }
       }
+    })();
+    return () => {
+      stopped = true;
+    };
+  }, []);
+
+  // Saved real places still showing a video's picture get a real photo looked for (Wikimedia, then
+  // Google), or at least a frame of the video instead of its thumbnail. Places saved before frames
+  // existed are fixed on the first launch; a frame is looked past again after 30 days. The cities'
+  // covers follow. A few at a time, once per launch; offline or capped, they stay as they were.
+  useEffect(() => {
+    const uriOf = (img: unknown) => (img && typeof img === 'object' && 'uri' in img ? String((img as { uri: string }).uri) : null);
+    const thumbOf = (p: Place) => (p.source.kind === 'reel' ? uriOf(live.reels[p.source.reelId]?.thumbnail) : null);
+    const due = (p: Place) =>
+      p.id.startsWith('g:') &&
+      p.source.kind === 'reel' &&
+      (uriOf(p.photo) === thumbOf(p) || (!!p.photoFromVideo && Date.now() - p.photoFromVideo > COORDS_DAYS * 86400_000));
+    const todo = Object.values(live.places).filter(due).slice(0, 15);
+    if (todo.length === 0) return;
+    let stopped = false;
+    (async () => {
+      const turns = new Map<string, number>();
+      for (const place of todo) {
+        const reelId = place.source.kind === 'reel' ? place.source.reelId : '';
+        const turn = turns.get(reelId) ?? 0;
+        turns.set(reelId, turn + 1);
+        const better = await betterPhoto(place, live.reels[reelId], turn);
+        if (stopped) return;
+        if (!better) continue;
+        if (better.photoCredit) refreshed(better);
+        else register({ places: [better] });
+      }
+      // A cover that is a video's thumbnail: the first place in the city with a real photo, else a frame.
+      for (const city of Object.values(live.cities)) {
+        const reel = Object.values(live.reels).find((r) => r.cityId === city.id && uriOf(r.thumbnail) === uriOf(city.hero));
+        if (!reel) continue;
+        const withPhoto = Object.values(live.places).find((p) => p.cityId === city.id && p.photoCredit);
+        register({ city: { ...city, hero: withPhoto?.photo ?? framePhoto(reel, 1), heroCredit: withPhoto?.photoCredit } });
+      }
+      if (!stopped) dispatch({ type: 'livePlacesRefreshed' });
     })();
     return () => {
       stopped = true;

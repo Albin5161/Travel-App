@@ -139,12 +139,20 @@ export async function allowFeedback(c: Caller) {
   if (over) refuse(over);
 }
 
+/**
+ * One Google photo from today's free cap, asked for only once a free photo (Wikimedia) has been
+ * looked for and not found. False when the cap is used up: the app then uses a frame of the video.
+ */
+export async function allowPhoto(): Promise<boolean> {
+  return !(await consume([{ key: 'global:photos', seconds: DAY, max: L.photosPerDay() }]));
+}
+
 export type MatchStart = {
   /** What we have for this name; `location` is set only while it's within Google's 30 days. */
   stored: StoredMatch | null;
   /** Whether today's free cap allows a Place Details lookup. Only counted when nothing fresh is stored. */
   detailsOk: boolean;
-  /** Whether today's free cap allows a photo. */
+  /** Whether today's free cap allows a photo. Only asked for by callers that pass `wantPhoto`. */
   photoOk: boolean;
 };
 

@@ -52,6 +52,8 @@ export type ExtractResult =
         channel: string;
         durationSeconds: number | null;
         thumbnail: string | null;
+        /** Frames from the video itself, for places without a photo. YouTube only. */
+        frames?: string[];
       };
       region: string | null;
       /** The lie of the land in the region, for travel times. Absent on results read before it was asked. */

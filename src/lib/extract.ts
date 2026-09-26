@@ -1,7 +1,7 @@
 import type { ImageSourcePropType } from 'react-native';
 
 import type { Stay } from '@/data/planner';
-import { register } from '@/data/registry';
+import { live, register } from '@/data/registry';
 import type { City, DayPart, Extraction, Place, PlaceType, Reel } from '@/data/types';
 import { ApiFailure, post } from '@/lib/api';
 import type { LatLng, Terrain } from '@/lib/geo';
@@ -135,8 +135,9 @@ export async function placeFromPick(
     type,
     // The town, like the places read from a video ("Kottayam", not "College road").
     area: townOf(s.where).name,
-    photo: m.photo ? { uri: m.photo.uri } : ctx.reel.thumbnail,
+    photo: m.photo ? { uri: m.photo.uri } : framePhoto(ctx.reel, ctx.others.length),
     photoCredit: m.photo?.attributions.map((a) => a.name).join(', ') || undefined,
+    ...(m.photo ? {} : { photoFromVideo: Date.now() }),
     why: '',
     source: { kind: 'reel', reelId: ctx.reel.id, timestamp: '' },
     ...DEFAULTS[type],
@@ -182,6 +183,34 @@ export async function refreshPlace(place: Place): Promise<Place | null> {
       ? { photo: { uri: m.photo.uri }, photoCredit: m.photo.attributions.map((a) => a.name).join(', ') || undefined }
       : {}),
   };
+}
+
+/**
+ * A saved place still showing a video's picture (a thumbnail from before frames, or a frame): a
+ * real photo looked for again, from Wikimedia or Google; failing that, a frame of the video rather
+ * than its thumbnail. Null when nothing changed, or the server couldn't be reached.
+ */
+export async function betterPhoto(place: Place, reel: Reel | undefined, turn: number): Promise<Place | null> {
+  if (!place.id.startsWith('g:')) return null;
+  const res = await post<MatchResult>('/api/match', { name: place.name, placeId: place.id.slice(2) }, MATCH_MS).catch(() => null);
+  if (!res) return null;
+  if (res.status === 'matched' && res.place.photo) {
+    const { photoFromVideo: _, ...rest } = place;
+    return {
+      ...rest,
+      coords: res.place.location,
+      photo: { uri: res.place.photo.uri },
+      photoCredit: res.place.photo.attributions.map((a) => a.name).join(', ') || undefined,
+    };
+  }
+  if (!reel) return { ...place, photoFromVideo: Date.now() };
+  if (!reel.frames && reel.id.startsWith('yt:')) {
+    const got = await post<{ frames: string[] }>('/api/frames', { videoId: reel.id.slice(3) }, 8000).catch(() => null);
+    if (got?.frames.length) register({ reel: { ...reel, frames: got.frames } });
+  }
+  const current = live.reels[reel.id] ?? reel;
+  const stamp = place.source.kind === 'reel' ? place.source.timestamp : null;
+  return { ...place, photo: framePhoto(current, turn, stamp), photoCredit: undefined, photoFromVideo: Date.now() };
 }
 
 /**
@@ -268,20 +297,43 @@ function toReel(res: Pick<Extract<ExtractResult, { status: 'done' }>, 'platform'
     title: v.title,
     duration: v.durationSeconds ? clock(v.durationSeconds) : '',
     thumbnail: v.thumbnail ? { uri: v.thumbnail } : 0,
+    ...(v.frames?.length ? { frames: v.frames } : {}),
     cityId,
     placeIds: [],
   };
 }
 
+/**
+ * The picture for a place with no photo of its own: the video frame nearest the place's moment in
+ * it when the description has chapters, otherwise the three frames in turn so neighbours differ.
+ * An Instagram reel has no frames; its cover is all there is.
+ */
+export function framePhoto(reel: Reel, turn: number, stamp?: string | null): ImageSourcePropType {
+  const frames = reel.frames;
+  if (!frames?.length) return reel.thumbnail;
+  const at = stamp ? seconds(stamp) : 0;
+  const length = seconds(reel.duration);
+  const k = at && length ? Math.min(frames.length - 1, Math.max(0, Math.round((at / length) * 4) - 1)) : turn % frames.length;
+  return { uri: frames[k] };
+}
+
+/** "1:02:03" or "4:05" in seconds; 0 when it isn't a time. */
+function seconds(clockText: string): number {
+  const parts = clockText.split(':').map(Number);
+  if (parts.some((n) => !Number.isFinite(n))) return 0;
+  return parts.reduce((sum, n) => sum * 60 + n, 0);
+}
+
 function toPlaces(pairs: { found: FoundPlace; match: MatchedPlace }[], reel: Reel, cityId: string): Place[] {
   const points = project(pairs.map((p) => p.match.location));
   const seen = new Set<string>();
+  let turn = 0;
   return pairs.flatMap(({ found, match }, i) => {
     // Two names in one video can be the same real place ("Om Beach", "Om beach Gokarna").
     const id = `g:${match.placeId}`;
     if (seen.has(id)) return [];
     seen.add(id);
-    const photo: ImageSourcePropType = match.photo ? { uri: match.photo.uri } : reel.thumbnail;
+    const photo: ImageSourcePropType = match.photo ? { uri: match.photo.uri } : framePhoto(reel, turn++, found.timestamp);
     return [
       {
         id,
@@ -291,6 +343,7 @@ function toPlaces(pairs: { found: FoundPlace; match: MatchedPlace }[], reel: Ree
         area: found.area ?? '',
         photo,
         photoCredit: match.photo?.attributions.map((a) => a.name).join(', ') || undefined,
+        ...(match.photo ? {} : { photoFromVideo: Date.now() }),
         why: found.why,
         source: { kind: 'reel', reelId: reel.id, timestamp: found.timestamp ?? '' },
         ...planningDetails(found),
@@ -303,7 +356,7 @@ function toPlaces(pairs: { found: FoundPlace; match: MatchedPlace }[], reel: Ree
 }
 
 function toCity(id: string, name: string, state: string, places: Place[], reel: Reel, terrain?: Terrain): City {
-  // The first place with its own photo makes the cover; the video's thumbnail if none has one.
+  // The first place with its own photo makes the cover; a frame from the video if none has one.
   const covered = places.find((p) => p.photoCredit);
   return {
     id,
@@ -311,7 +364,7 @@ function toCity(id: string, name: string, state: string, places: Place[], reel: 
     state,
     // Our districts are only mapped for the sample regions; the city stands in for its own.
     district: name,
-    hero: covered?.photo ?? reel.thumbnail,
+    hero: covered?.photo ?? framePhoto(reel, 1),
     heroCredit: covered?.photoCredit,
     map: { roads: [], hills: [], labels: [] },
     terrain,

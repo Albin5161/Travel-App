@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '@/components/IconButton';
 import { Text } from '@/components/Text';
-import { CHANGES, CREDITS, STAND_INS, UNSPLASH } from '@/data/credits';
+import { CHANGES, CREDITS, FROM_VIDEOS, STAND_INS, UNSPLASH } from '@/data/credits';
 import { light } from '@/theme/tokens';
 
 const open = (url: string) => Linking.openURL(url).catch(() => {});
@@ -66,6 +66,7 @@ export default function Credits() {
             Unsplash License
           </Text>
         </Text>
+        <Text variant="body">{FROM_VIDEOS}</Text>
 
         <Text variant="micro" style={styles.section}>
           Stand-in photos

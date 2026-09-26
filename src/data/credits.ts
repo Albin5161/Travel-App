@@ -73,6 +73,10 @@ export const CREDITS: Credit[] = [
 /** Changes made to every Creative Commons photo above, as the licences ask to be stated. */
 export const CHANGES = 'Resized; no other changes.';
 
+/** Places from pasted videos: their photos come from Google or Wikimedia Commons, credited where shown. */
+export const FROM_VIDEOS =
+  'Photos of places from your videos come from Google Maps or Wikimedia Commons. Each shows its author, and a Commons photo its licence, wherever it appears. Commons photos are resized; no other changes. A place with no photo shows a frame from its video.';
+
 export const UNSPLASH = {
   note: 'Photos of Gokarna, Fort Kochi and Meghalaya not listed above are from Unsplash, under the Unsplash License.',
   url: 'https://unsplash.com/license',

@@ -3,7 +3,8 @@ import { env } from './env';
 import { ApiError } from './errors';
 import { findPlaces } from './gemini';
 import { getReel, TRANSCRIPT_MAX_SECONDS, type ReelDetails } from './instagram';
-import { allowCityNotes, allowExtract, allowFeedback, allowPlaceInfo, allowReel, allowSearch, beginMatch } from './limits';
+import { wikimediaPhoto } from './commons';
+import { allowCityNotes, allowExtract, allowFeedback, allowPhoto, allowPlaceInfo, allowReel, allowSearch, beginMatch } from './limits';
 import { parseLink, type ParsedLink } from './links';
 import { readCityNotes } from './citynotes';
 import { getDetails, getPhoto, getPhotoRefs, getPlaceInfo, searchPlaceId, searchPlaces, type PhotoRef } from './places';
@@ -59,12 +60,17 @@ export async function extract(input: unknown, who: Caller): Promise<ExtractResul
 
   await t.step('limits', () => allowExtract(who));
   const saved = await t.step('store', () => getExtraction(link.videoId));
-  if (saved) return { ...saved, cached: true, timings: t.done() };
+  if (saved) {
+    // Readings stored before frames were added get them now; the check is one small request.
+    const frames = saved.video.frames ?? (await t.step('frames', () => videoFrames(link.videoId)));
+    return { ...saved, video: { ...saved.video, frames }, cached: true, timings: t.done() };
+  }
 
   const video = await t.step('youtube', () => getVideo(link.videoId, env.youtubeKey()));
-  const found = await t.step('model', () =>
-    findPlaces({ kind: 'youtube', video }, env.geminiKey(), env.geminiModel(), env.geminiFallback()),
-  );
+  const [found, frames] = await Promise.all([
+    t.step('model', () => findPlaces({ kind: 'youtube', video }, env.geminiKey(), env.geminiModel(), env.geminiFallback())),
+    videoFrames(link.videoId),
+  ]);
   const result: DoneExtraction = {
     status: 'done',
     platform: 'youtube',
@@ -75,6 +81,7 @@ export async function extract(input: unknown, who: Caller): Promise<ExtractResul
       channel: video.channel,
       durationSeconds: video.durationSeconds,
       thumbnail: video.thumbnail,
+      frames,
     },
     region: found.region,
     terrain: found.terrain,
@@ -191,8 +198,14 @@ export async function match(req: Partial<MatchRequest>, who: Caller): Promise<Ma
   const key = pickedId ? `id:${pickedId}` : query.toLowerCase();
 
   const placesKey = env.placesKey();
-  const begin = await t.step('begin', () => beginMatch(who, key, env.placesPhotos()));
+  // Photos aren't counted here: a free one is looked for first, and Google's only when there's none.
+  const begin = await t.step('begin', () => beginMatch(who, key, false));
   const saved = begin.stored;
+  // Wikimedia's photo of the place when it has one it can vouch for; else one from Google's daily
+  // free cap; else none, and the app shows a frame of the video instead.
+  const photoOf = async (placeId: string, at: { lat: number; lng: number }, refs?: Parameters<typeof photoFor>[1]) =>
+    (await wikimediaPhoto(name, at)) ??
+    (env.placesPhotos() && (await allowPhoto()) ? await photoFor(placeId, refs, placesKey) : null);
 
   if (saved && !saved.placeId) {
     return { status: 'unmatched', needsCheck: true, cached: true, timings: t.done() };
@@ -200,7 +213,8 @@ export async function match(req: Partial<MatchRequest>, who: Caller): Promise<Ma
   // A place we've seen within 30 days: its ID and coordinates are stored; only the photo is fetched.
   if (saved?.placeId && saved.location) {
     const placeId = saved.placeId;
-    const photo = begin.photoOk ? await t.step('photo', () => photoFor(placeId, undefined, placesKey)) : null;
+    const location = saved.location;
+    const photo = await t.step('photo', () => photoOf(placeId, location));
     return {
       status: 'matched',
       place: { placeId, location: saved.location, address: null, types: [], photo },
@@ -225,7 +239,7 @@ export async function match(req: Partial<MatchRequest>, who: Caller): Promise<Ma
   // Saving and fetching the photo don't depend on each other, so they run side by side.
   const [photo] = await t.step('photo+save', () =>
     Promise.all([
-      begin.photoOk ? photoFor(placeId, d.photos, placesKey) : Promise.resolve(null),
+      photoOf(placeId, location, d.photos),
       putMatch(key, { placeId, location, needsCheck }),
     ]),
   );
@@ -327,6 +341,31 @@ export async function feedback(req: Partial<FeedbackRequest>, who: Caller): Prom
  * lookup or from a free photos-only one. Past the cap, or with photos off, the app shows its
  * fallback card.
  */
+/** The video's frames on their own, for readings saved before frames came with them. */
+export async function frames(req: { videoId?: unknown }): Promise<{ frames: string[] }> {
+  const id = typeof req.videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(req.videoId) ? req.videoId : null;
+  if (!id) throw new ApiError(400, 'bad_request', 'Send {"videoId": "..."}.');
+  return { frames: await videoFrames(id) };
+}
+
+/**
+ * Three frames YouTube captures from every video (about a quarter, half and three quarters in), for
+ * places with no photo of their own: real footage, unlike the designed thumbnail with its title
+ * text. HD videos have them at 1280×720; older or low-quality ones only as small letterboxed images,
+ * which are used then. Public image links; nothing is stored.
+ */
+async function videoFrames(videoId: string): Promise<string[]> {
+  const url = (size: string, n: number) => `https://i.ytimg.com/vi/${videoId}/${size}${n}.jpg`;
+  let hd = false;
+  try {
+    const res = await fetch(url('maxres', 1), { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+    hd = res.ok;
+  } catch {
+    hd = false;
+  }
+  return [1, 2, 3].map((n) => url(hd ? 'maxres' : 'hq', n));
+}
+
 async function photoFor(placeId: string, refs: PhotoRef[] | undefined, key: string): Promise<PlacePhoto | null> {
   const first = (refs ?? (await getPhotoRefs(placeId, key)))[0];
   return first ? getPhoto(first, key) : null;

@@ -17,7 +17,7 @@ export function planMessage(cityName: string, cityId: string, stops: number, day
   // A shared trip goes as a join link, plus the code for anyone who'd rather type it into the app.
   // Without the backend, the link opens the demo vote.
   const link = code
-    ? `\n${PLAN_LINK_BASE}/join?code=${code}\nOr in Xplore: Trips, Join, code ${code}`
+    ? `\n${PLAN_LINK_BASE}/join/${code}\nOr in Xplore: Trips, Join, code ${code}`
     : `\n${PLAN_LINK_BASE}/group/${cityId}`;
   const span = days === 1 ? 'one day' : `${days} days`;
   switch (party) {

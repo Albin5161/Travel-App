@@ -81,6 +81,7 @@ export default function RootLayout() {
             <Stack.Screen name="share/[id]" options={{ animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="group/[id]" />
             <Stack.Screen name="join" options={{ animation: 'fade' }} />
+            <Stack.Screen name="join/[code]" options={{ animation: 'fade' }} />
             <Stack.Screen
               name="addstop/[id]"
               options={{

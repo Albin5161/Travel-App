@@ -14,7 +14,7 @@ import { ArrivalBanner } from '@/components/spots/ArrivalBanner';
 import { Chips, ScopeToggle } from '@/components/spots/Chips';
 import { SpotRow } from '@/components/spots/SpotRow';
 import { WeekendRouteCard } from '@/components/spots/WeekendRouteCard';
-import { getCity } from '@/data/api';
+import { getCity, getReel } from '@/data/api';
 import { KERALA, getDistrict } from '@/data/regions';
 import type { Place } from '@/data/types';
 import type { Point } from '@/lib/geo';
@@ -346,13 +346,15 @@ function AwayScope({
         const watched = !!getDistrict(g.districtId ?? undefined);
         const far = Math.min(...g.spots.map((s) => driveMinutes(from, s))) > DAY_TRIP_MINUTES;
         const clusters = clusterSpots(g.spots);
+        const creators = new Set(g.spots.map((s) => (s.source.kind === 'reel' ? getReel(s.source.reelId)?.creator : null)));
         return (
           <View key={g.name} style={styles.block}>
             <View style={styles.districtHead}>
               <View style={{ flex: 1 }}>
                 <Text variant="headline">{g.name}</Text>
                 <Text variant="data">
-                  {g.spots.length} {g.spots.length === 1 ? 'spot' : 'spots'} · {g.state}
+                  {g.spots.length} {g.spots.length === 1 ? 'spot' : 'spots'}
+                  {g.state && g.state !== g.name ? ` · ${g.state}` : ''}
                   {far ? ` · ${kmAway(from, g.spots)} away` : ''}
                   {watched ? ' · we’ll tell you when you arrive' : ''}
                 </Text>
@@ -374,6 +376,7 @@ function AwayScope({
                     key={s.id}
                     spot={s}
                     minutes={far ? null : driveMinutes(from, s)}
+                    showCreator={creators.size > 1}
                     status={statusOf(s.id)}
                     onToggleStatus={() => toggle(s.id)}
                     onPress={() => router.push({ pathname: '/place/[id]', params: { id: s.id } })}

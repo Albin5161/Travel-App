@@ -459,6 +459,11 @@ export default function PlanScreen() {
             {left.length > 0 ? (
               <View style={styles.left}>
                 <Text variant="micro">Not in this plan · {left.length}</Text>
+                {unfit.some((p) => !plan.leftWhy?.[p.id]) ? (
+                  <Text variant="label" color={light.inkSoft}>
+                    {`The days are full at a ${prefs.pace} pace.${gain > 0 ? '' : ' Pick a faster pace, or take a stop out to make room.'}`}
+                  </Text>
+                ) : null}
                 {gain > 0 ? (
                   <Button
                     kind="secondary"

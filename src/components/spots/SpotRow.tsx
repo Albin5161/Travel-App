@@ -14,12 +14,15 @@ import { light } from '@/theme/tokens';
  * One saved spot. The line under the name is what makes it actionable: how long the drive is, and
  * who put it in your head in the first place — the creator is an Xplore-specific memory hook.
  */
+const TYPE: Record<Place['type'], string> = { food: 'Food', stay: 'Stay', sight: 'Sight', experience: 'Experience' };
+
 export function SpotRow({
   spot,
   minutes,
   status,
   onPress,
   onToggleStatus,
+  showCreator = true,
 }: {
   spot: Place;
   /** Drive time from where you are; null for a far city, whose distance is said once above. */
@@ -27,6 +30,8 @@ export function SpotRow({
   status: SpotStatus;
   onPress: () => void;
   onToggleStatus: () => void;
+  /** Name the creator on the row; off when every spot around it is from the same one. */
+  showCreator?: boolean;
 }) {
   const creator = spot.source.kind === 'reel' ? getReel(spot.source.reelId)?.creator : null;
   const been = status === 'been';
@@ -40,7 +45,7 @@ export function SpotRow({
         <Text variant="data" numberOfLines={1}>
           {/* The cluster heading above already names the area, so the second half of this line
               goes to the creator — which is what makes you remember why you saved it. */}
-          {[minutes === null ? null : `${formatDuration(minutes)} away`, creator ?? spot.area].filter(Boolean).join(' · ')}
+          {[minutes === null ? null : `${formatDuration(minutes)} away`, (showCreator && creator) || TYPE[spot.type]].filter(Boolean).join(' · ')}
         </Text>
       </View>
       <Pressable

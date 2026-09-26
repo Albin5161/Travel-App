@@ -446,7 +446,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       p.id.startsWith('g:') &&
       p.source.kind === 'reel' &&
       (uriOf(p.photo) === thumbOf(p) || (!!p.photoFromVideo && Date.now() - p.photoFromVideo > COORDS_DAYS * 86400_000));
-    const todo = Object.values(live.places).filter(due).slice(0, 15);
+    const todo = Object.values(live.places).filter(due).slice(0, 30);
     if (todo.length === 0) return;
     let stopped = false;
     (async () => {

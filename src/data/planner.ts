@@ -397,7 +397,8 @@ export function planNow({ cityId, saved, suggestions, prefs, pins, removed, seed
       const nearest = others.length ? Math.min(...others.map((o) => legMinutes(o.coords, place.coords, t))) : 0;
       const each = t.base ? legMinutes(t.base, place.coords, t) : 0;
       const stayName = prefs.stay?.name ?? 'where you’re staying';
-      leftWhy[place.id] =
+      // Only a reason particular to this place; "the days are full" is said once, above the list.
+      const why =
         place.minutes > budget
           ? 'Takes longer than a whole day at this pace.'
           : t.base && length([place]) > budget
@@ -405,8 +406,9 @@ export function planNow({ cityId, saved, suggestions, prefs, pins, removed, seed
               ? `About ${hours(each)} each way from ${stayName}: a long day there and back. It fits at a packed pace.`
               : `About ${hours(each)} each way from ${stayName}, too far to get there and back in a day. It’s worth a night nearby.`
             : nearest > NEARBY_MINUTES
-            ? `About ${hours(nearest)} from your other places, so it needs a day of its own. Add a day, or pick a faster pace.`
-            : 'Your days are full at this pace. Add a day, or pick a faster pace.';
+              ? `About ${hours(nearest)} from your other places, so it needs a day of its own.`
+              : null;
+      if (why) leftWhy[place.id] = why;
     }
   }
 

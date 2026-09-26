@@ -13,7 +13,8 @@ const DAY = 86400;
 // 9,000 a month (free up to 10,000), 30 photos a day is about 900 (free up to 1,000). The
 // Instagram caps spread Apify's $5 of free monthly credit over the month: 20 reels a day is about
 // $2.20, one transcript a day at most about $3. 300 searches a day (one per typed pause) is about
-// 9,000 a month, under Autocomplete's 10,000 free.
+// 9,000 a month, under Autocomplete's 10,000 free. 30 place pages a day with Google's reviews is
+// about 900 a month, under Place Details Enterprise + Atmosphere's 1,000 free.
 // Each can be changed from the environment.
 const L = {
   extractPerUser: () => limit('LIMIT_EXTRACT_PER_HOUR', 20),
@@ -27,6 +28,10 @@ const L = {
   searchPerUser: () => limit('LIMIT_SEARCH_PER_HOUR', 150),
   searchPerIp: () => limit('LIMIT_SEARCH_PER_IP_HOUR', 450),
   searchPerDay: () => limit('LIMIT_SEARCH_PER_DAY', 300),
+  placeInfoPerUser: () => limit('LIMIT_PLACE_INFO_PER_HOUR', 60),
+  placeInfoPerDay: () => limit('LIMIT_PLACE_INFO_PER_DAY', 30),
+  cityNotesPerUser: () => limit('LIMIT_CITY_NOTES_PER_HOUR', 30),
+  cityNotesPerDay: () => limit('LIMIT_CITY_NOTES_PER_DAY', 100),
   reelsPerDay: () => limit('LIMIT_INSTAGRAM_REELS_PER_DAY', 20),
   transcriptsPerDay: () => limit('LIMIT_INSTAGRAM_TRANSCRIPTS_PER_DAY', 1),
 };
@@ -103,6 +108,28 @@ export async function allowSearch(c: Caller) {
     { key: `user:${c.userId}:search`, seconds: HOUR, max: L.searchPerUser() },
     { key: `ip:${c.ip}:search`, seconds: HOUR, max: L.searchPerIp() },
     { key: 'global:search', seconds: DAY, max: L.searchPerDay() },
+  ]);
+  if (over) refuse(over);
+}
+
+/**
+ * Whether today's cap allows one more place page with Google's reviews. Past it, the page shows
+ * without them rather than failing. A person over their hourly limit is refused as usual.
+ */
+export async function allowPlaceInfo(c: Caller): Promise<boolean> {
+  const over = await consume([
+    { key: `user:${c.userId}:place-info`, seconds: HOUR, max: L.placeInfoPerUser() },
+    { key: 'global:place-info', seconds: DAY, max: L.placeInfoPerDay() },
+  ]);
+  if (over && !over.startsWith('global:')) refuse(over);
+  return !over;
+}
+
+/** One city's notes read afresh (they're kept 30 days, so this is rare). */
+export async function allowCityNotes(c: Caller) {
+  const over = await consume([
+    { key: `user:${c.userId}:city-notes`, seconds: HOUR, max: L.cityNotesPerUser() },
+    { key: 'global:city-notes', seconds: DAY, max: L.cityNotesPerDay() },
   ]);
   if (over) refuse(over);
 }

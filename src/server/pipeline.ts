@@ -3,16 +3,20 @@ import { env } from './env';
 import { ApiError } from './errors';
 import { findPlaces } from './gemini';
 import { getReel, TRANSCRIPT_MAX_SECONDS, type ReelDetails } from './instagram';
-import { allowExtract, allowFeedback, allowReel, allowSearch, beginMatch } from './limits';
+import { allowCityNotes, allowExtract, allowFeedback, allowPlaceInfo, allowReel, allowSearch, beginMatch } from './limits';
 import { parseLink, type ParsedLink } from './links';
-import { getDetails, getPhoto, getPhotoRefs, searchPlaceId, searchPlaces, type PhotoRef } from './places';
-import { addFeedback, getExtraction, putExtraction, putMatch, type DoneExtraction } from './store';
+import { readCityNotes } from './citynotes';
+import { getDetails, getPhoto, getPhotoRefs, getPlaceInfo, searchPlaceId, searchPlaces, type PhotoRef } from './places';
+import { addFeedback, getCityNotes, getExtraction, putCityNotes, putExtraction, putMatch, type DoneExtraction } from './store';
 import type {
   AssistReason,
+  CityNotes,
+  CityNotesRequest,
   ExtractResult,
   FeedbackRequest,
   MatchRequest,
   MatchResult,
+  PlaceInfo,
   PlacePhoto,
   ReelSignals,
   SearchRequest,
@@ -265,6 +269,35 @@ export async function search(req: Partial<SearchRequest>, who: Caller): Promise<
     );
   }
   return { suggestions: suggestions.slice(0, 6) };
+}
+
+/** A place's page: Google's rating, hours and reviews, fetched fresh and never stored. */
+export async function placeInfo(req: { placeId?: unknown }, who: Caller): Promise<PlaceInfo> {
+  const placeId = typeof req.placeId === 'string' && PLACE_ID.test(req.placeId) ? req.placeId : null;
+  if (!placeId) throw new ApiError(400, 'bad_request', 'Send {"placeId": "..."}.');
+  if (!(await allowPlaceInfo(who))) return { status: 'limited' };
+  return getPlaceInfo(placeId, env.placesKey());
+}
+
+/** A real city's notes, from Wikipedia and Wikivoyage, kept 30 days for everyone. */
+export async function cityNotes(req: Partial<CityNotesRequest>, who: Caller): Promise<{ notes: CityNotes | null }> {
+  const name = clean(req.name, 80);
+  const state = clean(req.state, 80);
+  if (!name) throw new ApiError(400, 'bad_request', 'Send {"name": "...", "state": "...", "near": {"lat", "lng"}}.');
+  const n = req.near;
+  const near = n && Number.isFinite(n.lat) && Number.isFinite(n.lng) ? { lat: n.lat, lng: n.lng } : null;
+  const key = `city:${[name, state].join(' ').toLowerCase().replace(/\s+/g, '-')}`;
+  const saved = await getCityNotes(key);
+  if (saved) return { notes: 'none' in saved ? null : saved };
+  await allowCityNotes(who);
+  const notes = await readCityNotes(name, state, near, {
+    key: env.geminiKey(),
+    model: env.geminiModel(),
+    fallback: env.geminiFallback(),
+  });
+  // A town the sources don't cover is remembered too, so it isn't looked up on every visit.
+  await putCityNotes(key, notes ?? { none: true }, notes ? env.geminiModel() : null);
+  return { notes };
 }
 
 /** The Right / Wrong answers from the review screen: the accuracy measure, and what we learn from. */

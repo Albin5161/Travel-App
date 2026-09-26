@@ -106,3 +106,43 @@ export type FeedbackRequest = {
 export type MatchResult =
   | { status: 'matched'; place: MatchedPlace; needsCheck: boolean; cached: boolean; timings: Timings }
   | { status: 'unmatched'; needsCheck: true; cached: boolean; timings: Timings };
+
+/**
+ * What Google says about one place, for its page: fetched when someone opens it and never stored,
+ * as Google's terms require. `limited` when today's cap is used; the page just leaves it out.
+ */
+export type PlaceInfo =
+  | {
+      status: 'ok';
+      rating: number | null;
+      ratingCount: number | null;
+      /** 0 free to 4 very expensive, as Google rates it. */
+      priceLevel: number | null;
+      openNow: boolean | null;
+      hours: string[];
+      summary: string | null;
+      reviews: {
+        author: string;
+        authorUri: string | null;
+        rating: number | null;
+        text: string;
+        when: string;
+      }[];
+      googleMapsUri: string | null;
+    }
+  | { status: 'limited' };
+
+/**
+ * A city's notes for travellers, summarised from Wikipedia and Wikivoyage (CC BY-SA 4.0) and kept
+ * 30 days. Only what the sources say: anything they don't cover is null or empty.
+ */
+export type CityNotes = {
+  summary: string | null;
+  bestTime: string | null;
+  idealStay: string | null;
+  tips: string[];
+  safety: string[];
+  sources: { site: 'Wikipedia' | 'Wikivoyage'; title: string; url: string }[];
+};
+
+export type CityNotesRequest = { name: string; state?: string | null; near?: { lat: number; lng: number } | null };

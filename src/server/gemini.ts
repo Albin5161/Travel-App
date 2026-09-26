@@ -102,14 +102,32 @@ function sourceText(s: Source): string {
 }
 
 export async function findPlaces(source: Source, key: string, model: string, fallback?: string): Promise<ModelResult> {
-  const request = JSON.stringify({
-    systemInstruction: { parts: [{ text: SYSTEM[source.kind] }] },
-    contents: [{ role: 'user', parts: [{ text: sourceText(source) }] }],
-    generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.2 },
-  });
+  const { parsed, usage } = await generate(SYSTEM[source.kind], sourceText(source), SCHEMA, key, model, fallback);
+  return {
+    region: typeof parsed?.region === 'string' && parsed.region.trim() ? parsed.region.trim() : null,
+    places: cleanPlaces(parsed?.places),
+    usage,
+  };
+}
 
-  // Free-tier calls are the first turned away when a model is busy (503) or a per-model limit is
-  // hit (429). Try the chosen model twice, then the lighter fallback, before giving up.
+/**
+ * One JSON answer from Gemini: a fixed instruction, the text as data, and the schema the answer must
+ * follow. Free-tier calls are the first turned away when a model is busy (503) or a per-model limit
+ * is hit (429), so the chosen model is tried twice, then the lighter fallback, before giving up.
+ */
+export async function generate(
+  system: string,
+  text: string,
+  schema: object,
+  key: string,
+  model: string,
+  fallback?: string,
+): Promise<{ parsed: Record<string, unknown> | null; usage: ModelResult['usage'] }> {
+  const request = JSON.stringify({
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: 'user', parts: [{ text }] }],
+    generationConfig: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.2 },
+  });
   const attempts = [model, model, ...(fallback && fallback !== model ? [fallback] : [])];
   let res: Response | null = null;
   let used = model;
@@ -130,10 +148,8 @@ export async function findPlaces(source: Source, key: string, model: string, fal
 
   const body = (await res.json()) as GeminiResponse;
   const out = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
-  const parsed = safeParse(out);
   return {
-    region: typeof parsed?.region === 'string' && parsed.region.trim() ? parsed.region.trim() : null,
-    places: cleanPlaces(parsed?.places),
+    parsed: safeParse(out),
     usage: {
       model: used,
       inputTokens: body.usageMetadata?.promptTokenCount ?? 0,
@@ -147,7 +163,7 @@ type GeminiResponse = {
   usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
 };
 
-function safeParse(s: string): { region?: unknown; places?: unknown } | null {
+function safeParse(s: string): Record<string, unknown> | null {
   try {
     return JSON.parse(s);
   } catch {

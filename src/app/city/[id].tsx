@@ -23,6 +23,7 @@ import { GoodToKnowSection, OverviewSection, PlacesSection, PlanSection } from '
 import { Text } from '@/components/Text';
 import { getCity } from '@/data/api';
 import { formatRupees, getCityInfo } from '@/data/cityInfo';
+import { useCityNotes } from '@/lib/details';
 import { buildPlan } from '@/data/plan';
 import { haptic } from '@/lib/haptics';
 import { useCityPlaces, useTrips } from '@/state/trips';
@@ -42,6 +43,7 @@ export default function CityScreen() {
   const info = getCityInfo(id);
   const { state } = useTrips();
   const { collected, kept, locals } = useCityPlaces(id);
+  const { notes, loading: notesLoading } = useCityNotes(city, collected);
   const { width: W, height: H } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
@@ -189,12 +191,20 @@ export default function CityScreen() {
         <PanelTabs active={active} onTab={goToTab} />
 
         <View style={[styles.panelBody, { paddingBottom: insets.bottom + 120, minHeight: H - top }]}>
-          <OverviewSection cityName={city.name} info={info} onLayout={(e) => setSectionY(0, e.nativeEvent.layout.y)} />
+          <OverviewSection
+            cityName={city.name}
+            info={info}
+            notes={notes}
+            loading={notesLoading}
+            onLayout={(e) => setSectionY(0, e.nativeEvent.layout.y)}
+          />
           <PlacesSection places={collected} cityId={id} onLayout={(e) => setSectionY(1, e.nativeEvent.layout.y)} />
           <PlanSection plan={plan} planned={planned} onLayout={(e) => setSectionY(2, e.nativeEvent.layout.y)} />
           <GoodToKnowSection
             cityName={city.name}
             info={info}
+            notes={notes}
+            loading={notesLoading}
             play={seenSafety}
             onLayout={(e) => setSectionY(3, e.nativeEvent.layout.y)}
           />

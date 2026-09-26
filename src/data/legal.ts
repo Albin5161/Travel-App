@@ -49,6 +49,7 @@ export const PRIVACY: LegalDoc = {
             'An anonymous account. The first time you use the app it signs you in anonymously and creates a random ID. It is not linked to your name, email or phone.',
             'Links you paste, and what is read from them: a video’s public title, description, caption, location tag, tagged accounts, recent public comments and, sometimes, a machine transcript of what is said. This is about the video, not about you. Results are shared, so anyone who pastes the same link gets the same stored result.',
             'Searches you type when adding a place, and the rough area of the places you are looking at, so nearby results come first.',
+            'Which place or city you open, when it came from a link: a place’s page asks Google for its rating, hours and reviews, and a city’s page asks for notes about that town. Neither is linked to you.',
             'Your answers on the review screen (right, wrong or added), stored with your anonymous ID, the video and the place, to measure and improve accuracy.',
             'Shared trips. If you share a trip or join one, the name you choose, the trip plan, your votes and any notes are stored so the others on that trip can see them.',
             'Technical data. Your network (IP) address is used with your anonymous ID to limit how many requests one person can make. The hosting service also keeps standard request logs.',
@@ -91,6 +92,7 @@ export const PRIVACY: LegalDoc = {
             `Google, for finding places, place photos and search (Places API), the map on the web (Maps JavaScript API), reading public YouTube videos (YouTube Data API) and reading a video’s text to find places (Gemini API). See the ${GOOGLE_PRIVACY}. On Gemini’s free tier, Google may use what is sent to improve its products, and people may review it. Only a video’s public text is sent, never your account details.`,
             `YouTube. Xplore uses YouTube API Services. By using YouTube features you agree to the ${YOUTUBE_TERMS}, and the ${GOOGLE_PRIVACY} applies.`,
             'Apify, which reads public Instagram reels when you paste an Instagram link. It receives the reel’s link. See [Apify’s privacy policy](https://apify.com/privacy-policy).',
+            'Wikipedia and Wikivoyage (the Wikimedia Foundation), for notes about a city. Only the town’s name is sent. See [Wikimedia’s privacy policy](https://foundation.wikimedia.org/wiki/Policy:Privacy_policy).',
             'Supabase, for the database and the anonymous sign-in. See [Supabase’s privacy policy](https://supabase.com/privacy).',
             'Expo (EAS Hosting, which runs on Cloudflare), which serves the web app and its server. See [Expo’s privacy policy](https://expo.dev/privacy).',
             'Photos and thumbnails load directly from Google, YouTube and Instagram, which see your network address as any website would.',
@@ -104,7 +106,8 @@ export const PRIVACY: LegalDoc = {
       blocks: [
         {
           list: [
-            'What was read from a video: 30 days.',
+            'What was read from a video, and a city’s notes: 30 days.',
+            'Google’s ratings and reviews: not kept at all; fetched each time a place’s page is opened.',
             'Place matches: Google’s place IDs are kept (they identify places, not people); coordinates for up to 30 days.',
             'Request counters with your network address: deleted within 3 days.',
             'Your anonymous account, your answers and shared trips: until you ask me to delete them.',

@@ -123,14 +123,15 @@ export async function placeFromPick(
   );
   if (res.status !== 'matched') return null;
   const m = res.place;
-  const type = kindOf(m.types);
+  const type = kindOf(m.types, s.name);
   const points = project([...ctx.others.map((p) => p.coords), m.location]);
   const place: Place = {
     id: `g:${m.placeId}`,
     cityId: ctx.cityId,
     name: s.name,
     type,
-    area: s.where.split(',')[0]?.trim() ?? '',
+    // The town, like the places read from a video ("Kottayam", not "College road").
+    area: townOf(s.where).name,
     photo: m.photo ? { uri: m.photo.uri } : ctx.reel.thumbnail,
     photoCredit: m.photo?.attributions.map((a) => a.name).join(', ') || undefined,
     why: '',
@@ -162,12 +163,20 @@ export function cityFromWhere(where: string, reel: Reel, places: Place[]): City 
   return toCity(town.id, town.name, town.state, places, reel);
 }
 
-/** Google's place types, reduced to the four kinds the app plans with. */
-function kindOf(types: string[]): PlaceType {
+/**
+ * Google's place types, reduced to the four kinds the app plans with. Google only sends types on a
+ * fresh lookup (they can't be stored), so a place we've matched before is judged by its name.
+ */
+function kindOf(types: string[], name: string): PlaceType {
   const has = (...t: string[]) => t.some((x) => types.includes(x));
   if (has('restaurant', 'cafe', 'bakery', 'bar', 'food', 'meal_takeaway', 'ice_cream_shop', 'coffee_shop')) return 'food';
   if (has('lodging', 'hotel', 'hostel', 'resort_hotel', 'guest_house', 'campground')) return 'stay';
   if (has('amusement_park', 'spa', 'water_park', 'zoo', 'aquarium', 'hiking_area', 'marina')) return 'experience';
+  if (types.length > 0) return 'sight';
+  const n = name.toLowerCase();
+  if (/caf[eé]|coffee|restaurant|bakery|patisserie|dessert|kitchen|dhaba|biryani|pizza|\bbar\b|brew|\btea\b|\bmess\b|eatery|food/.test(n)) return 'food';
+  if (/hotel|resort|homestay|home stay|hostel|lodge|\binn\b|guest ?house|villa|\bcamp/.test(n)) return 'stay';
+  if (/trek|trail|boat|cruise|safari|kayak|rafting|\bspa\b|zipline|paraglid/.test(n)) return 'experience';
   return 'sight';
 }
 

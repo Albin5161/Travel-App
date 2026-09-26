@@ -1,5 +1,5 @@
 import { upstreamError } from './errors';
-import type { PlacePhoto } from './types';
+import type { PlaceInfo, PlacePhoto } from './types';
 
 const BASE = 'https://places.googleapis.com/v1';
 
@@ -136,4 +136,62 @@ export async function getPhoto(ref: PhotoRef, key: string): Promise<PlacePhoto |
     console.error('[places:photo]', e);
     return null;
   }
+}
+
+// Everything a place's page shows, in one request. Reviews and the editorial summary put it in
+// Place Details Enterprise + Atmosphere (1,000 free a month), so it's fetched only when someone opens
+// a place, capped per day, and never stored: Google's terms don't allow keeping these.
+const INFO_FIELDS = 'rating,userRatingCount,priceLevel,currentOpeningHours,editorialSummary,reviews,googleMapsUri';
+
+const PRICE: Record<string, number> = {
+  PRICE_LEVEL_FREE: 0,
+  PRICE_LEVEL_INEXPENSIVE: 1,
+  PRICE_LEVEL_MODERATE: 2,
+  PRICE_LEVEL_EXPENSIVE: 3,
+  PRICE_LEVEL_VERY_EXPENSIVE: 4,
+};
+
+export async function getPlaceInfo(placeId: string, key: string): Promise<Extract<PlaceInfo, { status: 'ok' }>> {
+  const url = new URL(`${BASE}/places/${encodeURIComponent(placeId)}`);
+  url.searchParams.set('languageCode', 'en');
+  const res = await fetch(url, {
+    headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': INFO_FIELDS },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw await upstreamError('places:info', res);
+  const d = (await res.json()) as {
+    rating?: number;
+    userRatingCount?: number;
+    priceLevel?: string;
+    currentOpeningHours?: { openNow?: boolean; weekdayDescriptions?: string[] };
+    editorialSummary?: { text?: string };
+    reviews?: {
+      rating?: number;
+      text?: { text?: string };
+      relativePublishTimeDescription?: string;
+      authorAttribution?: { displayName?: string; uri?: string };
+    }[];
+    googleMapsUri?: string;
+  };
+  return {
+    status: 'ok',
+    rating: typeof d.rating === 'number' ? d.rating : null,
+    ratingCount: typeof d.userRatingCount === 'number' ? d.userRatingCount : null,
+    priceLevel: d.priceLevel && d.priceLevel in PRICE ? PRICE[d.priceLevel] : null,
+    openNow: typeof d.currentOpeningHours?.openNow === 'boolean' ? d.currentOpeningHours.openNow : null,
+    hours: d.currentOpeningHours?.weekdayDescriptions ?? [],
+    summary: d.editorialSummary?.text?.trim() || null,
+    // Google returns up to five, most relevant first; three is plenty for a phone screen.
+    reviews: (d.reviews ?? [])
+      .filter((r) => r.text?.text?.trim())
+      .slice(0, 3)
+      .map((r) => ({
+        author: r.authorAttribution?.displayName ?? 'A Google user',
+        authorUri: r.authorAttribution?.uri ?? null,
+        rating: typeof r.rating === 'number' ? r.rating : null,
+        text: (r.text?.text ?? '').trim().slice(0, 600),
+        when: r.relativePublishTimeDescription ?? '',
+      })),
+    googleMapsUri: d.googleMapsUri ?? null,
+  };
 }

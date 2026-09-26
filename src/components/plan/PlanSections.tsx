@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { Linking, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { typeLine } from '@/components/PlaceMeta';
@@ -14,6 +14,7 @@ import { formatCount, formatRupees, getPlaceRating, type CityInfo } from '@/data
 import type { DayPlan } from '@/data/plan';
 import type { DayPart, Place } from '@/data/types';
 import { formatClock } from '@/lib/geo';
+import type { CityNotes } from '@/server/types';
 import { light } from '@/theme/tokens';
 
 type SectionProps = { onLayout: (e: LayoutChangeEvent) => void };
@@ -35,9 +36,42 @@ function Section({
   );
 }
 
-export function OverviewSection({ cityName, info, onLayout }: SectionProps & { cityName: string; info?: CityInfo }) {
-  // Cities that came from a pasted link have no notes of ours yet; say so rather than guess.
-  if (!info) return <NoNotes title={`About ${cityName}`} cityName={cityName} onLayout={onLayout} />;
+type LiveNotes = { notes?: CityNotes | null; loading?: boolean };
+
+export function OverviewSection({
+  cityName,
+  info,
+  notes,
+  loading,
+  onLayout,
+}: SectionProps & { cityName: string; info?: CityInfo } & LiveNotes) {
+  // A city from a pasted link has no hand-written notes: it gets what Wikipedia and Wikivoyage say,
+  // and where they say nothing, the page says so rather than guess.
+  if (!info) {
+    if (!notes) {
+      return <NoNotes title={`About ${cityName}`} cityName={cityName} loading={loading} onLayout={onLayout} />;
+    }
+    return (
+      <Section title={`About ${cityName}`} onLayout={onLayout}>
+        {notes.summary ? <Text variant="body">{notes.summary}</Text> : null}
+        {notes.bestTime || notes.idealStay ? (
+          <View style={styles.stats}>
+            {notes.bestTime ? <Stat label="Best time" value={notes.bestTime} /> : null}
+            {notes.idealStay ? <Stat label="Ideal stay" value={notes.idealStay} /> : null}
+          </View>
+        ) : null}
+        {notes.tips.length ? (
+          <>
+            <Text variant="micro" style={styles.group}>
+              Good to know before you go
+            </Text>
+            <Tips items={notes.tips} />
+          </>
+        ) : null}
+        <Sources notes={notes} />
+      </Section>
+    );
+  }
   const max = Math.max(...info.costBreakdown.map((c) => c.amount));
   return (
     <Section title={`About ${cityName}`} onLayout={onLayout}>
@@ -102,7 +136,7 @@ export function PlacesSection({ places, cityId, onLayout }: SectionProps & { pla
           <PlaceRow key={p.id} place={p} />
         ))}
       </View>
-      <Note>Ratings and reviews from Google. Sample data for the demo.</Note>
+      {places.some((p) => getPlaceRating(p.id)) ? <Note>Ratings and reviews from Google. Sample data for the demo.</Note> : null}
     </Section>
   );
 }
@@ -149,7 +183,11 @@ const PART_TITLE: Record<DayPart, string> = { morning: 'Morning', afternoon: 'Af
 
 export function PlanSection({ plan, planned, onLayout }: SectionProps & { plan: DayPlan; planned: boolean }) {
   return (
-    <Section title="Your day" meta={`${plan.stops.length} stops · ${plan.totalKm.toFixed(1)} km`} onLayout={onLayout}>
+    <Section
+      title="Your day"
+      meta={`${plan.stops.length} ${plan.stops.length === 1 ? 'stop' : 'stops'} · ${plan.totalKm.toFixed(1)} km`}
+      onLayout={onLayout}
+    >
       <Text variant="body">
         {planned
           ? 'Saved. Here’s how your day runs.'
@@ -183,11 +221,58 @@ export function PlanSection({ plan, planned, onLayout }: SectionProps & { plan: 
   );
 }
 
-function NoNotes({ title, cityName, onLayout }: SectionProps & { title: string; cityName: string }) {
+function NoNotes({
+  title,
+  cityName,
+  loading,
+  onLayout,
+}: SectionProps & { title: string; cityName: string; loading?: boolean }) {
   return (
     <Section title={title} onLayout={onLayout}>
-      <Text variant="body">We don’t have notes on {cityName} yet. Your places and your plan work all the same.</Text>
+      <Text variant="body">
+        {loading
+          ? `Reading up on ${cityName}…`
+          : `We don’t have notes on ${cityName} yet. Your places and your plan work all the same.`}
+      </Text>
     </Section>
+  );
+}
+
+function Tips({ items }: { items: string[] }) {
+  return (
+    <View style={styles.tips}>
+      {items.map((t) => (
+        <View key={t} style={styles.tip}>
+          <View style={styles.dot} />
+          <Text variant="body" style={styles.tipText}>
+            {t}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Wikipedia and Wikivoyage ask for credit, a link, the licence, and a note that it was changed. */
+function Sources({ notes }: { notes: CityNotes }) {
+  const open = (url: string) => void Linking.openURL(url).catch(() => {});
+  return (
+    <Text variant="data" color={light.inkFaint} style={styles.note}>
+      Summarised from{' '}
+      {notes.sources.map((src, i) => (
+        <Text key={src.url} variant="data" color={light.inkFaint}>
+          {i > 0 ? ' and ' : ''}
+          <Text variant="data" style={styles.sourceLink} onPress={() => open(src.url)}>
+            {src.site}
+          </Text>
+        </Text>
+      ))}
+      ,{' '}
+      <Text variant="data" style={styles.sourceLink} onPress={() => open('https://creativecommons.org/licenses/by-sa/4.0/')}>
+        CC BY-SA 4.0
+      </Text>
+      .
+    </Text>
   );
 }
 
@@ -196,8 +281,33 @@ export function GoodToKnowSection({
   info,
   play,
   onLayout,
-}: SectionProps & { cityName: string; info?: CityInfo; play: boolean }) {
-  if (!info) return <NoNotes title="Good to know" cityName={cityName} onLayout={onLayout} />;
+  notes,
+  loading,
+}: SectionProps & { cityName: string; info?: CityInfo; play: boolean } & LiveNotes) {
+  // No safety score for a city from a pasted link: nothing reliable backs one. Only the safety
+  // points its sources actually make.
+  if (!info) {
+    if (!notes?.safety.length) {
+      return (
+        <Section title="Good to know" onLayout={onLayout}>
+          <Text variant="body">
+            {loading
+              ? `Reading up on ${cityName}…`
+              : `We don’t have safety notes for ${cityName}. Check local advice before you go.`}
+          </Text>
+        </Section>
+      );
+    }
+    return (
+      <Section title="Good to know" onLayout={onLayout}>
+        <Text variant="micro" style={styles.group}>
+          Staying safe
+        </Text>
+        <Tips items={notes.safety} />
+        <Sources notes={notes} />
+      </Section>
+    );
+  }
   return (
     <Section title="Good to know" onLayout={onLayout}>
       <Text variant="micro" style={styles.group}>
@@ -256,6 +366,7 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 8, backgroundColor: light.panel },
   sectionHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 },
   subhead: { marginTop: 24 },
+  sourceLink: { color: light.inkSoft, textDecorationLine: 'underline' },
   note: { marginTop: 14 },
 
   stats: { flexDirection: 'row', gap: 8, marginTop: 18 },

@@ -1,4 +1,4 @@
-import type { ExtractResult } from './types';
+import type { CityNotes, ExtractResult } from './types';
 import { db } from './supabase';
 
 // What the API remembers, in Supabase. Without Supabase it falls back to this process's memory,
@@ -23,42 +23,57 @@ export type StoredMatch = {
 };
 
 const memory = {
-  extractions: new Map<string, { result: DoneExtraction; at: number }>(),
+  extractions: new Map<string, { result: unknown; at: number }>(),
   matches: new Map<string, { m: StoredMatch; at: number; locationAt: number | null }>(),
 };
 
-export async function getExtraction(videoId: string): Promise<DoneExtraction | null> {
+export const getExtraction = (videoId: string) => getKept<DoneExtraction>(videoId);
+
+export async function putExtraction(videoId: string, result: DoneExtraction): Promise<void> {
+  await putKept(videoId, result, result.usage.model);
+}
+
+/**
+ * Anything read from outside and kept 30 days: a video's places (keyed by its ID, or ig:shortcode)
+ * and a city's notes (city:slug). One table, since the rule is the same for all of them.
+ */
+export async function getKept<T>(key: string): Promise<T | null> {
   const supabase = db();
   if (!supabase) {
-    const hit = memory.extractions.get(videoId);
-    return hit && Date.now() - hit.at < EXTRACTION_TTL ? hit.result : null;
+    const hit = memory.extractions.get(key);
+    return hit && Date.now() - hit.at < EXTRACTION_TTL ? (hit.result as T) : null;
   }
   const { data, error } = await supabase
     .from('api_extractions')
     .select('result')
-    .eq('video_id', videoId)
+    .eq('video_id', key)
     .gt('expires_at', new Date().toISOString())
     .maybeSingle();
   if (error) console.error('[store] extraction read', error.message);
-  return (data?.result as DoneExtraction | undefined) ?? null;
+  return (data?.result as T | undefined) ?? null;
 }
 
-export async function putExtraction(videoId: string, result: DoneExtraction): Promise<void> {
+async function putKept(key: string, result: unknown, model: string | null): Promise<void> {
   const supabase = db();
   if (!supabase) {
-    memory.extractions.set(videoId, { result, at: Date.now() });
+    memory.extractions.set(key, { result, at: Date.now() });
     return;
   }
   const { error } = await supabase.from('api_extractions').upsert({
-    video_id: videoId,
+    video_id: key,
     result,
-    model: result.usage.model,
+    model,
     created_at: new Date().toISOString(),
     expires_at: new Date(Date.now() + EXTRACTION_TTL).toISOString(),
   });
   // Not saving only means the next person waits a few seconds longer; don't fail the request.
   if (error) console.error('[store] extraction write', error.message);
 }
+
+/** A city's notes, kept like a video's places. */
+export const getCityNotes = (key: string) => getKept<CityNotes | { none: true }>(key);
+export const putCityNotes = (key: string, notes: CityNotes | { none: true }, model: string | null) =>
+  putKept(key, notes, model);
 
 /**
  * The development fallback's stored match. With Supabase, reading the match is folded into the

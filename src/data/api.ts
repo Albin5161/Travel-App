@@ -61,6 +61,8 @@ export async function extractPlaces(url: string): Promise<Extraction> {
 }
 
 export const getCity = (id: string): City | undefined => cities[id] ?? live.cities[id];
+/** A city that came from a pasted link: its places are Google's, so its map must be Google's too. */
+export const isLiveCity = (id: string) => id.startsWith('live:');
 
 /**
  * The line under a city's name. District and state, minus whichever of them just repeats the name

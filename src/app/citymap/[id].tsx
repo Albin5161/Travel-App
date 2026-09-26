@@ -15,7 +15,8 @@ import { Button } from '@/components/Button';
 import { CityMap, fitCameraToRect, flyTo, useCamera } from '@/components/CityMap';
 import { IconButton } from '@/components/IconButton';
 import { Text } from '@/components/Text';
-import { getCity, getReel } from '@/data/api';
+import { GoogleMap } from '@/components/GoogleMap';
+import { getCity, getReel, isLiveCity } from '@/data/api';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT, SPRING_SHEET } from '@/lib/motion';
 import { useCityPlaces, useTrips } from '@/state/trips';
@@ -58,6 +59,16 @@ export default function CityMapScreen() {
     haptic.light();
     panel.set(withSpring(1, SPRING_SHEET));
   };
+  // A real city's places are Google's, so they go on Google's map, which has no pin drop to wait
+  // for: the panel comes up once the map has had a moment to appear.
+  const live = isLiveCity(id);
+  useEffect(() => {
+    if (!revealing || !live) return;
+    const t = setTimeout(onRevealed, 500);
+    return () => clearTimeout(t);
+    // Mount-only, like the reveal above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -91,19 +102,29 @@ export default function CityMapScreen() {
   return (
     <View style={styles.fill}>
       <Animated.View style={[StyleSheet.absoluteFill, mapStyle]}>
-        <CityMap
-          city={city}
-          pins={collected.map((p) => ({ id: p.id, place: p }))}
-          width={W}
-          height={H}
-          camera={camera}
-          maxScale={maxScale}
-          activeId={activeId}
-          reveal={revealing}
-          revealDelay={reduced ? 0 : 450}
-          onRevealed={revealing ? onRevealed : undefined}
-          onPinPress={openPin}
-        />
+        {live ? (
+          <GoogleMap
+            pins={collected.map((p) => ({ id: p.id, name: p.name, coords: p.coords, photo: p.photo }))}
+            width={W}
+            height={H}
+            padding={{ top: insets.top + 64, bottom: panelBottom }}
+            onPinPress={(pid) => router.push({ pathname: '/place/[id]', params: { id: pid } })}
+          />
+        ) : (
+          <CityMap
+            city={city}
+            pins={collected.map((p) => ({ id: p.id, place: p }))}
+            width={W}
+            height={H}
+            camera={camera}
+            maxScale={maxScale}
+            activeId={activeId}
+            reveal={revealing}
+            revealDelay={reduced ? 0 : 450}
+            onRevealed={revealing ? onRevealed : undefined}
+            onPinPress={openPin}
+          />
+        )}
       </Animated.View>
 
       <LinearGradient

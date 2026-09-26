@@ -26,7 +26,8 @@ import { StopActions } from '@/components/plan/StopActions';
 import { costLabel, typeLine } from '@/components/PlaceMeta';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
-import { getCity, getLocalPicks } from '@/data/api';
+import { GoogleMap } from '@/components/GoogleMap';
+import { getCity, getLocalPicks, isLiveCity } from '@/data/api';
 import {
   addStop,
   changedStops,
@@ -249,24 +250,41 @@ export default function PlanScreen() {
   return (
     <View style={styles.fill}>
       <View style={{ height: MAP_H }}>
-        <CityMap
-          city={city}
-          pins={stops.map((s, i) => ({ id: s.place.id, place: s.place, number: i + 1 }))}
-          width={W}
-          height={MAP_H}
-          camera={camera}
-          maxScale={focusScale * 1.1}
-          pinSize={30}
-          activeId={activeId}
-          reveal
-          revealDelay={200}
-          onPinPress={(pid) => router.push({ pathname: '/place/[id]', params: { id: pid } })}
-          artChildren={
-            points.length > 1 ? (
-              <Route key={routeKey} d={smoothPath(points)} length={smoothPathLength(points)} progress={progress} width={3 / fit.s} />
-            ) : null
-          }
-        />
+        {isLiveCity(city.id) ? (
+          <GoogleMap
+            pins={stops.map((s, i) => ({
+              id: s.place.id,
+              name: s.place.name,
+              coords: s.place.coords,
+              photo: s.place.photo,
+              number: i + 1,
+            }))}
+            width={W}
+            height={MAP_H}
+            route
+            padding={{ top: insets.top + 60, bottom: 40 }}
+            onPinPress={(pid) => router.push({ pathname: '/place/[id]', params: { id: pid } })}
+          />
+        ) : (
+          <CityMap
+            city={city}
+            pins={stops.map((s, i) => ({ id: s.place.id, place: s.place, number: i + 1 }))}
+            width={W}
+            height={MAP_H}
+            camera={camera}
+            maxScale={focusScale * 1.1}
+            pinSize={30}
+            activeId={activeId}
+            reveal
+            revealDelay={200}
+            onPinPress={(pid) => router.push({ pathname: '/place/[id]', params: { id: pid } })}
+            artChildren={
+              points.length > 1 ? (
+                <Route key={routeKey} d={smoothPath(points)} length={smoothPathLength(points)} progress={progress} width={3 / fit.s} />
+              ) : null
+            }
+          />
+        )}
         <LinearGradient
           pointerEvents="none"
           colors={['rgba(245,244,241,0.85)', 'rgba(245,244,241,0)']}

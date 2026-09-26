@@ -8,6 +8,7 @@
     "@expo/ui": "~57.0.19",
     "@expo/vector-icons": "^15.0.2",
     "@supabase/supabase-js": "^2.109.0",
+    "@vis.gl/react-google-maps": "^1.10.1",
     "expo": "~57.0.24",
     "expo-audio": "~57.0.5",
     "expo-blur": "~57.0.3",

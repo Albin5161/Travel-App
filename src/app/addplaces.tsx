@@ -13,6 +13,7 @@ import { Text } from '@/components/Text';
 import { PlaceSearchSheet } from '@/components/verify/PlaceSearchSheet';
 import { getReel } from '@/data/api';
 import { register } from '@/data/registry';
+import { allDistricts } from '@/data/regions';
 import type { Place } from '@/data/types';
 import { cityFromWhere, placeFromPick, sendVerdicts, townOf, type Suggestion } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
@@ -31,7 +32,10 @@ const ENTER = [0, 1, 2].map((i) => fadeUp(i * 60));
 export default function AddPlaces() {
   const { reel: reelId, url } = useLocalSearchParams<{ reel: string; url: string }>();
   const reel = getReel(reelId);
-  const { dispatch } = useTrips();
+  const { state, dispatch } = useTrips();
+  // Until a place is added there's nothing to lean the search toward but home: most reels people
+  // save are of places they might go, and home is the best guess we have.
+  const home = allDistricts.find((d) => d.id === state.homeDistrictId)?.centre ?? null;
   const insets = useSafeAreaInsets();
   const { width: W } = useWindowDimensions();
   const [added, setAdded] = useState<{ place: Place; where: string }[]>([]);
@@ -163,7 +167,7 @@ export default function AddPlaces() {
         visible={searching}
         cityName={added[0] ? townOf(added[0].where).name : 'this trip'}
         candidates={[]}
-        live={{ near: places[0]?.coords ?? null, resolve }}
+        live={{ near: places[0]?.coords ?? home, resolve }}
         onPick={pick}
         onClose={() => setSearching(false)}
       />

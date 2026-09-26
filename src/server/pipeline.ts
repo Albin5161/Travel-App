@@ -249,7 +249,22 @@ export async function search(req: Partial<SearchRequest>, who: Caller): Promise<
       ? { lat: n.lat, lng: n.lng }
       : null;
   await allowSearch(who);
-  return { suggestions: (await searchPlaces(input, sessionToken, env.placesKey(), near)).slice(0, 6) };
+  const key = env.placesKey();
+  let suggestions = await searchPlaces(input, sessionToken, key, near);
+  // Autocomplete matches names more than towns: "XOXO Kottayam" can find nothing while "XOXO" finds
+  // "XOXO - Coffee & Magic, Kottayam". So once, try without the last word (usually the town), and
+  // put the results that are in it first.
+  const words = input.split(/\s+/);
+  const town = words.length > 1 ? words[words.length - 1].toLowerCase() : '';
+  const shorter = words.slice(0, -1).join(' ');
+  if (suggestions.length === 0 && town && shorter.length >= 3) {
+    await allowSearch(who);
+    const inTown = (s: { where: string }) => s.where.toLowerCase().includes(town);
+    suggestions = (await searchPlaces(shorter, sessionToken, key, near)).sort(
+      (a, b) => Number(inTown(b)) - Number(inTown(a)),
+    );
+  }
+  return { suggestions: suggestions.slice(0, 6) };
 }
 
 /** The Right / Wrong answers from the review screen: the accuracy measure, and what we learn from. */

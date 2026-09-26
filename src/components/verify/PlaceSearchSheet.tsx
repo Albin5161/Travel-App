@@ -262,7 +262,7 @@ function GoogleResults({
     (typed.length < MIN_LETTERS
       ? 'Type the name you saw or heard, and the town if you know it.'
       : !state.loading && state.results.length === 0
-        ? `Nothing found for “${typed}”. Try fewer words, or add the town.`
+        ? `Nothing found for “${typed}”. Try just the name, or add what it is, like “cafe”.`
         : null);
   return (
     <>

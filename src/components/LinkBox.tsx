@@ -4,6 +4,7 @@ import { Keyboard, Platform, Pressable, TextInput, View, type TextStyle } from '
 import Animated, { css, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { CIRCLE, PasteButton } from '@/components/PasteButton';
+import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { detectPlatform } from '@/data/api';
 import { track } from '@/lib/analytics';
@@ -68,6 +69,19 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
     onSubmit(url);
   };
 
+  // Pasting only fills the box. Nothing is read until Go: a wrong paste costs nothing, and the
+  // person decides when to start.
+  const fill = (text: string) => {
+    const url = text.trim();
+    if (!url) return;
+    setValue(url);
+    setUnreadable(false);
+    if (detectPlatform(url)) {
+      setError(null);
+      haptic.light();
+    } else reject();
+  };
+
   const pasteByHand = () => {
     haptic.light();
     setUnreadable(true);
@@ -98,12 +112,6 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
             ref={input}
             value={value}
             onChangeText={(t) => {
-              // A whole link arriving at once is a paste: go straight away, as the button would.
-              // Typing one out still waits for Go.
-              if (t.length - value.length > 12 && detectPlatform(t.trim())) {
-                submit(t);
-                return;
-              }
               setValue(t);
               setError(null);
             }}
@@ -121,7 +129,21 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
             accessibilityLabel="Link to an Instagram reel or YouTube video"
           />
         </Animated.View>
-        <PasteButton shape="circle" onText={submit} onUnreadable={pasteByHand} />
+        {/* Paste until there's a link in the box, then Go: one button, always the next step. */}
+        {platform ? (
+          <Animated.View key="go" entering={FADE_IN}>
+            <PressableScale
+              onPress={() => submit(value)}
+              style={styles.go}
+              accessibilityRole="button"
+              accessibilityLabel="Go: find the places in this video"
+            >
+              <Feather name="arrow-right" size={20} color={light.ctaInk} />
+            </PressableScale>
+          </Animated.View>
+        ) : (
+          <PasteButton shape="circle" onText={fill} onUnreadable={pasteByHand} />
+        )}
       </View>
       <View style={styles.hintSlot}>
         {hint ? (
@@ -170,6 +192,16 @@ const styles = css.create({
     transitionDuration: '180ms',
   },
   fieldFocused: { borderColor: light.lineStrong },
+  // The paste button's twin, so the swap reads as the same button changing job.
+  go: {
+    width: CIRCLE,
+    height: CIRCLE,
+    borderRadius: CIRCLE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: light.cta,
+    boxShadow: shadows.cta,
+  },
   icon: { width: 20, alignItems: 'center', marginRight: 10 },
   // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },

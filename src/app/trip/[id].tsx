@@ -16,6 +16,7 @@ import {
   formatRange,
   fromIso,
   isoDay,
+  PACE_HOURS,
   PACE_STOPS,
   rulePlanner,
   weekend,
@@ -194,9 +195,9 @@ export default function TripSetup() {
                 selected={answered.pace || prefs.party === 'family' ? prefs.pace : null}
                 onPick={(k) => answer({ pace: k as Pace }, 'pace', 'getting')}
                 options={[
-                  { key: 'relaxed', title: 'Relaxed', detail: `${PACE_STOPS.relaxed - 1}–${PACE_STOPS.relaxed} stops a day, late starts` },
-                  { key: 'balanced', title: 'Balanced', detail: `About ${PACE_STOPS.balanced} stops a day` },
-                  { key: 'packed', title: 'Packed', detail: `${PACE_STOPS.packed - 1}–${PACE_STOPS.packed} stops a day, out by seven` },
+                  { key: 'relaxed', title: 'Relaxed', detail: `Up to ${PACE_STOPS.relaxed} stops, about ${PACE_HOURS.relaxed} hours out, late starts` },
+                  { key: 'balanced', title: 'Balanced', detail: `Up to ${PACE_STOPS.balanced} stops, about ${PACE_HOURS.balanced} hours out` },
+                  { key: 'packed', title: 'Packed', detail: `Up to ${PACE_STOPS.packed} stops, about ${PACE_HOURS.packed} hours, out by seven` },
                 ]}
               />
             ) : null}

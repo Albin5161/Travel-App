@@ -44,6 +44,8 @@ export interface TripPlan {
   days: TripDay[];
   /** Saved places that aren't in the plan: they didn't fit, or were taken out. */
   left: Place[];
+  /** Why a place didn't fit, by place id, in words for the traveller. Absent for ones taken out. */
+  leftWhy?: Record<string, string>;
   /** Places the traveller took out. Regenerating keeps them out until they're added back. */
   removed: string[];
   seed: number;
@@ -68,8 +70,12 @@ export interface Planner {
 
 export const partyOf = (prefs: TripPrefs): Party => prefs.party ?? 'friends';
 
-/** Stops per day at each pace. */
+/** Stops per day at each pace: an upper limit. The hours below are what actually fill a day. */
 export const PACE_STOPS: Record<Pace, number> = { relaxed: 3, balanced: 4, packed: 6 };
+/** Hours of seeing and getting around in a day at each pace, driving between stops included. */
+export const PACE_HOURS: Record<Pace, number> = { relaxed: 6, balanced: 8, packed: 10 };
+/** Places this close (the drive or walk between them) make one outing, kept on one day if they fit. */
+const NEARBY_MINUTES = 45;
 // A relaxed day starts later; a packed one earlier.
 const DAY_START: Record<Pace, number> = { relaxed: 9 * 60, balanced: 8 * 60, packed: 7 * 60 };
 const AFTERNOON = 12 * 60 + 30;
@@ -180,69 +186,189 @@ function random(seed: number) {
   };
 }
 
-function byBestTime(rand: () => number) {
-  // Same part of the day: shuffled by the seed, so regenerating can reorder a morning.
-  const jitter = new Map<string, number>();
-  const key = (p: Place) => {
-    if (!jitter.has(p.id)) jitter.set(p.id, rand());
-    return jitter.get(p.id)!;
-  };
-  return (a: Place, b: Place) => PART_RANK[a.bestTime] - PART_RANK[b.bestTime] || key(a) - key(b);
+const PARTS: DayPart[] = ['morning', 'afternoon', 'evening'];
+const legMinutes = (a: Place, b: Place, getting: Getting) => travelLegFor(a.coords, b.coords, getting).minutes;
+
+/**
+ * The order to visit a day's stops: morning places first, then afternoon, then evening, and within
+ * each part always the nearest next stop, so the route doesn't zigzag. The first stop is whichever
+ * gives the shortest morning. `flip` walks each part the other way round, for a regenerate.
+ */
+export function routeOrder<T extends { place: Place }>(stops: T[], getting: Getting, flip = false): T[] {
+  const out: T[] = [];
+  for (const part of PARTS) {
+    const group = stops.filter((s) => s.place.bestTime === part);
+    if (group.length === 0) continue;
+    const chain = (first: T | null) => {
+      const rest = [...group];
+      const path: T[] = [];
+      let at = first ?? out[out.length - 1] ?? null;
+      if (first) {
+        rest.splice(rest.indexOf(first), 1);
+        path.push(first);
+      }
+      let minutes = 0;
+      while (rest.length) {
+        let best = 0;
+        if (at) {
+          for (let i = 1; i < rest.length; i++) {
+            if (legMinutes(at.place, rest[i].place, getting) < legMinutes(at.place, rest[best].place, getting)) best = i;
+          }
+          minutes += legMinutes(at.place, rest[best].place, getting);
+        }
+        at = rest.splice(best, 1)[0];
+        path.push(at);
+      }
+      return { path, minutes };
+    };
+    // Carrying on from the last part's final stop, or, at the start of the day, the best first stop.
+    const path = out.length
+      ? chain(null).path
+      : group.map((g) => chain(g)).sort((a, b) => a.minutes - b.minutes)[0].path;
+    out.push(...(flip && !out.length ? path.reverse() : path));
+  }
+  return out;
+}
+
+/** Minutes a day of these stops takes: time at each place plus getting between them, in route order. */
+export function dayMinutes(places: Place[], getting: Getting) {
+  const ordered = routeOrder(places.map((place) => ({ place })), getting);
+  return ordered.reduce(
+    (sum, s, i) => sum + s.place.minutes + (i > 0 ? legMinutes(ordered[i - 1].place, s.place, getting) : 0),
+    0,
+  );
+}
+
+function hours(minutes: number) {
+  const h = Math.round(minutes / 30) / 2;
+  return h < 1 ? `${Math.round(minutes)} min` : `${h} h`;
+}
+
+type Group = { places: Place[]; day?: number };
+
+/**
+ * Joins groups of places, two at a time, picking the pair that makes the shortest day together,
+ * while there are more groups than `days` and the joined day still fits. Groups tied to a day
+ * (pinned stops) never join each other.
+ */
+function joinIntoDays(start: Group[], days: number, fits: (ps: Place[]) => boolean, length: (ps: Place[]) => number, rand: () => number) {
+  let groups = start;
+  while (groups.length > days) {
+    let best: { i: number; j: number; cost: number } | null = null;
+    for (let i = 0; i < groups.length; i++) {
+      for (let j = i + 1; j < groups.length; j++) {
+        if (groups[i].day !== undefined && groups[j].day !== undefined) continue;
+        const joined = [...groups[i].places, ...groups[j].places];
+        if (!fits(joined)) continue;
+        // A hair of seeded noise, so a regenerate can pick between two equally good days.
+        const cost = length(joined) + rand() * 5;
+        if (!best || cost < best.cost) best = { i, j, cost };
+      }
+    }
+    if (!best) break;
+    const { i, j } = best;
+    const joined = { places: [...groups[i].places, ...groups[j].places], day: groups[i].day ?? groups[j].day };
+    groups = [...groups.filter((_, k) => k !== i && k !== j), joined];
+  }
+  return groups;
+}
+
+/** How many days these places need at a pace: the fewest days they all fit into. */
+export function daysNeeded(places: Place[], pace: Pace = 'balanced', getting: Getting = 'local') {
+  if (places.length === 0) return 0;
+  const fits = (ps: Place[]) => ps.length <= PACE_STOPS[pace] && dayMinutes(ps, getting) <= PACE_HOURS[pace] * 60;
+  const length = (ps: Place[]) => dayMinutes(ps, getting);
+  return joinIntoDays(places.map((p) => ({ places: [p] })), 1, fits, length, () => 0).length;
 }
 
 /**
- * Groups saved places by area so each day stays in one part of the map, fills days up to the
- * pace, keeps pinned stops on their day, and offers one local pick where a day has no dinner.
+ * Fits saved places into days by time, not by count. Each day has an hours budget for the pace
+ * (time at places plus getting between them) and a stop limit.
+ *
+ * Every place starts as its own group. The two groups that make the shortest day together are
+ * joined, again and again, while there are more groups than days and the joined day still fits. So
+ * places near each other share a day, a trip's days are all used, and a place too far to share a
+ * day keeps one to itself. Groups that still don't get a day wait in "not in this plan", each with
+ * the reason. Pinned stops stay on their day, and other places can join them there.
  */
 export const rulePlanner: Planner = {
   name: 'rules',
   async plan({ cityId, saved, suggestions, prefs, pins, removed, seed }) {
     const rand = random(seed);
     const cap = PACE_STOPS[prefs.pace];
+    const budget = PACE_HOURS[prefs.pace] * 60;
+    const getting = prefs.getting;
     const n = Math.max(1, prefs.days);
-    const days: Placed[][] = Array.from({ length: n }, () => []);
     const pinnedTo = new Map(pins.map((p) => [p.placeId, p.day]));
     const pool = saved.filter((p) => !removed.includes(p.id));
+    const isPinned = (p: Place) => (pinnedTo.get(p.id) ?? n) < n;
 
-    for (const p of pool) {
-      const d = pinnedTo.get(p.id);
-      if (d !== undefined && d < n) days[d].push({ place: p, pinned: true, suggested: false });
+    const length = (ps: Place[]) => dayMinutes(ps, getting);
+    const fitsDay = (ps: Place[]) => ps.length <= cap && length(ps) <= budget;
+
+    const startGroups: Group[] = [];
+    for (let d = 0; d < n; d++) {
+      const pinned = pool.filter((p) => pinnedTo.get(p.id) === d);
+      if (pinned.length) startGroups.push({ places: pinned, day: d });
     }
-    const rest = pool.filter((p) => !(pinnedTo.has(p.id) && pinnedTo.get(p.id)! < n));
+    startGroups.push(...pool.filter((p) => !isPinned(p)).map((p) => ({ places: [p] })));
+    const groups = joinIntoDays(startGroups, n, fitsDay, length, rand);
 
-    // Areas, biggest first; equal sizes in seeded order. Days are tried in seeded order too.
-    const byArea = new Map<string, Place[]>();
-    for (const p of rest) byArea.set(p.area, [...(byArea.get(p.area) ?? []), p]);
-    const areas = [...byArea.values()]
-      .map((g) => ({ g, r: rand() }))
-      .sort((a, b) => b.g.length - a.g.length || a.r - b.r)
-      .map((x) => x.g);
-    const dayOrder = Array.from({ length: n }, (_, i) => ({ i, r: rand() })).sort((a, b) => a.r - b.r).map((x) => x.i);
+    const days: Place[][] = Array.from({ length: n }, () => []);
+    for (const g of groups) if (g.day !== undefined) days[g.day] = g.places;
+    // The fullest groups get the free days, Day 1 first; a regenerate shuffles which day is which.
+    const free = groups
+      .filter((g) => g.day === undefined)
+      .sort((a, b) => b.places.length - a.places.length || length(a.places) - length(b.places));
+    const freeDays = days.map((d, i) => (d.length ? -1 : i)).filter((i) => i >= 0);
+    if (seed !== 1) freeDays.sort(() => rand() - 0.5);
+    free.slice(0, freeDays.length).forEach((g, k) => (days[freeDays[k]] = g.places));
+
+    // Groups without a day: each place tries every day it could still fit into, cheapest first.
     const left: Place[] = [];
-    const sort = byBestTime(rand);
-
-    for (const group of areas) {
-      for (const place of [...group].sort(sort)) {
-        const room = (d: number) => cap - days[d].length;
-        const sameArea = dayOrder.find((d) => room(d) > 0 && days[d].some((s) => s.place.area === place.area));
-        const target = sameArea ?? [...dayOrder].sort((a, b) => room(b) - room(a))[0];
-        if (target === undefined || room(target) <= 0) left.push(place);
-        else days[target].push({ place, pinned: false, suggested: false });
+    const leftWhy: Record<string, string> = {};
+    for (const g of free.slice(freeDays.length)) {
+      for (const place of g.places) {
+        const target = days
+          .map((d, i) => ({ i, extra: length([...d, place]) - length(d) }))
+          .filter(({ i }) => fitsDay([...days[i], place]))
+          .sort((a, b) => a.extra - b.extra)[0];
+        if (target) {
+          days[target.i] = [...days[target.i], place];
+          continue;
+        }
+        left.push(place);
+        const others = pool.filter((p) => p.id !== place.id);
+        const nearest = others.length ? Math.min(...others.map((o) => legMinutes(o, place, getting))) : 0;
+        leftWhy[place.id] =
+          place.minutes > budget
+            ? 'Takes longer than a whole day at this pace.'
+            : nearest > NEARBY_MINUTES
+              ? `About ${hours(nearest)} from your other places, so it needs a day of its own. Add a day, or pick a faster pace.`
+              : 'Your days are full at this pace. Add a day, or pick a faster pace.';
       }
     }
 
-    // One local pick per day that has room and no dinner, never the same pick twice.
-    const offered = suggestions.filter((s) => !removed.includes(s.id) && !pool.some((p) => p.id === s.id));
-    for (const d of days) {
-      const noDinner = !d.some((s) => s.place.type === 'food' && s.place.bestTime === 'evening');
-      if (d.length < cap && noDinner && offered.length) d.push({ place: offered.shift()!, pinned: false, suggested: true });
-    }
+    const placed: Placed[][] = days.map((d) => d.map((place) => ({ place, pinned: isPinned(place), suggested: false })));
 
+    // One local pick per day that has room and time and no dinner, never the same pick twice.
+    const offered = suggestions.filter((s) => !removed.includes(s.id) && !pool.some((p) => p.id === s.id));
+    placed.forEach((d) => {
+      const noDinner = !d.some((s) => s.place.type === 'food' && s.place.bestTime === 'evening');
+      const pick = offered.find((o) => fitsDay([...d.map((s) => s.place), o]));
+      if (noDinner && pick) {
+        offered.splice(offered.indexOf(pick), 1);
+        d.push({ place: pick, pinned: false, suggested: true });
+      }
+    });
+
+    const flip = rand() < 0.5;
     const plan: TripPlan = {
       cityId,
       prefs,
-      days: days.map((d, i) => timeDay([...d].sort((a, b) => sort(a.place, b.place)), prefs, prefs.start ? addDays(prefs.start, i) : null)),
+      days: placed.map((d, i) => timeDay(routeOrder(d, getting, flip), prefs, prefs.start ? addDays(prefs.start, i) : null)),
       left,
+      leftWhy,
       removed,
       seed,
     };

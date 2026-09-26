@@ -181,7 +181,28 @@ function PlaceRow({ place }: { place: Place }) {
 
 const PART_TITLE: Record<DayPart, string> = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening' };
 
-export function PlanSection({ plan, planned, onLayout }: SectionProps & { plan: DayPlan; planned: boolean }) {
+/**
+ * The city page's look at the trip. One day's worth of places shows as that day; more than a day's
+ * worth says how many days they need instead, rather than squeezing them into one impossible day.
+ */
+export function PlanSection({
+  plan,
+  planned,
+  days,
+  onLayout,
+}: SectionProps & { plan: DayPlan; planned: boolean; days: number }) {
+  const count = `${plan.stops.length} ${plan.stops.length === 1 ? 'place' : 'places'}`;
+  if (days > 1) {
+    return (
+      <Section title="Your trip" meta={`${count} · ${days} days`} onLayout={onLayout}>
+        <Text variant="body">
+          {planned
+            ? `Saved as a ${days}-day plan. Open it to see each day.`
+            : `These places are too spread out for one day. They need about ${days} days; plan the trip to see how they split.`}
+        </Text>
+      </Section>
+    );
+  }
   return (
     <Section
       title="Your day"

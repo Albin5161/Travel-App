@@ -25,6 +25,7 @@ import { getCity } from '@/data/api';
 import { formatRupees, getCityInfo } from '@/data/cityInfo';
 import { useCityNotes } from '@/lib/details';
 import { buildPlan } from '@/data/plan';
+import { daysNeeded } from '@/data/planner';
 import { haptic } from '@/lib/haptics';
 import { useCityPlaces, useTrips } from '@/state/trips';
 import { light, shadows } from '@/theme/tokens';
@@ -122,7 +123,10 @@ export default function CityScreen() {
   const planned = !!state.savedTrips[id];
   const places = collection?.placeIds.length ?? 0;
   const reels = collection?.reelIds.length ?? 0;
-  const plan = buildPlan([...kept, ...locals].length ? [...kept, ...locals] : collected);
+  const previewed = [...kept, ...locals].length ? [...kept, ...locals] : collected;
+  const plan = buildPlan(previewed);
+  // A saved trip shows its own length; otherwise, how many days these places need at an easy pace.
+  const tripDays = planned && state.tripPlans[id] ? state.tripPlans[id].days.length : daysNeeded(previewed);
 
   // An existing plan opens as it was left; otherwise the questions come first.
   const start = () =>
@@ -199,7 +203,7 @@ export default function CityScreen() {
             onLayout={(e) => setSectionY(0, e.nativeEvent.layout.y)}
           />
           <PlacesSection places={collected} cityId={id} onLayout={(e) => setSectionY(1, e.nativeEvent.layout.y)} />
-          <PlanSection plan={plan} planned={planned} onLayout={(e) => setSectionY(2, e.nativeEvent.layout.y)} />
+          <PlanSection plan={plan} planned={planned} days={tripDays} onLayout={(e) => setSectionY(2, e.nativeEvent.layout.y)} />
           <GoodToKnowSection
             cityName={city.name}
             info={info}

@@ -5,6 +5,8 @@ import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSprin
 import { Text } from '@/components/Text';
 import { haptic } from '@/lib/haptics';
 import { SPRING_SHEET } from '@/lib/motion';
+import { skyInk } from '@/theme/sky';
+import { useTone } from '@/theme/tone';
 import { light, shadows } from '@/theme/tokens';
 
 type Option<K extends string> = { key: K; label: string; count?: number };
@@ -25,6 +27,7 @@ const BORDER = 1;
  */
 export function Segmented<K extends string>({ value, options, onChange }: Props<K>) {
   const reduced = useReducedMotion();
+  const sky = useTone() === 'sky';
   const [width, setWidth] = useState(0);
   // onLayout reports the outer width; the thumb lives inside the border and the padding.
   const seg = width > 0 ? (width - PAD * 2 - BORDER * 2) / options.length : 0;
@@ -43,8 +46,8 @@ export function Segmented<K extends string>({ value, options, onChange }: Props<
   const thumb = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
 
   return (
-    <View style={styles.track} onLayout={(e) => setWidth(e.nativeEvent.layout.width)} accessibilityRole="tablist">
-      {seg > 0 ? <Animated.View style={[styles.thumb, { width: seg }, thumb]} /> : null}
+    <View style={[styles.track, sky && styles.trackSky]} onLayout={(e) => setWidth(e.nativeEvent.layout.width)} accessibilityRole="tablist">
+      {seg > 0 ? <Animated.View style={[styles.thumb, sky && styles.thumbSky, { width: seg }, thumb]} /> : null}
       {options.map((o) => {
         const on = o.key === value;
         return (
@@ -60,11 +63,11 @@ export function Segmented<K extends string>({ value, options, onChange }: Props<
             accessibilityState={{ selected: on }}
             accessibilityLabel={o.count != null ? `${o.label}, ${o.count}` : o.label}
           >
-            <Text variant="label" color={on ? light.ink : light.inkSoft}>
+            <Text variant="label" color={sky ? (on ? skyInk.strong : skyInk.faint) : on ? light.ink : light.inkSoft}>
               {o.label}
             </Text>
             {o.count != null ? (
-              <Text variant="data" color={on ? light.inkSoft : light.inkFaint}>
+              <Text variant="data" color={sky ? skyInk.faint : on ? light.inkSoft : light.inkFaint}>
                 {o.count}
               </Text>
             ) : null}
@@ -94,5 +97,8 @@ const styles = StyleSheet.create({
     backgroundColor: light.panel,
     boxShadow: shadows.button,
   },
+  // Over the sky: a darker well with a lighter pane sliding in it, like the system control on glass.
+  trackSky: { backgroundColor: 'rgba(0,0,0,0.14)', borderColor: skyInk.line },
+  thumbSky: { backgroundColor: 'rgba(255,255,255,0.24)', boxShadow: 'none' },
   option: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
 });

@@ -6,6 +6,8 @@ import { PhotoCard } from '@/components/PhotoCard';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import type { Platform } from '@/data/types';
+import { skyInk } from '@/theme/sky';
+import { useTone } from '@/theme/tone';
 import { fonts, light, shadows } from '@/theme/tokens';
 
 export type Rect = { x: number; y: number; width: number; height: number };
@@ -81,6 +83,7 @@ export function CityTile({
 }: Props) {
   const photoRef = useRef<View>(null);
   const f = faceScale(width);
+  const sky = useTone() === 'sky';
   const press = () => {
     const node = photoRef.current;
     if (!node) return;
@@ -107,13 +110,13 @@ export function CityTile({
               key={p}
               name={p === 'youtube' ? 'logo-youtube' : 'logo-instagram'}
               size={f.compact ? 11 : 13}
-              color={light.inkSoft}
+              color={sky ? skyInk.soft : light.inkSoft}
               accessibilityLabel={p === 'youtube' ? 'YouTube' : 'Instagram'}
             />
           ))}
           <Text
             variant="label"
-            color={light.inkFaint}
+            color={sky ? skyInk.faint : light.inkFaint}
             numberOfLines={1}
             style={[styles.captionShrink, f.compact && styles.captionText]}
           >
@@ -124,7 +127,7 @@ export function CityTile({
           {captionValue}
         </Text>
         {photoCredit ? (
-          <Text variant="label" color={light.inkFaint} numberOfLines={1} style={styles.captionText}>
+          <Text variant="label" color={sky ? skyInk.faint : light.inkFaint} numberOfLines={1} style={styles.captionText}>
             Photo: {photoCredit}
           </Text>
         ) : null}

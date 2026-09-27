@@ -9,8 +9,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Glass } from '@/components/sky/Glass';
 import { haptic } from '@/lib/haptics';
 import { DURATION, EASE_OUT, SPRING_SETTLE } from '@/lib/motion';
+import { useHomeSky } from '@/state/sky';
+import { SKY, skyInk } from '@/theme/sky';
 import { fonts, light, shadows } from '@/theme/tokens';
 
 type IconName = React.ComponentProps<typeof Feather>['name'];
@@ -30,40 +33,50 @@ const LABELS: Record<string, string> = { index: 'Home', trips: 'Trips', map: 'Ma
 /**
  * A floating paper pill rather than a system tab bar, so it sits on the light canvas like the rest of
  * the UI. Screens pushed over the tabs (city, Pick, Plan) hide it, keeping Plan mode uninterrupted.
+ * Over Home's sky it turns to frosted glass with white icons.
  */
 export function TabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  const phase = useHomeSky();
+  const sky = state.routes[state.index]?.name === 'index';
+  const tabs = state.routes.map((route, i) => (
+    <Tab
+      key={route.key}
+      name={route.name}
+      focused={state.index === i}
+      sky={sky}
+      onPress={() => {
+        if (state.index !== i) haptic.selection();
+        navigation.navigate(route.name);
+      }}
+    />
+  ));
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
-      <View style={styles.bar}>
-        {state.routes.map((route, i) => (
-          <Tab
-            key={route.key}
-            name={route.name}
-            focused={state.index === i}
-            onPress={() => {
-              if (state.index !== i) haptic.selection();
-              navigation.navigate(route.name);
-            }}
-          />
-        ))}
-      </View>
+      {sky ? (
+        <Glass tint={SKY[phase].glass} radius={30} style={styles.barSky}>
+          {tabs}
+        </Glass>
+      ) : (
+        <View style={styles.bar}>{tabs}</View>
+      )}
     </View>
   );
 }
 
-function Tab({ name, focused, onPress }: { name: string; focused: boolean; onPress: () => void }) {
+function Tab({ name, focused, sky, onPress }: { name: string; focused: boolean; sky: boolean; onPress: () => void }) {
   const reduced = useReducedMotion();
-  const on = useDerivedValue(() =>
+  const on = focused ? (sky ? skyInk.strong : light.ink) : sky ? skyInk.faint : light.inkFaint;
+  const lit = useDerivedValue(() =>
     reduced ? (focused ? 1 : 0) : withSpring(focused ? 1 : 0, SPRING_SETTLE),
   );
   const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + 0.08 * on.get() }, { translateY: -2 * on.get() }],
+    transform: [{ scale: 1 + 0.08 * lit.get() }, { translateY: -2 * lit.get() }],
   }));
   const labelStyle = useAnimatedStyle(() => ({
     opacity: withTiming(focused ? 1 : 0.55, { duration: DURATION.small, easing: EASE_OUT }),
   }));
-  const dotStyle = useAnimatedStyle(() => ({ opacity: on.get(), transform: [{ scale: on.get() }] }));
+  const dotStyle = useAnimatedStyle(() => ({ opacity: lit.get(), transform: [{ scale: lit.get() }] }));
 
   return (
     <Pressable
@@ -75,12 +88,12 @@ function Tab({ name, focused, onPress }: { name: string; focused: boolean; onPre
       accessibilityLabel={LABELS[name] ?? name}
     >
       <Animated.View style={iconStyle}>
-        <Feather name={ICONS[name] ?? 'circle'} size={20} color={focused ? light.ink : light.inkFaint} />
+        <Feather name={ICONS[name] ?? 'circle'} size={20} color={on} />
       </Animated.View>
-      <Animated.Text style={[styles.label, { color: focused ? light.ink : light.inkFaint }, labelStyle]}>
+      <Animated.Text style={[styles.label, { color: on }, labelStyle]}>
         {LABELS[name] ?? name}
       </Animated.Text>
-      <Animated.View style={[styles.dot, dotStyle]} />
+      <Animated.View style={[styles.dot, sky && styles.dotSky, dotStyle]} />
     </Pressable>
   );
 }
@@ -96,7 +109,9 @@ const styles = StyleSheet.create({
     borderColor: light.line,
     boxShadow: shadows.card,
   },
+  barSky: { flexDirection: 'row', height: 60, boxShadow: '0 10px 30px rgba(4,10,30,0.25)' },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 },
   label: { fontFamily: fonts.sansMedium, fontSize: 11 },
   dot: { position: 'absolute', bottom: 7, width: 4, height: 4, borderRadius: 2, backgroundColor: light.ink },
+  dotSky: { backgroundColor: skyInk.strong },
 });

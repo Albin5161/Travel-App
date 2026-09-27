@@ -5,6 +5,8 @@ import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { haptic } from '@/lib/haptics';
 import { DURATION, EASE_OUT } from '@/lib/motion';
+import { skyInk } from '@/theme/sky';
+import { useTone } from '@/theme/tone';
 import { light } from '@/theme/tokens';
 
 /** The two-state split people actually see: near home, or away. Geography stops here. */
@@ -81,6 +83,7 @@ export function Chips<T extends string | number | null>({
   value: T;
   onChange: (key: T) => void;
 }) {
+  const sky = useTone() === 'sky';
   return (
     <ScrollView
       horizontal
@@ -97,11 +100,11 @@ export function Chips<T extends string | number | null>({
               if (!active) haptic.selection();
               onChange(o.key);
             }}
-            style={[styles.chip, active && styles.chipOn]}
+            style={[styles.chip, sky && styles.chipSky, active && (sky ? styles.chipSkyOn : styles.chipOn)]}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
           >
-            <Text variant="label" color={active ? light.ctaInk : light.inkSoft}>
+            <Text variant="label" color={sky ? (active ? light.ink : skyInk.soft) : active ? light.ctaInk : light.inkSoft}>
               {o.label}
             </Text>
           </PressableScale>
@@ -137,4 +140,6 @@ const styles = StyleSheet.create({
     borderColor: light.line,
   },
   chipOn: { backgroundColor: light.cta, borderColor: light.cta },
+  chipSky: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: skyInk.rim },
+  chipSkyOn: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
 });

@@ -24,7 +24,7 @@ export const CIRCLE = 48;
 // Elsewhere it falls back to reading the clipboard on press.
 export function PasteButton({ onText, onUnreadable, shape = 'pill', style }: Props) {
   const tone = useTone();
-  const bg = tone === 'light' ? light.cta : colors.mist;
+  const bg = tone === 'light' ? light.cta : tone === 'sky' ? '#FFFFFF' : colors.mist;
   const fg = tone === 'light' ? light.ctaInk : colors.night;
   const circle = shape === 'circle';
 

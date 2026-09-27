@@ -73,7 +73,8 @@ export function useCityOpen() {
     const done = () => {
       cardRef.current = null;
       setCard(null);
-      setStatusBarStyle('dark');
+      // Back on Home, which sits on the sky.
+      setStatusBarStyle('light');
     };
     const finish = (finished?: boolean) => {
       'worklet';

@@ -1,6 +1,6 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
-import { Keyboard, Platform, Pressable, TextInput, View, type TextStyle } from 'react-native';
+import { Keyboard, Platform, Pressable, TextInput, View, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { css, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { CIRCLE, PasteButton } from '@/components/PasteButton';
@@ -10,6 +10,8 @@ import { detectPlatform } from '@/data/api';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { FADE_IN, FADE_OUT } from '@/lib/motion';
+import { skyInk } from '@/theme/sky';
+import { useTone } from '@/theme/tone';
 import { fonts, light, shadows } from '@/theme/tokens';
 
 type Props = {
@@ -36,6 +38,8 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
   const [unreadable, setUnreadable] = useState(false);
   const input = useRef<TextInput>(null);
   const platform = detectPlatform(value);
+  const sky = useTone() === 'sky';
+  const ink = sky ? SKY_INK : PAPER_INK;
 
   const shake = useSharedValue(0);
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.get() }] }));
@@ -94,18 +98,20 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
   return (
     <View>
       <View style={styles.row}>
-        <Animated.View style={[styles.field, focused && styles.fieldFocused, shakeStyle]}>
+        <Animated.View
+          style={[styles.field, focused && styles.fieldFocused, sky && styles.fieldSky, sky && WEB_FROST, sky && focused && styles.fieldSkyFocused, shakeStyle]}
+        >
           <View style={styles.icon}>
             {platform ? (
               <Animated.View key={platform} entering={FADE_IN}>
                 <Ionicons
                   name={platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'}
                   size={18}
-                  color={light.ink}
+                  color={ink.strong}
                 />
               </Animated.View>
             ) : (
-              <Feather name="link" size={16} color={light.inkFaint} />
+              <Feather name="link" size={16} color={ink.faint} />
             )}
           </View>
           <TextInput
@@ -119,13 +125,13 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
             onBlur={() => setFocused(false)}
             onSubmitEditing={() => submit(value)}
             placeholder="Paste a video link"
-            placeholderTextColor={light.inkFaint}
+            placeholderTextColor={ink.faint}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
             returnKeyType="go"
-            selectionColor={light.ink}
-            style={[styles.input, NO_FOCUS_RING]}
+            selectionColor={ink.strong}
+            style={[styles.input, { color: ink.strong }, NO_FOCUS_RING]}
             accessibilityLabel="Link to an Instagram reel or YouTube video"
           />
         </Animated.View>
@@ -134,11 +140,11 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
           <Animated.View key="go" entering={FADE_IN}>
             <PressableScale
               onPress={() => submit(value)}
-              style={styles.go}
+              style={[styles.go, sky && styles.goSky]}
               accessibilityRole="button"
               accessibilityLabel="Go: find the places in this video"
             >
-              <Feather name="arrow-right" size={20} color={light.ctaInk} />
+              <Feather name="arrow-right" size={20} color={sky ? light.ink : light.ctaInk} />
             </PressableScale>
           </Animated.View>
         ) : (
@@ -148,17 +154,17 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
       <View style={styles.hintSlot}>
         {hint ? (
           <Animated.View key={hint} entering={FADE_IN} exiting={FADE_OUT}>
-            <Text variant="label" color={error ? light.ink : light.inkSoft} style={styles.hint}>
+            <Text variant="label" color={error ? ink.strong : ink.soft} style={styles.hint}>
               {hint}
             </Text>
           </Animated.View>
         ) : onExample && !value ? (
           <Animated.View entering={FADE_IN} exiting={FADE_OUT} style={styles.exampleRow}>
-            <Text variant="label" color={light.inkFaint}>
+            <Text variant="label" color={ink.faint}>
               No link handy?
             </Text>
             <Pressable onPress={onExample} hitSlop={10} accessibilityRole="button">
-              <Text variant="label" style={styles.exampleLink}>
+              <Text variant="label" color={ink.strong} style={styles.exampleLink}>
                 Try an example
               </Text>
             </Pressable>
@@ -168,6 +174,16 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
     </View>
   );
 }
+
+const PAPER_INK = { strong: light.ink, soft: light.inkSoft, faint: light.inkFaint };
+const SKY_INK = { strong: skyInk.strong, soft: skyInk.soft, faint: skyInk.faint };
+
+// Over the sky the field is frosted glass: the photo prints tucked behind it blur through rather
+// than showing sharp. Phones get the same from the field's own translucency.
+const WEB_FROST =
+  Platform.OS === 'web'
+    ? ({ backdropFilter: 'blur(18px) saturate(140%)', WebkitBackdropFilter: 'blur(18px) saturate(140%)' } as ViewStyle)
+    : null;
 
 // Web only: the browser draws its own focus ring round the inner input, in the system accent colour
 // and narrower than the pill. outlineWidth: 0 isn't enough, since Chrome's 'auto' ring ignores width.
@@ -192,6 +208,13 @@ const styles = css.create({
     transitionDuration: '180ms',
   },
   fieldFocused: { borderColor: light.lineStrong },
+  // Over the sky: frosted white, a lighter pane of the same glass as the cards around it.
+  fieldSky: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderColor: skyInk.rim,
+    boxShadow: 'none',
+  },
+  fieldSkyFocused: { backgroundColor: 'rgba(255,255,255,0.22)', borderColor: 'rgba(255,255,255,0.45)' },
   // The paste button's twin, so the swap reads as the same button changing job.
   go: {
     width: CIRCLE,
@@ -202,6 +225,7 @@ const styles = css.create({
     backgroundColor: light.cta,
     boxShadow: shadows.cta,
   },
+  goSky: { backgroundColor: '#FFFFFF', boxShadow: '0 8px 20px rgba(4,10,30,0.22)' },
   icon: { width: 20, alignItems: 'center', marginRight: 10 },
   // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },

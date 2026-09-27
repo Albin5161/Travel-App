@@ -1,8 +1,9 @@
 import { createContext, useContext, type ReactNode } from 'react';
 
 // Which palette the shared components (Text, Button) draw with. The app is light; anything drawn on
-// top of a photo (place cards, the reel preview) wraps itself in <Tone value="dark">.
-export type ToneName = 'dark' | 'light';
+// top of a photo (place cards, the reel preview) wraps itself in <Tone value="dark">. Screens
+// drawn over the sky (theme/sky) use "sky": white type in a weather app's strengths.
+export type ToneName = 'dark' | 'light' | 'sky';
 
 const ToneContext = createContext<ToneName>('light');
 

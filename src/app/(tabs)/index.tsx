@@ -1,10 +1,16 @@
 import { Feather } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
+import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { AppState, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { AppState, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, {
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CityOpenOverlay, useCityOpen } from '@/components/CityOpenOverlay';
@@ -13,6 +19,8 @@ import { FIELD_TRAILING, LinkBox } from '@/components/LinkBox';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { Segmented } from '@/components/Segmented';
+import { Glass, GlassLabel } from '@/components/sky/Glass';
+import { Sky } from '@/components/sky/Sky';
 import { EXAMPLE_LINKS, getCity, getReel } from '@/data/api';
 import { places } from '@/data/catalog';
 import { PhotoStrip } from '@/components/home/PhotoStrip';
@@ -21,8 +29,11 @@ import type { Platform as SourcePlatform } from '@/data/types';
 import { platformOfLink, track } from '@/lib/analytics';
 import { FADE_IN, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips, type HomeTab } from '@/state/trips';
+import { useHomeSky } from '@/state/sky';
 import { useHere } from '@/state/where';
-import { fonts, light, shadows } from '@/theme/tokens';
+import { SKY, skyInk } from '@/theme/sky';
+import { Tone } from '@/theme/tone';
+import { fonts } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
 const GUTTER = 16;
@@ -36,12 +47,15 @@ const INSPIRATION = ['meg-dawki', 'kochi-mural', 'gok-om', 'meg-falls', 'gok-hal
 /** The floating tab bar sits over the scroll, so the last row of tiles has to clear it. */
 const TAB_BAR_CLEARANCE = 100;
 const GAP = 10;
+/** The glass card's side padding. */
+const PANEL_PAD = 12;
 /** Three across. Tighter than two, and the grid reads as a collection rather than a shortlist. */
 const COLUMNS = 3;
 
 // Home is Collect mode: paste a video, check what it found, watch your collections fill up. The
 // collections split the way the app does: Near Home (weekends) and Cities (trips). Tapping a card
-// opens that place's page.
+// opens that place's page. It sits on the sky as it is at home right now, with the collections on
+// a glass card, the way a weather app sets its panels over the weather.
 export default function Home() {
   const insets = useSafeAreaInsets();
   const { width: W } = useWindowDimensions();
@@ -55,10 +69,24 @@ export default function Home() {
     startLink(url);
   };
 
+  const phase = useHomeSky();
+  const look = SKY[phase];
   const cityOpen = useCityOpen();
   const closeCity = cityOpen.close;
   // Back on home from a city (by any route): shrink the city page back into its card.
   useFocusEffect(closeCity);
+  useFocusEffect(lightStatusBar);
+
+  // The link box sticks at the top once scrolled to; from then on the collections pass under it,
+  // so it frosts over (as a system bar does) only while something is actually behind it.
+  const scrollY = useSharedValue(0);
+  const [stickAt, setStickAt] = useState(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.set(e.contentOffset.y);
+  });
+  const frostStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.get(), [stickAt, stickAt + 24], [0, 1], Extrapolation.CLAMP),
+  }));
 
   const collections = Object.values(state.collections).sort((a, b) => b.addedAt - a.addedAt);
   const near = collections.filter((c) => isNearHome(c.cityId, state.homeDistrictId));
@@ -82,7 +110,8 @@ export default function Home() {
   // Offer the first example whose place isn't collected yet, so each tap shows something new.
   const example = EXAMPLE_LINKS.find((e) => !state.collections[e.cityId]) ?? EXAMPLE_LINKS[0];
   const fresh = state.freshCityId;
-  const tileW = (W - GUTTER * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
+  // Inside the glass card now, so its padding comes off the row too.
+  const tileW = (W - GUTTER * 2 - PANEL_PAD * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
 
   useEffect(() => {
     if (!fresh) return;
@@ -91,17 +120,20 @@ export default function Home() {
   }, [dispatch, fresh]);
 
   return (
+    <Tone value="sky">
     <View style={styles.root}>
+      <Sky phase={phase} />
       <View style={[styles.fill, { paddingTop: insets.top }]}>
-        <LinearGradient colors={[light.canvasTop, light.canvas]} style={styles.wash} pointerEvents="none" />
-        <ScrollView
+        <Animated.ScrollView
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           stickyHeaderIndices={[1]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1, paddingTop: 12 }}
+          contentContainerStyle={{ flexGrow: 1, paddingTop: 12, paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }}
         >
-          <View style={styles.header}>
+          <View style={styles.header} onLayout={(e) => setStickAt(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
             <View style={styles.topRow}>
               <Text style={styles.wordmark}>Xplore</Text>
               <HereChip />
@@ -120,13 +152,18 @@ export default function Home() {
           </View>
 
           <Animated.View entering={ENTER[1]} style={styles.sticky}>
+            <Animated.View style={[styles.frost, frostStyle]} pointerEvents="none">
+              <Glass tint={look.glass} radius={0} style={styles.frostFill} />
+            </Animated.View>
             <LinkBox key={boxKey} onSubmit={start} clipboardHasLink={hasLink} onExample={() => start(example.url)} />
           </Animated.View>
 
           {/* First run is just the question and the link box. The collections appear with the first
               save, fading up as it lands, rather than greeting a new user with two empty tabs. */}
           {collections.length === 0 ? null : (
-            <Animated.View entering={ENTER[2]} style={[styles.panel, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}>
+            <Animated.View entering={ENTER[2]} style={styles.panelWrap}>
+              <Glass tint={look.glass} style={styles.panel}>
+              <GlassLabel icon="bookmark">My collections</GlassLabel>
               <Segmented
                 value={tab}
                 onChange={(t) => dispatch({ type: 'setHomeTab', tab: t })}
@@ -135,9 +172,6 @@ export default function Home() {
                   { key: 'cities', label: 'Cities', count: away.length },
                 ]}
               />
-              <Text variant="micro" style={styles.panelTitle}>
-                My collections
-              </Text>
               <Animated.View key={tab} entering={FADE_IN} style={styles.grid}>
                 {shown.length === 0 ? (
                   <Empty tab={tab} homeName={homeName} />
@@ -176,9 +210,10 @@ export default function Home() {
                   })
                 )}
               </Animated.View>
+              </Glass>
             </Animated.View>
           )}
-        </ScrollView>
+        </Animated.ScrollView>
       </View>
       <CityOpenOverlay
         card={cityOpen.card}
@@ -187,7 +222,14 @@ export default function Home() {
         reduced={cityOpen.reduced}
       />
     </View>
+    </Tone>
   );
+}
+
+/** White status bar over the sky; the other tabs are paper and want it dark again. */
+function lightStatusBar() {
+  setStatusBarStyle('light');
+  return () => setStatusBarStyle('dark');
 }
 
 /** "Instagram reel" or "YouTube video" for one source; "2 videos" once there are more. */
@@ -226,8 +268,8 @@ function HereChip() {
       accessibilityLabel={here.status === 'found' && here.town ? `You're in ${here.town}. Tap to check again.` : label}
       accessibilityHint={here.status === 'unknown' ? 'Asks to use your location. It stays on your phone.' : undefined}
     >
-      <Feather name="map-pin" size={13} color={quiet ? light.inkFaint : light.ink} />
-      <Text variant="label" color={quiet ? light.inkFaint : light.ink} numberOfLines={1} style={styles.hereText}>
+      <Feather name="map-pin" size={13} color={quiet ? skyInk.faint : skyInk.strong} />
+      <Text variant="label" color={quiet ? skyInk.faint : skyInk.strong} numberOfLines={1} style={styles.hereText}>
         {label}
       </Text>
     </PressableScale>
@@ -275,14 +317,13 @@ function useStartFromLink() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  fill: { flex: 1, backgroundColor: light.canvas },
-  wash: { position: 'absolute', top: 0, left: 0, right: 0, height: 240 },
+  fill: { flex: 1 },
   header: { paddingHorizontal: GUTTER },
   // The strip's lower edge runs under the sticky link box below it (a later sibling, so it draws
   // on top), which is what makes the prints read as tucked behind the field.
   strip: { marginTop: 14, marginBottom: -STRIP_TUCK },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  // Same pill as Trips' Join button, so the header reads as one family of controls.
+  // A pill of the same glass as the link box, so the header reads as one family of controls.
   herePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -291,12 +332,12 @@ const styles = StyleSheet.create({
     maxWidth: 200,
     paddingHorizontal: 14,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: light.lineStrong,
-    backgroundColor: light.panel,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
+    backgroundColor: 'rgba(255,255,255,0.16)',
   },
   hereText: { flexShrink: 1 },
-  wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: light.ink },
+  wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
   // Two weights, one line box: a quiet Medium lead-in, then the ask in ExtraBold. The weight change
   // does the emphasis a decorative italic used to.
   question: {
@@ -304,30 +345,19 @@ const styles = StyleSheet.create({
     fontFamily: fonts.displayMedium,
     fontSize: 32,
     lineHeight: 37,
-    color: light.inkSoft,
+    color: skyInk.soft,
     // Lighter weights need more air than heavy ones or the word spaces close up.
     letterSpacing: -0.5,
   },
   // Sized again on purpose: the nested Text is our own component, which would otherwise reset it
   // to body's 15/22 rather than inherit from the line around it.
-  questionStrong: { fontFamily: fonts.display, fontSize: 32, lineHeight: 37, color: light.ink, letterSpacing: -1 },
-  // No top padding: the band would cut the photo strip in a flat line above the field instead of
-  // letting the prints disappear behind it.
-  sticky: {
-    paddingHorizontal: GUTTER,
-    backgroundColor: light.canvas,
-  },
-  panel: {
-    flex: 1,
-    marginTop: 8,
-    paddingTop: 22,
-    paddingHorizontal: GUTTER,
-    backgroundColor: light.panel,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    boxShadow: shadows.panel,
-  },
-  panelTitle: { marginTop: 22, marginBottom: 14, marginLeft: 4 },
-  empty: { width: '100%', gap: 8, paddingHorizontal: 4, paddingTop: 4, paddingBottom: 24 },
+  questionStrong: { fontFamily: fonts.display, fontSize: 32, lineHeight: 37, color: skyInk.strong, letterSpacing: -1 },
+  // Clear at rest, so the prints disappear behind the field rather than behind a flat band.
+  sticky: { paddingHorizontal: GUTTER },
+  frost: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  frostFill: { flex: 1, borderWidth: 0 },
+  panelWrap: { marginTop: 8, paddingHorizontal: GUTTER },
+  panel: { paddingTop: 14, paddingHorizontal: PANEL_PAD, paddingBottom: 16, gap: 14 },
+  empty: { width: '100%', gap: 8, paddingHorizontal: 4, paddingTop: 4, paddingBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: GAP, rowGap: 18 },
 });

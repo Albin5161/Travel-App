@@ -1,6 +1,7 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTone } from '@/theme/tone';
+import { skyInk } from '@/theme/sky';
 import { colors, fonts, light, shadows } from '@/theme/tokens';
 
 import { PressableScale } from './PressableScale';
@@ -34,7 +35,7 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
           style={styles.textButton}
           hitSlop={12}
         >
-          <Text style={[styles.textLabel, tone === 'light' && { color: light.inkSoft }]}>{text}</Text>
+          <Text style={[styles.textLabel, tone === 'light' && { color: light.inkSoft }, tone === 'sky' && { color: skyInk.soft }]}>{text}</Text>
         </PressableScale>
       </View>
     );
@@ -53,6 +54,7 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
           compact && styles.compact,
           primary ? styles.primary : styles.secondary,
           tone === 'light' && (primary ? styles.primaryLight : styles.secondaryLight),
+          tone === 'sky' && primary && styles.primarySky,
           disabled && styles.disabled,
         ]}
       >
@@ -64,6 +66,8 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
 
 const LABEL = {
   dark: { primary: colors.night, secondary: colors.mist },
+  // Over the sky: a white button with dark type, the one solid thing on a screen of glass.
+  sky: { primary: colors.night, secondary: colors.mist },
   light: { primary: light.ctaInk, secondary: light.ink },
 } as const;
 
@@ -88,6 +92,7 @@ const styles = StyleSheet.create({
   // Light direction: solid black with white text.
   primaryLight: { backgroundColor: light.cta, boxShadow: shadows.cta },
   secondaryLight: { backgroundColor: light.panel, borderColor: light.lineStrong },
+  primarySky: { backgroundColor: '#FFFFFF', boxShadow: '0 8px 24px rgba(4,10,30,0.22)' },
   disabled: { opacity: 0.4, boxShadow: 'none' },
   label: { fontFamily: fonts.sansSemi, fontSize: 16, letterSpacing: 0.1 },
   textWrap: { alignItems: 'center' },

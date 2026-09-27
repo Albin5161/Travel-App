@@ -1,6 +1,7 @@
 import { StyleSheet, Text as RNText, type TextProps } from 'react-native';
 
 import { useTone } from '@/theme/tone';
+import { skyInk } from '@/theme/sky';
 import { colors, fonts, light } from '@/theme/tokens';
 
 export type TextVariant =
@@ -17,7 +18,7 @@ export type TextVariant =
 type Props = TextProps & { variant?: TextVariant; color?: string };
 
 // Default colour per variant for each tone. An explicit `color` always wins.
-const INK: Record<'dark' | 'light', Record<TextVariant, string>> = {
+const INK: Record<'dark' | 'light' | 'sky', Record<TextVariant, string>> = {
   dark: {
     displayXL: colors.mist,
     display: colors.mist,
@@ -39,6 +40,17 @@ const INK: Record<'dark' | 'light', Record<TextVariant, string>> = {
     label: light.ink,
     micro: light.inkFaint,
     data: light.inkSoft,
+  },
+  sky: {
+    displayXL: skyInk.strong,
+    display: skyInk.strong,
+    headline: skyInk.strong,
+    title: skyInk.strong,
+    body: skyInk.soft,
+    bodyStrong: skyInk.strong,
+    label: skyInk.strong,
+    micro: skyInk.faint,
+    data: skyInk.soft,
   },
 };
 

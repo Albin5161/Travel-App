@@ -1,8 +1,10 @@
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
-import { Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Linking, StyleSheet, useWindowDimensions } from 'react-native';
+import Animated, { Extrapolation, interpolate, useAnimatedStyle, useReducedMotion } from 'react-native-reanimated';
 
 import { Button } from '@/components/Button';
+import { Reveal, RevealProvider, useReveal } from '@/components/motion/Reveal';
 import { PlaceCard } from '@/components/PlaceCard';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
@@ -19,6 +21,21 @@ export default function PlaceSheet() {
   const { state, dispatch } = useTrips();
   const { height: H } = useWindowDimensions();
   const { info, loading } = usePlaceInfo(place);
+  const { frame, ...scrollProps } = useReveal();
+  const reduced = useReducedMotion();
+  // The photo card eases back as the sheet scrolls up: it drifts a little slower than the page
+  // and settles smaller, so what's below comes forward.
+  const cardStyle = useAnimatedStyle(() => {
+    if (reduced) return {};
+    const y = frame.scrollY.get();
+    return {
+      transform: [
+        { translateY: interpolate(y, [0, 320], [0, 90], Extrapolation.CLAMP) },
+        { scale: interpolate(y, [0, 320], [1, 0.92], Extrapolation.CLAMP) },
+      ],
+      opacity: interpolate(y, [0, 360], [1, 0.55], Extrapolation.CLAMP),
+    };
+  });
   if (!place) return null;
 
   const skipped = !!state.skipped[place.id];
@@ -30,9 +47,12 @@ export default function PlaceSheet() {
 
   return (
     <SkyScreen>
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <PlaceCard place={place} style={{ height: Math.min(H * 0.56, 480) }} />
-      <View style={styles.actions}>
+    <Animated.ScrollView {...scrollProps} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <RevealProvider frame={frame}>
+      <Animated.View style={cardStyle}>
+        <PlaceCard place={place} style={{ height: Math.min(H * 0.56, 480) }} />
+      </Animated.View>
+      <Reveal style={styles.actions}>
         <Button kind="secondary" label="Open in Maps" onPress={openMaps} style={styles.action} />
         <Button
           kind={skipped ? 'primary' : 'secondary'}
@@ -40,7 +60,7 @@ export default function PlaceSheet() {
           onPress={() => dispatch({ type: 'decide', placeId: place.id, keep: skipped })}
           style={styles.action}
         />
-      </View>
+      </Reveal>
       {skipped ? (
         <Text variant="label" color={skyInk.faint} style={styles.note}>
           Skipped. It won’t be in your day plan.
@@ -53,7 +73,8 @@ export default function PlaceSheet() {
           Checking what people say on Google…
         </Text>
       ) : null}
-    </ScrollView>
+      </RevealProvider>
+    </Animated.ScrollView>
     </SkyScreen>
   );
 }
@@ -73,10 +94,13 @@ function OnGoogle({ info, onOpen }: { info: Info; onOpen: () => void }) {
     today ? `Today ${today}` : null,
   ].filter(Boolean);
   return (
+    <Reveal group style={styles.googleWrap}>
     <Glass style={styles.google}>
-      <Text variant="eyebrow">On Google</Text>
+      <Reveal>
+        <Text variant="eyebrow">On Google</Text>
+      </Reveal>
       {info.rating !== null ? (
-        <View style={styles.ratingRow}>
+        <Reveal style={styles.ratingRow}>
           <Text variant="headline" accessibilityLabel={`Rated ${info.rating.toFixed(1)} out of 5`}>
             {info.rating.toFixed(1)}
           </Text>
@@ -86,16 +110,22 @@ function OnGoogle({ info, onOpen }: { info: Info; onOpen: () => void }) {
               {info.ratingCount.toLocaleString('en-IN')} {info.ratingCount === 1 ? 'review' : 'reviews'}
             </Text>
           ) : null}
-        </View>
+        </Reveal>
       ) : null}
       {facts.length ? (
-        <Text variant="label" color={skyInk.soft}>
-          {facts.join(' · ')}
-        </Text>
+        <Reveal>
+          <Text variant="label" color={skyInk.soft}>
+            {facts.join(' · ')}
+          </Text>
+        </Reveal>
       ) : null}
-      {info.summary ? <Text variant="body">{info.summary}</Text> : null}
+      {info.summary ? (
+        <Reveal>
+          <Text variant="body">{info.summary}</Text>
+        </Reveal>
+      ) : null}
       {info.reviews.map((r) => (
-        <View key={`${r.author}-${r.when}`} style={styles.review}>
+        <Reveal key={`${r.author}-${r.when}`} style={styles.review}>
           <Text variant="label" color={skyInk.soft}>
             <Text
               variant="label"
@@ -110,17 +140,19 @@ function OnGoogle({ info, onOpen }: { info: Info; onOpen: () => void }) {
           <Text variant="body" numberOfLines={5}>
             {r.text}
           </Text>
-        </View>
+        </Reveal>
       ))}
       <Text variant="label" style={[styles.link, styles.more]} onPress={onOpen} accessibilityRole="link">
         {info.reviews.length ? 'All reviews on Google Maps' : 'See it on Google Maps'}
       </Text>
     </Glass>
+    </Reveal>
   );
 }
 
 const styles = StyleSheet.create({
-  google: { marginTop: 24, padding: space.lg, gap: 10 },
+  googleWrap: { marginTop: 24 },
+  google: { padding: space.lg, gap: 10 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   review: { gap: 4, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: skyInk.line },
   link: { color: skyInk.strong, textDecorationLine: 'underline' },

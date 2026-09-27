@@ -1,11 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { Platform, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
-import { PlanPass } from '@/components/share/PlanPass';
+import { CARD_RATIO, ShareCard, ShareStory } from '@/components/share/ShareCard';
 import { TiltCard } from '@/components/share/TiltCard';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
@@ -17,10 +17,11 @@ import { haptic } from '@/lib/haptics';
 import { FADE_IN, fadeUp } from '@/lib/motion';
 import { createTrip } from '@/lib/live/api';
 import { ensureUser, liveEnabled } from '@/lib/live/client';
-import { planMessage, sharePlanCard } from '@/lib/share';
+import { planMessage, saveImage, sharePlanCard, webImageFile, type ImageKind } from '@/lib/share';
 import { startGroup } from '@/state/group';
+import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
-import { skyFill, skyInk } from '@/theme/sky';
+import { SKY, skyFill, skyInk } from '@/theme/sky';
 import { fonts, space } from '@/theme/tokens';
 
 const HEAD_IN = fadeUp(0);
@@ -36,7 +37,12 @@ export default function ShareScreen() {
   const plan = state.tripPlans[id];
   const { width: W } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // Flat copies, off screen, for the pictures: the tilting card on screen isn't what's saved.
   const card = useRef<View>(null);
+  const story = useRef<View>(null);
+  const look = SKY[useHomeSky()];
+  const images = useReadyImages(card, story, plan ? `xplore-${id}` : null);
+  const [saving, setSaving] = useState<ImageKind | null>(null);
   const [issued] = useState(() => new Date());
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -63,8 +69,25 @@ export default function ShareScreen() {
   // The card is laid out at its natural size (so the shared image is always full size) and scaled
   // down as a whole when the stage is shorter than that.
   const cardW = Math.min(W - 64, 340);
-  const cardH = Math.round(cardW * 1.42);
+  const cardH = Math.round(cardW * CARD_RATIO);
   const fit = stageH ? Math.min(1, (stageH - 20) / cardH) : 1;
+
+  const save = async (kind: ImageKind) => {
+    if (saving) return;
+    haptic.light();
+    setSaving(kind);
+    try {
+      const result = await saveImage(kind === 'card' ? card : story, kind, `xplore-${city.id}${kind === 'story' ? '-story' : ''}`, images[kind]);
+      if (result === 'dismissed') return;
+      haptic.success();
+      track('plan image saved', { kind, how: result });
+      setNote(result === 'downloaded' ? 'Saved to your downloads.' : kind === 'story' ? 'Story ready. Post it anywhere.' : 'Card ready. Post it anywhere.');
+    } catch {
+      setNote('Couldn’t make the picture. Try again?');
+    } finally {
+      setSaving(null);
+    }
+  };
 
   const share = async () => {
     if (busy) return;
@@ -86,7 +109,7 @@ export default function ShareScreen() {
           code = row.code;
         }
       }
-      const result = await sharePlanCard(card, planMessage(city.name, city.id, stops, plan.days.length, party, code));
+      const result = await sharePlanCard(card, planMessage(city.name, city.id, stops, plan.days.length, party, code), images.card);
       if (result === 'dismissed') return;
       if (result === 'shared') haptic.success();
       else haptic.light();
@@ -124,8 +147,8 @@ export default function ShareScreen() {
       <View style={styles.stage} onLayout={(e) => setStageH(e.nativeEvent.layout.height)}>
         {stageH ? (
           <View style={{ transform: [{ scale: fit }] }}>
-            <TiltCard width={cardW} height={cardH} delay={160} faceRef={card}>
-              <PlanPass city={city} plan={plan} width={cardW} height={cardH} issued={issued} />
+            <TiltCard width={cardW} height={cardH} delay={160}>
+              <ShareCard city={city} plan={plan} width={cardW} issued={issued} />
             </TiltCard>
           </View>
         ) : null}
@@ -159,12 +182,69 @@ export default function ShareScreen() {
         ) : (
           <Button trailingArrow={!busy} label={busy ? 'Getting it ready…' : copy.share} onPress={share} disabled={busy || (needName && !name.trim())} />
         )}
+        {/* Pictures to post: the card as a post, and as a story. */}
+        <View style={styles.saves}>
+          <Button
+            kind="secondary"
+            compact
+            label={saving === 'card' ? 'Making it…' : 'Save image'}
+            onPress={() => save('card')}
+            style={styles.save}
+            accessibilityHint="Saves the card as a picture you can post"
+          />
+          <Button
+            kind="secondary"
+            compact
+            label={saving === 'story' ? 'Making it…' : 'Story size'}
+            onPress={() => save('story')}
+            style={styles.save}
+            accessibilityHint="Saves a tall version for Instagram or WhatsApp stories"
+          />
+        </View>
         {sent && party === 'solo' ? null : (
           <Button kind="text" label={sent ? 'Done' : 'Done for now'} onPress={() => router.dismissTo('/trips')} />
         )}
       </View>
+
+      {/* Off screen, drawn flat at their saved sizes: what the pictures are made from. */}
+      <View style={styles.offscreen} pointerEvents="none" aria-hidden>
+        <View ref={card} collapsable={false}>
+          <ShareCard city={city} plan={plan} width={360} issued={issued} square />
+        </View>
+        <View ref={story} collapsable={false}>
+          <ShareStory city={city} plan={plan} issued={issued} look={look} />
+        </View>
+      </View>
     </SkyScreen>
   );
+}
+
+/**
+ * On the web, both pictures made a moment after the screen settles, so a tap on Save or Share
+ * hands them over at once (an iPhone opens the share sheet only straight after a tap). Phones make
+ * them on the tap, where there's no such limit.
+ */
+function useReadyImages(card: React.RefObject<View | null>, story: React.RefObject<View | null>, name: string | null) {
+  const [files, setFiles] = useState<Record<ImageKind, File | null>>({ card: null, story: null });
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !name) return;
+    let alive = true;
+    const t = setTimeout(async () => {
+      try {
+        const c = await webImageFile(card, 'card', name);
+        if (alive) setFiles((f) => ({ ...f, card: c }));
+        const st = await webImageFile(story, 'story', `${name}-story`);
+        if (alive) setFiles((f) => ({ ...f, story: st }));
+      } catch {
+        // Made on the tap instead.
+      }
+    }, 1800);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [card, story, name]);
+  return files;
 }
 
 const styles = StyleSheet.create({
@@ -173,6 +253,10 @@ const styles = StyleSheet.create({
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   actions: { paddingHorizontal: space.screen, gap: 4 },
   note: { textAlign: 'center', marginBottom: 8 },
+  saves: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  save: { flex: 1 },
+  // Far off to the left: laid out and drawn (so it can be pictured), never seen.
+  offscreen: { position: 'absolute', left: -10000, top: 0, gap: 20 },
   name: {
     height: 52,
     marginBottom: 10,

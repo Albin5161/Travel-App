@@ -53,7 +53,7 @@ export const PRIVACY: LegalDoc = {
             'Which place or city you open, when it came from a link: a place’s page asks Google for its rating, hours and reviews, and a city’s page asks for notes about that town. Neither is linked to you.',
             'Your answers on the review screen (right, wrong or added), stored with your anonymous ID, the video and the place, to measure and improve accuracy.',
             'Shared trips. If you share a trip or join one, the name you choose, the trip plan, your votes and any notes are stored so the others on that trip can see them.',
-            'Usage counts. When you reach certain steps (finish the intro, paste a link, get places back or not, save places, plan a trip, share it, join a trip, vote, lock a plan, allow location or not) and which screens you open, the app records that step with your anonymous ID, the kind of link (YouTube or Instagram) and simple numbers such as how many places were found. It never records the link itself, a place, your name, a trip code or your location.',
+            'Usage counts. When you reach certain steps (finish the intro, paste a link, get places back or not, save places, plan a trip, share it, save a picture of it, join a trip, vote, lock a plan, allow location or not) and which screens you open, the app records that step with your anonymous ID, the kind of link (YouTube or Instagram) and simple numbers such as how many places were found. It never records the link itself, a place, your name, a trip code or your location.',
             'Technical data. Your network (IP) address is used with your anonymous ID to limit how many requests one person can make. The hosting service also keeps standard request logs.',
           ],
         },

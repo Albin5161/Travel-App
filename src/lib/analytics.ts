@@ -65,6 +65,7 @@ export type AnalyticsEvent =
   | 'places saved'
   | 'trip planned'
   | 'plan shared'
+  | 'plan image saved'
   | 'trip joined'
   | 'vote cast'
   | 'plan locked'

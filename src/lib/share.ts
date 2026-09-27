@@ -33,26 +33,90 @@ export function planMessage(cityName: string, cityId: string, stops: number, day
 }
 
 export type ShareResult = 'shared' | 'dismissed' | 'copied';
+export type SaveResult = 'shared' | 'downloaded' | 'dismissed';
+
+/** The two pictures: a 4:5 post (the tallest Instagram shows whole) and a 9:16 story. */
+export type ImageKind = 'card' | 'story';
+export const IMAGE_SIZE: Record<ImageKind, { width: number; height: number }> = {
+  card: { width: 1080, height: 1350 },
+  story: { width: 1080, height: 1920 },
+};
+
+type WebNav = Navigator & { canShare?: (data: ShareData) => boolean };
+
+/**
+ * The web's picture of a view, as a PNG file. Made ahead of the tap (see the Share screen): an
+ * iPhone only opens the share sheet straight after a tap, and drawing the picture takes a moment.
+ */
+export async function webImageFile(view: RefObject<View | null>, kind: ImageKind, name: string): Promise<File> {
+  const dataUri = await captureRef(view, { format: 'png', result: 'data-uri', ...IMAGE_SIZE[kind] });
+  const blob = await (await fetch(dataUri)).blob();
+  return new File([blob], `${name}.png`, { type: 'image/png' });
+}
+
+/**
+ * Saves the picture: into the share sheet where there is one (iPhone: Save Image, Instagram,
+ * WhatsApp), else as a download. On a phone app, the system share sheet with the PNG.
+ */
+export async function saveImage(
+  view: RefObject<View | null>,
+  kind: ImageKind,
+  name: string,
+  ready?: File | null,
+): Promise<SaveResult> {
+  if (Platform.OS === 'web') {
+    const file = ready ?? (await webImageFile(view, kind, name));
+    const nav = navigator as WebNav;
+    if (nav.canShare?.({ files: [file] })) {
+      try {
+        await nav.share({ files: [file] });
+        return 'shared';
+      } catch (e) {
+        if ((e as Error).name === 'AbortError') return 'dismissed';
+        // Not allowed this time (the tap's moment passed): fall through to a download.
+      }
+    }
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    return 'downloaded';
+  }
+  const uri = await captureRef(view, { format: 'png', result: 'tmpfile', ...IMAGE_SIZE[kind] });
+  await Sharing.shareAsync(uri, { mimeType: 'image/png', UTI: 'public.png', dialogTitle: 'Save or share your plan' });
+  return 'shared';
+}
 
 /**
  * Shares the card as an image with the message alongside.
  * - iOS: the system sheet takes the image and the text together.
  * - Android: its share intent through React Native carries text only, so the image goes through
  *   expo-sharing (without the text).
- * - Web: no local files; the text goes to the Web Share API, or the clipboard where there isn't one.
+ * - Web: the picture and the text together where the browser can share files (iPhone, Android),
+ *   the text alone where it can't, or the clipboard where there's no sharing at all.
  */
-export async function sharePlanCard(card: RefObject<View | null>, message: string): Promise<ShareResult> {
+export async function sharePlanCard(card: RefObject<View | null>, message: string, file?: File | null): Promise<ShareResult> {
   if (Platform.OS === 'web') {
+    const nav = navigator as WebNav;
     try {
+      if (file && nav.canShare?.({ files: [file], text: message })) {
+        await nav.share({ files: [file], text: message });
+        return 'shared';
+      }
       const res = await Share.share({ message });
       return res.action === Share.dismissedAction ? 'dismissed' : 'shared';
-    } catch {
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return 'dismissed';
       await Clipboard.setStringAsync(message);
       return 'copied';
     }
   }
 
-  const uri = await captureRef(card, { format: 'png', quality: 1, result: 'tmpfile' });
+  const uri = await captureRef(card, { format: 'png', quality: 1, result: 'tmpfile', ...IMAGE_SIZE.card });
   if (Platform.OS === 'ios') {
     const res = await Share.share({ url: uri, message });
     return res.action === Share.dismissedAction ? 'dismissed' : 'shared';

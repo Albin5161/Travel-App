@@ -34,6 +34,9 @@ export type Tilt = { x: SharedValue<number>; y: SharedValue<number> };
 
 const TiltContext = createContext<Tilt | null>(null);
 
+/** The tilt, when drawn inside a TiltCard; null for a flat copy (the one saved as an image). */
+export const useOptionalTilt = () => useContext(TiltContext);
+
 /** For layers inside the card that want parallax (the photo). */
 export function useTilt() {
   const tilt = useContext(TiltContext);

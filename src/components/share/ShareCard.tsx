@@ -1,0 +1,300 @@
+import { LinearGradient } from 'expo-linear-gradient';
+import { Image, StyleSheet, Text as RNText, View } from 'react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+
+import { formatDay, formatRange, type TripPlan } from '@/data/planner';
+import type { City } from '@/data/types';
+import { useBlurredPhoto } from '@/lib/blur';
+import { formatClock } from '@/lib/geo';
+import { skyAccent, type SkyLook } from '@/theme/sky';
+import { fonts, light } from '@/theme/tokens';
+
+import { useOptionalTilt } from './TiltCard';
+
+/** Feed-friendly 4:5, the tallest Instagram keeps whole in a post. */
+export const CARD_RATIO = 1.25;
+const MAX_ROWS = 3;
+const PARALLAX = 9;
+const INSET = 12;
+
+type Props = {
+  city: City;
+  plan: TripPlan;
+  width: number;
+  issued: Date;
+  /** Square corners for the saved post: a picture's corners outside a curve would come out white. */
+  square?: boolean;
+};
+
+/**
+ * The plan as a card worth posting: the city's photo full bleed, its name large across it, and the
+ * plan on a pane of light frosted glass (the photo blurred behind white), in plain dark type. The
+ * white pass people liked, now sitting on the picture.
+ *
+ * Built only from what a saved image keeps exactly (plain images, gradients, boxes and text): the
+ * same card on screen and in the downloaded PNG.
+ */
+export function ShareCard({ city, plan, width, issued, square }: Props) {
+  const height = Math.round(width * CARD_RATIO);
+  const s = width / 340;
+  const n = plan.days.length;
+  const stops = plan.days.flatMap((d, day) => d.stops.map((stop) => ({ stop, day })));
+  const km = plan.days.reduce((sum, d) => sum + d.totalKm, 0);
+  const first = stops[0]?.stop;
+  const last = stops[stops.length - 1]?.stop;
+  const firstDate = plan.days[0]?.date;
+  const lastDate = plan.days[n - 1]?.date;
+  const byDate = n > 1 && firstDate && lastDate;
+  const start = byDate ? formatDay(firstDate) : first ? formatClock(first.startMinutes) : '';
+  const end = byDate ? formatDay(lastDate) : last ? formatClock(last.startMinutes + last.place.minutes) : '';
+  const when = firstDate ? formatRange(firstDate, n) : n > 1 ? `${n} days` : null;
+  const shown = stops.slice(0, MAX_ROWS);
+  const more = stops.length - shown.length;
+
+  // The pane's height follows its rows, so the photo gets every point the plan doesn't need.
+  const paneH = Math.round(s * (18 + 44 + 14 + shown.length * 26 + (more > 0 ? 20 : 0) + 16 + 38 + 16));
+  const paneTop = height - INSET * s - paneH;
+  const blurred = useBlurredPhoto(city.hero);
+
+  return (
+    <View style={[styles.card, { width, height, borderRadius: square ? 0 : 28 * s }]}>
+      <Photo source={city.hero} width={width} height={height} />
+      <LinearGradient
+        colors={['rgba(0,0,0,0.38)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.45)']}
+        locations={[0, 0.28, 0.4, 0.62]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      <View style={[styles.top, { left: 18 * s, right: 16 * s, top: 16 * s }]}>
+        <RNText style={[styles.brand, { fontSize: 18 * s, lineHeight: 23 * s }]}>Xplore</RNText>
+        <View style={[styles.chip, { paddingHorizontal: 10 * s, paddingVertical: 5 * s }]}>
+          <RNText style={[styles.chipText, { fontSize: 10 * s, lineHeight: 12 * s, letterSpacing: 1.6 * s }]}>
+            {n === 1 ? 'DAY PLAN' : `${n}-DAY PLAN`}
+          </RNText>
+        </View>
+      </View>
+
+      <View style={[styles.title, { left: 20 * s, right: 20 * s, bottom: height - paneTop + 14 * s }]}>
+        <RNText style={[styles.kicker, { fontSize: 11 * s, lineHeight: 14 * s, letterSpacing: 1.8 * s }]} numberOfLines={1}>
+          {(when ? `${city.state} · ${when}` : city.state).toUpperCase()}
+        </RNText>
+        <RNText style={[styles.city, { fontSize: 44 * s, lineHeight: 50 * s, letterSpacing: -1.6 * s }]} numberOfLines={1} adjustsFontSizeToFit>
+          {city.name}
+        </RNText>
+      </View>
+
+      {/* The pane: the photo behind it blurred, then white over that, then the plan in ink. */}
+      <View
+        style={[
+          styles.pane,
+          { left: INSET * s, right: INSET * s, top: paneTop, height: paneH, borderRadius: 22 * s },
+        ]}
+      >
+        {blurred.source ? (
+          <Image
+            source={blurred.source}
+            blurRadius={blurred.blurRadius}
+            resizeMode="cover"
+            style={{ position: 'absolute', left: -INSET * s, top: -paneTop, width, height }}
+          />
+        ) : null}
+        <View style={[StyleSheet.absoluteFill, styles.frost]} />
+        <LinearGradient colors={['rgba(255,255,255,0.5)', 'rgba(255,255,255,0)']} locations={[0, 0.35]} style={StyleSheet.absoluteFill} />
+
+        <View style={{ paddingHorizontal: 16 * s, paddingTop: 16 * s }}>
+          <View style={styles.times}>
+            <View>
+              <RNText style={[styles.label, { fontSize: 10 * s, lineHeight: 13 * s, letterSpacing: 1.2 * s }]}>
+                {byDate ? 'FROM' : 'START'}
+              </RNText>
+              <RNText style={[styles.time, { fontSize: 20 * s, lineHeight: 26 * s }]}>{start}</RNText>
+            </View>
+            <View style={[styles.track, { height: 26 * s }]}>
+              <View style={[styles.trackLine, { top: 12 * s }]} />
+              {stops.slice(0, 6).map(({ stop }) => (
+                <View key={stop.place.id} style={[styles.dot, { width: 6 * s, height: 6 * s, borderRadius: 3 * s }]} />
+              ))}
+            </View>
+            <View style={styles.end}>
+              <RNText style={[styles.label, { fontSize: 10 * s, lineHeight: 13 * s, letterSpacing: 1.2 * s }]}>
+                {byDate ? 'TO' : 'WRAP UP'}
+              </RNText>
+              <RNText style={[styles.time, { fontSize: 20 * s, lineHeight: 26 * s }]}>{end}</RNText>
+            </View>
+          </View>
+
+          <View style={{ marginTop: 12 * s, gap: 6 * s }}>
+            {shown.map(({ stop, day }, i) => (
+              <View key={stop.place.id} style={[styles.row, { gap: 10 * s, height: 20 * s }]}>
+                <View style={[styles.num, { width: 18 * s, height: 18 * s, borderRadius: 9 * s }]}>
+                  <RNText style={[styles.numText, { fontSize: 10 * s, lineHeight: 13 * s }]}>{i + 1}</RNText>
+                </View>
+                <RNText style={[styles.rowName, { fontSize: 14 * s, lineHeight: 18 * s }]} numberOfLines={1}>
+                  {clip(stop.place.name, n > 1 ? 22 : 30)}
+                </RNText>
+                <RNText style={[styles.rowTime, { fontSize: 12 * s, lineHeight: 16 * s }]}>
+                  {n > 1 ? `Day ${day + 1} · ` : ''}
+                  {formatClock(stop.startMinutes)}
+                </RNText>
+              </View>
+            ))}
+            {more > 0 ? (
+              <RNText style={[styles.more, { fontSize: 12 * s, lineHeight: 16 * s, marginLeft: 28 * s }]}>
+                + {more} more {more === 1 ? 'stop' : 'stops'}
+              </RNText>
+            ) : null}
+          </View>
+
+          <Tear s={s} />
+          <View style={styles.footer}>
+            <View>
+              <RNText style={[styles.label, { fontSize: 10 * s, lineHeight: 13 * s, letterSpacing: 1.2 * s }]}>
+                ISSUED {issueDate(issued)}
+              </RNText>
+              <RNText style={[styles.facts, { fontSize: 12 * s, lineHeight: 16 * s }]}>
+                {stops.length} stops · {km.toFixed(1)} km · xplore.expo.app
+              </RNText>
+            </View>
+            <Barcode seed={`${city.id}${plan.seed}${stops.length}`} s={s} />
+          </View>
+        </View>
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.paneRim, { borderRadius: 22 * s }]} />
+      </View>
+    </View>
+  );
+}
+
+/** The photo, drifting a little against the tilt when on screen; still in a saved image. */
+function Photo({ source, width, height }: { source: City['hero']; width: number; height: number }) {
+  const tilt = useOptionalTilt();
+  const drift = useAnimatedStyle(() =>
+    tilt ? { transform: [{ translateX: -tilt.x.get() * PARALLAX }, { translateY: tilt.y.get() * PARALLAX }] } : {},
+  );
+  return (
+    <Animated.View style={[styles.photo, drift]}>
+      <Image source={source} resizeMode="cover" style={{ width: width + PARALLAX * 2 + 4, height: height + PARALLAX * 2 + 4 }} />
+    </Animated.View>
+  );
+}
+
+// The tear line as short boxes rather than a drawn dash: a saved image keeps boxes exactly.
+function Tear({ s }: { s: number }) {
+  return (
+    <View style={[styles.tear, { marginTop: 14 * s, marginBottom: 12 * s, gap: 4 * s }]}>
+      {Array.from({ length: 30 }, (_, i) => (
+        <View key={i} style={[styles.tearDash, { width: 5 * s, height: 1.5 * s }]} />
+      ))}
+    </View>
+  );
+}
+
+// Decorative, but stable: the same plan always gets the same bars. Boxes, for the same reason.
+function Barcode({ seed, s }: { seed: string; s: number }) {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  const bars: { x: number; w: number }[] = [];
+  let x = 0;
+  while (x < 70) {
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    const w = 1 + ((h >>> 3) % 3);
+    bars.push({ x, w });
+    x += w + 1 + ((h >>> 7) % 3);
+  }
+  return (
+    <View aria-hidden style={{ width: 72 * s, height: 26 * s }}>
+      {bars.map((b) => (
+        <View key={b.x} style={[styles.bar, { left: b.x * s, width: b.w * s, height: 26 * s }]} />
+      ))}
+    </View>
+  );
+}
+
+/**
+ * A long name, shortened by hand: a saved picture doesn't add the "…" a screen does, and would cut
+ * the name off mid-letter.
+ */
+const clip = (name: string, max: number) => (name.length > max ? `${name.slice(0, max - 1).trimEnd()}…` : name);
+
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+function issueDate(d: Date) {
+  return `${String(d.getDate()).padStart(2, '0')} ${MONTHS[d.getMonth()]}`;
+}
+
+/**
+ * The same card as a 9:16 story: the sky behind, a line saying what it is, the card, and where
+ * to make one. Laid out at 360 × 640 and saved at 1080 × 1920.
+ */
+export function ShareStory({ city, plan, issued, look }: { city: City; plan: TripPlan; issued: Date; look: SkyLook }) {
+  const n = plan.days.length;
+  return (
+    <View style={styles.story}>
+      <LinearGradient colors={[...look.stops]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
+      <View style={styles.storyHead}>
+        <RNText style={styles.storyKicker}>{n === 1 ? 'MY NEXT DAY OUT' : 'MY NEXT TRIP'}</RNText>
+        <RNText style={styles.storyTitle} numberOfLines={2}>
+          {city.name}, <RNText style={styles.storyAccent}>sorted.</RNText>
+        </RNText>
+      </View>
+      <View style={styles.storyCard}>
+        <ShareCard city={city} plan={plan} width={280} issued={issued} />
+      </View>
+      <View style={styles.storyFoot}>
+        <RNText style={styles.storyLine}>Turned from a travel reel, stop by stop.</RNText>
+        <RNText style={styles.storyBrand}>Xplore · xplore.expo.app</RNText>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: { overflow: 'hidden', backgroundColor: '#1B2A4E' },
+  photo: { position: 'absolute', left: -PARALLAX - 2, top: -PARALLAX - 2 },
+  top: { position: 'absolute', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brand: { fontFamily: fonts.display, color: '#FFFFFF', letterSpacing: -0.7 },
+  chip: {
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.24)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.32)',
+  },
+  chipText: { fontFamily: fonts.sansSemi, color: '#FFFFFF' },
+  title: { position: 'absolute', gap: 2 },
+  kicker: { fontFamily: fonts.sansSemi, color: 'rgba(255,255,255,0.88)' },
+  city: {
+    fontFamily: fonts.display,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowRadius: 12,
+  },
+  pane: { position: 'absolute', overflow: 'hidden', boxShadow: '0 12px 32px rgba(0,0,0,0.28)' },
+  // White over the blurred photo: light frosted glass, dark type reads at full contrast on it.
+  frost: { backgroundColor: 'rgba(255,255,255,0.8)' },
+  paneRim: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.9)' },
+  times: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
+  label: { fontFamily: fonts.sansSemi, color: light.inkFaint },
+  time: { fontFamily: fonts.displayBold, color: light.ink, letterSpacing: -0.4 },
+  end: { alignItems: 'flex-end' },
+  track: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  trackLine: { position: 'absolute', left: 0, right: 0, height: 2, borderRadius: 1, backgroundColor: 'rgba(17,17,17,0.12)' },
+  dot: { backgroundColor: light.accent },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  num: { backgroundColor: light.ink, alignItems: 'center', justifyContent: 'center' },
+  numText: { fontFamily: fonts.sansSemi, color: '#FFFFFF' },
+  rowName: { flex: 1, fontFamily: fonts.sansMedium, color: light.ink },
+  rowTime: { fontFamily: fonts.sansMedium, color: light.inkSoft },
+  more: { fontFamily: fonts.sansMedium, color: light.inkSoft },
+  tear: { flexDirection: 'row', overflow: 'hidden' },
+  tearDash: { borderRadius: 1, backgroundColor: 'rgba(17,17,17,0.22)' },
+  footer: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  facts: { fontFamily: fonts.sansMedium, color: light.ink },
+  bar: { position: 'absolute', top: 0, backgroundColor: light.ink },
+  story: { width: 360, height: 640, overflow: 'hidden', alignItems: 'center' },
+  storyHead: { alignSelf: 'stretch', paddingHorizontal: 40, paddingTop: 52, gap: 8 },
+  storyKicker: { fontFamily: fonts.sansSemi, fontSize: 11, lineHeight: 14, letterSpacing: 2, color: 'rgba(255,255,255,0.85)' },
+  storyTitle: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, letterSpacing: -1.1, color: '#FFFFFF' },
+  storyAccent: { color: skyAccent },
+  storyCard: { marginTop: 22, borderRadius: 28, boxShadow: '0 20px 50px rgba(0,0,0,0.35)' },
+  storyFoot: { position: 'absolute', left: 32, right: 32, bottom: 40, alignItems: 'center', gap: 6 },
+  storyLine: { fontFamily: fonts.sansMedium, fontSize: 14, lineHeight: 19, color: 'rgba(255,255,255,0.88)', textAlign: 'center' },
+  storyBrand: { fontFamily: fonts.displayBold, fontSize: 16, lineHeight: 21, color: '#FFFFFF' },
+});

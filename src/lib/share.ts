@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
 import type { RefObject } from 'react';
 import { Platform, Share, type View } from 'react-native';
-import { captureRef } from 'react-native-view-shot';
+import { captureRef } from '@/lib/capture';
 
 import type { Party } from '@/data/planner';
 import { drawCardImage, type CardData } from '@/lib/cardImage';

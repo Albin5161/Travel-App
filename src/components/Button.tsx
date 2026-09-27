@@ -63,7 +63,12 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
           disabled && styles.disabled,
         ]}
       >
-        <Text style={[styles.label, sky && styles.labelSky, { color: LABEL[tone][primary ? 'primary' : 'secondary'] }]}>{text}</Text>
+        <Text
+          numberOfLines={1}
+          style={[styles.label, skyArrow && styles.labelSky, { color: LABEL[tone][primary ? 'primary' : 'secondary'] }]}
+        >
+          {text}
+        </Text>
         {skyArrow ? <Feather name="arrow-right" size={22} color={skyInk.strong} style={styles.arrow} /> : null}
       </PressableScale>
     </View>
@@ -83,7 +88,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
   },
   compact: { height: 46 },
   primary: {
@@ -110,7 +115,8 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
   },
-  tall: { height: 60 },
+  // Room either side so a long label never runs under the arrow.
+  tall: { height: 60, paddingHorizontal: 56 },
   labelSky: { fontSize: 17 },
   arrow: { position: 'absolute', right: 24 },
   disabled: { opacity: 0.4, boxShadow: 'none' },

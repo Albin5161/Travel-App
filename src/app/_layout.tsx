@@ -24,6 +24,7 @@ import { ScreenViews, track } from '@/lib/analytics';
 import '@/lib/arrival';
 import { GroupScripts } from '@/state/group';
 import { TripsProvider } from '@/state/trips';
+import { SKY } from '@/theme/sky';
 import { light } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync();
@@ -32,6 +33,9 @@ const theme = {
   ...DefaultTheme,
   colors: { ...DefaultTheme.colors, background: light.canvas, card: light.canvas, primary: light.ink, text: light.ink },
 };
+
+// Sheets draw the sky themselves; until they do, their backing is the sky's deep blue, not white.
+const SHEET_BG = SKY.night.stops[1];
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -94,7 +98,7 @@ export default function RootLayout() {
                 sheetAllowedDetents: [0.86],
                 sheetGrabberVisible: true,
                 sheetCornerRadius: 32,
-                contentStyle: { backgroundColor: light.panel },
+                contentStyle: { backgroundColor: SHEET_BG },
               }}
             />
             <Stack.Screen
@@ -104,7 +108,7 @@ export default function RootLayout() {
                 sheetAllowedDetents: [0.92],
                 sheetGrabberVisible: true,
                 sheetCornerRadius: 32,
-                contentStyle: { backgroundColor: light.panel },
+                contentStyle: { backgroundColor: SHEET_BG },
               }}
             />
             <Stack.Screen
@@ -114,7 +118,7 @@ export default function RootLayout() {
                 sheetAllowedDetents: [0.72],
                 sheetGrabberVisible: true,
                 sheetCornerRadius: 32,
-                contentStyle: { backgroundColor: light.panel },
+                contentStyle: { backgroundColor: SHEET_BG },
               }}
             />
           </Stack>

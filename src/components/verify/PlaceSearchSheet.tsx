@@ -15,13 +15,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '@/components/IconButton';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { typeLine } from '@/components/PlaceMeta';
 import { Text } from '@/components/Text';
 import type { Place } from '@/data/types';
 import { ApiFailure } from '@/lib/api';
 import { newSearchSession, searchPlaces, type Suggestion } from '@/lib/extract';
 import type { LatLng } from '@/lib/geo';
-import { fonts, light } from '@/theme/tokens';
+import { skyFill, skyInk } from '@/theme/sky';
+import { fonts, radii, space } from '@/theme/tokens';
 
 type Props = {
   visible: boolean;
@@ -85,26 +87,28 @@ export function PlaceSearchSheet({ visible, wrong, cityName, candidates, live, o
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+      <SkyScreen style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.head}>
           <View style={styles.titles}>
-            <Text variant="micro">{wrong ? `Instead of ${wrong.name}` : `Add to ${cityName}`}</Text>
-            <Text variant="headline">{wrong ? 'What was it?' : 'Missed one?'}</Text>
+            <Text variant="eyebrow">{wrong ? `Instead of ${wrong.name}` : `Add to ${cityName}`}</Text>
+            <Text variant="display" accessibilityRole="header">
+              {wrong ? 'What was it?' : 'Missed one?'}
+            </Text>
           </View>
           <IconButton icon="x" onPress={close} accessibilityLabel="Close" />
         </View>
 
         <View style={styles.field}>
-          <Feather name="search" size={16} color={light.inkFaint} />
+          <Feather name="search" size={16} color={skyInk.faint} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder={live ? 'Search for a place' : `Search places in ${cityName}`}
-            placeholderTextColor={light.inkFaint}
+            placeholderTextColor={skyInk.faint}
             autoCorrect={false}
             autoFocus
             returnKeyType="search"
-            selectionColor={light.ink}
+            selectionColor={skyInk.strong}
             style={[styles.input, NO_FOCUS_RING]}
             accessibilityLabel="Search for the right place"
           />
@@ -142,11 +146,11 @@ export function PlaceSearchSheet({ visible, wrong, cityName, candidates, live, o
                   <Text variant="bodyStrong" numberOfLines={1}>
                     {p.name}
                   </Text>
-                  <Text variant="label" color={light.inkSoft} numberOfLines={1}>
+                  <Text variant="label" color={skyInk.soft} numberOfLines={1}>
                     {typeLine(p)}
                   </Text>
                 </View>
-                <Feather name="plus" size={18} color={light.inkSoft} />
+                <Feather name="plus" size={18} color={skyInk.soft} />
               </Pressable>
             ))
           )}
@@ -161,12 +165,12 @@ export function PlaceSearchSheet({ visible, wrong, cityName, candidates, live, o
             style={styles.notPlace}
             accessibilityRole="button"
           >
-            <Text variant="label" color={light.inkSoft}>
+            <Text variant="label" color={skyInk.soft}>
               It wasn&apos;t a place. Just leave it out.
             </Text>
           </Pressable>
         ) : null}
-      </View>
+      </SkyScreen>
     </Modal>
   );
 }
@@ -281,20 +285,20 @@ function GoogleResults({
           accessibilityLabel={`${s.name}, ${s.where}`}
         >
           <View style={[styles.thumb, styles.pinThumb]}>
-            <Feather name="map-pin" size={18} color={light.inkSoft} />
+            <Feather name="map-pin" size={18} color={skyInk.soft} />
           </View>
           <View style={styles.rowText}>
             <Text variant="bodyStrong" numberOfLines={1}>
               {s.name}
             </Text>
-            <Text variant="label" color={light.inkSoft} numberOfLines={1}>
+            <Text variant="label" color={skyInk.soft} numberOfLines={1}>
               {s.where}
             </Text>
           </View>
           {picking === s.placeId ? (
-            <ActivityIndicator color={light.inkSoft} />
+            <ActivityIndicator color={skyInk.soft} />
           ) : (
-            <Feather name="plus" size={18} color={light.inkSoft} />
+            <Feather name="plus" size={18} color={skyInk.soft} />
           )}
         </Pressable>
       ))}
@@ -311,7 +315,7 @@ function GoogleResults({
 const NO_FOCUS_RING = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : null;
 
 const styles = StyleSheet.create({
-  sheet: { flex: 1, backgroundColor: light.panel, paddingHorizontal: 20, paddingTop: 20 },
+  sheet: { paddingHorizontal: space.screen, paddingTop: 20 },
   head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   titles: { gap: 4, flexShrink: 1 },
   field: {
@@ -322,16 +326,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: light.canvas,
-    borderWidth: 1,
-    borderColor: light.line,
+    backgroundColor: skyFill.raised,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
   },
   // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
-  input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },
+  input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: skyInk.strong },
   list: { paddingVertical: 14, gap: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingHorizontal: 6, borderRadius: 14 },
-  rowPressed: { backgroundColor: light.canvas },
-  thumb: { width: 48, height: 48, borderRadius: 12, backgroundColor: light.canvasTop },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingHorizontal: 6, borderRadius: radii.pane },
+  rowPressed: { backgroundColor: skyFill.pane },
+  thumb: { width: 48, height: 48, borderRadius: 12, backgroundColor: skyFill.raised },
   pinThumb: { alignItems: 'center', justifyContent: 'center' },
   powered: { paddingHorizontal: 6, paddingTop: 10 },
   rowText: { flex: 1, gap: 2 },

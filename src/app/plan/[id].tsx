@@ -21,6 +21,8 @@ import { Path } from 'react-native-svg';
 import { Button } from '@/components/Button';
 import { CityMap, fitCameraToRect, flyTo, useCamera } from '@/components/CityMap';
 import { IconButton } from '@/components/IconButton';
+import { Glass } from '@/components/sky/Glass';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { PassportStamp } from '@/components/motion/PassportStamp';
 import { StopActions } from '@/components/plan/StopActions';
 import { costLabel, typeLine } from '@/components/PlaceMeta';
@@ -53,8 +55,11 @@ import { haptic } from '@/lib/haptics';
 import { EASE_IN_OUT, FADE_IN, FADE_OUT, fadeUp, REFLOW } from '@/lib/motion';
 import { customStops } from '@/data/custom';
 import { usePlanWriter } from '@/state/live';
+import { useHomeSky } from '@/state/sky';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { fonts, light } from '@/theme/tokens';
+import { deepGlass, SKY, skyAccentText, skyAccentWash, skyCta, skyFill, skyInk, withAlpha } from '@/theme/sky';
+import { Tone } from '@/theme/tone';
+import { fonts, radii, space } from '@/theme/tokens';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const PART_TITLE: Record<DayPart, string> = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening' };
@@ -77,6 +82,8 @@ export default function PlanScreen() {
   // Planned from the places not skipped in the place sheet.
   const { kept: collected } = useCityPlaces(id);
   const { state, dispatch } = useTrips();
+  // The bottom fade melts the list into the sky behind the page.
+  const look = SKY[useHomeSky()];
   const plan = state.tripPlans[id];
   const { width: W, height: H } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -278,7 +285,9 @@ export default function PlanScreen() {
   };
 
   return (
-    <View style={styles.fill}>
+    <SkyScreen>
+      {/* The map is paper: it keeps the paper palette, route and labels. */}
+      <Tone value="light">
       <View style={{ height: MAP_H }}>
         {isLiveCity(city.id) ? (
           <GoogleMap
@@ -317,25 +326,27 @@ export default function PlanScreen() {
         )}
         <LinearGradient
           pointerEvents="none"
-          colors={['rgba(245,244,241,0.85)', 'rgba(245,244,241,0)']}
+          colors={['rgba(4,10,30,0.5)', 'rgba(4,10,30,0)']}
           style={[styles.topFade, { height: insets.top + 80 }]}
         />
-        <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-          <IconButton icon="chevron-left" onPress={() => router.back()} accessibilityLabel="Back" />
-        </View>
+      </View>
+      </Tone>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <IconButton icon="chevron-left" onPress={() => router.back()} accessibilityLabel="Back" />
       </View>
 
-      <View style={styles.panel}>
+      {/* Deep glass: its top edge lies over the pale map, where light glass would wash out the type. */}
+      <Glass tint={deepGlass(look)} radius={radii.sheet} style={styles.panel}>
         <Animated.ScrollView
           onScroll={onScroll}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: insets.bottom + 130 }}
+          contentContainerStyle={{ paddingHorizontal: space.screen, paddingTop: 24, paddingBottom: insets.bottom + 130 }}
         >
-          <Text variant="micro" numberOfLines={2}>
+          <Text variant="eyebrow" numberOfLines={2}>
             {meta}
           </Text>
-          <Text variant="display" style={styles.title}>
+          <Text variant="display" accessibilityRole="header" style={styles.title}>
             {n === 1 ? `Your day in ${city.name}` : `Your ${n} days in ${city.name}`}
           </Text>
 
@@ -346,20 +357,20 @@ export default function PlanScreen() {
           </View>
           {note ? (
             <Animated.View entering={FADE_IN} exiting={FADE_OUT}>
-              <Text variant="label" color={light.inkSoft} style={styles.note}>
+              <Text variant="label" color={skyInk.soft} style={styles.note}>
                 {note}
               </Text>
             </Animated.View>
           ) : (
-            <Text variant="label" color={light.inkFaint} style={styles.note}>
+            <Text variant="label" color={skyInk.faint} style={styles.note}>
               {editing ? 'Move stops with the arrows, or tap ⋯ for more.' : 'Pin the stops you love. Regenerate keeps them and reshuffles the rest.'}
             </Text>
           )}
 
           {emptyDays > 0 && n > 1 ? (
             <View style={styles.thin}>
-              <Feather name="info" size={14} color={light.inkSoft} />
-              <Text variant="label" color={light.inkSoft} style={styles.thinText}>
+              <Feather name="info" size={14} color={skyInk.soft} />
+              <Text variant="label" color={skyInk.soft} style={styles.thinText}>
                 {`Your ${placed} ${placed === 1 ? 'place fills' : 'places fill'} ${n - emptyDays} of ${n} days. Save more places here, or `}
                 <Text variant="label" style={styles.thinLink} onPress={() => router.push({ pathname: '/trip/[id]', params: { id, from: 'plan' } })}>
                   shorten the trip
@@ -385,7 +396,7 @@ export default function PlanScreen() {
                     accessibilityRole="tab"
                     accessibilityState={{ selected: on }}
                   >
-                    <Text variant="label" color={on ? light.ctaInk : light.ink}>
+                    <Text variant="label" color={on ? skyCta : skyInk.strong}>
                       {label}
                     </Text>
                   </Pressable>
@@ -409,7 +420,7 @@ export default function PlanScreen() {
             {/* Flat children so each row's onLayout y is relative to the scroll content. */}
             {parts.flatMap((part) => [
               <Animated.View key={`h-${part.part}-${part.stops[0].i}`} layout={REFLOW} style={styles.partHeader}>
-                <Text variant="headline">{PART_TITLE[part.part]}</Text>
+                <Text variant="headline" accessibilityRole="header">{PART_TITLE[part.part]}</Text>
                 <Text variant="data">{formatClock(part.stops[0].stop.startMinutes)}</Text>
               </Animated.View>,
               ...part.stops.map(({ stop, i }, j) => (
@@ -452,7 +463,7 @@ export default function PlanScreen() {
               accessibilityRole="button"
               accessibilityLabel="Add your own stop"
             >
-              <Feather name="plus" size={16} color={light.ink} />
+              <Feather name="plus" size={16} color={skyInk.strong} />
               <Text variant="label">Add your own stop</Text>
             </PressableScale>
 
@@ -460,7 +471,7 @@ export default function PlanScreen() {
               <View style={styles.left}>
                 <Text variant="micro">Not in this plan · {left.length}</Text>
                 {unfit.some((p) => !plan.leftWhy?.[p.id]) ? (
-                  <Text variant="label" color={light.inkSoft}>
+                  <Text variant="label" color={skyInk.soft}>
                     {`The days are full at a ${prefs.pace} pace.${gain > 0 ? '' : ' Pick a faster pace, or take a stop out to make room.'}`}
                   </Text>
                 ) : null}
@@ -483,7 +494,7 @@ export default function PlanScreen() {
                         {p.name}
                       </Text>
                       {/* Why the planner left it out, when it did: too far, or the days are full. */}
-                      <Text variant="label" color={light.inkSoft} numberOfLines={plan.leftWhy?.[p.id] ? 4 : 1}>
+                      <Text variant="label" color={skyInk.soft} numberOfLines={plan.leftWhy?.[p.id] ? 4 : 1}>
                         {plan.leftWhy?.[p.id] ?? typeLine(p)}
                       </Text>
                     </View>
@@ -505,17 +516,18 @@ export default function PlanScreen() {
 
         <LinearGradient
           pointerEvents="none"
-          colors={['rgba(255,255,255,0)', light.panel]}
+          colors={[withAlpha(look.stops[2], 0), withAlpha(look.stops[2], 0.92)]}
           style={[styles.bottomFade, { height: insets.bottom + 110 }]}
         />
         <View style={[styles.floating, { paddingBottom: insets.bottom + 16 }]}>
           <Button
+            trailingArrow
             label={n === 1 ? 'Save this day' : `Save this ${n}-day plan`}
             onPress={save}
             disabled={plan.days.every((d) => d.stops.length === 0) || stamping || busy}
           />
         </View>
-      </View>
+      </Glass>
 
       <StopActions
         stop={sheet}
@@ -552,7 +564,7 @@ export default function PlanScreen() {
       {stamping ? (
         <PassportStamp city={city.name} date={today.date ? fromIso(plan.days[0].date ?? today.date) : new Date()} onDone={saved} />
       ) : null}
-    </View>
+    </SkyScreen>
   );
 }
 
@@ -570,8 +582,8 @@ function Tool({
   return (
     <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
       <View style={[styles.tool, on && styles.toolOn]}>
-        <Feather name={icon} size={13} color={on ? light.ctaInk : light.ink} />
-        <Text variant="label" color={on ? light.ctaInk : light.ink}>
+        <Feather name={icon} size={13} color={on ? skyCta : skyInk.strong} />
+        <Text variant="label" color={on ? skyCta : skyInk.strong}>
           {label}
         </Text>
       </View>
@@ -585,7 +597,7 @@ function Route({ d, length, progress, width }: { d: string; length: number; prog
     <AnimatedPath
       d={d}
       fill="none"
-      stroke={light.ink}
+      stroke={PAPER_INK}
       strokeWidth={width}
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -605,7 +617,7 @@ function Leg({ leg, compact, from, to }: { leg: NonNullable<TripStop['legBefore'
   return (
     <View style={[styles.leg, compact && styles.legCompact]}>
       <View style={styles.legLine} />
-      <Feather name={leg.mode === 'walk' ? 'navigation' : 'truck'} size={12} color={light.inkFaint} />
+      <Feather name={leg.mode === 'walk' ? 'navigation' : 'truck'} size={12} color={skyInk.faint} />
       <Text variant="data">{label}</Text>
     </View>
   );
@@ -672,7 +684,7 @@ function StopRow({
             {[formatClock(stop.startMinutes), formatDuration(stop.place.minutes), costLabel(stop.place.cost)].filter(Boolean).join(' · ')}
           </Text>
           {stop.suggested ? (
-            <Text variant="micro" color={light.accent}>
+            <Text variant="micro" color={skyAccentText}>
               Suggested · local pick
             </Text>
           ) : stop.pinned ? (
@@ -717,22 +729,23 @@ function SmallButton({
       accessibilityLabel={label}
       accessibilityState={{ selected: on, disabled }}
     >
-      <Feather name={icon} size={15} color={on ? light.ctaInk : light.ink} />
+      <Feather name={icon} size={15} color={on ? skyCta : skyInk.strong} />
     </Pressable>
   );
 }
 
+// The route is drawn on the paper map, so it stays paper ink whatever the screen around it.
+const PAPER_INK = '#111111';
+
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.mapLand },
   topFade: { position: 'absolute', left: 0, right: 0, top: 0 },
-  topBar: { position: 'absolute', left: 16, top: 0 },
+  topBar: { position: 'absolute', left: space.screen, top: 0 },
   panel: {
     flex: 1,
     marginTop: -28,
-    backgroundColor: light.panel,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    overflow: 'hidden',
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    borderBottomWidth: 0,
   },
   title: { marginTop: 6, marginBottom: 14 },
   tools: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -740,36 +753,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: light.canvas,
-    borderWidth: 1,
-    borderColor: light.line,
+    minHeight: 36,
+    paddingHorizontal: 14,
+    borderRadius: radii.pill,
+    backgroundColor: skyFill.raised,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
   },
-  toolOn: { backgroundColor: light.ink, borderColor: light.ink },
+  toolOn: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
   note: { marginTop: 10 },
   thin: {
     flexDirection: 'row',
     gap: 8,
     marginTop: 14,
     padding: 12,
-    borderRadius: 16,
-    backgroundColor: light.canvas,
+    borderRadius: radii.pane,
+    backgroundColor: skyFill.pane,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.line,
   },
   thinText: { flex: 1 },
-  thinLink: { color: light.ink, textDecorationLine: 'underline' },
-  days: { marginTop: 18, marginHorizontal: -24 },
-  daysContent: { paddingHorizontal: 24, gap: 8 },
+  thinLink: { color: skyInk.strong, textDecorationLine: 'underline' },
+  days: { marginTop: 18, marginHorizontal: -space.screen },
+  daysContent: { paddingHorizontal: space.screen, gap: 8 },
+  // The same pill as the sky's chips: frosted until chosen, then solid white.
   dayTab: {
+    minHeight: 36,
+    justifyContent: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: light.canvas,
-    borderWidth: 1,
-    borderColor: light.line,
+    borderRadius: radii.pill,
+    backgroundColor: skyFill.raised,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
   },
-  dayTabOn: { backgroundColor: light.ink, borderColor: light.ink },
+  dayTabOn: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
   list: { marginTop: 6 },
   busy: { opacity: 0.4 },
   daySummary: { marginTop: 14 },
@@ -778,35 +795,35 @@ const styles = StyleSheet.create({
   stop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   stopMainSlot: { flex: 1 },
   stopMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  glow: { position: 'absolute', left: -10, right: -10, top: 0, bottom: 0, borderRadius: 16, backgroundColor: 'rgba(226,118,60,0.14)' },
+  glow: { position: 'absolute', left: -10, right: -10, top: 0, bottom: 0, borderRadius: radii.pane, backgroundColor: skyAccentWash },
   stopNumber: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: light.ink,
+    backgroundColor: skyInk.strong,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stopNumberText: { fontFamily: fonts.sansSemi, fontSize: 12, color: light.ctaInk, fontVariant: ['tabular-nums'] },
-  thumb: { width: 56, height: 56, borderRadius: 14, backgroundColor: light.canvasTop },
+  stopNumberText: { fontFamily: fonts.sansSemi, fontSize: 12, color: skyCta, fontVariant: ['tabular-nums'] },
+  thumb: { width: 56, height: 56, borderRadius: radii.thumb, backgroundColor: skyFill.pane },
   stopText: { flex: 1, gap: 2 },
   editTools: { flexDirection: 'row', gap: 6 },
   small: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: light.canvas,
-    borderWidth: 1,
-    borderColor: light.line,
+    backgroundColor: skyFill.raised,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
   },
-  smallOn: { backgroundColor: light.ink, borderColor: light.ink },
+  smallOn: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
   smallPressed: { transform: [{ scale: 0.92 }] },
   smallDisabled: { opacity: 0.3 },
   leg: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 5, paddingVertical: 8 },
   legCompact: { paddingTop: 0 },
-  legLine: { width: 2, height: 18, borderRadius: 1, backgroundColor: light.line, marginRight: 4 },
+  legLine: { width: 2, height: 18, borderRadius: 1, backgroundColor: skyInk.line, marginRight: 4 },
   addOwn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -814,14 +831,14 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 18,
     height: 48,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: light.lineStrong,
+    borderColor: skyInk.outline,
   },
   left: { marginTop: 28, gap: 12 },
   leftRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  leftThumb: { width: 44, height: 44, borderRadius: 12, backgroundColor: light.canvasTop },
+  leftThumb: { width: 44, height: 44, borderRadius: 12, backgroundColor: skyFill.pane },
   bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
-  floating: { position: 'absolute', left: 20, right: 20, bottom: 0 },
+  floating: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },
 });

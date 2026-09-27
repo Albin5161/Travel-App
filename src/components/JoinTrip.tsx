@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
@@ -15,7 +16,8 @@ import { ensureUser, liveEnabled } from '@/lib/live/client';
 import { FADE_IN, fadeUp } from '@/lib/motion';
 import { startGroup } from '@/state/group';
 import { useTrips } from '@/state/trips';
-import { fonts, light } from '@/theme/tokens';
+import { skyFill, skyInk, skySignal } from '@/theme/sky';
+import { fonts, radii, space } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(60 + i * 60));
 
@@ -74,6 +76,7 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
   const close = () => (router.canGoBack() ? router.back() : router.replace('/trips'));
 
   return (
+    <SkyScreen>
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.fill, { paddingTop: insets.top + 8 }]}>
       <View style={styles.top}>
         <IconButton icon="x" onPress={close} accessibilityLabel="Close" />
@@ -81,8 +84,8 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
 
       <View style={styles.body}>
         <Animated.View entering={ENTER[0]}>
-          <Text variant="micro">Plan it together</Text>
-          <Text variant="display" style={styles.title}>
+          <Text variant="eyebrow">Plan it together</Text>
+          <Text variant="display" accessibilityRole="header" style={styles.title}>
             {invited ? 'You’re invited' : 'Join a trip'}
           </Text>
           <Text variant="body">
@@ -94,7 +97,7 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
 
         {!liveEnabled ? (
           <Animated.View entering={ENTER[1]} style={styles.offline}>
-            <Feather name="cloud-off" size={16} color={light.inkSoft} />
+            <Feather name="cloud-off" size={16} color={skyInk.soft} />
             <Text variant="data" style={styles.flex}>
               Joining needs Xplore&rsquo;s server, and this build isn&rsquo;t connected to one yet.
             </Text>
@@ -107,7 +110,7 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
                 value={code}
                 onChangeText={(t) => setCode(t.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 6))}
                 placeholder="ABC123"
-                placeholderTextColor={light.inkFaint}
+                placeholderTextColor={skyInk.faint}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 style={[styles.input, styles.code]}
@@ -120,7 +123,7 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
                 value={name}
                 onChangeText={setName}
                 placeholder="What should they call you?"
-                placeholderTextColor={light.inkFaint}
+                placeholderTextColor={skyInk.faint}
                 autoCapitalize="words"
                 maxLength={40}
                 returnKeyType="go"
@@ -131,7 +134,7 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
             </Animated.View>
             {error ? (
               <Animated.View entering={FADE_IN}>
-                <Text variant="label" color={light.accent}>
+                <Text variant="label" color={skySignal.down} accessibilityLiveRegion="polite">
                   {error}
                 </Text>
               </Animated.View>
@@ -142,32 +145,33 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         {liveEnabled ? (
-          <Button label={busy ? 'Joining…' : 'Join trip'} onPress={join} disabled={!ready || busy} />
+          <Button trailingArrow={!busy} label={busy ? 'Joining…' : 'Join trip'} onPress={join} disabled={!ready || busy} />
         ) : (
           <Button kind="secondary" label="Back" onPress={close} />
         )}
       </View>
     </KeyboardAvoidingView>
+    </SkyScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.canvas },
-  top: { paddingHorizontal: 16, flexDirection: 'row' },
-  body: { flex: 1, paddingHorizontal: 24, paddingTop: 20, gap: 20 },
+  fill: { flex: 1 },
+  top: { paddingHorizontal: space.screen, flexDirection: 'row' },
+  body: { flex: 1, paddingHorizontal: space.screen, paddingTop: 20, gap: 20 },
   title: { marginTop: 6, marginBottom: 8 },
   flex: { flex: 1 },
   field: { gap: 8 },
   input: {
     height: 54,
     paddingHorizontal: 18,
-    borderRadius: 18,
-    backgroundColor: light.field,
-    borderWidth: 1,
-    borderColor: light.line,
+    borderRadius: radii.pane,
+    backgroundColor: skyFill.raised,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
     fontFamily: fonts.sansMedium,
     fontSize: 17,
-    color: light.ink,
+    color: skyInk.strong,
   },
   code: { fontFamily: fonts.displayBold, fontSize: 24, letterSpacing: 6 },
   offline: {
@@ -175,10 +179,10 @@ const styles = StyleSheet.create({
     gap: 10,
     alignItems: 'flex-start',
     padding: 16,
-    borderRadius: 18,
-    backgroundColor: light.panel,
-    borderWidth: 1,
-    borderColor: light.line,
+    borderRadius: radii.glass,
+    backgroundColor: skyFill.pane,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.line,
   },
-  footer: { paddingHorizontal: 20 },
+  footer: { paddingHorizontal: space.screen },
 });

@@ -75,7 +75,12 @@ export const SKY: Record<SkyPhase, SkyLook> = {
  * colour, mostly opaque, so white type on it stays readable whatever is underneath.
  */
 export function deepGlass(look: SkyLook, alpha = 0.78) {
-  const n = parseInt(look.stops[0].slice(1), 16);
+  return withAlpha(look.stops[0], alpha);
+}
+
+/** A sky colour (#RRGGBB) at some opacity, for fades into the sky. */
+export function withAlpha(hex: string, alpha: number) {
+  const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
 }
 

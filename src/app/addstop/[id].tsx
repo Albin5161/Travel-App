@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Chips } from '@/components/spots/Chips';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { customPlace } from '@/data/custom';
 import { addCustomStop, formatDay } from '@/data/planner';
@@ -12,7 +13,8 @@ import type { DayPart } from '@/data/types';
 import { haptic } from '@/lib/haptics';
 import { usePlanWriter } from '@/state/live';
 import { useTrips } from '@/state/trips';
-import { fonts, light } from '@/theme/tokens';
+import { skyFill, skyInk } from '@/theme/sky';
+import { fonts, radii, space } from '@/theme/tokens';
 
 const PARTS: { key: DayPart; label: string }[] = [
   { key: 'morning', label: 'Morning' },
@@ -32,7 +34,16 @@ const RANK: Record<DayPart, number> = { morning: 0, afternoon: 1, evening: 2 };
  * plan in its part of the day and, on a shared trip, onto everyone's phone, where it waits for votes
  * like any other stop. Opened from the plan (on a given day) or from the vote.
  */
+/** A sheet on the sky: the same sky as the screens, with its fields and choices in glass. */
 export default function AddStop() {
+  return (
+    <SkyScreen>
+      <AddStopForm />
+    </SkyScreen>
+  );
+}
+
+function AddStopForm() {
   const { id, day: dayParam } = useLocalSearchParams<{ id: string; day?: string }>();
   const insets = useSafeAreaInsets();
   const { state } = useTrips();
@@ -65,8 +76,8 @@ export default function AddStop() {
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <Text variant="micro">Your own stop</Text>
-      <Text variant="display" style={styles.title}>
+      <Text variant="eyebrow">Your own stop</Text>
+      <Text variant="display" accessibilityRole="header" style={styles.title}>
         Add a stop
       </Text>
 
@@ -74,9 +85,10 @@ export default function AddStop() {
         value={title}
         onChangeText={setTitle}
         placeholder="Lunch at Ammachi's, pick up Amma…"
-        placeholderTextColor={light.inkFaint}
+        placeholderTextColor={skyInk.faint}
         maxLength={60}
         autoFocus
+        selectionColor={skyInk.strong}
         style={[styles.input, styles.titleInput]}
         accessibilityLabel="What's the stop"
       />
@@ -84,7 +96,7 @@ export default function AddStop() {
         value={note}
         onChangeText={setNote}
         placeholder="A note for everyone (optional)"
-        placeholderTextColor={light.inkFaint}
+        placeholderTextColor={skyInk.faint}
         maxLength={140}
         multiline
         style={[styles.input, styles.noteInput]}
@@ -114,21 +126,23 @@ export default function AddStop() {
       </Text>
       <Chips value={minutes} onChange={setMinutes} options={LENGTHS} />
 
-      <Button label="Add to the plan" onPress={add} disabled={!title.trim()} style={styles.cta} />
+      <Button trailingArrow label="Add to the plan" onPress={add} disabled={!title.trim()} style={styles.cta} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  pad: { paddingHorizontal: 22, paddingTop: 28 },
+  pad: { paddingHorizontal: space.screen, paddingTop: 28 },
   title: { marginTop: 6, marginBottom: 18 },
   input: {
     paddingHorizontal: 16,
-    borderRadius: 18,
-    backgroundColor: light.canvas,
+    borderRadius: radii.pane,
+    backgroundColor: skyFill.raised,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
     fontFamily: fonts.sans,
     fontSize: 16,
-    color: light.ink,
+    color: skyInk.strong,
   },
   titleInput: { height: 54, fontFamily: fonts.sansMedium, fontSize: 17 },
   noteInput: { marginTop: 10, minHeight: 70, paddingTop: 14, textAlignVertical: 'top' },

@@ -23,7 +23,6 @@ import { haptic } from '@/lib/haptics';
 import { FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips } from '@/state/trips';
 import { skyCta, skyFill, skyInk } from '@/theme/sky';
-import { Tone } from '@/theme/tone';
 import { colors, light, radii, shadows, space } from '@/theme/tokens';
 
 const DONE_ENTER = [0, 1, 2, 3].map((i) => fadeUp(i * 60));
@@ -281,8 +280,6 @@ export default function Verify() {
           </View>
         </>
       )}
-      {/* The search sheet is white paper over everything, so it keeps the paper palette. */}
-      <Tone value="light">
       <PlaceSearchSheet
         visible={!!sheet}
         wrong={sheet?.wrong}
@@ -296,7 +293,6 @@ export default function Verify() {
         }}
         onClose={() => setSheet(null)}
       />
-      </Tone>
     </SkyScreen>
   );
 }

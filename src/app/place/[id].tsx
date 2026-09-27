@@ -4,11 +4,14 @@ import { Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'reac
 
 import { Button } from '@/components/Button';
 import { PlaceCard } from '@/components/PlaceCard';
+import { Glass } from '@/components/sky/Glass';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { getPlace } from '@/data/api';
 import { usePlaceInfo } from '@/lib/details';
 import { useTrips } from '@/state/trips';
-import { light } from '@/theme/tokens';
+import { skyInk } from '@/theme/sky';
+import { space } from '@/theme/tokens';
 
 export default function PlaceSheet() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,7 +29,8 @@ export default function PlaceSheet() {
     );
 
   return (
-    <ScrollView style={styles.fill} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <SkyScreen>
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <PlaceCard place={place} style={{ height: Math.min(H * 0.56, 480) }} />
       <View style={styles.actions}>
         <Button kind="secondary" label="Open in Maps" onPress={openMaps} style={styles.action} />
@@ -38,18 +42,19 @@ export default function PlaceSheet() {
         />
       </View>
       {skipped ? (
-        <Text variant="label" color={light.inkFaint} style={styles.note}>
+        <Text variant="label" color={skyInk.faint} style={styles.note}>
           Skipped. It won’t be in your day plan.
         </Text>
       ) : null}
       {info ? (
         <OnGoogle info={info} onOpen={openMaps} />
       ) : loading ? (
-        <Text variant="label" color={light.inkFaint} style={styles.note}>
+        <Text variant="label" color={skyInk.faint} style={styles.note}>
           Checking what people say on Google…
         </Text>
       ) : null}
     </ScrollView>
+    </SkyScreen>
   );
 }
 
@@ -68,28 +73,30 @@ function OnGoogle({ info, onOpen }: { info: Info; onOpen: () => void }) {
     today ? `Today ${today}` : null,
   ].filter(Boolean);
   return (
-    <View style={styles.google}>
-      <Text variant="micro">On Google</Text>
+    <Glass style={styles.google}>
+      <Text variant="eyebrow">On Google</Text>
       {info.rating !== null ? (
         <View style={styles.ratingRow}>
-          <Text variant="headline">{info.rating.toFixed(1)}</Text>
-          <Feather name="star" size={16} color={light.ink} />
+          <Text variant="headline" accessibilityLabel={`Rated ${info.rating.toFixed(1)} out of 5`}>
+            {info.rating.toFixed(1)}
+          </Text>
+          <Feather name="star" size={16} color={skyInk.strong} />
           {info.ratingCount !== null ? (
-            <Text variant="label" color={light.inkSoft}>
+            <Text variant="label" color={skyInk.soft}>
               {info.ratingCount.toLocaleString('en-IN')} {info.ratingCount === 1 ? 'review' : 'reviews'}
             </Text>
           ) : null}
         </View>
       ) : null}
       {facts.length ? (
-        <Text variant="label" color={light.inkSoft}>
+        <Text variant="label" color={skyInk.soft}>
           {facts.join(' · ')}
         </Text>
       ) : null}
       {info.summary ? <Text variant="body">{info.summary}</Text> : null}
       {info.reviews.map((r) => (
         <View key={`${r.author}-${r.when}`} style={styles.review}>
-          <Text variant="label" color={light.inkSoft}>
+          <Text variant="label" color={skyInk.soft}>
             <Text
               variant="label"
               style={r.authorUri ? styles.link : undefined}
@@ -108,18 +115,17 @@ function OnGoogle({ info, onOpen }: { info: Info; onOpen: () => void }) {
       <Text variant="label" style={[styles.link, styles.more]} onPress={onOpen} accessibilityRole="link">
         {info.reviews.length ? 'All reviews on Google Maps' : 'See it on Google Maps'}
       </Text>
-    </View>
+    </Glass>
   );
 }
 
 const styles = StyleSheet.create({
-  google: { marginTop: 28, gap: 10 },
+  google: { marginTop: 24, padding: space.lg, gap: 10 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  review: { gap: 4, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: light.line },
-  link: { color: light.ink, textDecorationLine: 'underline' },
+  review: { gap: 4, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: skyInk.line },
+  link: { color: skyInk.strong, textDecorationLine: 'underline' },
   more: { marginTop: 4 },
-  fill: { flex: 1, backgroundColor: light.panel },
-  content: { padding: 16, paddingTop: 24, paddingBottom: 40 },
+  content: { padding: space.screen, paddingTop: 24, paddingBottom: 40 },
   actions: { flexDirection: 'row', gap: 12, marginTop: 16 },
   action: { flex: 1 },
   note: { marginTop: 12, textAlign: 'center' },

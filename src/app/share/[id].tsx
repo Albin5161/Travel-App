@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { PlanPass } from '@/components/share/PlanPass';
 import { TiltCard } from '@/components/share/TiltCard';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { getCity } from '@/data/api';
 import { PARTY_COPY, swapCandidates } from '@/data/group';
@@ -19,7 +20,9 @@ import { ensureUser, liveEnabled } from '@/lib/live/client';
 import { planMessage, sharePlanCard } from '@/lib/share';
 import { startGroup } from '@/state/group';
 import { useTrips } from '@/state/trips';
-import { fonts, light } from '@/theme/tokens';
+import { skyFill, skyInk } from '@/theme/sky';
+import { Tone } from '@/theme/tone';
+import { fonts, space } from '@/theme/tokens';
 
 const HEAD_IN = fadeUp(0);
 const TITLE_IN = fadeUp(60);
@@ -105,15 +108,15 @@ export default function ShareScreen() {
   };
 
   return (
-    <View style={[styles.fill, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 12 }]}>
+    <SkyScreen style={{ paddingTop: insets.top + 24, paddingBottom: insets.bottom + 12 }}>
       <View style={styles.head}>
         <Animated.View entering={HEAD_IN}>
-          <Text variant="micro">
+          <Text variant="eyebrow">
             {city.name} · {plan.days.length === 1 ? 'day planned' : `${plan.days.length} days planned`}
           </Text>
         </Animated.View>
         <Animated.View entering={TITLE_IN}>
-          <Text variant="display" style={styles.title}>
+          <Text variant="display" accessibilityRole="header" style={styles.title}>
             {'Your Xplore plan\nis ready'}
           </Text>
         </Animated.View>
@@ -122,9 +125,12 @@ export default function ShareScreen() {
       <View style={styles.stage} onLayout={(e) => setStageH(e.nativeEvent.layout.height)}>
         {stageH ? (
           <View style={{ transform: [{ scale: fit }] }}>
-            <TiltCard width={cardW} height={cardH} delay={160} faceRef={card}>
-              <PlanPass city={city} plan={plan} width={cardW} height={cardH} issued={issued} />
-            </TiltCard>
+            {/* The pass is a paper ticket, the image that gets sent: it keeps the paper palette. */}
+            <Tone value="light">
+              <TiltCard width={cardW} height={cardH} delay={160} faceRef={card}>
+                <PlanPass city={city} plan={plan} width={cardW} height={cardH} issued={issued} />
+              </TiltCard>
+            </Tone>
           </View>
         ) : null}
       </View>
@@ -132,7 +138,7 @@ export default function ShareScreen() {
       <View style={styles.actions}>
         {note ? (
           <Animated.View entering={FADE_IN}>
-            <Text variant="label" color={light.inkSoft} style={styles.note}>
+            <Text variant="label" color={skyInk.soft} style={styles.note}>
               {note}
             </Text>
           </Animated.View>
@@ -142,7 +148,7 @@ export default function ShareScreen() {
             value={name}
             onChangeText={setName}
             placeholder="Your name, so they know who's asking"
-            placeholderTextColor={light.inkFaint}
+            placeholderTextColor={skyInk.faint}
             style={styles.name}
             autoCapitalize="words"
             returnKeyType="done"
@@ -151,37 +157,36 @@ export default function ShareScreen() {
           />
         ) : null}
         {sent && party !== 'solo' ? (
-          <Button label={copy.see} onPress={() => router.push({ pathname: '/group/[id]', params: { id } })} />
+          <Button trailingArrow label={copy.see} onPress={() => router.push({ pathname: '/group/[id]', params: { id } })} />
         ) : sent ? (
           <Button label="Done" onPress={() => router.dismissTo('/trips')} />
         ) : (
-          <Button label={busy ? 'Getting it ready…' : copy.share} onPress={share} disabled={busy || (needName && !name.trim())} />
+          <Button trailingArrow={!busy} label={busy ? 'Getting it ready…' : copy.share} onPress={share} disabled={busy || (needName && !name.trim())} />
         )}
         {sent && party === 'solo' ? null : (
           <Button kind="text" label={sent ? 'Done' : 'Done for now'} onPress={() => router.dismissTo('/trips')} />
         )}
       </View>
-    </View>
+    </SkyScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.canvas },
-  head: { paddingHorizontal: 28 },
+  head: { paddingHorizontal: space.screen },
   title: { marginTop: 8 },
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  actions: { paddingHorizontal: 20, gap: 4 },
+  actions: { paddingHorizontal: space.screen, gap: 4 },
   note: { textAlign: 'center', marginBottom: 8 },
   name: {
     height: 52,
     marginBottom: 10,
     paddingHorizontal: 18,
     borderRadius: 999,
-    backgroundColor: light.field,
-    borderWidth: 1,
-    borderColor: light.line,
+    backgroundColor: skyFill.raised,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
     fontFamily: fonts.sansMedium,
     fontSize: 16,
-    color: light.ink,
+    color: skyInk.strong,
   },
 });

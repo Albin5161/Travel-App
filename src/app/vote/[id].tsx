@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Avatar } from '@/components/group/Avatar';
 import { PressableScale } from '@/components/PressableScale';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { getPlace } from '@/data/api';
 import { QUICK_NOTES, member, type VoteKind } from '@/data/group';
@@ -18,7 +19,8 @@ import { EASE_OUT } from '@/lib/motion';
 import { useGroupVote } from '@/state/group';
 import { useLiveVote } from '@/state/live';
 import { useTrips } from '@/state/trips';
-import { fonts, light } from '@/theme/tokens';
+import { skyAccentRim, skyAccentWash, skyCta, skyFill, skyInk } from '@/theme/sky';
+import { fonts, radii, space } from '@/theme/tokens';
 
 const web = Platform.OS === 'web';
 const NEXT_IN = web ? undefined : SlideInRight.duration(280).easing(EASE_OUT);
@@ -29,7 +31,16 @@ const DEFAULT_EMOJI: Record<VoteKind, string> = { keep: '👍', swap: '🔁', dr
 // Voting, stop by stop: react, say something (a quick note or your own words), then keep, swap or
 // drop. On a shared trip you vote as yourself and everyone sees it land. In the demo it's pass the
 // phone: whoever's holding it picks who they are, and their votes replace that person's scripted ones.
+/** A sheet on the sky: the same sky as the screens, with its fields and choices in glass. */
 export default function VoteSheet() {
+  return (
+    <SkyScreen>
+      <Vote />
+    </SkyScreen>
+  );
+}
+
+function Vote() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { dispatch } = useTrips();
@@ -70,8 +81,8 @@ export default function VoteSheet() {
   if (!voter) {
     return (
       <ScrollView contentContainerStyle={[styles.pad, { paddingBottom: insets.bottom + 24 }]}>
-        <Text variant="micro">Pass the phone</Text>
-        <Text variant="display" style={styles.title}>
+        <Text variant="eyebrow">Pass the phone</Text>
+        <Text variant="display" accessibilityRole="header" style={styles.title}>
           Who’s voting?
         </Text>
         <View style={styles.who}>
@@ -101,14 +112,14 @@ export default function VoteSheet() {
     return (
       <Animated.View entering={STEP_IN} style={[styles.pad, styles.done, { paddingBottom: insets.bottom + 24 }]}>
         <Avatar person={me} size={64} />
-        <Text variant="display" style={styles.center}>
+        <Text variant="display" accessibilityRole="header" style={styles.center}>
           Thanks, {me.name}!
         </Text>
         <Text variant="body" style={styles.center}>
           {group.live ? 'Your votes are in. Everyone can see them now.' : 'Pass the phone back. Your votes are in.'}
         </Text>
         <View style={styles.doneActions}>
-          <Button label="Done" onPress={() => router.back()} />
+          <Button trailingArrow label="Done" onPress={() => router.back()} />
           {group.live ? null : <Button kind="text" label="Vote as someone else" onPress={() => setVoter(null)} />}
         </View>
       </Animated.View>
@@ -132,7 +143,7 @@ export default function VoteSheet() {
 
       <Animated.View key={stop.place.id} entering={NEXT_IN}>
         <Image source={stop.place.photo} style={styles.photo} contentFit="cover" transition={0} />
-        <Text variant="headline" style={styles.placeName}>
+        <Text variant="headline" accessibilityRole="header" style={styles.placeName}>
           {stop.place.name}
         </Text>
         <Text variant="data">
@@ -153,6 +164,7 @@ export default function VoteSheet() {
               }}
               style={[styles.emojiButton, emoji === e && styles.selected]}
               accessibilityRole="button"
+              accessibilityLabel={`React ${e}`}
               accessibilityState={{ selected: emoji === e }}
             >
               <Text style={styles.emoji}>{e}</Text>
@@ -168,7 +180,7 @@ export default function VoteSheet() {
               accessibilityRole="button"
               accessibilityState={{ selected: note === n }}
             >
-              <Text variant="label" color={note === n ? light.ctaInk : light.ink}>
+              <Text variant="label" color={note === n ? skyCta : skyInk.strong}>
                 {n}
               </Text>
             </PressableScale>
@@ -178,7 +190,7 @@ export default function VoteSheet() {
           value={note && !QUICK_NOTES.includes(note) ? note : ''}
           onChangeText={(t) => setNote(t || null)}
           placeholder="Or say it in your own words"
-          placeholderTextColor={light.inkFaint}
+          placeholderTextColor={skyInk.faint}
           maxLength={140}
           style={styles.ownNote}
           returnKeyType="done"
@@ -196,7 +208,7 @@ export default function VoteSheet() {
 }
 
 const styles = StyleSheet.create({
-  pad: { paddingHorizontal: 22, paddingTop: 28 },
+  pad: { paddingHorizontal: space.screen, paddingTop: 28 },
   flex: { flex: 1 },
   title: { marginTop: 6 },
   who: { marginTop: 20, gap: 10 },
@@ -205,12 +217,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     padding: 14,
-    borderRadius: 20,
-    backgroundColor: light.canvas,
+    borderRadius: radii.glass,
+    backgroundColor: skyFill.pane,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.line,
   },
   voterRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   progress: { marginLeft: 'auto' },
-  photo: { width: '100%', height: 190, borderRadius: 22, backgroundColor: light.canvasTop },
+  photo: { width: '100%', height: 190, borderRadius: radii.glass, backgroundColor: skyFill.pane },
   placeName: { marginTop: 14 },
   section: { marginTop: 18, marginBottom: 8 },
   row: { flexDirection: 'row', gap: 8 },
@@ -220,25 +234,36 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: light.canvas,
+    backgroundColor: skyFill.raised,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
-  selected: { borderColor: light.ink, backgroundColor: light.panel },
+  // Chosen, as everywhere on the sky: an ember wash and rim.
+  selected: { borderColor: skyAccentRim, backgroundColor: skyAccentWash },
   emoji: { fontSize: 22, lineHeight: 28 },
   notes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  noteChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: light.canvas },
-  noteSelected: { backgroundColor: light.ink },
+  noteChip: {
+    minHeight: 36,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: skyFill.raised,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
+  },
+  noteSelected: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
   ownNote: {
     marginTop: 10,
     height: 46,
     paddingHorizontal: 16,
     borderRadius: 999,
-    backgroundColor: light.canvas,
+    backgroundColor: skyFill.raised,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
     fontFamily: fonts.sans,
     // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
     fontSize: 16,
-    color: light.ink,
+    color: skyInk.strong,
   },
   cast: { marginTop: 22, gap: 8 },
   done: { alignItems: 'center', gap: 10, paddingTop: 48 },

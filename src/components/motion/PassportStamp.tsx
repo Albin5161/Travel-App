@@ -12,7 +12,8 @@ import Svg, { Circle, Defs, G, Line, Path, Text as SvgText, TextPath } from 'rea
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { haptic } from '@/lib/haptics';
-import { fonts, light } from '@/theme/tokens';
+import { fonts } from '@/theme/tokens';
+import { skyAccent } from '@/theme/sky';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -27,7 +28,8 @@ const RING = Easing.bezierFn(0.1, 0.8, 0.3, 1);
 const TOTAL = 1100;
 const IMPACT = 350;
 const HOLD = 700;
-const INK = light.accent;
+// Headline orange: the stamp is large type, which passes 3:1 on the veil.
+const INK = skyAccent;
 
 type Props = { city: string; date: Date; onDone: () => void; size?: number };
 
@@ -203,7 +205,8 @@ function StampArt({ city, date, size }: { city: string; date: string; size: numb
 }
 
 const styles = StyleSheet.create({
-  veil: { backgroundColor: 'rgba(245,244,241,0.94)' },
+  // The sky's night, nearly solid: the stamp lands on it the way it would on a passport page.
+  veil: { backgroundColor: 'rgba(6,11,31,0.9)' },
   center: {
     position: 'absolute',
     left: 0,

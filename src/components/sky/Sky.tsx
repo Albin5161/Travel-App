@@ -1,5 +1,5 @@
 import { memo, useId } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import type { SkyPhase } from '@/lib/sun';
@@ -60,7 +60,9 @@ export const Sky = memo(function Sky({ phase, shade = 0 }: Props) {
   // would otherwise paint with each other's colours.
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   return (
-    <Svg width={W} height={H} style={styles.fill} pointerEvents="none">
+    // Decoration only: screen readers skip it.
+    <View style={styles.fill} pointerEvents="none" aria-hidden importantForAccessibility="no-hide-descendants">
+    <Svg width={W} height={H}>
       <Defs>
         <LinearGradient id={`sky${id}`} x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0" stopColor={look.stops[0]} />
@@ -113,6 +115,7 @@ export const Sky = memo(function Sky({ phase, shade = 0 }: Props) {
         : null}
       {shade > 0 ? <Rect x={0} y={H * 0.4} width={W} height={H * 0.6} fill={`url(#shade${id})`} /> : null}
     </Svg>
+    </View>
   );
 });
 

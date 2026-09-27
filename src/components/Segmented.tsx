@@ -5,7 +5,7 @@ import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSprin
 import { Text } from '@/components/Text';
 import { haptic } from '@/lib/haptics';
 import { SPRING_SHEET } from '@/lib/motion';
-import { skyInk } from '@/theme/sky';
+import { skyFill, skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
 import { light, shadows } from '@/theme/tokens';
 
@@ -54,6 +54,7 @@ export function Segmented<K extends string>({ value, options, onChange }: Props<
           <Pressable
             key={o.key}
             style={styles.option}
+            hitSlop={{ top: PAD, bottom: PAD }}
             onPress={() => {
               if (on) return;
               haptic.selection();
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
     boxShadow: shadows.button,
   },
   // Over the sky: a darker well with a lighter pane sliding in it, like the system control on glass.
-  trackSky: { backgroundColor: 'rgba(0,0,0,0.14)', borderColor: skyInk.line },
-  thumbSky: { backgroundColor: 'rgba(255,255,255,0.24)', boxShadow: 'none' },
+  trackSky: { backgroundColor: skyFill.well, borderColor: skyInk.line },
+  thumbSky: { backgroundColor: skyFill.pressed, boxShadow: 'none' },
   option: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
 });

@@ -21,8 +21,8 @@ import { EASE_OUT, fadeUp } from '@/lib/motion';
 import { summarize } from '@/state/group';
 import { useTrips } from '@/state/trips';
 import { Tone } from '@/theme/tone';
-import { skyInk } from '@/theme/sky';
-import { colors, fonts, light } from '@/theme/tokens';
+import { skyAccent, skyAccentText, skyAccentWash, skyFill, skyInk } from '@/theme/sky';
+import { colors, fonts, light, space } from '@/theme/tokens';
 
 const CARD_IN = [0, 1, 2, 3, 4, 5].map((i) => fadeUp(80 + i * 60));
 
@@ -51,13 +51,13 @@ export default function TripsScreen() {
   return (
     <SkyScreen>
     <ScrollView
-      contentContainerStyle={{ paddingTop: insets.top + 20, paddingHorizontal: 20, paddingBottom: insets.bottom + 120 }}
+      contentContainerStyle={{ paddingTop: insets.top + 20, paddingHorizontal: space.screen, paddingBottom: insets.bottom + 120 }}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.headRow}>
         <View style={styles.flex}>
-          <Text variant="micro">{trips.length ? `${trips.length} planned${voting ? ` · ${voting} voting` : ''}` : 'Trips'}</Text>
-          <Text variant="display" style={styles.title}>
+          <Text variant="eyebrow">{trips.length ? `${trips.length} planned${voting ? ` · ${voting} voting` : ''}` : 'Trips'}</Text>
+          <Text variant="display" accessibilityRole="header" style={styles.title}>
             Your trips
           </Text>
         </View>
@@ -121,7 +121,7 @@ function TripCard({ city, plan }: { city: City; plan: TripPlan }) {
 
   return (
     <PressableScale onPress={open} accessibilityRole="button" accessibilityLabel={`${city.name}, ${when}, ${status.label}`}>
-      <Glass radius={24}>
+      <Glass>
       <View style={styles.photo}>
         <Image source={city.hero} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
         <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)']} locations={[0.35, 1]} style={StyleSheet.absoluteFill} />
@@ -164,9 +164,9 @@ function TripCard({ city, plan }: { city: City; plan: TripPlan }) {
 
 function StatusChip({ status }: { status: Status }) {
   const tone = {
-    accent: { bg: 'rgba(255,168,119,0.18)', ink: '#FFB38A' },
+    accent: { bg: skyAccentWash, ink: skyAccentText },
     ink: { bg: skyInk.strong, ink: colors.night },
-    quiet: { bg: 'rgba(255,255,255,0.14)', ink: skyInk.soft },
+    quiet: { bg: skyFill.raised, ink: skyInk.soft },
   }[status.tone];
   return (
     <View style={[styles.chip, { backgroundColor: tone.bg }]}>
@@ -203,12 +203,12 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: skyFill.raised,
   },
   flex: { flex: 1 },
   center: { textAlign: 'center' },
   list: { gap: 16 },
-  photo: { height: 150, justifyContent: 'flex-end', backgroundColor: 'rgba(255,255,255,0.12)' },
+  photo: { height: 150, justifyContent: 'flex-end', backgroundColor: skyFill.pane },
   photoText: { padding: 16, gap: 2 },
   city: { fontFamily: fonts.display, fontSize: 30, lineHeight: 36, letterSpacing: -1.1, color: light.photoInk },
   footer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
@@ -218,15 +218,15 @@ const styles = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   chipText: { fontFamily: fonts.sansSemi, fontSize: 12, lineHeight: 15 },
   track: { height: 3, backgroundColor: skyInk.line },
-  trackFill: { ...StyleSheet.absoluteFill, backgroundColor: light.accent, transformOrigin: 'left' },
-  empty: { alignItems: 'center', gap: 8, marginTop: 60, paddingHorizontal: 24 },
+  trackFill: { ...StyleSheet.absoluteFill, backgroundColor: skyAccent, transformOrigin: 'left' },
+  empty: { alignItems: 'center', gap: 8, marginTop: 60 },
   emptyIcon: {
     width: 64,
     height: 64,
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: skyFill.raised,
     marginBottom: 6,
   },
   emptyButton: { marginTop: 10 },

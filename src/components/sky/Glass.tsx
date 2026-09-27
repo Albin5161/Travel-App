@@ -4,7 +4,9 @@ import type { ReactNode } from 'react';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Text } from '@/components/Text';
-import { skyInk } from '@/theme/sky';
+import { useReduceTransparency } from '@/lib/transparency';
+import { deepGlass, skyInk } from '@/theme/sky';
+import { radii } from '@/theme/tokens';
 
 import { useScreenSky } from './SkyScreen';
 
@@ -27,12 +29,16 @@ const WEB_FROST =
  * A frosted panel over the sky: blurred sky behind, a darker note of that sky on top, and a thin
  * light rim. Children draw in white.
  */
-export function Glass({ tint: asked, radius = 22, style, children }: Props) {
+export function Glass({ tint: asked, radius = radii.glass, style, children }: Props) {
   const screen = useScreenSky();
+  const solid = useReduceTransparency();
   const tint = asked ?? screen.glass;
   return (
     <View style={[styles.card, { borderRadius: radius }, style]}>
-      {Platform.OS === 'web' ? (
+      {solid ? (
+        // Reduce Transparency: the same sky colour, near solid, and no blur.
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: deepGlass(screen, 0.96) }]} pointerEvents="none" />
+      ) : Platform.OS === 'web' ? (
         <View style={[StyleSheet.absoluteFill, WEB_FROST, { backgroundColor: tint }]} pointerEvents="none" />
       ) : (
         <>

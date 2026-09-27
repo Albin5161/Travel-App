@@ -11,12 +11,11 @@ import Animated, {
 
 import { Text } from '@/components/Text';
 import { SAFETY_BAND_STARTS, SAFETY_BANDS, safetyBand, type SafetySignal } from '@/data/cityInfo';
-import { skyInk } from '@/theme/sky';
-import { fonts } from '@/theme/tokens';
+import { skyFill, skyInk, skySignal } from '@/theme/sky';
+import { fonts, radii } from '@/theme/tokens';
 
-// Light enough to read on the sky's dark glass.
-const UP = '#7FE0A4';
-const DOWN = '#FF9F8C';
+const UP = skySignal.up;
+const DOWN = skySignal.down;
 const FILL = 900;
 const EASE = Easing.bezier(0.23, 1, 0.32, 1);
 
@@ -112,7 +111,7 @@ export function SafetyScale({ cityName, score, signals, play }: Props) {
 const styles = StyleSheet.create({
   numberRow: { height: 44, marginTop: 6, justifyContent: 'flex-end' },
   number: { fontFamily: fonts.sansSemi, fontSize: 34, lineHeight: 40, color: UP, fontVariant: ['tabular-nums'] },
-  track: { height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.14)', overflow: 'hidden', marginTop: 4 },
+  track: { height: 10, borderRadius: 5, backgroundColor: skyFill.raised, overflow: 'hidden', marginTop: 4 },
   fill: { height: '100%', borderRadius: 5, overflow: 'hidden' },
   bands: { height: 20, marginTop: 10 },
   band: { position: 'absolute', top: 0 },
@@ -124,11 +123,11 @@ const styles = StyleSheet.create({
   rail: {
     flex: 1,
     width: StyleSheet.hairlineWidth * 2,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: skyInk.outline,
     marginTop: 10,
     marginBottom: -8,
   },
-  card: { flex: 1, padding: 16, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: StyleSheet.hairlineWidth, borderColor: skyInk.line, gap: 10 },
+  card: { flex: 1, padding: 16, borderRadius: radii.pane, backgroundColor: skyFill.pane, borderWidth: StyleSheet.hairlineWidth, borderColor: skyInk.line, gap: 10 },
   tag: { alignSelf: 'flex-end' },
   basis: { marginTop: 14 },
 });

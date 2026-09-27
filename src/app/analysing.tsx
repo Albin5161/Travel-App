@@ -36,8 +36,8 @@ import { CARD_IN, CREDIT_IN, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import type { AssistReason } from '@/server/types';
 import { useTrips } from '@/state/trips';
 import { Tone } from '@/theme/tone';
-import { skyInk } from '@/theme/sky';
-import { colors, light } from '@/theme/tokens';
+import { skyAccentText, skyFill, skyInk } from '@/theme/sky';
+import { colors, radii, space } from '@/theme/tokens';
 
 type Phase = 'reading' | 'finding' | 'done';
 // While the link is being read, the status line walks through what the extraction actually does,
@@ -137,7 +137,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
     router.replace('/verify');
   };
 
-  const cardW = W - 48;
+  const cardW = W - space.screen * 2;
 
   return (
     <SkyScreen style={{ paddingTop: insets.top + 8 }}>
@@ -397,7 +397,7 @@ function ReadFailed({
         <View style={styles.failedIcon}>
           <Feather name={copy.icon} size={22} color={skyInk.strong} />
         </View>
-        <Text variant="headline">{copy.title}</Text>
+        <Text variant="headline" accessibilityRole="header">{copy.title}</Text>
         <Text variant="body">
           {copy.body}
         </Text>
@@ -452,7 +452,7 @@ function StageGlyph({ kind }: { kind: Glyph }) {
   const name = kind === 'play' ? 'play' : kind === 'caption' ? 'align-left' : kind === 'done' ? 'check' : 'map-pin';
   return (
     <View style={styles.glyph}>
-      <Feather name={name} size={13} color={kind === 'done' ? colors.ember : skyInk.soft} />
+      <Feather name={name} size={13} color={kind === 'done' ? skyAccentText : skyInk.soft} />
     </View>
   );
 }
@@ -500,14 +500,14 @@ function PinDrop() {
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }));
   return (
     <Animated.View style={[styles.pin, style]}>
-      <Feather name="map-pin" size={13} color={light.accent} />
+      <Feather name="map-pin" size={13} color={skyAccentText} />
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  close: { marginLeft: 16 },
-  body: { flex: 1, paddingHorizontal: 24, paddingTop: 28 },
+  close: { marginLeft: space.screen },
+  body: { flex: 1, paddingHorizontal: space.screen, paddingTop: 28 },
   // Right padding leaves room for the scanner sitting on the card's bottom-right edge.
   previewText: { position: 'absolute', left: 18, right: ORB_INSET + 28, bottom: 36, gap: 6 },
   timeline: { position: 'absolute', left: 18, bottom: 14 },
@@ -530,8 +530,8 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: radii.pane,
+    backgroundColor: skyFill.pane,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.line,
   },
@@ -543,19 +543,19 @@ const styles = StyleSheet.create({
   glyph: { width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
   bars: { flexDirection: 'row', gap: 2 },
   bar: { width: 2.5, height: 12, borderRadius: 1.5, backgroundColor: skyInk.soft },
-  choice: { position: 'absolute', left: 20, right: 20, bottom: 0 },
+  choice: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },
   center: { textAlign: 'center', paddingBottom: 12 },
   statusText: { flexShrink: 1 },
   scanner: { position: 'absolute', pointerEvents: 'none' },
   missing: { opacity: 0.45 },
-  failed: { flex: 1, justifyContent: 'center', paddingHorizontal: 28, gap: 12, paddingBottom: 120 },
+  failed: { flex: 1, justifyContent: 'center', paddingHorizontal: space.screen, gap: 12, paddingBottom: 120 },
   failedIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: skyFill.raised,
     marginBottom: 4,
   },
   failedActions: { gap: 10 },

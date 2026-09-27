@@ -1,15 +1,14 @@
-import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/PressableScale';
+import { Tick } from '@/components/sky/Tick';
 import { Text } from '@/components/Text';
 import { getReel } from '@/data/api';
 import type { Place, SpotStatus } from '@/data/types';
 import { formatDuration } from '@/lib/geo';
 import { haptic } from '@/lib/haptics';
-import { skyInk } from '@/theme/sky';
-import { light } from '@/theme/tokens';
+import { skyFill, skyInk } from '@/theme/sky';
 
 /**
  * One saved spot. The line under the name is what makes it actionable: how long the drive is, and
@@ -55,12 +54,12 @@ export function SpotRow({
           onToggleStatus();
         }}
         hitSlop={10}
-        style={[styles.check, been && styles.checkOn]}
+        style={styles.check}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: been }}
         accessibilityLabel={been ? `Mark ${spot.name} as not visited` : `Mark ${spot.name} as been`}
       >
-        <Feather name="check" size={13} color={been ? light.ctaInk : skyInk.faint} />
+        <Tick on={been} />
       </Pressable>
     </PressableScale>
   );
@@ -68,18 +67,9 @@ export function SpotRow({
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  thumb: { width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)' },
+  thumb: { width: 52, height: 52, borderRadius: 14, backgroundColor: skyFill.raised },
   thumbBeen: { opacity: 0.45 },
   body: { flex: 1, gap: 2 },
-  check: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: skyInk.line,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  checkOn: { backgroundColor: light.cta, borderColor: light.cta },
+  // Padded so the tick's tap area is 44pt: the web ignores hitSlop.
+  check: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 });

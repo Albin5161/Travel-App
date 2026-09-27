@@ -11,6 +11,7 @@ import { IconButton } from '@/components/IconButton';
 import { SavedTick } from '@/components/motion/SavedTick';
 import { SwipeCard, type CardHandle, type Dir } from '@/components/pick/SwipeCard';
 import { Glass } from '@/components/sky/Glass';
+import { Tick } from '@/components/sky/Tick';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { PlaceSearchSheet } from '@/components/verify/PlaceSearchSheet';
@@ -21,9 +22,9 @@ import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips } from '@/state/trips';
-import { skyInk } from '@/theme/sky';
+import { skyCta, skyFill, skyInk } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
-import { colors, light, shadows } from '@/theme/tokens';
+import { colors, light, radii, shadows, space } from '@/theme/tokens';
 
 const DONE_ENTER = [0, 1, 2, 3].map((i) => fadeUp(i * 60));
 const OFFER_IN = fadeUp(0);
@@ -156,7 +157,7 @@ export default function Verify() {
     setIndex(places.length);
   };
 
-  const cardW = W - 40;
+  const cardW = W - space.screen * 2;
   const cardH = Math.min(H - insets.top - insets.bottom - 250, 580);
   const visible = places.slice(index, index + 3);
 
@@ -229,7 +230,7 @@ export default function Verify() {
                 {reel.creator} · {city.name}
               </Text>
             </View>
-            <Text variant="display">Did we get it right?</Text>
+            <Text variant="display" accessibilityRole="header">Did we get it right?</Text>
           </View>
           <View style={[styles.stack, { height: cardH + 30 }]}>
             {visible
@@ -339,7 +340,7 @@ function CheckList({
               {creator} · {city}
             </Text>
           </View>
-          <Text variant="display">Did we get these right?</Text>
+          <Text variant="display" accessibilityRole="header">Did we get these right?</Text>
           <Text variant="body">
             {`We found ${places.length - extras.length} places. Untick any that are wrong.`}
           </Text>
@@ -366,9 +367,7 @@ function CheckList({
                     {added ? 'Added by you' : [TYPE[p.type], p.area].filter(Boolean).join(' · ')}
                   </Text>
                 </View>
-                <View style={[styles.check, on && styles.checkOn]}>
-                  {on ? <Feather name="check" size={14} color={light.ctaInk} /> : null}
-                </View>
+                <Tick on={on} />
               </Pressable>
             );
           })}
@@ -431,7 +430,7 @@ function Done({
         </Animated.View>
       ) : null}
       <Animated.View entering={DONE_ENTER[1]}>
-        <Text variant="display" style={styles.center}>
+        <Text variant="display" accessibilityRole="header" style={styles.center}>
           {count === 0 ? 'Nothing saved.' : `${count} ${count === 1 ? 'place' : 'places'} saved.`}
         </Text>
       </Animated.View>
@@ -489,15 +488,15 @@ function Done({
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: space.screen },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  titleBlock: { paddingHorizontal: 24, marginTop: 8, gap: 6 },
+  titleBlock: { paddingHorizontal: space.screen, marginTop: 8, gap: 6 },
   source: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   stack: { marginTop: 16, alignItems: 'center' },
-  actions: { position: 'absolute', left: 20, right: 20, bottom: 0 },
+  actions: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },
   actionRow: { flexDirection: 'row', gap: 12 },
   action: { flex: 1 },
-  done: { flex: 1, paddingHorizontal: 24, gap: 12 },
+  done: { flex: 1, paddingHorizontal: space.screen, gap: 12 },
   tick: { alignItems: 'center', marginBottom: 8 },
   center: { textAlign: 'center' },
   offer: {
@@ -510,7 +509,7 @@ const styles = StyleSheet.create({
     paddingRight: 18,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: '#0E0F12',
+    backgroundColor: skyCta,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
     boxShadow: shadows.cta,
@@ -525,20 +524,10 @@ const styles = StyleSheet.create({
   link: { textDecorationLine: 'underline' },
   doneActions: { gap: 4 },
   list: { flex: 1 },
-  rows: { marginTop: 20, marginBottom: 8, marginHorizontal: 16, padding: 8, gap: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 16 },
-  rowPressed: { backgroundColor: 'rgba(255,255,255,0.08)' },
-  thumb: { width: 56, height: 56, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)' },
+  rows: { marginTop: 20, marginBottom: 8, marginHorizontal: space.screen, padding: 8, gap: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 8, paddingHorizontal: 8, borderRadius: radii.pane },
+  rowPressed: { backgroundColor: skyFill.pane },
+  thumb: { width: 56, height: 56, borderRadius: 14, backgroundColor: skyFill.pane },
   thumbOff: { opacity: 0.35 },
   rowText: { flex: 1, gap: 2 },
-  check: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkOn: { backgroundColor: '#0E0F12', borderColor: '#0E0F12' },
 });

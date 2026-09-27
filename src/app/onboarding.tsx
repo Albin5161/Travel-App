@@ -31,12 +31,12 @@ import { haptic } from '@/lib/haptics';
 import { EASE_OUT, project, SPRING_DRAG } from '@/lib/motion';
 import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
-import { skyAccent, skyInk } from '@/theme/sky';
+import { skyAccent, skyFill, skyInk } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
-import { colors, fonts } from '@/theme/tokens';
+import { fonts, space } from '@/theme/tokens';
 
 const PAGES = 4;
-const GUTTER = 28;
+const GUTTER = space.screen;
 
 /**
  * Four screens. The first says what Xplore does, in one sentence and one moving picture: any video
@@ -107,7 +107,7 @@ export default function Onboarding() {
       <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.wordmark}>Xplore</Text>
         {last ? null : (
-          <PressableScale onPress={finish} accessibilityRole="button" accessibilityLabel="Skip the intro">
+          <PressableScale onPress={finish} style={styles.skip} accessibilityRole="button" accessibilityLabel="Skip the intro">
             <Text variant="label" color={skyInk.soft}>
               Skip
             </Text>
@@ -352,7 +352,7 @@ function Copy({
 }) {
   return (
     <View style={styles.copy}>
-      <Text variant="micro" style={styles.eyebrow}>
+      <Text variant="eyebrow" style={styles.eyebrow}>
         {eyebrow}
       </Text>
       <Text style={styles.title} accessibilityRole="header">
@@ -385,7 +385,7 @@ function Dot({ index, p }: { index: number; p: SharedValue<number> }) {
     return {
       width: interpolate(d, [0, 1], [20, 6], Extrapolation.CLAMP),
       opacity: interpolate(d, [0, 1], [1, 0.45], Extrapolation.CLAMP),
-      backgroundColor: interpolateColor(Math.min(d, 1), [0, 1], [colors.ember, skyInk.strong]),
+      backgroundColor: interpolateColor(Math.min(d, 1), [0, 1], [skyAccent, skyInk.strong]),
     };
   });
   return <Animated.View style={[styles.dot, style]} />;
@@ -403,6 +403,8 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
+  // Real padding, not hitSlop: the web ignores hitSlop, and a tap target should be 44pt tall.
+  skip: { minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' },
   viewport: { flex: 1, overflow: 'hidden' },
   row: { flex: 1, flexDirection: 'row' },
   pageSlot: { flex: 1, paddingHorizontal: GUTTER, justifyContent: 'center' },
@@ -412,19 +414,20 @@ const styles = StyleSheet.create({
     height: 54,
     paddingHorizontal: 18,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: skyFill.raised,
     borderWidth: 1,
     borderColor: skyInk.rim,
     fontFamily: fonts.sansMedium,
     fontSize: 17,
     color: skyInk.strong,
   },
-  nameInputFocused: { backgroundColor: 'rgba(255,255,255,0.22)', borderColor: 'rgba(255,255,255,0.45)' },
+  nameInputFocused: { backgroundColor: skyFill.pressed, borderColor: skyInk.outline },
   district: { gap: 10 },
   districtChips: { marginHorizontal: -GUTTER, paddingLeft: GUTTER },
   copy: { gap: 12 },
-  eyebrow: { letterSpacing: 2, marginBottom: 2 },
-  title: { fontFamily: fonts.display, fontSize: 32, lineHeight: 37, color: skyInk.strong, letterSpacing: -1.1 },
+  eyebrow: { marginBottom: 2 },
+  // The display size every screen title uses, so the intro and the app read as one voice.
+  title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
   // Warmer and lighter than the button's ember, so it holds up as type on a dark sky.
   accent: { color: skyAccent },
   body: { paddingRight: 8 },

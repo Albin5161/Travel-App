@@ -16,13 +16,13 @@ import { haptic } from '@/lib/haptics';
 import { fadeUp, REFLOW } from '@/lib/motion';
 import { useArrivalWatch, type Permissions } from '@/state/arrival';
 import { useSavedSpots, useTrips } from '@/state/trips';
-import { skyInk } from '@/theme/sky';
-import { colors, fonts, light } from '@/theme/tokens';
+import { skyAccent, skyCta, skyFill, skyInk } from '@/theme/sky';
+import { fonts, radii, space } from '@/theme/tokens';
 
 type IconName = ComponentProps<typeof Feather>['name'];
 
 const ENTER = [0, 1, 2, 3, 4, 5].map((i) => fadeUp(60 + i * 50));
-const GUTTER = 16;
+const GUTTER = space.screen;
 
 // Background geofencing is not in Expo Go, so "Try it" is the only way to see an arrival there.
 // Detected rather than assumed, so a development build drops the caveat.
@@ -65,7 +65,7 @@ export default function Profile() {
       <Animated.View entering={ENTER[0]} style={styles.header}>
         <ProfilePhoto size={72} />
         <View style={styles.headerText}>
-          <Text variant="display" numberOfLines={1}>
+          <Text variant="display" accessibilityRole="header" numberOfLines={1}>
             {state.myName ?? 'Profile'}
           </Text>
           <Text variant="data">{home ? `Home in ${home.name}` : 'No home district yet'}</Text>
@@ -140,11 +140,11 @@ export default function Profile() {
                 haptic.selection();
                 dispatch({ type: 'setNotifyOnArrival', on });
               }}
-              trackColor={{ true: colors.ember, false: 'rgba(255,255,255,0.22)' }}
+              trackColor={{ true: skyAccent, false: skyFill.pressed }}
               thumbColor="#FFFFFF"
               // Web draws its own green thumb when on unless told otherwise.
               {...({ activeThumbColor: '#FFFFFF' } as object)}
-              ios_backgroundColor="rgba(255,255,255,0.22)"
+              ios_backgroundColor={skyFill.pressed}
               accessibilityLabel="Arrival alerts"
             />
           </Row>
@@ -316,7 +316,7 @@ function Choice({ label, detail, on, onPress }: { label: string; detail: string;
         </View>
         {on ? (
           <View style={styles.check}>
-            <Feather name="check" size={12} color={light.ctaInk} />
+            <Feather name="check" size={12} color={skyCta} />
           </View>
         ) : null}
       </View>
@@ -396,10 +396,10 @@ const styles = StyleSheet.create({
     gap: 2,
     paddingVertical: 14,
     paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: radii.glass,
+    backgroundColor: skyFill.pane,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: skyInk.rim,
   },
   statValue: {
     fontFamily: fonts.display,
@@ -412,10 +412,8 @@ const styles = StyleSheet.create({
   section: { marginTop: 26, paddingHorizontal: GUTTER },
   sectionTitle: { marginLeft: 4, marginBottom: 8 },
   sectionFooter: { marginTop: 8, marginHorizontal: 4, lineHeight: 18 },
-  group: {
-    borderRadius: 20,
-  },
-  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.35)', marginLeft: 56 },
+  group: {},
+  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: skyInk.outline, marginLeft: 56 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 10, paddingHorizontal: 14 },
   dimmed: { opacity: 0.45 },
   icon: {
@@ -424,19 +422,19 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: skyFill.pane,
   },
   rowText: { flex: 1, gap: 1 },
   choice: { paddingLeft: 56, minHeight: 50 },
-  check: { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.ember, alignItems: 'center', justifyContent: 'center' },
+  check: { width: 20, height: 20, borderRadius: 10, backgroundColor: skyAccent, alignItems: 'center', justifyContent: 'center' },
   granted: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pill: {
     height: 32,
     paddingHorizontal: 14,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderColor: skyInk.outline,
+    backgroundColor: skyFill.pane,
     alignItems: 'center',
     justifyContent: 'center',
   },

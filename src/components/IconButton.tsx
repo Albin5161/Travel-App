@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
 import { PressableScale } from '@/components/PressableScale';
-import { skyInk } from '@/theme/sky';
+import { skyFill, skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
 import { light, shadows } from '@/theme/tokens';
 
@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: skyFill.raised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
     boxShadow: 'none',

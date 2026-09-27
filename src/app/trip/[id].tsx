@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
 import { SkyScreen } from '@/components/sky/SkyScreen';
+import { TICK } from '@/components/sky/Tick';
 import { Text } from '@/components/Text';
 import { getCity, getLocalPicks } from '@/data/api';
 import { customStops } from '@/data/custom';
@@ -33,8 +34,8 @@ import { findStay } from '@/lib/extract';
 import { terrainOf, type Getting, type LatLng } from '@/lib/geo';
 import { FADE_IN, FADE_OUT, fadeUp, SPRING_SETTLE } from '@/lib/motion';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { skyAccent, skyInk } from '@/theme/sky';
-import { colors } from '@/theme/tokens';
+import { skyAccent, skyAccentRim, skyAccentText, skyAccentWash, skyCta, skyFill, skyInk } from '@/theme/sky';
+import { radii, space } from '@/theme/tokens';
 
 type Step = 'who' | 'when' | 'dates' | 'days' | 'pace' | 'getting' | 'stay' | 'build';
 const ADVANCE_MS = 260;
@@ -164,10 +165,10 @@ export default function TripSetup() {
         <Animated.View key={step} entering={FADE_IN} exiting={FADE_OUT} style={styles.body}>
           <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
             <Animated.View entering={ENTER[0]}>
-              <Text variant="micro">Plan your trip · {city.name}</Text>
+              <Text variant="eyebrow">Plan your trip · {city.name}</Text>
             </Animated.View>
             <Animated.View entering={ENTER[1]}>
-              <Text variant="display" style={styles.question}>
+              <Text variant="display" accessibilityRole="header" style={styles.question}>
                 {QUESTION[step]}
               </Text>
             </Animated.View>
@@ -368,7 +369,7 @@ function OptionRow({ option, on, onPress }: { option: Option; on: boolean; onPre
       {/* An empty ring until chosen, then the ember tick springs in over it. */}
       <View style={styles.ring}>
         <Animated.View style={[styles.tick, tick]}>
-          <Feather name="check" size={14} color="#FFFFFF" />
+          <Feather name="check" size={14} color={skyCta} />
         </Animated.View>
       </View>
     </Pressable>
@@ -434,7 +435,7 @@ function Calendar({
               accessibilityState={{ selected: inRange }}
               accessibilityLabel={formatDay(iso)}
             >
-              <Text variant="data" color={edge ? '#0E0F12' : iso === first ? skyAccent : skyInk.strong}>
+              <Text variant="data" color={edge ? skyCta : iso === first ? skyAccentText : skyInk.strong}>
                 {fromIso(iso).getDate()}
               </Text>
             </Pressable>
@@ -477,8 +478,8 @@ function Build({ cityName, count, prefs, onBuilt }: { cityName: string; count: n
 
   return (
     <View style={styles.build}>
-      <Text variant="micro">Plan your trip · {cityName}</Text>
-      <Text variant="display" style={styles.question}>
+      <Text variant="eyebrow">Plan your trip · {cityName}</Text>
+      <Text variant="display" accessibilityRole="header" style={styles.question}>
         Building your plan
       </Text>
       <View style={styles.buildLines}>
@@ -486,7 +487,7 @@ function Build({ cityName, count, prefs, onBuilt }: { cityName: string; count: n
           i <= done ? (
             <Animated.View key={line} entering={FADE_IN} style={styles.buildLine}>
               <View style={[styles.buildDot, i < done && styles.buildDotDone]}>
-                {i < done ? <Feather name="check" size={11} color="#0E0F12" /> : null}
+                {i < done ? <Feather name="check" size={11} color={skyCta} /> : null}
               </View>
               <Text variant="body" color={i < done ? skyInk.strong : skyInk.soft}>
                 {line}
@@ -504,11 +505,11 @@ const CELL = 44;
 
 const styles = StyleSheet.create({
   hint: { marginTop: 10 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: space.screen },
   progress: { flex: 1, flexDirection: 'row', gap: 6, paddingRight: 8 },
-  segment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.22)', overflow: 'hidden' },
+  segment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: skyFill.pressed, overflow: 'hidden' },
   segmentFill: { ...StyleSheet.absoluteFill, backgroundColor: skyInk.strong, transformOrigin: 'left' },
-  body: { flex: 1, paddingHorizontal: 24, paddingTop: 28 },
+  body: { flex: 1, paddingHorizontal: space.screen, paddingTop: 28 },
   question: { marginTop: 6, marginBottom: 22 },
   options: { gap: 10 },
   option: {
@@ -516,38 +517,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     padding: 18,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: radii.glass,
+    backgroundColor: skyFill.pane,
     borderWidth: 1,
     borderColor: skyInk.line,
   },
   // The chosen answer warms: an ember wash and rim, the one warm note on the screen.
-  optionOn: { borderColor: 'rgba(255,168,119,0.75)', backgroundColor: 'rgba(255,168,119,0.16)' },
+  optionOn: { borderColor: skyAccentRim, backgroundColor: skyAccentWash },
   optionPressed: { transform: [{ scale: 0.985 }] },
   optionText: { flex: 1, gap: 2 },
-  ring: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.45)' },
+  ring: { width: TICK, height: TICK, borderRadius: TICK / 2, borderWidth: 1.5, borderColor: skyInk.outline },
   tick: {
     position: 'absolute',
     top: -1.5,
     left: -1.5,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.ember,
+    width: TICK,
+    height: TICK,
+    borderRadius: TICK / 2,
+    backgroundColor: skyAccent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  footer: { position: 'absolute', left: 20, right: 20, bottom: 0 },
+  footer: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },
   calendar: { gap: 14 },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
   weekday: { width: CELL, textAlign: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 6 },
   cell: { width: CELL, height: CELL, borderRadius: CELL / 2, alignItems: 'center', justifyContent: 'center' },
-  cellRange: { backgroundColor: 'rgba(255,255,255,0.16)' },
+  cellRange: { backgroundColor: skyFill.raised },
   cellEdge: { backgroundColor: skyInk.strong },
-  build: { flex: 1, paddingHorizontal: 24, paddingTop: 28 },
+  build: { flex: 1, paddingHorizontal: space.screen, paddingTop: 28 },
   buildLines: { gap: 16 },
   buildLine: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  buildDot: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.45)', alignItems: 'center', justifyContent: 'center' },
+  buildDot: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: skyInk.outline, alignItems: 'center', justifyContent: 'center' },
   buildDotDone: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
 });

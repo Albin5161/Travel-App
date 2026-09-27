@@ -13,6 +13,7 @@ export type TextVariant =
   | 'bodyStrong'
   | 'label'
   | 'micro'
+  | 'eyebrow'
   | 'data';
 
 type Props = TextProps & { variant?: TextVariant; color?: string };
@@ -28,6 +29,7 @@ const INK: Record<'dark' | 'light' | 'sky', Record<TextVariant, string>> = {
     bodyStrong: colors.mist,
     label: colors.mist,
     micro: colors.ash,
+    eyebrow: colors.ash,
     data: colors.ash,
   },
   light: {
@@ -39,6 +41,7 @@ const INK: Record<'dark' | 'light' | 'sky', Record<TextVariant, string>> = {
     bodyStrong: light.ink,
     label: light.ink,
     micro: light.inkFaint,
+    eyebrow: light.inkFaint,
     data: light.inkSoft,
   },
   sky: {
@@ -50,6 +53,7 @@ const INK: Record<'dark' | 'light' | 'sky', Record<TextVariant, string>> = {
     bodyStrong: skyInk.strong,
     label: skyInk.strong,
     micro: skyInk.faint,
+    eyebrow: skyInk.faint,
     data: skyInk.soft,
   },
 };
@@ -77,6 +81,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 14,
     letterSpacing: 0.9,
+    textTransform: 'uppercase',
+  },
+  // The caption above a screen's title: micro, spaced wide, the way a weather app labels a panel.
+  eyebrow: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1.8,
     textTransform: 'uppercase',
   },
   data: { fontFamily: fonts.sansMedium, fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums'] },

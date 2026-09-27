@@ -30,11 +30,11 @@ import { FADE_IN, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips, type HomeTab } from '@/state/trips';
 import { useHomeSky } from '@/state/sky';
 import { useHere } from '@/state/where';
-import { SKY, skyAccent as ACCENT, skyInk } from '@/theme/sky';
-import { fonts } from '@/theme/tokens';
+import { SKY, skyAccent as ACCENT, skyFill, skyInk } from '@/theme/sky';
+import { fonts, space } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
-const GUTTER = 16;
+const GUTTER = space.screen;
 /** How far the photo strip tucks under the link box. */
 const STRIP_TUCK = 22;
 // First-run strip: one striking place from each sample video, so the promise is visual.
@@ -134,10 +134,10 @@ export default function Home() {
               <HereChip />
             </View>
             <Animated.View entering={ENTER[0]}>
-              <Text variant="micro" style={styles.eyebrow}>
+              <Text variant="eyebrow" style={styles.eyebrow}>
                 Turn videos into trips
               </Text>
-              <Text style={styles.question}>
+              <Text style={styles.question} accessibilityRole="header">
                 {firstName ? (
                   <>
                     {'Hey '}
@@ -277,7 +277,7 @@ function HereChip() {
 function Empty({ tab, homeName }: { tab: HomeTab; homeName: string }) {
   return (
     <View style={styles.empty}>
-      <Text variant="headline">{tab === 'near' ? 'Nothing near home yet' : 'No cities yet'}</Text>
+      <Text variant="headline" accessibilityRole="header">{tab === 'near' ? 'Nothing near home yet' : 'No cities yet'}</Text>
       <Text variant="body">
         {tab === 'near'
           ? `Save a video of a café, a waterfall or a drive around ${homeName}. It lands here, ready for a free Saturday.`
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: skyFill.raised,
   },
   hereText: { flexShrink: 1 },
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
@@ -340,17 +340,17 @@ const styles = StyleSheet.create({
   question: {
     marginTop: 10,
     fontFamily: fonts.displayMedium,
-    fontSize: 32,
-    lineHeight: 37,
+    fontSize: 34,
+    lineHeight: 38,
     color: skyInk.soft,
     // Lighter weights need more air than heavy ones or the word spaces close up.
     letterSpacing: -0.5,
   },
   // Sized again on purpose: the nested Text is our own component, which would otherwise reset it
   // to body's 15/22 rather than inherit from the line around it.
-  questionStrong: { fontFamily: fonts.display, fontSize: 32, lineHeight: 37, color: ACCENT, letterSpacing: -1 },
-  questionName: { fontFamily: fonts.display, fontSize: 32, lineHeight: 37, color: skyInk.strong, letterSpacing: -1 },
-  eyebrow: { marginTop: 28, letterSpacing: 2 },
+  questionStrong: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: ACCENT, letterSpacing: -1.1 },
+  questionName: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
+  eyebrow: { marginTop: 28 },
   // Clear at rest, so the prints disappear behind the field rather than behind a flat band.
   sticky: { paddingHorizontal: GUTTER },
   frost: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },

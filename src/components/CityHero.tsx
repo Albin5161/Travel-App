@@ -9,7 +9,8 @@ import { Text } from '@/components/Text';
 import { cityPlaceLine } from '@/data/api';
 import type { City } from '@/data/types';
 import { Tone } from '@/theme/tone';
-import { fonts, light } from '@/theme/tokens';
+import { skyCta, skyInk } from '@/theme/sky';
+import { fonts, light, space } from '@/theme/tokens';
 
 export type HeroStats = { places: number; reels: number; planned: boolean };
 
@@ -127,7 +128,7 @@ const noop = () => {};
 const styles = StyleSheet.create({
   credit: { position: 'absolute', right: 20, maxWidth: '55%' },
   top: { position: 'absolute', left: 16 },
-  block: { position: 'absolute', left: 24, right: 24, alignItems: 'center', gap: 6 },
+  block: { position: 'absolute', left: space.screen, right: space.screen, alignItems: 'center', gap: 6 },
   name: {
     fontFamily: fonts.display,
     fontSize: 46,
@@ -155,9 +156,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0E0F12',
+    backgroundColor: skyCta,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: skyInk.rim,
     boxShadow: '0 10px 30px rgba(0,0,0,0.32)',
   },
   ctaLabel: { fontFamily: fonts.sansSemi, fontSize: 17, letterSpacing: 0.1, color: '#FFFFFF' },

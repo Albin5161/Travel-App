@@ -15,8 +15,8 @@ import type { DayPlan } from '@/data/plan';
 import type { DayPart, Place } from '@/data/types';
 import { formatClock } from '@/lib/geo';
 import type { CityNotes } from '@/server/types';
-import { skyInk } from '@/theme/sky';
-import { light } from '@/theme/tokens';
+import { skyAccent, skyAccentText, skyFill, skyInk } from '@/theme/sky';
+import { radii, space } from '@/theme/tokens';
 
 type SectionProps = { onLayout: (e: LayoutChangeEvent) => void };
 
@@ -29,7 +29,7 @@ function Section({
   return (
     <View style={styles.section} onLayout={onLayout}>
       <View style={styles.sectionHead}>
-        <Text variant="headline">{title}</Text>
+        <Text variant="headline" accessibilityRole="header">{title}</Text>
         {meta ? <Text variant="micro">{meta}</Text> : null}
       </View>
       {children}
@@ -162,7 +162,7 @@ function PlaceRow({ place }: { place: Place }) {
         {rating ? (
           <>
             <View style={styles.ratingRow}>
-              <Text variant="label" color={light.accent}>
+              <Text variant="label" color={skyAccentText}>
                 ★ {rating.score.toFixed(1)}
               </Text>
               <Text variant="data">· {formatCount(rating.count)} reviews</Text>
@@ -385,7 +385,7 @@ function Note({ children }: { children: string }) {
 }
 
 const styles = StyleSheet.create({
-  section: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 8 },
+  section: { paddingHorizontal: space.screen, paddingTop: 28, paddingBottom: 8 },
   sectionHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 },
   subhead: { marginTop: 24 },
   sourceLink: { color: skyInk.soft, textDecorationLine: 'underline' },
@@ -393,13 +393,13 @@ const styles = StyleSheet.create({
 
   stats: { flexDirection: 'row', gap: 8, marginTop: 18 },
   // Inner panes: a lighter frost on the sky, with the same thin rim as the cards.
-  stat: { flex: 1, gap: 4, padding: 12, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: StyleSheet.hairlineWidth, borderColor: skyInk.line },
+  stat: { flex: 1, gap: 4, padding: 12, borderRadius: radii.pane, backgroundColor: skyFill.pane, borderWidth: StyleSheet.hairlineWidth, borderColor: skyInk.line },
   statLabel: { fontSize: 10, letterSpacing: 0.6 },
 
   bars: { marginTop: 14, gap: 12 },
   barRow: { gap: 6 },
   barLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-  track: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.14)', overflow: 'hidden' },
+  track: { height: 6, borderRadius: 3, backgroundColor: skyFill.raised, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 3, backgroundColor: skyInk.strong },
 
   mapButton: { marginTop: 4, marginBottom: 6 },
@@ -408,12 +408,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 14,
     padding: 12,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: radii.pane,
+    backgroundColor: skyFill.pane,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.line,
   },
-  thumb: { width: 64, height: 64, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)' },
+  thumb: { width: 64, height: 64, borderRadius: 14, backgroundColor: skyFill.raised },
   placeText: { flex: 1, gap: 2 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   review: { marginTop: 4 },
@@ -424,14 +424,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 14,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: radii.pane,
+    backgroundColor: skyFill.pane,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.line,
   },
   partText: { gap: 2 },
   stack: { flexDirection: 'row' },
-  stackThumb: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' },
+  stackThumb: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: skyFill.pane },
 
   group: { marginTop: 8, marginBottom: 12 },
   groupGap: { marginTop: 28 },
@@ -443,11 +443,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: skyFill.pane,
   },
   factText: { flex: 1, gap: 2 },
   tips: { gap: 10 },
   tip: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: light.accent, marginTop: 9 },
+  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: skyAccent, marginTop: 9 },
   tipText: { flex: 1 },
 });

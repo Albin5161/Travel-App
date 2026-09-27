@@ -10,7 +10,7 @@ import { detectPlatform } from '@/data/api';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { FADE_IN, FADE_OUT } from '@/lib/motion';
-import { skyInk } from '@/theme/sky';
+import { skyCta, skyFill, skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
 import { fonts, light, shadows } from '@/theme/tokens';
 
@@ -169,7 +169,7 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
             <Text variant="label" color={ink.faint}>
               No link handy?
             </Text>
-            <Pressable onPress={onExample} hitSlop={10} accessibilityRole="button">
+            <Pressable onPress={onExample} hitSlop={10} style={styles.exampleHit} accessibilityRole="button">
               <Text variant="label" color={ink.strong} style={styles.exampleLink}>
                 Try an example
               </Text>
@@ -219,11 +219,11 @@ const styles = css.create({
     height: SKY_HEIGHT,
     borderRadius: SKY_HEIGHT / 2,
     paddingRight: (SKY_HEIGHT - CIRCLE) / 2,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: skyFill.raised,
     borderColor: skyInk.rim,
     boxShadow: 'none',
   },
-  fieldSkyFocused: { backgroundColor: 'rgba(255,255,255,0.22)', borderColor: 'rgba(255,255,255,0.45)' },
+  fieldSkyFocused: { backgroundColor: skyFill.pressed, borderColor: skyInk.outline },
   // The paste button's twin, so the swap reads as the same button changing job.
   go: {
     width: CIRCLE,
@@ -234,12 +234,15 @@ const styles = css.create({
     backgroundColor: light.cta,
     boxShadow: shadows.cta,
   },
-  goSky: { backgroundColor: '#0E0F12', boxShadow: '0 6px 16px rgba(0,0,0,0.28)' },
+  goSky: { backgroundColor: skyCta, boxShadow: '0 6px 16px rgba(0,0,0,0.28)' },
   icon: { width: 20, alignItems: 'center', marginRight: 10 },
   // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },
-  hintSlot: { minHeight: 26, justifyContent: 'center' },
+  // As tall as the example link's tap area, so swapping hint and link never moves the page.
+  hintSlot: { minHeight: 44, justifyContent: 'center' },
   hint: { marginTop: 8, marginLeft: 4 },
-  exampleRow: { flexDirection: 'row', gap: 4, marginTop: 8, marginLeft: 4 },
+  exampleRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 4 },
+  // Padded to 44pt tall: the web ignores hitSlop.
+  exampleHit: { minHeight: 44, justifyContent: 'center' },
   exampleLink: { textDecorationLine: 'underline' },
 });

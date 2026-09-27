@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTone } from '@/theme/tone';
-import { skyInk } from '@/theme/sky';
+import { skyCta, skyFill, skyInk } from '@/theme/sky';
 import { colors, fonts, light, shadows } from '@/theme/tokens';
 
 import { PressableScale } from './PressableScale';
@@ -100,13 +100,13 @@ const styles = StyleSheet.create({
   secondaryLight: { backgroundColor: light.panel, borderColor: light.lineStrong },
   // A faint light rim keeps the black edge visible against a night sky.
   primarySky: {
-    backgroundColor: '#0E0F12',
+    backgroundColor: skyCta,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: skyInk.rim,
     boxShadow: '0 10px 28px rgba(0,0,0,0.32)',
   },
   secondarySky: {
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: skyFill.raised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
   },

@@ -4,7 +4,7 @@ import Animated, { css } from 'react-native-reanimated';
 import { Glass } from '@/components/sky/Glass';
 import { Tone } from '@/theme/tone';
 import { skyInk } from '@/theme/sky';
-import { fonts } from '@/theme/tokens';
+import { fonts, radii } from '@/theme/tokens';
 
 import { TabIcon, type TabIconName } from './TabIcon';
 
@@ -13,7 +13,7 @@ const TAB_ICONS: TabIconName[] = ['overview', 'places', 'plan', 'safety'];
 
 /** Grabber + tab row. */
 export const PANEL_HEADER_H = 78;
-export const PANEL_RADIUS = 32;
+export const PANEL_RADIUS = radii.sheet;
 
 /** How much of the panel shows at rest, above the home indicator. */
 export const restPeek = (insetBottom: number) => PANEL_HEADER_H + insetBottom + 8;
@@ -73,7 +73,7 @@ const styles = css.create({
     width: 36,
     height: 5,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: skyInk.outline,
   },
   row: { flexDirection: 'row', paddingHorizontal: 10, marginTop: 8, height: 52 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1 },

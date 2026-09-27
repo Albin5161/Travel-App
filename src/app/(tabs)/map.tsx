@@ -36,13 +36,13 @@ import {
 } from '@/lib/spots';
 import { useArrivalTargets, useSpotStatus, useSpotsByDistrict, useTrips } from '@/state/trips';
 import { useWhereIAm } from '@/state/where';
-import { deepGlass, skyInk } from '@/theme/sky';
+import { deepGlass, skyFill, skyInk } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
-import { fonts } from '@/theme/tokens';
+import { radii, space } from '@/theme/tokens';
 
 const KINDS: SpotKind[] = ['all', 'food', 'sight', 'experience'];
 const REACHES: ReachMinutes[] = [null, 45, 90, 180];
-const GUTTER = 16;
+const GUTTER = space.screen;
 const PANEL_RATIO = 0.56;
 /** A full day out, door to door. The reach chips do the real narrowing. */
 const DAY_BUDGET = 600;
@@ -141,7 +141,9 @@ export default function SpotsMap() {
         style={[styles.topFade, { height: insets.top + 80 }]}
       />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.wordmark}>Your map</Text>
+        <Text variant="display" accessibilityRole="header">
+          Your map
+        </Text>
         <View style={styles.wherePill}>
           <Feather
             name={where.source === 'device' ? 'navigation' : 'home'}
@@ -226,7 +228,7 @@ export default function SpotsMap() {
 function DeepPanel({ style, children }: { style: StyleProp<ViewStyle>; children: ReactNode }) {
   const look = useScreenSky();
   return (
-    <Glass tint={deepGlass(look)} radius={32} style={style}>
+    <Glass tint={deepGlass(look)} radius={radii.sheet} style={style}>
       {children}
     </Glass>
   );
@@ -266,7 +268,7 @@ function HomeScope({
         <Animated.View entering={fadeUp(60)}>
           <View style={styles.sectionHead}>
             <Text variant="micro">This weekend</Text>
-            <Text variant="headline">Ready-made outings</Text>
+            <Text variant="headline" accessibilityRole="header">Ready-made outings</Text>
           </View>
           <ScrollView
             horizontal
@@ -368,7 +370,7 @@ function AwayScope({
           <View key={g.name} style={styles.block}>
             <View style={styles.districtHead}>
               <View style={{ flex: 1 }}>
-                <Text variant="headline">{g.name}</Text>
+                <Text variant="headline" accessibilityRole="header">{g.name}</Text>
                 <Text variant="data">
                   {g.spots.length} {g.spots.length === 1 ? 'spot' : 'spots'}
                   {g.state && g.state !== g.name ? ` · ${g.state}` : ''}
@@ -412,8 +414,7 @@ function EmptySpots() {
   const insets = useSafeAreaInsets();
   return (
     <SkyScreen style={[styles.empty, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 100 }]}>
-      <Text style={styles.wordmark}>Your map</Text>
-      <Text variant="display" style={{ textAlign: 'center' }}>
+      <Text variant="display" accessibilityRole="header" style={{ textAlign: 'center' }}>
         Nothing saved yet.
       </Text>
       <Text variant="body" style={{ textAlign: 'center' }}>
@@ -444,7 +445,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  wordmark: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, letterSpacing: -0.8, color: skyInk.strong },
   wherePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: skyInk.outline,
   },
   block: { paddingHorizontal: GUTTER, paddingTop: 14, gap: 4 },
   chips: { paddingLeft: GUTTER, paddingTop: 10 },
@@ -487,9 +487,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: skyFill.pane,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
   },
-  empty: { flex: 1, paddingHorizontal: 32, gap: 12, alignItems: 'center', justifyContent: 'center' },
+  empty: { flex: 1, paddingHorizontal: GUTTER, gap: 12, alignItems: 'center', justifyContent: 'center' },
 });

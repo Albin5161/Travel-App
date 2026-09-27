@@ -5,7 +5,7 @@ import Animated from 'react-native-reanimated';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { FADE_OUT, NUDGE_IN } from '@/lib/motion';
-import { skyInk } from '@/theme/sky';
+import { skyFill, skyInk } from '@/theme/sky';
 import { light, shadows } from '@/theme/tokens';
 
 /**
@@ -61,9 +61,9 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 14,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: skyFill.pane,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
+    borderColor: skyInk.outline,
     boxShadow: shadows.button,
   },
   icon: {

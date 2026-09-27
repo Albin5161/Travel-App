@@ -67,6 +67,8 @@ export const fonts = {
   sansSemi: 'Geist_600SemiBold',
 } as const;
 
-export const radii = { thumb: 14, card: 28, sheet: 32, pill: 999 } as const;
+// glass: every frosted card; pane: a lighter panel or row inside one.
+export const radii = { thumb: 14, pane: 16, glass: 24, card: 28, sheet: 32, pill: 999 } as const;
 
-export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, gutter: 24 } as const;
+// screen: the side margin of every screen on the sky, and of its header and footer.
+export const space = { xs: 4, sm: 8, md: 12, lg: 16, screen: 20, xl: 24, xxl: 32, gutter: 24 } as const;

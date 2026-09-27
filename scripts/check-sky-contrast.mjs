@@ -1,0 +1,67 @@
+// Checks that every ink on the sky meets WCAG AA (4.5:1) at each sky's brightest spots: its three
+// stops, the glow at full strength, and the densest cloud, both bare and under the glass tint.
+// Run with Node 22: node --experimental-strip-types scripts/check-sky-contrast.mjs
+
+import { SKY, skyInk } from '../src/theme/sky.ts';
+
+const AA = 4.5;
+const WHITE = [255, 255, 255];
+
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const rgba = (s) => {
+  const [r, g, b, a] = s.match(/[\d.]+/g).map(Number);
+  return { rgb: [r, g, b], a };
+};
+const mix = (fg, a, bg) => fg.map((v, i) => v * a + bg[i] * (1 - a));
+const lum = (c) => {
+  const [r, g, b] = c.map((v) => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const ratio = (a, b) => {
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+const inks = { strong: 1, soft: rgba(skyInk.soft).a, faint: rgba(skyInk.faint).a };
+let failed = 0;
+
+for (const [phase, look] of Object.entries(SKY)) {
+  const stops = look.stops.map(hex);
+  const glass = rgba(look.glass);
+  const glow = hex(look.glow.color);
+  // The glow sits over whichever end of the sky it's placed at.
+  const under = look.glow.y < 0.5 ? stops[0] : stops[2];
+  const spots = {
+    top: stops[0],
+    middle: stops[1],
+    bottom: stops[2],
+    glow: mix(glow, look.glow.opacity, under),
+    cloud: mix(WHITE, look.clouds, stops[1]),
+  };
+  const worst = [];
+  for (const [ink, a] of Object.entries(inks)) {
+    let min = Infinity;
+    let where = '';
+    for (const [spot, bg] of Object.entries(spots)) {
+      for (const [surface, back] of [
+        ['bare', bg],
+        ['glass', mix(glass.rgb, glass.a, bg)],
+      ]) {
+        const r = ratio(mix(WHITE, a, back), back);
+        if (r < min) [min, where] = [r, `${surface} ${spot}`];
+      }
+    }
+    if (min < AA) failed++;
+    worst.push(`${ink} ${min.toFixed(2)}${min < AA ? ' FAIL' : ''} (${where})`);
+  }
+  console.log(`${phase.padEnd(8)} ${worst.join('   ')}`);
+}
+
+if (failed) {
+  console.error(`\n${failed} ink/sky pairs are under ${AA}:1.`);
+  process.exit(1);
+}
+console.log(`\nAll inks meet ${AA}:1 on every sky.`);

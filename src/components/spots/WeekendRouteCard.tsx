@@ -5,7 +5,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { formatDuration } from '@/lib/geo';
 import type { WeekendRoute } from '@/lib/spots';
-import { skyInk } from '@/theme/sky';
+import { skyFill, skyInk } from '@/theme/sky';
 import { shadows } from '@/theme/tokens';
 
 /**
@@ -70,15 +70,15 @@ export function WeekendRouteCard({
 const styles = StyleSheet.create({
   card: {
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: skyFill.pane,
     borderWidth: 1,
     borderColor: skyInk.line,
     boxShadow: shadows.button,
     overflow: 'hidden',
   },
   photos: { flexDirection: 'row', height: 104, paddingLeft: 14, paddingTop: 14, alignItems: 'center' },
-  photo: { width: 74, height: 84, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)' },
-  photoStacked: { marginLeft: -22, borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' },
-  more: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)', width: 48 },
+  photo: { width: 74, height: 84, borderRadius: 14, backgroundColor: skyFill.raised },
+  photoStacked: { marginLeft: -22, borderWidth: 2, borderColor: skyFill.pane },
+  more: { alignItems: 'center', justifyContent: 'center', backgroundColor: skyFill.pane, width: 48 },
   body: { padding: 16, paddingTop: 12, gap: 3 },
 });

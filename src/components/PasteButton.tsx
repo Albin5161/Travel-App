@@ -5,6 +5,7 @@ import { Platform, StyleSheet, type StyleProp, type ViewStyle } from 'react-nati
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { useTone } from '@/theme/tone';
+import { skyCta } from '@/theme/sky';
 import { colors, light, shadows } from '@/theme/tokens';
 
 type Props = {
@@ -24,7 +25,7 @@ export const CIRCLE = 48;
 // Elsewhere it falls back to reading the clipboard on press.
 export function PasteButton({ onText, onUnreadable, shape = 'pill', style }: Props) {
   const tone = useTone();
-  const bg = tone === 'light' ? light.cta : tone === 'sky' ? '#0E0F12' : colors.mist;
+  const bg = tone === 'light' ? light.cta : tone === 'sky' ? skyCta : colors.mist;
   const fg = tone === 'dark' ? colors.night : light.ctaInk;
   const circle = shape === 'circle';
 

@@ -5,7 +5,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { haptic } from '@/lib/haptics';
 import { DURATION, EASE_OUT } from '@/lib/motion';
-import { skyInk } from '@/theme/sky';
+import { skyFill, skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
 import { light } from '@/theme/tokens';
 
@@ -69,7 +69,7 @@ function Segment({
         <Text variant="label" color={active || sky ? light.ctaInk : light.ink}>
           {label}
         </Text>
-        <Text variant="data" color={active || sky ? 'rgba(255,255,255,0.6)' : light.inkFaint}>
+        <Text variant="data" color={active || sky ? skyInk.faint : light.inkFaint}>
           {count}
         </Text>
       </Animated.View>
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: light.line,
   },
-  segmentSky: { backgroundColor: 'rgba(0,0,0,0.14)', borderColor: skyInk.line },
+  segmentSky: { backgroundColor: skyFill.well, borderColor: skyInk.line },
   segmentSlot: { flex: 1 },
   segmentItem: { height: 38, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   segmentItemOn: { backgroundColor: light.cta },
@@ -145,6 +145,6 @@ const styles = StyleSheet.create({
     borderColor: light.line,
   },
   chipOn: { backgroundColor: light.cta, borderColor: light.cta },
-  chipSky: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: skyInk.rim },
-  chipSkyOn: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
+  chipSky: { backgroundColor: skyFill.raised, borderColor: skyInk.rim },
+  chipSkyOn: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
 });

@@ -32,6 +32,7 @@ import { haptic } from '@/lib/haptics';
 import { useHomeSky } from '@/state/sky';
 import { useCityPlaces, useTrips } from '@/state/trips';
 import { deepGlass, SKY } from '@/theme/sky';
+import { radii, space } from '@/theme/tokens';
 
 // Top strip of photo that stays visible when the panel is fully up (holds the back button).
 const TOP_STRIP = 56;
@@ -222,7 +223,7 @@ export default function CityScreen() {
       <Animated.View
         style={[styles.barSlot, { pointerEvents: barOn ? 'auto' : 'none' }, barStyle]}
       >
-        <Glass tint={deepGlass(look)} radius={28} style={[styles.bar, { paddingBottom: insets.bottom + 12 }]}>
+        <Glass tint={deepGlass(look)} radius={radii.sheet} style={[styles.bar, { paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.barText}>
           <Text variant="bodyStrong">
             {places} {places === 1 ? 'place' : 'places'} from {reels} {reels === 1 ? 'video' : 'videos'}
@@ -252,7 +253,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     paddingTop: 14,
-    paddingHorizontal: 20,
+    paddingHorizontal: space.screen,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
     borderBottomWidth: 0,

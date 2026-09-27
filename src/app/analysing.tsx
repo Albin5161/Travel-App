@@ -99,7 +99,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
 
   // Step through the stages, holding on the last one if the extraction runs long.
   useEffect(() => {
-    sound.preload();
+    sound.preload('found');
     if (names.length > 0 || stage >= STAGES.length - 1) return;
     const t = setTimeout(() => setStage((n) => n + 1), isSampleLink(url) ? STAGE_MS : LIVE_STAGE_MS);
     return () => clearTimeout(t);
@@ -119,7 +119,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
     }
     if (!result) return;
     haptic.success();
-    void sound.done();
+    void sound.play('found');
     dispatch({ type: 'stageExtraction', extraction: result });
   }, [dispatch, names.length, result, shown]);
 
@@ -143,7 +143,11 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
     <SkyScreen style={{ paddingTop: insets.top + 8 }}>
       <IconButton
         icon="x"
-        onPress={() => router.back()}
+        onPress={() => {
+          // Stopping on purpose isn't an interruption: nothing to continue later.
+          dispatch({ type: 'setDraft', draft: null });
+          router.back();
+        }}
         accessibilityLabel={phase === 'done' ? 'Close' : 'Cancel'}
         style={styles.close}
       />
@@ -378,6 +382,7 @@ function ReadFailed({
   insetTop: number;
   insetBottom: number;
 }) {
+  const { dispatch } = useTrips();
   const copy = failureCopy(failure);
   const canRetry = failure.kind === 'error' && failure.error.retryable;
   // A reel we couldn't read can still be saved: the person watches it and adds what they spot.
@@ -389,6 +394,7 @@ function ReadFailed({
   };
   const another = () => {
     haptic.light();
+    dispatch({ type: 'setDraft', draft: null });
     if (router.canGoBack()) router.back();
     else router.replace('/');
   };

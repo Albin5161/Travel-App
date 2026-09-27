@@ -20,6 +20,7 @@ import type { Place } from '@/data/types';
 import { CHECK_AS_LIST_FROM, isLiveReel, placeFromPick, sendVerdicts, type Suggestion } from '@/lib/extract';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
+import { sound } from '@/lib/sound';
 import { FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips } from '@/state/trips';
 import { skyCta, skyFill, skyInk } from '@/theme/sky';
@@ -50,6 +51,8 @@ export default function Verify() {
   const [returning, setReturning] = useState<Dir | null>(null);
   const topCard = useRef<CardHandle>(null);
   const dragX = useSharedValue(0);
+  // Loaded ahead, so the sound lands on the moment rather than after it.
+  useEffect(() => sound.preload('saved'), []);
 
   // A wrong card can be put right (a replacement place) or dismissed (it wasn't a place: null).
   const [fixes, setFixes] = useState<Record<string, Place | null>>({});
@@ -92,7 +95,10 @@ export default function Verify() {
       extraction.reel,
       places.map((place) => ({ place, verdict: wrong.includes(place) ? 'wrong' : 'right' })),
     );
-    if (saved.length > 0) haptic.success();
+    if (saved.length > 0) {
+      haptic.success();
+      void sound.play('saved');
+    }
   }, [dispatch, done, extraction, saved, places, wrong]);
 
   useEffect(() => {
@@ -165,7 +171,11 @@ export default function Verify() {
       <View style={styles.header}>
         <IconButton
           icon="x"
-          onPress={() => router.back()}
+          onPress={() => {
+            // Stopping mid-check on purpose leaves nothing to continue.
+            if (!done) dispatch({ type: 'setDraft', draft: null });
+            router.back();
+          }}
           accessibilityLabel={done ? 'Close' : 'Stop checking. Nothing is saved.'}
         />
         {!done && !listMode ? (

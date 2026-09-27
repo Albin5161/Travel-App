@@ -38,6 +38,7 @@ import { skyAccent, skyAccentRim, skyAccentText, skyAccentWash, skyCta, skyFill,
 import { radii, space } from '@/theme/tokens';
 
 type Step = 'who' | 'when' | 'dates' | 'days' | 'pace' | 'getting' | 'stay' | 'build';
+const STEPS: Step[] = ['who', 'when', 'dates', 'days', 'pace', 'getting', 'stay'];
 const ADVANCE_MS = 260;
 const MAX_DAYS = 7;
 const CALENDAR_WEEKS = 4;
@@ -61,21 +62,42 @@ export default function TripSetup() {
 
   // Changing answers starts from the ones already given.
   const previous = state.tripPlans[id]?.prefs;
+  // Questions left part-way (the app closed, or you stepped out) pick up where they stopped.
+  const saved = !previous && state.draft?.stage === 'questions' && state.draft.cityId === id ? state.draft : null;
   const [prefs, setPrefs] = useState<TripPrefs>(
-    previous ?? { party: 'friends', when: 'this-weekend', start: null, days: 2, pace: 'balanced', getting: 'local' },
+    previous ??
+      saved?.prefs ?? { party: 'friends', when: 'this-weekend', start: null, days: 2, pace: 'balanced', getting: 'local' },
   );
   const [answered, setAnswered] = useState<Partial<Record<Step, boolean>>>(
-    previous ? { who: !!previous.party, when: true, pace: true, getting: true, stay: previous.stay !== undefined } : {},
+    previous
+      ? { who: !!previous.party, when: true, pace: true, getting: true, stay: previous.stay !== undefined }
+      : (saved?.answered ?? {}),
   );
   // "In town" is looked up when the plan is built; a stay found before is kept while it's fresh.
-  const [stayInTown, setStayInTown] = useState(!!previous?.stay);
-  const [history, setHistory] = useState<Step[]>(['who']);
+  const [stayInTown, setStayInTown] = useState(!!previous?.stay || !!saved?.stayInTown);
+  // Never resumed onto the build step itself: that one runs when the last answer is given.
+  const [history, setHistory] = useState<Step[]>(() => {
+    const kept = (saved?.history ?? []).filter((h): h is Step => h !== 'build' && STEPS.includes(h as Step));
+    return kept.length ? kept : ['who'];
+  });
   const step = history[history.length - 1];
 
   // The middle question only exists for "Pick dates" and "Not sure yet".
   const middle: Step | null = prefs.when === 'dates' ? 'dates' : prefs.when === 'flexible' ? 'days' : null;
   const sequence: Step[] = ['who', 'when', ...(middle ? [middle] : []), 'pace', 'getting', 'stay'];
   const position = step === 'build' ? sequence.length : sequence.indexOf(step);
+
+  // Each answer is kept as it's given, so closing the app loses nothing. Changing the answers of a
+  // plan that exists already isn't a draft: that plan is still there.
+  useEffect(() => {
+    if (previous || !city) return;
+    dispatch({
+      type: 'setDraft',
+      draft: { stage: 'questions', cityId: id, prefs, answered, history, stayInTown, at: Date.now() },
+    });
+    // The plan's own prefs appearing (once built) ends the draft there, in the reducer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefs, answered, history, stayInTown]);
 
   const go = (next: Step) => setHistory((h) => [...h, next]);
   const back = () => {

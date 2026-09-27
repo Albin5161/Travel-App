@@ -21,6 +21,7 @@ import { formatDay, removeStop, swapStop } from '@/data/planner';
 import { formatClock } from '@/lib/geo';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
+import { sound } from '@/lib/sound';
 import { EASE_OUT, fadeUp } from '@/lib/motion';
 import { useGroupVote } from '@/state/group';
 import { useHomeSky } from '@/state/sky';
@@ -49,6 +50,8 @@ export default function GroupScreen() {
   const { id, welcome } = useLocalSearchParams<{ id: string; welcome?: string }>();
   // Once, straight after joining from a link: what this is and what to do. Not on later visits.
   const [welcoming, setWelcoming] = useState(welcome === '1');
+  // Loaded ahead, so the sound lands on the moment rather than after it.
+  useEffect(() => sound.preload('together'), []);
   const city = getCity(id);
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
@@ -108,6 +111,7 @@ export default function GroupScreen() {
       if (v === 'drop') next = removeStop(next, day, stop.place.id);
     }
     haptic.success();
+    void sound.play('together');
     dispatch({ type: 'groupLock', cityId: id });
     track('plan locked', { live: !!group.live });
     writePlan(next, true);

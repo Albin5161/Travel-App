@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 
-import { getPlace, getCity } from '@/data/api';
+import { getPlace, getCity, isSampleLink } from '@/data/api';
 import { live, refreshed, register, restore, snapshot, type LiveSnapshot } from '@/data/registry';
 import { allDistricts } from '@/data/regions';
 import type { Group, GroupState, Member, Vote } from '@/data/group';
-import type { TripPlan } from '@/data/planner';
+import type { TripPlan, TripPrefs } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
 import { betterPhoto, framePhoto, refreshPlace } from '@/lib/extract';
 import { deviceStorage } from '@/lib/live/storage';
@@ -18,8 +18,49 @@ export interface CityCollection {
   addedAt: number;
 }
 
+/**
+ * Planning that was started and not finished, so closing the app mid-way doesn't lose it. One at a
+ * time, the latest, and it moves forward with each step: the video being read, its places being
+ * checked, the places saved, the questions part-answered, a plan built but not yet saved. Saving the
+ * plan (or stopping on purpose) clears it.
+ */
+export type Draft =
+  | { stage: 'reading'; url: string; at: number }
+  /** The extraction is kept for real links only: a sample's catalog photos can't be stored, and a
+   * sample reads again instantly from its link. */
+  | { stage: 'checking'; url: string; extraction: Extraction | null; cityId?: string; reelId?: string; at: number }
+  | { stage: 'saved'; cityId: string; at: number }
+  | {
+      stage: 'questions';
+      cityId: string;
+      prefs: TripPrefs;
+      answered: Record<string, boolean>;
+      history: string[];
+      stayInTown: boolean;
+      at: number;
+    }
+  | { stage: 'plan'; cityId: string; at: number };
+
+/** How far along a draft is, in the steps a person sees: read 20, checked 50, questions to 80, plan 90. */
+export function draftProgress(d: Draft): number {
+  switch (d.stage) {
+    case 'reading':
+      return 10;
+    case 'checking':
+      return 20;
+    case 'saved':
+      return 50;
+    case 'questions':
+      return 50 + Math.round((30 * Math.min(Object.keys(d.answered).length, 6)) / 6);
+    case 'plan':
+      return 90;
+  }
+}
+
 interface State {
   pendingLink: string | null;
+  /** Planning in progress, kept across closing the app. */
+  draft: Draft | null;
   /**
    * The district you live in. Everything near-home hangs off this: the weekend view, and which
    * districts are worth an arrival notification. A real app asks once at onboarding; the demo
@@ -71,6 +112,7 @@ export interface Remote {
 
 type Action =
   | { type: 'setPendingLink'; url: string | null }
+  | { type: 'setDraft'; draft: Draft | null }
   /** What the link turned into, held until the user has checked it. Nothing is saved yet. */
   | { type: 'stageExtraction'; extraction: Extraction }
   /** Save the places the user confirmed. Omitting placeIds saves every place found. */
@@ -102,6 +144,7 @@ type Action =
 
 const initial: State = {
   pendingLink: null,
+  draft: null,
   homeDistrictId: 'kottayam',
   spotStatus: {},
   notifyOnArrival: true,
@@ -132,15 +175,38 @@ export function isNearHome(cityId: string, homeDistrictId: string | null) {
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'setPendingLink':
-      return { ...state, pendingLink: action.url };
-    case 'stageExtraction':
-      return { ...state, lastExtraction: action.extraction, pendingLink: null };
+      return {
+        ...state,
+        pendingLink: action.url,
+        draft: action.url ? { stage: 'reading', url: action.url, at: Date.now() } : state.draft,
+      };
+    case 'setDraft':
+      return { ...state, draft: action.draft };
+    case 'stageExtraction': {
+      // The link it came from: the one being read, or (resuming a check) the one kept before.
+      const url = state.pendingLink ?? (state.draft && 'url' in state.draft ? state.draft.url : '');
+      const keep = !isSampleLink(url);
+      return {
+        ...state,
+        lastExtraction: action.extraction,
+        pendingLink: null,
+        // The city and video by id too, so a sample's card can still show its name and picture.
+        draft: {
+          stage: 'checking',
+          url,
+          extraction: keep ? action.extraction : null,
+          cityId: action.extraction.city.id,
+          reelId: action.extraction.reel.id,
+          at: Date.now(),
+        },
+      };
+    }
     case 'setHomeTab':
       return { ...state, homeTab: action.tab };
     case 'commitExtraction': {
       const { city, reel, places } = action.extraction;
       const confirmed = action.placeIds ?? places.map((p) => p.id);
-      if (confirmed.length === 0) return { ...state, lastExtraction: null, pendingLink: null };
+      if (confirmed.length === 0) return { ...state, lastExtraction: null, pendingLink: null, draft: null };
       const existing = state.collections[city.id];
       const placeIds = [...new Set([...(existing?.placeIds ?? []), ...confirmed])];
       const reelIds = [...new Set([...(existing?.reelIds ?? []), reel.id])];
@@ -152,6 +218,7 @@ function reducer(state: State, action: Action): State {
           ...state.collections,
           [city.id]: { cityId: city.id, placeIds, reelIds, addedAt: existing?.addedAt ?? Date.now() },
         },
+        draft: { stage: 'saved', cityId: city.id, at: Date.now() },
         freshCityId: existing ? state.freshCityId : city.id,
         homeTab: isNearHome(city.id, state.homeDistrictId) ? 'near' : 'cities',
       };
@@ -168,8 +235,17 @@ function reducer(state: State, action: Action): State {
       if (list.includes(action.placeId)) return state;
       return { ...state, addedLocals: { ...state.addedLocals, [action.cityId]: [...list, action.placeId] } };
     }
-    case 'setTripPlan':
-      return { ...state, tripPlans: { ...state.tripPlans, [action.plan.cityId]: action.plan } };
+    case 'setTripPlan': {
+      const id = action.plan.cityId;
+      // A plan built from the questions moves the draft on; edits to a saved plan leave it alone.
+      const building =
+        state.draft && state.draft.stage !== 'checking' && 'cityId' in state.draft && state.draft.cityId === id && !state.savedTrips[id];
+      return {
+        ...state,
+        tripPlans: { ...state.tripPlans, [id]: action.plan },
+        draft: building ? { stage: 'plan', cityId: id, at: Date.now() } : state.draft,
+      };
+    }
     case 'groupStart':
       return {
         ...state,
@@ -205,8 +281,10 @@ function reducer(state: State, action: Action): State {
       if (!g) return state;
       return { ...state, groups: { ...state.groups, [action.cityId]: groupReducer(g, action) } };
     }
-    case 'saveTrip':
-      return { ...state, savedTrips: { ...state.savedTrips, [action.cityId]: true } };
+    case 'saveTrip': {
+      const done = state.draft && 'cityId' in state.draft && state.draft.cityId === action.cityId;
+      return { ...state, savedTrips: { ...state.savedTrips, [action.cityId]: true }, draft: done ? null : state.draft };
+    }
     case 'clearFresh':
       return { ...state, freshCityId: null };
     case 'setHomeDistrict':
@@ -282,6 +360,8 @@ type SavedTrips = {
   remote: State['remote'];
   homeTab: HomeTab;
   live: LiveSnapshot;
+  /** Planning in progress. A real link's extraction goes whole: its places aren't saved anywhere else yet. */
+  draft?: Draft | null;
   /**
    * Set once real places' prices stopped being guessed. Copies saved before that have every real
    * place priced from its kind ("Free" for any sight), so those guesses are cleared on load.
@@ -311,6 +391,7 @@ function loadTrips(): Partial<State> {
     });
     // Real places first: the plans below are rebuilt from their ids.
     restore(s.live);
+    const draft = restoreDraft(s.draft ?? null, s.collections);
     const tripPlans = Object.fromEntries(Object.entries(s.tripPlans).map(([cityId, w]) => [cityId, fromWire(w)]));
     return {
       homeDistrictId: s.homeDistrictId,
@@ -325,11 +406,24 @@ function loadTrips(): Partial<State> {
       groups: s.groups,
       remote: s.remote,
       homeTab: s.homeTab,
+      draft,
     };
   } catch {
     // A copy from an older version, or damaged: start fresh rather than crash.
     return {};
   }
+}
+
+/** A draft back from storage: its real places re-registered, and dropped if what it points at is gone. */
+function restoreDraft(d: Draft | null, collections: State['collections']): Draft | null {
+  if (!d) return null;
+  if (d.stage === 'checking' && d.extraction) {
+    const { city, reel, places } = d.extraction;
+    register({ city, reel, places });
+  }
+  // A check in progress points at places not saved yet; later stages need their saved city.
+  if (d.stage !== 'checking' && d.stage !== 'reading' && !collections[d.cityId]) return null;
+  return d;
 }
 
 function saveTrips(state: State) {
@@ -350,6 +444,7 @@ function saveTrips(state: State) {
     groups: state.groups,
     remote: state.remote,
     homeTab: state.homeTab,
+    draft: state.draft,
     live: snapshot(
       [
         ...collections.flatMap((c) => c.placeIds),
@@ -392,7 +487,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   useEffect(() => write(PHOTO_KEY, state.myPhoto), [state.myPhoto]);
   useEffect(
     () => saveTrips(state),
-    // Only what's kept; a pending link or a fresh extraction changing needn't write anything.
+    // Only what's kept; a pending link or a fresh extraction changing needn't write anything (the
+    // draft carries what of them is worth keeping).
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       state.homeDistrictId,
@@ -408,6 +504,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       state.remote,
       state.homeTab,
       state.liveVersion,
+      state.draft,
     ],
   );
 

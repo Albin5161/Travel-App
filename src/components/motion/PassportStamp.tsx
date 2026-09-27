@@ -12,6 +12,7 @@ import Svg, { Circle, Defs, G, Line, Path, Text as SvgText, TextPath } from 'rea
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { haptic } from '@/lib/haptics';
+import { sound } from '@/lib/sound';
 import { fonts } from '@/theme/tokens';
 import { skyAccent } from '@/theme/sky';
 
@@ -47,12 +48,18 @@ export function PassportStamp({ city, date, onDone: onDoneProp, size = 260 }: Pr
 
   useEffect(() => {
     veil.set(withTiming(1, { duration: 200 }));
+    sound.preload('saved');
     if (reduced) {
       t.set(TOTAL);
+      void sound.play('saved');
       const done = setTimeout(onDone, 900);
       return () => clearTimeout(done);
     }
-    const thud = setTimeout(haptic.thud, IMPACT);
+    // The sound lands with the stamp, on the thud.
+    const thud = setTimeout(() => {
+      haptic.thud();
+      void sound.play('saved');
+    }, IMPACT);
     t.set(
       withTiming(TOTAL, { duration: TOTAL, easing: Easing.linear }, (finished) => {
         if (finished) scheduleOnRN(later, onDone);

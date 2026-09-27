@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { AppState, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { AppState, Platform, StyleSheet, type LayoutChangeEvent, View, useWindowDimensions } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedScrollHandler,
@@ -22,6 +22,7 @@ import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { EXAMPLE_LINKS, getCity, getReel } from '@/data/api';
 import { places } from '@/data/catalog';
+import { ContinueCard } from '@/components/home/ContinueCard';
 import { PhotoStrip } from '@/components/home/PhotoStrip';
 import { allDistricts } from '@/data/regions';
 import type { Platform as SourcePlatform } from '@/data/types';
@@ -44,6 +45,11 @@ const INSPIRATION = ['meg-dawki', 'kochi-mural', 'gok-om', 'meg-falls', 'gok-hal
   .map((p) => ({ id: p.id, photo: p.photo }));
 /** The floating tab bar sits over the scroll, so the last row of tiles has to clear it. */
 const TAB_BAR_CLEARANCE = 100;
+/** The hero's top space: never tighter than this, never emptier than that. */
+const MIN_PAD = 28;
+const MAX_PAD = 200;
+/** How much of what's below the fold (collections, a plan to continue) the first screen shows. */
+const PEEK = 110;
 const GAP = 10;
 /** Three across. Tighter than two, and the grid reads as a collection rather than a shortlist. */
 const COLUMNS = 3;
@@ -54,7 +60,7 @@ const COLUMNS = 3;
 // a glass card, the way a weather app sets its panels over the weather.
 export default function Home() {
   const insets = useSafeAreaInsets();
-  const { width: W } = useWindowDimensions();
+  const { width: W, height: H } = useWindowDimensions();
   const { state, dispatch } = useTrips();
   const hasLink = useClipboardLink();
   const startLink = useStartFromLink();
@@ -102,10 +108,25 @@ export default function Home() {
   // paste. Muted before the first save, when nothing is yours yet.
   const inspiration = collections.length === 0;
   const stripPhotos = INSPIRATION;
-  // Offer the first example whose place isn't collected yet, so each tap shows something new.
-  const example = EXAMPLE_LINKS.find((e) => !state.collections[e.cityId]) ?? EXAMPLE_LINKS[0];
   const fresh = state.freshCityId;
-    const tileW = (W - GUTTER * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
+  const tileW = (W - GUTTER * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
+
+  // The first screen is composed around its middle: the question, the prints and the link box sit
+  // centred in the room above the tab bar (less a peek of what's below, when there is something),
+  // instead of stacked from the top. Measured once and then held, so the page doesn't shift as a
+  // phone browser's bars slide away while scrolling.
+  const [viewH] = useState(H);
+  const [sizes, setSizes] = useState({ top: 0, hero: 0, link: 0 });
+  const measure = (k: keyof typeof sizes) => (e: LayoutChangeEvent) => {
+    const h = Math.round(e.nativeEvent.layout.height);
+    setSizes((m) => (m[k] === h ? m : { ...m, [k]: h }));
+  };
+  const below = collections.length > 0 || !!state.draft ? PEEK : 0;
+  const room = viewH - insets.top - 12 - TAB_BAR_CLEARANCE - below;
+  const heroPad =
+    sizes.top && sizes.hero && sizes.link
+      ? Math.round(Math.min(MAX_PAD, Math.max(MIN_PAD, (room - sizes.top - sizes.hero - sizes.link) / 2)))
+      : null;
 
   useEffect(() => {
     if (!fresh) return;
@@ -126,12 +147,14 @@ export default function Home() {
           contentContainerStyle={{ flexGrow: 1, paddingTop: 12, paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }}
         >
           <View style={styles.header} onLayout={(e) => setStickAt(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
-            <View style={styles.topRow}>
+            <View style={styles.topRow} onLayout={measure('top')}>
               <Text style={styles.wordmark}>Xplore</Text>
               <HereChip />
             </View>
+            {/* Hidden for the one frame before it's measured, so it appears already in place. */}
+            <View onLayout={measure('hero')} style={{ marginTop: heroPad ?? MIN_PAD, opacity: heroPad === null ? 0 : 1 }}>
             <Animated.View entering={ENTER[0]}>
-              <Text variant="eyebrow" style={styles.eyebrow}>
+              <Text variant="eyebrow">
                 Turn videos into trips
               </Text>
               <Text style={styles.question} accessibilityRole="header">
@@ -151,14 +174,19 @@ export default function Home() {
             <View style={styles.strip}>
               <PhotoStrip photos={stripPhotos} width={W - GUTTER * 2} muted={inspiration} />
             </View>
+            </View>
           </View>
 
-          <Animated.View entering={ENTER[1]} style={styles.sticky}>
+          <Animated.View entering={ENTER[1]} style={[styles.sticky, heroPad === null && styles.hidden]} onLayout={measure('link')}>
             <Animated.View style={[styles.frost, frostStyle]} pointerEvents="none">
               <Glass tint={look.glass} radius={0} style={styles.frostFill} />
             </Animated.View>
-            <LinkBox key={boxKey} onSubmit={start} clipboardHasLink={hasLink} onExample={() => start(example.url)} />
+            <LinkBox key={boxKey} onSubmit={start} clipboardHasLink={hasLink} />
           </Animated.View>
+
+          <View style={styles.continue}>
+            <ContinueCard />
+          </View>
 
           {/* First run is just the question and the link box. The collections appear with the first
               save, fading up as it lands, rather than greeting a new user with two empty tabs. */}
@@ -347,7 +375,8 @@ const styles = StyleSheet.create({
   // to body's 15/22 rather than inherit from the line around it.
   questionStrong: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: ACCENT, letterSpacing: -1.1 },
   questionName: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
-  eyebrow: { marginTop: 28 },
+  hidden: { opacity: 0 },
+  continue: { paddingHorizontal: GUTTER },
   // Clear at rest, so the prints disappear behind the field rather than behind a flat band.
   sticky: { paddingHorizontal: GUTTER },
   frost: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },

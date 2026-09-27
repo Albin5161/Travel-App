@@ -1,6 +1,6 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
-import { Keyboard, Platform, Pressable, TextInput, View, type TextStyle, type ViewStyle } from 'react-native';
+import { Keyboard, Platform, TextInput, View, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { css, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { CIRCLE, PasteButton } from '@/components/PasteButton';
@@ -18,8 +18,6 @@ type Props = {
   onSubmit: (url: string) => void;
   /** A link is on the clipboard (checked without reading it, so no iOS alert). */
   clipboardHasLink?: boolean;
-  /** Offered in the hint line when nothing else needs saying: for demos and first runs. */
-  onExample?: () => void;
 };
 
 const HEIGHT = 48;
@@ -32,7 +30,7 @@ const ERROR = "That's not an Instagram or YouTube link.";
 const UNREADABLE = 'Tap and hold the box, then Paste.';
 
 // The home screen's link field: type or paste a video link, or tap the system Paste button beside it.
-export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
+export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -164,17 +162,6 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
               {hint}
             </Text>
           </Animated.View>
-        ) : onExample && !value ? (
-          <Animated.View entering={FADE_IN} exiting={FADE_OUT} style={styles.exampleRow}>
-            <Text variant="label" color={ink.faint}>
-              No link handy?
-            </Text>
-            <Pressable onPress={onExample} hitSlop={10} style={styles.exampleHit} accessibilityRole="button">
-              <Text variant="label" color={ink.strong} style={styles.exampleLink}>
-                Try an example
-              </Text>
-            </Pressable>
-          </Animated.View>
         ) : null}
       </View>
     </View>
@@ -238,11 +225,7 @@ const styles = css.create({
   icon: { width: 20, alignItems: 'center', marginRight: 10 },
   // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },
-  // As tall as the example link's tap area, so swapping hint and link never moves the page.
-  hintSlot: { minHeight: 44, justifyContent: 'center' },
+  // Room for one hint line, so one appearing never moves the page.
+  hintSlot: { minHeight: 34, justifyContent: 'center' },
   hint: { marginTop: 8, marginLeft: 4 },
-  exampleRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 4 },
-  // Padded to 44pt tall: the web ignores hitSlop.
-  exampleHit: { minHeight: 44, justifyContent: 'center' },
-  exampleLink: { textDecorationLine: 'underline' },
 });

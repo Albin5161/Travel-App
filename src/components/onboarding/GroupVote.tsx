@@ -4,7 +4,7 @@ import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reani
 
 import { Avatar } from '@/components/group/Avatar';
 import { Text } from '@/components/Text';
-import { places } from '@/data/catalog';
+import { places, smallPhoto } from '@/data/catalog';
 import { fonts, light, shadows } from '@/theme/tokens';
 
 import { cleared, EASE, hold, LAND, seg, useLoop } from './loop';
@@ -33,7 +33,7 @@ export function GroupVote({ active, width }: { active: boolean; width: number })
       accessibilityLabel="Three friends vote on Om Beach. Two love it, Meera suggests Paradise Beach, and the stop is kept."
     >
       <View style={styles.head}>
-        <Image source={stop.photo} style={styles.thumb} contentFit="cover" transition={0} />
+        <Image source={smallPhoto(stop)} style={styles.thumb} contentFit="cover" transition={0} />
         <View style={styles.headText}>
           <Text variant="bodyStrong">{stop.name}</Text>
           <Text variant="data">Sat · 5:30 PM</Text>

@@ -6,6 +6,7 @@ import {
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
+import * as Font from 'expo-font';
 import { useFonts } from 'expo-font';
 import { DefaultTheme, router, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -25,6 +26,7 @@ import { ScreenViews, track } from '@/lib/analytics';
 import '@/lib/arrival';
 import { GroupScripts } from '@/state/group';
 import { TripsProvider } from '@/state/trips';
+import { SkyPhaseProvider } from '@/state/sky';
 import { SKY, skyInk } from '@/theme/sky';
 import { space } from '@/theme/tokens';
 
@@ -43,7 +45,6 @@ const SHEET_BG = SKY.night.stops[1];
 export default function RootLayout() {
   const [loaded] = useFonts({
     PlusJakartaSans_500Medium,
-    PlusJakartaSans_500Medium_Italic,
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
@@ -57,7 +58,11 @@ export default function RootLayout() {
   const [intro, setIntro] = useState(true);
 
   useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
+    if (!loaded) return;
+    SplashScreen.hideAsync();
+    // Only the maps' sea names use the italic, so it doesn't hold up the first screen: it loads
+    // just after. A map drawn before it arrives shows those few words upright for a moment.
+    void Font.loadAsync({ PlusJakartaSans_500Medium_Italic }).catch(() => {});
   }, [loaded]);
 
   if (!loaded || !inBrowser) return null;
@@ -66,6 +71,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: SHEET_BG }}>
       <ThemeProvider value={theme}>
         <TripsProvider>
+          <SkyPhaseProvider>
           <StatusBar style="light" />
           <Stack
             screenOptions={{
@@ -128,6 +134,7 @@ export default function RootLayout() {
           <GroupScripts />
           <ScreenViews />
           {intro && !reduced ? <LaunchIntro onDone={() => setIntro(false)} /> : null}
+          </SkyPhaseProvider>
         </TripsProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

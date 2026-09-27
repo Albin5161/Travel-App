@@ -5,7 +5,7 @@
 // privacy policy (src/data/legal.ts) says so; change both together.
 
 import { useSegments } from 'expo-router';
-import PostHog from 'posthog-react-native';
+import type PostHog from 'posthog-react-native';
 import { useEffect } from 'react';
 
 import { deviceStorage } from '@/lib/live/storage';
@@ -16,18 +16,46 @@ const KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY;
 const HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';
 
 // Nothing on the server render (no storage there), nothing without a key.
-const client =
-  KEY && deviceStorage
-    ? new PostHog(KEY, {
-        host: HOST,
-        customStorage: deviceStorage,
-        // No location from the network address either: where people are isn't what's measured.
-        disableGeoip: true,
-      })
-    : null;
+const ON = !!KEY && !!deviceStorage;
+// The PostHog library is about a sixth of the app's code and nothing on screen needs it, so it's
+// fetched a moment after the first screen is up. Events before then wait in a short queue.
+const LOAD_AFTER_MS = 2500;
+const QUEUE_MAX = 50;
+let client: PostHog | null = null;
+let queue: ((c: PostHog) => void)[] = [];
+let loading = false;
 
-// Your own testing on localhost stays separable from testers': filter on `build`.
-client?.register({ build: __DEV__ ? 'dev' : 'live' });
+function load() {
+  if (loading || !ON) return;
+  loading = true;
+  setTimeout(() => {
+    import('posthog-react-native')
+      .then(({ default: PostHogClient }) => {
+        const c = new PostHogClient(KEY!, {
+          host: HOST,
+          customStorage: deviceStorage!,
+          // No location from the network address either: where people are isn't what's measured.
+          disableGeoip: true,
+        });
+        // Your own testing on localhost stays separable from testers': filter on `build`.
+        c.register({ build: __DEV__ ? 'dev' : 'live' });
+        client = c;
+        queue.forEach((f) => f(c));
+        queue = [];
+      })
+      .catch(() => {
+        // No analytics this session; the app is unaffected.
+        queue = [];
+      });
+  }, LOAD_AFTER_MS);
+}
+
+function withClient(f: (c: PostHog) => void) {
+  if (client) return f(client);
+  if (!ON) return;
+  if (queue.length < QUEUE_MAX) queue.push(f);
+  load();
+}
 
 export type AnalyticsEvent =
   | 'onboarding completed'
@@ -45,7 +73,7 @@ export type AnalyticsEvent =
   | 'app crashed';
 
 export function track(event: AnalyticsEvent, properties?: Record<string, string | number | boolean>) {
-  client?.capture(event, properties);
+  withClient((c) => c.capture(event, properties));
 }
 
 /** "youtube", "instagram", or "other" for anything that isn't a link we read. */
@@ -59,7 +87,7 @@ export function ScreenViews() {
   const segments = useSegments();
   const name = segments.filter((s) => !s.startsWith('(')).join('/') || 'home';
   useEffect(() => {
-    client?.screen(name);
+    withClient((c) => void c.screen(name));
   }, [name]);
   return null;
 }

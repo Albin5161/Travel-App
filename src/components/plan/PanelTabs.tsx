@@ -31,7 +31,7 @@ type Props = {
 export function PanelTabs({ active, onTab }: Props) {
   return (
     <Tone value="sky">
-      <Glass radius={PANEL_RADIUS} style={styles.header}>
+      <Glass blur radius={PANEL_RADIUS} style={styles.header}>
         <View style={styles.grabber} />
         <View style={styles.row}>
           {PLAN_TABS.map((label, i) => (

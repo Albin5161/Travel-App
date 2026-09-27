@@ -21,7 +21,7 @@ import { Segmented } from '@/components/Segmented';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { EXAMPLE_LINKS, getCity, getReel } from '@/data/api';
-import { places } from '@/data/catalog';
+import { places, smallPhoto } from '@/data/catalog';
 import { ContinueCard } from '@/components/home/ContinueCard';
 import { PhotoStrip } from '@/components/home/PhotoStrip';
 import { allDistricts } from '@/data/regions';
@@ -42,7 +42,7 @@ const STRIP_TUCK = 22;
 const INSPIRATION = ['meg-dawki', 'kochi-mural', 'gok-om', 'meg-falls', 'gok-halfmoon']
   .map((id) => places[id])
   .filter((p) => !!p)
-  .map((p) => ({ id: p.id, photo: p.photo }));
+  .map((p) => ({ id: p.id, photo: smallPhoto(p) }));
 /** The floating tab bar sits over the scroll, so the last row of tiles has to clear it. */
 const TAB_BAR_CLEARANCE = 100;
 /** The hero's top space: never tighter than this, never emptier than that. */
@@ -179,7 +179,7 @@ export default function Home() {
 
           <Animated.View entering={ENTER[1]} style={[styles.sticky, heroPad === null && styles.hidden]} onLayout={measure('link')}>
             <Animated.View style={[styles.frost, frostStyle]} pointerEvents="none">
-              <Glass tint={look.glass} radius={0} style={styles.frostFill} />
+              <Glass blur tint={look.glass} radius={0} style={styles.frostFill} />
             </Animated.View>
             <LinkBox key={boxKey} onSubmit={start} clipboardHasLink={hasLink} />
           </Animated.View>

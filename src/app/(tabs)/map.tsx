@@ -228,7 +228,7 @@ export default function SpotsMap() {
 function DeepPanel({ style, children }: { style: StyleProp<ViewStyle>; children: ReactNode }) {
   const look = useScreenSky();
   return (
-    <Glass tint={deepGlass(look)} radius={radii.sheet} style={style}>
+    <Glass blur tint={deepGlass(look)} radius={radii.sheet} style={style}>
       {children}
     </Glass>
   );

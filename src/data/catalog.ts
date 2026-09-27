@@ -1,3 +1,4 @@
+import type { ImageSourcePropType } from 'react-native';
 import type { City, Place, Reel } from './types';
 
 const photos = {
@@ -28,6 +29,24 @@ const photos = {
 };
 
 export const heroDusk = require('@/assets/images/places/hero-dusk.jpg');
+
+// Small copies (480 px) of the photos a new person sees small on their first screens: Home's
+// prints and the intro's cards. Full-size photos there cost a phone on mobile data seconds before
+// the first screen settles. Made by scripts/optimize-images.py.
+const SMALL: Record<string, ImageSourcePropType> = {
+  'meg-dawki': require('@/assets/images/places/small/meg-dawki.jpg'),
+  'kochi-mural': require('@/assets/images/places/small/kochi-mural.jpg'),
+  'gok-om': require('@/assets/images/places/small/gok-om.jpg'),
+  'meg-falls': require('@/assets/images/places/small/meg-falls.jpg'),
+  'gok-halfmoon': require('@/assets/images/places/small/gok-halfmoon.jpg'),
+  'gok-paradise': require('@/assets/images/places/small/gok-paradise.jpg'),
+  'gok-prema': require('@/assets/images/places/small/gok-thali.jpg'),
+  'ktm-illickal': require('@/assets/images/places/small/meg-valley.jpg'),
+  'ktm-marmala': require('@/assets/images/places/small/meg-falls.jpg'),
+};
+
+/** A place's photo for small use: the small copy when there is one, else the full photo. */
+export const smallPhoto = (place: Place): ImageSourcePropType => SMALL[place.id] ?? place.photo;
 
 export const cities: Record<string, City> = {
   gokarna: {

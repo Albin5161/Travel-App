@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { sessionStorage } from './storage';
 
@@ -8,20 +8,30 @@ import { sessionStorage } from './storage';
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-export const supabase: SupabaseClient | null =
-  url && key
-    ? createClient(url, key, {
-        auth: { storage: sessionStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
-      })
-    : null;
+export const liveEnabled = !!(url && key);
 
-export const liveEnabled = !!supabase;
+// The client library is a fifth of the app's code, and nothing on the first screen needs it: it's
+// fetched the first time something does (reading a link, sharing, joining), then kept.
+let client: Promise<SupabaseClient | null> | null = null;
+
+export function getSupabase(): Promise<SupabaseClient | null> {
+  client ??=
+    url && key
+      ? import('@supabase/supabase-js').then(({ createClient }) =>
+          createClient(url, key, {
+            auth: { storage: sessionStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
+          }),
+        )
+      : Promise.resolve(null);
+  return client;
+}
 
 /**
  * The signed-in user's id, signing in anonymously the first time. No email or password: each phone
  * or browser is its own person, and the session is kept so it stays the same person tomorrow.
  */
 export async function ensureUser(): Promise<string> {
+  const supabase = await getSupabase();
   if (!supabase) throw new Error('Live trips need the Supabase keys in .env.local');
   const { data } = await supabase.auth.getSession();
   if (data.session?.user) return data.session.user.id;

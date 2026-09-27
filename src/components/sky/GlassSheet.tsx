@@ -30,6 +30,7 @@ export function GlassSheet({ visible, onClose, maxHeight = '80%', children }: Pr
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" />
       <Tone value="sky">
         <Glass
+          blur
           tint={deepGlass(look, 0.8)}
           radius={radii.sheet}
           style={[styles.sheet, { maxHeight, paddingBottom: insets.bottom + 12 }]}

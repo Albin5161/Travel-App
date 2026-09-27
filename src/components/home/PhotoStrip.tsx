@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useEffect } from 'react';
-import { StyleSheet, View, type ImageSourcePropType } from 'react-native';
+import { Platform, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -100,6 +100,9 @@ function Print({
     if (reduced) return;
     // Dealt in from the centre outward, then each drifts on its own slow period.
     rise.set(withDelay(80 + order * 70, withSpring(1, { duration: 620, dampingRatio: 0.72 })));
+    // On the web the drift runs on the same thread as scrolling, forever; there the prints settle
+    // once they've landed, so the page stays free for the finger.
+    if (Platform.OS === 'web') return;
     const period = 2600 + order * 330;
     float.set(
       withDelay(

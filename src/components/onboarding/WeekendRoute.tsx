@@ -6,7 +6,7 @@ import Animated, { useAnimatedProps, useAnimatedStyle, type SharedValue } from '
 import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '@/components/Text';
-import { places } from '@/data/catalog';
+import { places, smallPhoto } from '@/data/catalog';
 import type { Place } from '@/data/types';
 import { light, shadows } from '@/theme/tokens';
 
@@ -45,7 +45,7 @@ export function WeekendRoute({ active, width, homeName }: { active: boolean; wid
           <Feather name="home" size={14} color={light.ctaInk} />
         </View>
         {STOPS.map((p, i) => (
-          <Stop key={p.id} t={t} at={road.stops[i]} reach={road.reach[i]} photo={p.photo} />
+          <Stop key={p.id} t={t} at={road.stops[i]} reach={road.reach[i]} photo={smallPhoto(p)} />
         ))}
         <Tip t={t} road={road} />
       </View>

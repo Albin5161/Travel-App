@@ -14,6 +14,12 @@ type Props = {
   /** The sky's own glass tint; defaults to the screen's sky (SkyScreen), so a card reads as the same sky, frosted. */
   tint?: string;
   radius?: number;
+  /**
+   * Live blur of what's behind. Only for glass over something with detail (a map, a photo, a list
+   * scrolling under it): over the smooth sky a blur changes nothing you can see, and every live
+   * blur is work for the phone on each frame of a scroll.
+   */
+  blur?: boolean;
   style?: StyleProp<ViewStyle>;
   children?: ReactNode;
 };
@@ -26,10 +32,10 @@ const WEB_FROST =
     : null;
 
 /**
- * A frosted panel over the sky: blurred sky behind, a darker note of that sky on top, and a thin
- * light rim. Children draw in white.
+ * A frosted panel over the sky: a darker note of that sky, blurred behind when asked (`blur`), and
+ * a thin light rim. Children draw in white.
  */
-export function Glass({ tint: asked, radius = radii.glass, style, children }: Props) {
+export function Glass({ tint: asked, radius = radii.glass, blur = false, style, children }: Props) {
   const screen = useScreenSky();
   const solid = useReduceTransparency();
   const tint = asked ?? screen.glass;
@@ -38,6 +44,8 @@ export function Glass({ tint: asked, radius = radii.glass, style, children }: Pr
       {solid ? (
         // Reduce Transparency: the same sky colour, near solid, and no blur.
         <View style={[StyleSheet.absoluteFill, { backgroundColor: deepGlass(screen, 0.96) }]} pointerEvents="none" />
+      ) : !blur ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: tint }]} pointerEvents="none" />
       ) : Platform.OS === 'web' ? (
         <View style={[StyleSheet.absoluteFill, WEB_FROST, { backgroundColor: tint }]} pointerEvents="none" />
       ) : (

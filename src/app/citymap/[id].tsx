@@ -151,7 +151,7 @@ export default function CityMapScreen() {
 
       <Animated.View style={[styles.panelSlot, panelStyle]}>
         {/* Deep glass: it rests on the pale map, where light glass would wash out the type. */}
-        <Glass tint={deepGlass(look)} radius={radii.sheet} style={[styles.panel, { paddingBottom: insets.bottom + 16 }]}>
+        <Glass blur tint={deepGlass(look)} radius={radii.sheet} style={[styles.panel, { paddingBottom: insets.bottom + 16 }]}>
         <Text variant="eyebrow">
           {collected.length} places{firstReel ? ` · from ${firstReel.creator}` : ''}
         </Text>

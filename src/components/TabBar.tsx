@@ -55,7 +55,7 @@ export function TabBar({ state, navigation }: TabBarProps) {
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
       {sky ? (
-        <Glass tint={SKY[phase].glass} radius={30} style={styles.barSky}>
+        <Glass blur tint={SKY[phase].glass} radius={30} style={styles.barSky}>
           {tabs}
         </Glass>
       ) : (

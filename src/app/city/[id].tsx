@@ -159,7 +159,7 @@ export default function CityScreen() {
   };
 
   return (
-    <SkyScreen>
+    <SkyScreen enter={false}>
       <Animated.View style={[StyleSheet.absoluteFill, photoStyle]} pointerEvents="none">
         <Image source={city.hero} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
         <HeroScrim />
@@ -223,7 +223,7 @@ export default function CityScreen() {
       <Animated.View
         style={[styles.barSlot, { pointerEvents: barOn ? 'auto' : 'none' }, barStyle]}
       >
-        <Glass tint={deepGlass(look)} radius={radii.sheet} style={[styles.bar, { paddingBottom: insets.bottom + 12 }]}>
+        <Glass blur tint={deepGlass(look)} radius={radii.sheet} style={[styles.bar, { paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.barText}>
           <Text variant="bodyStrong">
             {places} {places === 1 ? 'place' : 'places'} from {reels} {reels === 1 ? 'video' : 'videos'}

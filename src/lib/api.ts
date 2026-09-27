@@ -1,4 +1,4 @@
-import { ensureUser, supabase } from '@/lib/live/client';
+import { ensureUser, getSupabase } from '@/lib/live/client';
 
 // Talks to our own API routes (src/app/api). In development a relative path reaches the dev server;
 // a build points at the deployed server with EXPO_PUBLIC_API_URL. EXPO_PUBLIC_API_FALLBACK_URL is a
@@ -27,6 +27,7 @@ const OFFLINE = new ApiFailure('offline', 'We can’t reach Xplore right now. Ch
 const TRY_ELSEWHERE = new Set(['upstream', 'not_configured', 'missing_key']);
 
 async function authHeader(): Promise<Record<string, string>> {
+  const supabase = await getSupabase();
   if (!supabase) return {};
   await ensureUser();
   const token = (await supabase.auth.getSession()).data.session?.access_token;

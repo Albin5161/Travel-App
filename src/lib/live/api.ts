@@ -1,7 +1,7 @@
 import type { Vote, VoteKind } from '@/data/group';
 import type { Party, TripPlan } from '@/data/planner';
 
-import { ensureUser, supabase } from './client';
+import { ensureUser, getSupabase } from './client';
 import { fromWire, toWire, type WirePlan } from './wire';
 
 // Every call the app makes to the shared backend. Screens never talk to Supabase directly; they
@@ -36,14 +36,15 @@ export interface VoteRow {
 // Tints handed out as people join, so each person keeps one colour on every phone.
 export const TINTS = ['#F4CDB0', '#C3DDD6', '#DAD1F3', '#F3D6DF', '#CFDCC4', '#F6E3B4'];
 
-function db() {
+async function db() {
+  const supabase = await getSupabase();
   if (!supabase) throw new Error('Live trips need the Supabase keys in .env.local');
   return supabase;
 }
 
 export async function createTrip(input: { plan: TripPlan; party: Party; swapFor: Record<string, string>; name: string }) {
   await ensureUser();
-  const { data, error } = await db().rpc('create_trip', {
+  const { data, error } = await (await db()).rpc('create_trip', {
     p_city_id: input.plan.cityId,
     p_party: input.party,
     p_plan: toWire(input.plan),
@@ -58,16 +59,17 @@ export async function createTrip(input: { plan: TripPlan; party: Party; swapFor:
 export async function joinTrip(code: string, name: string) {
   await ensureUser();
   // A tint by how many are already in, so people are easy to tell apart.
-  const { data, error } = await db().rpc('join_trip', { p_code: code, p_name: name, p_tint: TINTS[Math.floor(Math.random() * TINTS.length)] });
+  const { data, error } = await (await db()).rpc('join_trip', { p_code: code, p_name: name, p_tint: TINTS[Math.floor(Math.random() * TINTS.length)] });
   if (error) throw error;
   return data as TripRow;
 }
 
 export async function loadTrip(tripId: string) {
+  const d = await db();
   const [trip, members, votes] = await Promise.all([
-    db().from('trips').select('*').eq('id', tripId).single(),
-    db().from('members').select('*').eq('trip_id', tripId).order('joined_at'),
-    db().from('votes').select('*').eq('trip_id', tripId),
+    d.from('trips').select('*').eq('id', tripId).single(),
+    d.from('members').select('*').eq('trip_id', tripId).order('joined_at'),
+    d.from('votes').select('*').eq('trip_id', tripId),
   ]);
   if (trip.error) throw trip.error;
   return { trip: trip.data as TripRow, members: (members.data ?? []) as MemberRow[], votes: (votes.data ?? []) as VoteRow[] };
@@ -75,14 +77,14 @@ export async function loadTrip(tripId: string) {
 
 export async function castVote(tripId: string, placeId: string, vote: Vote) {
   const user = await ensureUser();
-  const { error } = await db()
+  const { error } = await (await db())
     .from('votes')
     .upsert({ trip_id: tripId, place_id: placeId, user_id: user, kind: vote.kind, emoji: vote.emoji, note: vote.note ?? null });
   if (error) throw error;
 }
 
 export async function savePlan(tripId: string, plan: TripPlan, locked?: boolean) {
-  const { error } = await db()
+  const { error } = await (await db())
     .from('trips')
     .update({ plan: toWire(plan), ...(locked !== undefined ? { locked } : {}) })
     .eq('id', tripId);
@@ -103,23 +105,31 @@ type Handlers = {
 
 /** Joins, votes and plan edits on one trip, as they happen. Returns a function that stops listening. */
 export function watchTrip(tripId: string, on: Handlers) {
-  const channel = db()
-    .channel(`trip:${tripId}`)
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, (p) =>
-      on.trip(p.new as TripRow),
-    )
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'members', filter: `trip_id=eq.${tripId}` }, (p) =>
-      on.member(p.new as MemberRow),
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'votes', filter: `trip_id=eq.${tripId}` }, (p) => {
-      if (p.eventType !== 'DELETE') on.vote(p.new as VoteRow);
-    })
-    .on('system', {}, (p: { extension?: string; status?: string }) => {
-      if (p.extension === 'postgres_changes' && p.status === 'ok') on.ready();
-    })
-    .subscribe();
+  // The client may still be loading: listening starts once it's there, unless stopped first.
+  let stopped = false;
+  let stop: (() => void) | null = null;
+  void db().then((d) => {
+    if (stopped) return;
+    const channel = d
+      .channel(`trip:${tripId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, (p) =>
+        on.trip(p.new as TripRow),
+      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'members', filter: `trip_id=eq.${tripId}` }, (p) =>
+        on.member(p.new as MemberRow),
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'votes', filter: `trip_id=eq.${tripId}` }, (p) => {
+        if (p.eventType !== 'DELETE') on.vote(p.new as VoteRow);
+      })
+      .on('system', {}, (p: { extension?: string; status?: string }) => {
+        if (p.extension === 'postgres_changes' && p.status === 'ok') on.ready();
+      })
+      .subscribe();
+    stop = () => void d.removeChannel(channel);
+  });
   return () => {
-    db().removeChannel(channel);
+    stopped = true;
+    stop?.();
   };
 }
 

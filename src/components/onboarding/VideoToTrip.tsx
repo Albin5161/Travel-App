@@ -7,7 +7,7 @@ import Animated, { useAnimatedProps, useAnimatedStyle, type SharedValue } from '
 import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '@/components/Text';
-import { places } from '@/data/catalog';
+import { places, smallPhoto } from '@/data/catalog';
 import type { Place } from '@/data/types';
 import { fonts, light, shadows } from '@/theme/tokens';
 
@@ -63,7 +63,7 @@ export function VideoToTrip({ active, width, height }: { active: boolean; width:
     >
       <MapCard t={t} x={MX} y={MY} w={MW} h={MH} route={route} />
       {STOPS.map((p, i) => (
-        <Pin key={p.id} t={t} i={i} at={pins[i]} photo={p.photo} />
+        <Pin key={p.id} t={t} i={i} at={pins[i]} photo={smallPhoto(p)} />
       ))}
       <VideoCard t={t} w={VW} h={VH} />
       {pins.map((to, i) => (
@@ -79,7 +79,7 @@ function VideoCard({ t, w, h }: { t: SharedValue<number>; w: number; h: number }
   return (
     <View style={[styles.video, { width: w, height: h }]}>
       {STOPS.map((p, i) => (
-        <Clip key={p.id} t={t} i={i} photo={p.photo} />
+        <Clip key={p.id} t={t} i={i} photo={smallPhoto(p)} />
       ))}
       <LinearGradient
         colors={['rgba(0,0,0,0.28)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}

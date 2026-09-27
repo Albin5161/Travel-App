@@ -336,7 +336,7 @@ export default function PlanScreen() {
       </View>
 
       {/* Deep glass: its top edge lies over the pale map, where light glass would wash out the type. */}
-      <Glass tint={deepGlass(look)} radius={radii.sheet} style={styles.panel}>
+      <Glass blur tint={deepGlass(look)} radius={radii.sheet} style={styles.panel}>
         <Animated.ScrollView
           onScroll={onScroll}
           scrollEventThrottle={16}

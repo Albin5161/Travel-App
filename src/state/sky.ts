@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { createContext, createElement, useContext, useEffect, useState, type ReactNode } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import { getDistrict } from '@/data/regions';
-import type { LatLng } from '@/lib/geo';
 import { guessFromClock, phaseAt, type SkyPhase } from '@/lib/sun';
 
 import { useTrips } from './trips';
@@ -21,14 +20,15 @@ const PINNED = (() => {
   return PHASES.find((p) => p === asked) ?? null;
 })();
 
+const PhaseContext = createContext<SkyPhase>('day');
+
 /**
- * The sky's time of day, worked out on the phone. For a screen about one place, pass that place and
- * the sky is the one over it right now. Otherwise it's the sky at home: your home district's centre
- * if you picked one, else a guess from the phone's clock. Never your position, which the privacy
- * policy keeps for the location chip, drive times and arrival alerts only. Checked every five
- * minutes and whenever the app comes back to the front.
+ * The sky's time of day, worked out once for the whole app on the phone: your home district's
+ * centre if you picked one, else a guess from the phone's clock. Never your position, which the
+ * privacy policy keeps for the location chip, drive times and arrival alerts only. Checked every
+ * five minutes and whenever the app comes back to the front; every screen reads this one value.
  */
-export function useSkyPhase(place?: LatLng | null): SkyPhase {
+export function SkyPhaseProvider({ children }: { children: ReactNode }) {
   const { state } = useTrips();
   const [date, setDate] = useState(now);
   useEffect(() => {
@@ -39,9 +39,9 @@ export function useSkyPhase(place?: LatLng | null): SkyPhase {
       sub.remove();
     };
   }, []);
-  const at = place ?? getDistrict(state.homeDistrictId ?? undefined)?.centre ?? guessFromClock(date);
-  return PINNED ?? phaseAt(at, date);
+  const at = getDistrict(state.homeDistrictId ?? undefined)?.centre ?? guessFromClock(date);
+  return createElement(PhaseContext.Provider, { value: PINNED ?? phaseAt(at, date) }, children);
 }
 
-/** The sky over home. */
-export const useHomeSky = () => useSkyPhase();
+/** The sky over home, as SkyPhaseProvider has it. */
+export const useHomeSky = () => useContext(PhaseContext);

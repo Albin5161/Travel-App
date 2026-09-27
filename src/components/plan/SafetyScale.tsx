@@ -11,10 +11,12 @@ import Animated, {
 
 import { Text } from '@/components/Text';
 import { SAFETY_BAND_STARTS, SAFETY_BANDS, safetyBand, type SafetySignal } from '@/data/cityInfo';
-import { fonts, light } from '@/theme/tokens';
+import { skyInk } from '@/theme/sky';
+import { fonts } from '@/theme/tokens';
 
-const UP = '#1F7A4D';
-const DOWN = '#9B2C2C';
+// Light enough to read on the sky's dark glass.
+const UP = '#7FE0A4';
+const DOWN = '#FF9F8C';
 const FILL = 900;
 const EASE = Easing.bezier(0.23, 1, 0.32, 1);
 
@@ -58,7 +60,7 @@ export function SafetyScale({ cityName, score, signals, play }: Props) {
         <Animated.View style={[styles.fill, fill]}>
           {/* The gradient spans the whole track, so the colour at the fill's end matches the score. */}
           <LinearGradient
-            colors={['#E8A98C', '#B7A26A', '#6E9A6A', UP]}
+            colors={['#E8A98C', '#D9C27A', '#9CD08E', UP]}
             locations={[0, 0.35, 0.65, 1]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -72,7 +74,7 @@ export function SafetyScale({ cityName, score, signals, play }: Props) {
           <Text
             key={b}
             variant="label"
-            color={i <= reached ? light.ink : light.inkFaint}
+            color={i <= reached ? skyInk.strong : skyInk.faint}
             // The last band is right-aligned so it ends with the track.
             style={[styles.band, i === SAFETY_BANDS.length - 1 ? styles.last : { left: `${SAFETY_BAND_STARTS[i]}%` }]}
           >
@@ -90,7 +92,7 @@ export function SafetyScale({ cityName, score, signals, play }: Props) {
               {i < signals.length - 1 ? <View style={styles.rail} /> : null}
             </View>
             <View style={styles.card}>
-              <Text variant="body" color={light.ink}>
+              <Text variant="body" color={skyInk.strong}>
                 {s.text}
               </Text>
               <Text variant="label" color={s.direction === 'up' ? UP : DOWN} style={styles.tag}>
@@ -100,7 +102,7 @@ export function SafetyScale({ cityName, score, signals, play }: Props) {
           </View>
         ))}
       </View>
-      <Text variant="data" color={light.inkFaint} style={styles.basis}>
+      <Text variant="data" color={skyInk.faint} style={styles.basis}>
         Based on traveller reports and local news. Sample data for the demo.
       </Text>
     </View>
@@ -110,7 +112,7 @@ export function SafetyScale({ cityName, score, signals, play }: Props) {
 const styles = StyleSheet.create({
   numberRow: { height: 44, marginTop: 6, justifyContent: 'flex-end' },
   number: { fontFamily: fonts.sansSemi, fontSize: 34, lineHeight: 40, color: UP, fontVariant: ['tabular-nums'] },
-  track: { height: 10, borderRadius: 5, backgroundColor: light.canvasTop, overflow: 'hidden', marginTop: 4 },
+  track: { height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.14)', overflow: 'hidden', marginTop: 4 },
   fill: { height: '100%', borderRadius: 5, overflow: 'hidden' },
   bands: { height: 20, marginTop: 10 },
   band: { position: 'absolute', top: 0 },
@@ -118,15 +120,15 @@ const styles = StyleSheet.create({
   timeline: { marginTop: 24, gap: 12 },
   signal: { flexDirection: 'row', gap: 14 },
   when: { width: 44, alignItems: 'center', paddingTop: 14 },
-  month: { fontFamily: fonts.sansSemi, fontSize: 17, lineHeight: 22, color: light.ink },
+  month: { fontFamily: fonts.sansSemi, fontSize: 17, lineHeight: 22, color: skyInk.strong },
   rail: {
     flex: 1,
     width: StyleSheet.hairlineWidth * 2,
-    backgroundColor: light.lineStrong,
+    backgroundColor: 'rgba(255,255,255,0.35)',
     marginTop: 10,
     marginBottom: -8,
   },
-  card: { flex: 1, padding: 16, borderRadius: 18, backgroundColor: light.canvas, gap: 10 },
+  card: { flex: 1, padding: 16, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: StyleSheet.hairlineWidth, borderColor: skyInk.line, gap: 10 },
   tag: { alignSelf: 'flex-end' },
   basis: { marginTop: 14 },
 });

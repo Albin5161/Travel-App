@@ -15,6 +15,7 @@ import type { DayPlan } from '@/data/plan';
 import type { DayPart, Place } from '@/data/types';
 import { formatClock } from '@/lib/geo';
 import type { CityNotes } from '@/server/types';
+import { skyInk } from '@/theme/sky';
 import { light } from '@/theme/tokens';
 
 type SectionProps = { onLayout: (e: LayoutChangeEvent) => void };
@@ -92,10 +93,10 @@ export function OverviewSection({
         {info.costBreakdown.map((c) => (
           <View key={c.label} style={styles.barRow}>
             <View style={styles.barLabels}>
-              <Text variant="label" color={light.inkSoft}>
+              <Text variant="label" color={skyInk.soft}>
                 {c.label}
               </Text>
-              <Text variant="data" color={light.ink}>
+              <Text variant="data" color={skyInk.strong}>
                 {formatRupees(c.amount)}
               </Text>
             </View>
@@ -169,7 +170,7 @@ function PlaceRow({ place }: { place: Place }) {
             <Text variant="body" numberOfLines={2} style={styles.review}>
               “{rating.review.text}”
             </Text>
-            <Text variant="data" color={light.inkFaint}>
+            <Text variant="data" color={skyInk.faint}>
               {rating.review.author} · {rating.review.when}
             </Text>
           </>
@@ -278,10 +279,10 @@ function Tips({ items }: { items: string[] }) {
 function Sources({ notes }: { notes: CityNotes }) {
   const open = (url: string) => void Linking.openURL(url).catch(() => {});
   return (
-    <Text variant="data" color={light.inkFaint} style={styles.note}>
+    <Text variant="data" color={skyInk.faint} style={styles.note}>
       Summarised from{' '}
       {notes.sources.map((src, i) => (
-        <Text key={src.url} variant="data" color={light.inkFaint}>
+        <Text key={src.url} variant="data" color={skyInk.faint}>
           {i > 0 ? ' and ' : ''}
           <Text variant="data" style={styles.sourceLink} onPress={() => open(src.url)}>
             {src.site}
@@ -344,9 +345,9 @@ export function GoodToKnowSection({
           <View key={f.title} style={styles.fact}>
             <View style={styles.factIcon}>
               {isSafetyIcon(f.icon) ? (
-                <SafetyIcon name={f.icon} size={20} color={light.ink} />
+                <SafetyIcon name={f.icon} size={20} color={skyInk.strong} />
               ) : (
-                <Feather name={f.icon} size={16} color={light.ink} />
+                <Feather name={f.icon} size={16} color={skyInk.strong} />
               )}
             </View>
             <View style={styles.factText}>
@@ -377,33 +378,42 @@ export function GoodToKnowSection({
 
 function Note({ children }: { children: string }) {
   return (
-    <Text variant="data" color={light.inkFaint} style={styles.note}>
+    <Text variant="data" color={skyInk.faint} style={styles.note}>
       {children}
     </Text>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 8, backgroundColor: light.panel },
+  section: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 8 },
   sectionHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 },
   subhead: { marginTop: 24 },
-  sourceLink: { color: light.inkSoft, textDecorationLine: 'underline' },
+  sourceLink: { color: skyInk.soft, textDecorationLine: 'underline' },
   note: { marginTop: 14 },
 
   stats: { flexDirection: 'row', gap: 8, marginTop: 18 },
-  stat: { flex: 1, gap: 4, padding: 12, borderRadius: 16, backgroundColor: light.canvas },
+  // Inner panes: a lighter frost on the sky, with the same thin rim as the cards.
+  stat: { flex: 1, gap: 4, padding: 12, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: StyleSheet.hairlineWidth, borderColor: skyInk.line },
   statLabel: { fontSize: 10, letterSpacing: 0.6 },
 
   bars: { marginTop: 14, gap: 12 },
   barRow: { gap: 6 },
   barLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-  track: { height: 6, borderRadius: 3, backgroundColor: light.canvasTop, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 3, backgroundColor: light.ink },
+  track: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.14)', overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 3, backgroundColor: skyInk.strong },
 
   mapButton: { marginTop: 4, marginBottom: 6 },
-  places: { gap: 4 },
-  placeRow: { flexDirection: 'row', gap: 14, paddingVertical: 12 },
-  thumb: { width: 64, height: 64, borderRadius: 14, backgroundColor: light.canvasTop },
+  places: { gap: 8 },
+  placeRow: {
+    flexDirection: 'row',
+    gap: 14,
+    padding: 12,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.line,
+  },
+  thumb: { width: 64, height: 64, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)' },
   placeText: { flex: 1, gap: 2 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   review: { marginTop: 4 },
@@ -415,11 +425,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 14,
     borderRadius: 18,
-    backgroundColor: light.canvas,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.line,
   },
   partText: { gap: 2 },
   stack: { flexDirection: 'row' },
-  stackThumb: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: light.canvas },
+  stackThumb: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' },
 
   group: { marginTop: 8, marginBottom: 12 },
   groupGap: { marginTop: 28 },
@@ -431,7 +443,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: light.canvas,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   factText: { flex: 1, gap: 2 },
   tips: { gap: 10 },

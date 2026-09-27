@@ -9,8 +9,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
 import { SavedTick } from '@/components/motion/SavedTick';
-import { AmbientBackdrop } from '@/components/pick/AmbientBackdrop';
 import { SwipeCard, type CardHandle, type Dir } from '@/components/pick/SwipeCard';
+import { Glass } from '@/components/sky/Glass';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { PlaceSearchSheet } from '@/components/verify/PlaceSearchSheet';
 import { places as catalogPlaces } from '@/data/catalog';
@@ -20,6 +21,8 @@ import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips } from '@/state/trips';
+import { skyInk } from '@/theme/sky';
+import { Tone } from '@/theme/tone';
 import { colors, light, shadows } from '@/theme/tokens';
 
 const DONE_ENTER = [0, 1, 2, 3].map((i) => fadeUp(i * 60));
@@ -158,8 +161,7 @@ export default function Verify() {
   const visible = places.slice(index, index + 3);
 
   return (
-    <View style={[styles.fill, { paddingTop: insets.top + 8 }]}>
-      {!done && !listMode ? <AmbientBackdrop current={places[index]} next={places[index + 1]} x={dragX} width={W} /> : null}
+    <SkyScreen style={{ paddingTop: insets.top + 8 }}>
       <View style={styles.header}>
         <IconButton
           icon="x"
@@ -221,7 +223,7 @@ export default function Verify() {
               <Ionicons
                 name={reel.platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'}
                 size={13}
-                color={light.inkFaint}
+                color={skyInk.faint}
               />
               <Text variant="micro">
                 {reel.creator} · {city.name}
@@ -278,6 +280,8 @@ export default function Verify() {
           </View>
         </>
       )}
+      {/* The search sheet is white paper over everything, so it keeps the paper palette. */}
+      <Tone value="light">
       <PlaceSearchSheet
         visible={!!sheet}
         wrong={sheet?.wrong}
@@ -291,7 +295,8 @@ export default function Verify() {
         }}
         onClose={() => setSheet(null)}
       />
-    </View>
+      </Tone>
+    </SkyScreen>
   );
 }
 
@@ -329,17 +334,17 @@ function CheckList({
       <ScrollView contentContainerStyle={{ paddingBottom: bottomInset + 110 }} showsVerticalScrollIndicator={false}>
         <View style={styles.titleBlock}>
           <View style={styles.source}>
-            <Ionicons name={platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'} size={13} color={light.inkFaint} />
+            <Ionicons name={platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'} size={13} color={skyInk.faint} />
             <Text variant="micro" numberOfLines={1}>
               {creator} · {city}
             </Text>
           </View>
           <Text variant="display">Did we get these right?</Text>
-          <Text variant="body" color={light.inkSoft}>
+          <Text variant="body">
             {`We found ${places.length - extras.length} places. Untick any that are wrong.`}
           </Text>
         </View>
-        <View style={styles.rows}>
+        <Glass style={styles.rows}>
           {places.map((p) => {
             const added = extras.includes(p);
             const on = added || !unticked.has(p.id);
@@ -354,10 +359,10 @@ function CheckList({
               >
                 <Image source={p.photo} style={[styles.thumb, !on && styles.thumbOff]} contentFit="cover" transition={0} />
                 <View style={styles.rowText}>
-                  <Text variant="bodyStrong" numberOfLines={1} color={on ? light.ink : light.inkFaint}>
+                  <Text variant="bodyStrong" numberOfLines={1} color={on ? skyInk.strong : skyInk.faint}>
                     {p.name}
                   </Text>
-                  <Text variant="label" color={light.inkSoft} numberOfLines={1}>
+                  <Text variant="label" color={skyInk.soft} numberOfLines={1}>
                     {added ? 'Added by you' : [TYPE[p.type], p.area].filter(Boolean).join(' · ')}
                   </Text>
                 </View>
@@ -367,11 +372,12 @@ function CheckList({
               </Pressable>
             );
           })}
-        </View>
+        </Glass>
         <Button kind="text" label="Missed one? Add a place" onPress={onAdd} />
       </ScrollView>
       <View style={[styles.actions, { paddingBottom: bottomInset + 8 }]}>
         <Button
+          trailingArrow={ticked > 0}
           label={ticked === 0 ? 'Tick at least one place' : `Save ${ticked} ${ticked === 1 ? 'place' : 'places'}`}
           onPress={onSave}
           disabled={ticked === 0}
@@ -436,7 +442,8 @@ function Done({
       </Animated.View>
 
       {left.length > 0 ? (
-        <Animated.View entering={DONE_ENTER[3]} style={styles.leftOut}>
+        <Animated.View entering={DONE_ENTER[3]}>
+          <Glass style={styles.leftOut}>
           <Text variant="micro">Left out</Text>
           {left.map((p) => {
             const fix = fixes[p.id];
@@ -447,11 +454,11 @@ function Done({
                     {p.name}
                   </Text>
                   {fix ? (
-                    <Text variant="label" color={light.inkSoft} numberOfLines={1}>
+                    <Text variant="label" color={skyInk.soft} numberOfLines={1}>
                       Saved {fix.name} instead
                     </Text>
                   ) : fix === null ? (
-                    <Text variant="label" color={light.inkSoft}>
+                    <Text variant="label" color={skyInk.soft}>
                       Not a place
                     </Text>
                   ) : null}
@@ -463,25 +470,25 @@ function Done({
                     </Text>
                   </Pressable>
                 ) : (
-                  <Feather name="check" size={16} color={light.inkSoft} />
+                  <Feather name="check" size={16} color={skyInk.soft} />
                 )}
               </View>
             );
           })}
+          </Glass>
         </Animated.View>
       ) : null}
 
       <View style={{ flex: 1 }} />
       <Animated.View entering={DONE_ENTER[3]} style={styles.doneActions}>
         <Button kind="text" label="Missed one? Add a place" onPress={onAdd} />
-        <Button label={count === 0 ? 'Back home' : 'Done'} onPress={() => router.back()} />
+        <Button trailingArrow label={count === 0 ? 'Back home' : 'Done'} onPress={() => router.back()} />
       </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.canvas },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   titleBlock: { paddingHorizontal: 24, marginTop: 8, gap: 6 },
@@ -503,31 +510,25 @@ const styles = StyleSheet.create({
     paddingRight: 18,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: light.ink,
+    backgroundColor: '#0E0F12',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
     boxShadow: shadows.cta,
     maxWidth: '100%',
   },
   offerText: { flexShrink: 1 },
   offerAction: { textDecorationLine: 'underline' },
-  leftOut: {
-    marginTop: 20,
-    padding: 16,
-    gap: 10,
-    borderRadius: 20,
-    backgroundColor: light.panel,
-    borderWidth: 1,
-    borderColor: light.line,
-  },
+  leftOut: { marginTop: 20, padding: 16, gap: 10 },
   leftRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   leftText: { flex: 1, gap: 2 },
-  struck: { textDecorationLine: 'line-through', color: light.inkFaint },
+  struck: { textDecorationLine: 'line-through', color: skyInk.faint },
   link: { textDecorationLine: 'underline' },
   doneActions: { gap: 4 },
   list: { flex: 1 },
-  rows: { marginTop: 20, marginBottom: 8, paddingHorizontal: 16, gap: 4 },
+  rows: { marginTop: 20, marginBottom: 8, marginHorizontal: 16, padding: 8, gap: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 16 },
-  rowPressed: { backgroundColor: light.line },
-  thumb: { width: 56, height: 56, borderRadius: 14, backgroundColor: light.canvasTop },
+  rowPressed: { backgroundColor: 'rgba(255,255,255,0.08)' },
+  thumb: { width: 56, height: 56, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)' },
   thumbOff: { opacity: 0.35 },
   rowText: { flex: 1, gap: 2 },
   check: {
@@ -535,9 +536,9 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     borderWidth: 1.5,
-    borderColor: light.lineStrong,
+    borderColor: 'rgba(255,255,255,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkOn: { backgroundColor: light.ink, borderColor: light.ink },
+  checkOn: { backgroundColor: '#0E0F12', borderColor: '#0E0F12' },
 });

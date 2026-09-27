@@ -1,7 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { router, useFocusEffect } from 'expo-router';
-import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
@@ -15,12 +14,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CityOpenOverlay, useCityOpen } from '@/components/CityOpenOverlay';
 import { CityTile } from '@/components/CityTile';
-import { FIELD_TRAILING, LinkBox } from '@/components/LinkBox';
+import { LinkBox } from '@/components/LinkBox';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { Segmented } from '@/components/Segmented';
 import { Glass, GlassLabel } from '@/components/sky/Glass';
-import { Sky } from '@/components/sky/Sky';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { EXAMPLE_LINKS, getCity, getReel } from '@/data/api';
 import { places } from '@/data/catalog';
 import { PhotoStrip } from '@/components/home/PhotoStrip';
@@ -31,8 +30,7 @@ import { FADE_IN, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips, type HomeTab } from '@/state/trips';
 import { useHomeSky } from '@/state/sky';
 import { useHere } from '@/state/where';
-import { SKY, skyInk } from '@/theme/sky';
-import { Tone } from '@/theme/tone';
+import { SKY, skyAccent as ACCENT, skyInk } from '@/theme/sky';
 import { fonts } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
@@ -75,7 +73,6 @@ export default function Home() {
   const closeCity = cityOpen.close;
   // Back on home from a city (by any route): shrink the city page back into its card.
   useFocusEffect(closeCity);
-  useFocusEffect(lightStatusBar);
 
   // The link box sticks at the top once scrolled to; from then on the collections pass under it,
   // so it frosts over (as a system bar does) only while something is actually behind it.
@@ -120,9 +117,7 @@ export default function Home() {
   }, [dispatch, fresh]);
 
   return (
-    <Tone value="sky">
-    <View style={styles.root}>
-      <Sky phase={phase} />
+    <SkyScreen>
       <View style={[styles.fill, { paddingTop: insets.top }]}>
         <Animated.ScrollView
           onScroll={onScroll}
@@ -139,15 +134,25 @@ export default function Home() {
               <HereChip />
             </View>
             <Animated.View entering={ENTER[0]}>
+              <Text variant="micro" style={styles.eyebrow}>
+                Turn videos into trips
+              </Text>
               <Text style={styles.question}>
-                {firstName ? `Hey ${firstName},\nwhich video is\n` : 'Which video is\n'}
+                {firstName ? (
+                  <>
+                    {'Hey '}
+                    <Text style={styles.questionName}>{firstName}</Text>
+                    {',\nwhich video is\n'}
+                  </>
+                ) : (
+                  'Which video is\n'
+                )}
                 <Text style={styles.questionStrong}>your next plan?</Text>
               </Text>
             </Animated.View>
-            {/* Centred on the field, not the screen: the paste button takes the right of the row, and
-                a print hanging over it would be cut off in mid-air instead of tucking behind white. */}
+            {/* Centred on the field, which now holds the paste button and runs the full width. */}
             <View style={styles.strip}>
-              <PhotoStrip photos={stripPhotos} width={W - GUTTER * 2 - FIELD_TRAILING} muted={inspiration} />
+              <PhotoStrip photos={stripPhotos} width={W - GUTTER * 2} muted={inspiration} />
             </View>
           </View>
 
@@ -221,15 +226,8 @@ export default function Home() {
         from={cityOpen.from}
         reduced={cityOpen.reduced}
       />
-    </View>
-    </Tone>
+    </SkyScreen>
   );
-}
-
-/** White status bar over the sky; the other tabs are paper and want it dark again. */
-function lightStatusBar() {
-  setStatusBarStyle('light');
-  return () => setStatusBarStyle('dark');
 }
 
 /** "Instagram reel" or "YouTube video" for one source; "2 videos" once there are more. */
@@ -316,7 +314,6 @@ function useStartFromLink() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
   fill: { flex: 1 },
   header: { paddingHorizontal: GUTTER },
   // The strip's lower edge runs under the sticky link box below it (a later sibling, so it draws
@@ -341,7 +338,7 @@ const styles = StyleSheet.create({
   // Two weights, one line box: a quiet Medium lead-in, then the ask in ExtraBold. The weight change
   // does the emphasis a decorative italic used to.
   question: {
-    marginTop: 28,
+    marginTop: 10,
     fontFamily: fonts.displayMedium,
     fontSize: 32,
     lineHeight: 37,
@@ -351,7 +348,9 @@ const styles = StyleSheet.create({
   },
   // Sized again on purpose: the nested Text is our own component, which would otherwise reset it
   // to body's 15/22 rather than inherit from the line around it.
-  questionStrong: { fontFamily: fonts.display, fontSize: 32, lineHeight: 37, color: skyInk.strong, letterSpacing: -1 },
+  questionStrong: { fontFamily: fonts.display, fontSize: 32, lineHeight: 37, color: ACCENT, letterSpacing: -1 },
+  questionName: { fontFamily: fonts.display, fontSize: 32, lineHeight: 37, color: skyInk.strong, letterSpacing: -1 },
+  eyebrow: { marginTop: 28, letterSpacing: 2 },
   // Clear at rest, so the prints disappear behind the field rather than behind a flat band.
   sticky: { paddingHorizontal: GUTTER },
   frost: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },

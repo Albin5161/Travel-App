@@ -23,6 +23,8 @@ type Props = {
 };
 
 const HEIGHT = 48;
+/** Over the sky the field is taller, to hold the paste button inside it. */
+const SKY_HEIGHT = 58;
 const GAP = 10;
 /** Width the paste button and its gap take from the row: the field is the rest. */
 export const FIELD_TRAILING = CIRCLE + GAP;
@@ -93,6 +95,23 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
     track('paste failed');
   };
 
+  // Paste until there's a link in the box, then Go: one button, always the next step. Over the sky
+  // it rides inside the field's right end; on paper it sits beside it.
+  const action = platform ? (
+    <Animated.View key="go" entering={FADE_IN}>
+      <PressableScale
+        onPress={() => submit(value)}
+        style={[styles.go, sky && styles.goSky]}
+        accessibilityRole="button"
+        accessibilityLabel="Go: find the places in this video"
+      >
+        <Feather name="arrow-right" size={20} color={light.ctaInk} />
+      </PressableScale>
+    </Animated.View>
+  ) : (
+    <PasteButton shape="circle" onText={fill} onUnreadable={pasteByHand} />
+  );
+
   const hint = error ?? (unreadable && !value ? UNREADABLE : null) ?? (clipboardHasLink && !value ? 'You copied a link. Tap paste to add it.' : null);
 
   return (
@@ -134,22 +153,9 @@ export function LinkBox({ onSubmit, clipboardHasLink, onExample }: Props) {
             style={[styles.input, { color: ink.strong }, NO_FOCUS_RING]}
             accessibilityLabel="Link to an Instagram reel or YouTube video"
           />
+          {sky ? action : null}
         </Animated.View>
-        {/* Paste until there's a link in the box, then Go: one button, always the next step. */}
-        {platform ? (
-          <Animated.View key="go" entering={FADE_IN}>
-            <PressableScale
-              onPress={() => submit(value)}
-              style={[styles.go, sky && styles.goSky]}
-              accessibilityRole="button"
-              accessibilityLabel="Go: find the places in this video"
-            >
-              <Feather name="arrow-right" size={20} color={sky ? light.ink : light.ctaInk} />
-            </PressableScale>
-          </Animated.View>
-        ) : (
-          <PasteButton shape="circle" onText={fill} onUnreadable={pasteByHand} />
-        )}
+        {sky ? null : action}
       </View>
       <View style={styles.hintSlot}>
         {hint ? (
@@ -210,6 +216,9 @@ const styles = css.create({
   fieldFocused: { borderColor: light.lineStrong },
   // Over the sky: frosted white, a lighter pane of the same glass as the cards around it.
   fieldSky: {
+    height: SKY_HEIGHT,
+    borderRadius: SKY_HEIGHT / 2,
+    paddingRight: (SKY_HEIGHT - CIRCLE) / 2,
     backgroundColor: 'rgba(255,255,255,0.16)',
     borderColor: skyInk.rim,
     boxShadow: 'none',
@@ -225,7 +234,7 @@ const styles = css.create({
     backgroundColor: light.cta,
     boxShadow: shadows.cta,
   },
-  goSky: { backgroundColor: '#FFFFFF', boxShadow: '0 8px 20px rgba(4,10,30,0.22)' },
+  goSky: { backgroundColor: '#0E0F12', boxShadow: '0 6px 16px rgba(0,0,0,0.28)' },
   icon: { width: 20, alignItems: 'center', marginRight: 10 },
   // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },

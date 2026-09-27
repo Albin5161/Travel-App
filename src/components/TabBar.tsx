@@ -33,12 +33,13 @@ const LABELS: Record<string, string> = { index: 'Home', trips: 'Trips', map: 'Ma
 /**
  * A floating paper pill rather than a system tab bar, so it sits on the light canvas like the rest of
  * the UI. Screens pushed over the tabs (city, Pick, Plan) hide it, keeping Plan mode uninterrupted.
- * Over Home's sky it turns to frosted glass with white icons.
+ * Over the sky it is frosted glass with white icons.
  */
 export function TabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const phase = useHomeSky();
-  const sky = state.routes[state.index]?.name === 'index';
+  // Every tab sits on the sky now, so the bar is always glass.
+  const sky = true;
   const tabs = state.routes.map((route, i) => (
     <Tab
       key={route.key}

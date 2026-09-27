@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 
@@ -98,8 +99,7 @@ export function CityHeroContent({
             from {stats.reels} {stats.reels === 1 ? 'video' : 'videos'}
           </Text>
 
-          {/* White, not black: on a photo the ink button disappears into the scrim. Same weight and
-              shape as every other primary, inverted for the surface it sits on. */}
+          {/* Black like every main button; its light rim keeps the edge readable on the scrim. */}
           <PressableScale
             onPress={onStart ?? noop}
             containerStyle={styles.ctaSlot}
@@ -108,6 +108,7 @@ export function CityHeroContent({
             accessibilityLabel={stats.planned ? 'See your day' : 'Start planning'}
           >
             <Text style={styles.ctaLabel}>{stats.planned ? 'See your day' : 'Start planning'}</Text>
+            <Feather name="arrow-right" size={22} color="#FFFFFF" style={styles.ctaArrow} />
           </PressableScale>
         </View>
 
@@ -150,22 +151,22 @@ const styles = StyleSheet.create({
   accent: { fontFamily: fonts.displayBold, color: '#F2B48A' },
   ctaSlot: { alignSelf: 'stretch', marginTop: 22 },
   cta: {
-    height: 56,
+    height: 60,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: light.panel,
-    boxShadow: '0 10px 30px rgba(0,0,0,0.28)',
+    backgroundColor: '#0E0F12',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.32)',
   },
-  ctaLabel: { fontFamily: fonts.sansSemi, fontSize: 16, letterSpacing: 0.1, color: light.ink },
+  ctaLabel: { fontFamily: fonts.sansSemi, fontSize: 17, letterSpacing: 0.1, color: '#FFFFFF' },
+  ctaArrow: { position: 'absolute', right: 24 },
   peek: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: light.panel,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
   },
   dim: { backgroundColor: 'rgba(0,0,0,0.12)', pointerEvents: 'none' },
 });

@@ -1,14 +1,16 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ScrollView, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { CityMap, fitCameraToRect, flyTo, useCamera, type MapPin } from '@/components/CityMap';
 import { PressableScale } from '@/components/PressableScale';
+import { Glass } from '@/components/sky/Glass';
+import { SkyScreen, useScreenSky } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { ArrivalBanner } from '@/components/spots/ArrivalBanner';
 import { Chips, ScopeToggle } from '@/components/spots/Chips';
@@ -34,7 +36,9 @@ import {
 } from '@/lib/spots';
 import { useArrivalTargets, useSpotStatus, useSpotsByDistrict, useTrips } from '@/state/trips';
 import { useWhereIAm } from '@/state/where';
-import { fonts, light, shadows } from '@/theme/tokens';
+import { deepGlass, skyInk } from '@/theme/sky';
+import { Tone } from '@/theme/tone';
+import { fonts } from '@/theme/tokens';
 
 const KINDS: SpotKind[] = ['all', 'food', 'sight', 'experience'];
 const REACHES: ReachMinutes[] = [null, 45, 90, 180];
@@ -115,7 +119,9 @@ export default function SpotsMap() {
   if (totalSaved === 0) return <EmptySpots />;
 
   return (
-    <View style={styles.fill}>
+    <SkyScreen>
+      {/* The map is paper: its labels keep the paper palette. */}
+      <Tone value="light">
       <CityMap
         city={{ map: KERALA.map }}
         world={KERALA.world}
@@ -127,10 +133,11 @@ export default function SpotsMap() {
         pinSize={40}
         onPinPress={(id) => router.push({ pathname: '/place/[id]', params: { id } })}
       />
+      </Tone>
 
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(245,244,241,0.9)', 'rgba(245,244,241,0)']}
+        colors={['rgba(4,10,30,0.55)', 'rgba(4,10,30,0)']}
         style={[styles.topFade, { height: insets.top + 80 }]}
       />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
@@ -139,7 +146,7 @@ export default function SpotsMap() {
           <Feather
             name={where.source === 'device' ? 'navigation' : 'home'}
             size={12}
-            color={light.inkSoft}
+            color={skyInk.soft}
           />
           <Text variant="data" numberOfLines={1}>
             {where.label}
@@ -147,7 +154,8 @@ export default function SpotsMap() {
         </View>
       </View>
 
-      <View style={[styles.panel, { height: panelH }]}>
+      {/* The paper map is light, so the panel over it is deep glass: white type stays readable. */}
+      <DeepPanel style={[styles.panel, { height: panelH }]}>
         <View style={styles.grabber} />
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -210,8 +218,17 @@ export default function SpotsMap() {
             />
           )}
         </ScrollView>
-      </View>
-    </View>
+      </DeepPanel>
+    </SkyScreen>
+  );
+}
+
+function DeepPanel({ style, children }: { style: StyleProp<ViewStyle>; children: ReactNode }) {
+  const look = useScreenSky();
+  return (
+    <Glass tint={deepGlass(look)} radius={32} style={style}>
+      {children}
+    </Glass>
   );
 }
 
@@ -299,7 +316,7 @@ function HomeScope({
 function ClusterHead({ label, count, alone, same }: { label: string; count: number; alone: boolean; same?: boolean }) {
   if (!label || alone || same) return null;
   return (
-    <Text variant="label" color={light.inkSoft}>
+    <Text variant="label" color={skyInk.soft}>
       {label} · {count}
     </Text>
   );
@@ -365,7 +382,7 @@ function AwayScope({
                 accessibilityRole="button"
                 accessibilityLabel={`Open the ${getCity(cityId)?.name ?? g.name} map`}
               >
-                <Feather name="map" size={15} color={light.ink} />
+                <Feather name="map" size={15} color={skyInk.strong} />
               </PressableScale>
             </View>
             {clusters.map((c) => (
@@ -394,7 +411,7 @@ function AwayScope({
 function EmptySpots() {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.empty, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 100 }]}>
+    <SkyScreen style={[styles.empty, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 100 }]}>
       <Text style={styles.wordmark}>Your map</Text>
       <Text variant="display" style={{ textAlign: 'center' }}>
         Nothing saved yet.
@@ -402,8 +419,8 @@ function EmptySpots() {
       <Text variant="body" style={{ textAlign: 'center' }}>
         Paste a video on Home: a café, a beach, a hidden spot. Every place in it lands here, sorted by how far it is from you.
       </Text>
-      <Button label="Go to Home" onPress={() => router.replace('/')} style={{ marginTop: 8 }} />
-    </View>
+      <Button trailingArrow label="Go to Home" onPress={() => router.replace('/')} style={{ marginTop: 8, alignSelf: 'stretch' }} />
+    </SkyScreen>
   );
 }
 
@@ -416,7 +433,6 @@ const regionCorners = (): Point[] => {
 };
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.mapLand },
   topFade: { position: 'absolute', left: 0, right: 0, top: 0 },
   topBar: {
     position: 'absolute',
@@ -428,7 +444,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  wordmark: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, letterSpacing: -0.8, color: light.ink },
+  wordmark: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, letterSpacing: -0.8, color: skyInk.strong },
   wherePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -437,20 +453,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 32,
     borderRadius: 999,
-    backgroundColor: light.panel,
-    borderWidth: 1,
-    borderColor: light.line,
-    boxShadow: shadows.button,
+    backgroundColor: 'rgba(4,10,30,0.4)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
   },
   panel: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: light.panel,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    boxShadow: shadows.panel,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    borderBottomWidth: 0,
+    boxShadow: '0 -10px 30px rgba(4,10,30,0.18)',
   },
   grabber: {
     alignSelf: 'center',
@@ -458,7 +473,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: light.lineStrong,
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   block: { paddingHorizontal: GUTTER, paddingTop: 14, gap: 4 },
   chips: { paddingLeft: GUTTER, paddingTop: 10 },
@@ -472,9 +487,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: light.canvas,
-    borderWidth: 1,
-    borderColor: light.line,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
   },
   empty: { flex: 1, paddingHorizontal: 32, gap: 12, alignItems: 'center', justifyContent: 'center' },
 });

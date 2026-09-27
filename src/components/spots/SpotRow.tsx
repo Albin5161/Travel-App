@@ -8,6 +8,7 @@ import { getReel } from '@/data/api';
 import type { Place, SpotStatus } from '@/data/types';
 import { formatDuration } from '@/lib/geo';
 import { haptic } from '@/lib/haptics';
+import { skyInk } from '@/theme/sky';
 import { light } from '@/theme/tokens';
 
 /**
@@ -39,7 +40,7 @@ export function SpotRow({
     <PressableScale onPress={onPress} style={styles.row} accessibilityRole="button" accessibilityLabel={spot.name}>
       <Image source={spot.photo} style={[styles.thumb, been && styles.thumbBeen]} contentFit="cover" transition={0} />
       <View style={styles.body}>
-        <Text variant="bodyStrong" numberOfLines={1} color={been ? light.inkFaint : light.ink}>
+        <Text variant="bodyStrong" numberOfLines={1} color={been ? skyInk.faint : skyInk.strong}>
           {spot.name}
         </Text>
         <Text variant="data" numberOfLines={1}>
@@ -59,7 +60,7 @@ export function SpotRow({
         accessibilityState={{ checked: been }}
         accessibilityLabel={been ? `Mark ${spot.name} as not visited` : `Mark ${spot.name} as been`}
       >
-        <Feather name="check" size={13} color={been ? light.ctaInk : light.inkFaint} />
+        <Feather name="check" size={13} color={been ? light.ctaInk : skyInk.faint} />
       </Pressable>
     </PressableScale>
   );
@@ -67,7 +68,7 @@ export function SpotRow({
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  thumb: { width: 52, height: 52, borderRadius: 14, backgroundColor: light.canvasTop },
+  thumb: { width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)' },
   thumbBeen: { opacity: 0.45 },
   body: { flex: 1, gap: 2 },
   check: {
@@ -77,8 +78,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: light.line,
-    backgroundColor: light.canvas,
+    borderColor: skyInk.line,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   checkOn: { backgroundColor: light.cta, borderColor: light.cta },
 });

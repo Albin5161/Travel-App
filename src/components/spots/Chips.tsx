@@ -19,14 +19,16 @@ export function ScopeToggle<T extends string>({
   value: T;
   onChange: (key: T) => void;
 }) {
+  const sky = useTone() === 'sky';
   return (
-    <View style={styles.segment}>
+    <View style={[styles.segment, sky && styles.segmentSky]}>
       {options.map((o) => (
         <Segment
           key={o.key}
           label={o.label}
           count={o.count}
           active={o.key === value}
+          sky={sky}
           onPress={() => onChange(o.key)}
         />
       ))}
@@ -38,11 +40,13 @@ function Segment({
   label,
   count,
   active,
+  sky,
   onPress,
 }: {
   label: string;
   count: number;
   active: boolean;
+  sky: boolean;
   onPress: () => void;
 }) {
   const reduced = useReducedMotion();
@@ -62,10 +66,10 @@ function Segment({
       accessibilityState={{ selected: active }}
     >
       <Animated.View style={[styles.segmentInner, style]}>
-        <Text variant="label" color={active ? light.ctaInk : light.ink}>
+        <Text variant="label" color={active || sky ? light.ctaInk : light.ink}>
           {label}
         </Text>
-        <Text variant="data" color={active ? 'rgba(255,255,255,0.6)' : light.inkFaint}>
+        <Text variant="data" color={active || sky ? 'rgba(255,255,255,0.6)' : light.inkFaint}>
           {count}
         </Text>
       </Animated.View>
@@ -124,6 +128,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: light.line,
   },
+  segmentSky: { backgroundColor: 'rgba(0,0,0,0.14)', borderColor: skyInk.line },
   segmentSlot: { flex: 1 },
   segmentItem: { height: 38, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   segmentItemOn: { backgroundColor: light.cta },

@@ -68,6 +68,18 @@ export const SKY: Record<SkyPhase, SkyLook> = {
   },
 };
 
+/**
+ * Glass for a pane over something light (a paper map, a photo's bright sky): the sky's deepest
+ * colour, mostly opaque, so white type on it stays readable whatever is underneath.
+ */
+export function deepGlass(look: SkyLook, alpha = 0.78) {
+  const n = parseInt(look.stops[0].slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
+// The one warm note in type over the sky: the payoff words of a headline.
+export const skyAccent = '#FFA877';
+
 // White type on the sky, in the four strengths a weather app uses.
 export const skyInk = {
   strong: '#FFFFFF',

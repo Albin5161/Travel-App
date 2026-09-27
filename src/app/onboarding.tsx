@@ -1,4 +1,3 @@
-import { Feather } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -21,8 +20,8 @@ import { GroupVote } from '@/components/onboarding/GroupVote';
 import { ProfilePreview } from '@/components/onboarding/ProfilePreview';
 import { VideoToTrip } from '@/components/onboarding/VideoToTrip';
 import { WeekendRoute } from '@/components/onboarding/WeekendRoute';
+import { Button } from '@/components/Button';
 import { PressableScale } from '@/components/PressableScale';
-import { Glass } from '@/components/sky/Glass';
 import { Sky } from '@/components/sky/Sky';
 import { Text } from '@/components/Text';
 import { Chips } from '@/components/spots/Chips';
@@ -32,7 +31,7 @@ import { haptic } from '@/lib/haptics';
 import { EASE_OUT, project, SPRING_DRAG } from '@/lib/motion';
 import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
-import { SKY, skyInk } from '@/theme/sky';
+import { skyAccent, skyInk } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
 import { colors, fonts } from '@/theme/tokens';
 
@@ -189,8 +188,8 @@ export default function Onboarding() {
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 20 }]}>
         <Dots p={p} />
-        <GlassCta
-          tint={SKY[phase].glass}
+        <Button
+          trailingArrow
           label={last ? 'Find my first trip' : 'Next'}
           onPress={() => (last ? finish() : go(page + 1))}
           accessibilityHint={last ? 'Opens the app, ready for your first video' : undefined}
@@ -219,32 +218,6 @@ function lightStatusBar() {
   return () => setStatusBarStyle('dark');
 }
 
-/**
- * The intro's one button: a wide pane of glass with its label centred and an ember disc at the end
- * carrying the arrow, so the way forward is the one warm thing on a cool screen.
- */
-function GlassCta({
-  tint,
-  label,
-  onPress,
-  accessibilityHint,
-}: {
-  tint: string;
-  label: string;
-  onPress: () => void;
-  accessibilityHint?: string;
-}) {
-  return (
-    <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label} accessibilityHint={accessibilityHint}>
-      <Glass tint={tint} radius={CTA / 2} style={styles.cta}>
-        <Text style={styles.ctaLabel}>{label}</Text>
-        <View style={styles.ctaDisc}>
-          <Feather name="arrow-right" size={22} color="#FFFFFF" />
-        </View>
-      </Glass>
-    </PressableScale>
-  );
-}
 
 /**
  * How far to raise the pages so the focused field clears the keyboard. It follows the keyboard's
@@ -418,8 +391,6 @@ function Dot({ index, p }: { index: number; p: SharedValue<number> }) {
   return <Animated.View style={[styles.dot, style]} />;
 }
 
-const CTA = 64;
-
 const styles = StyleSheet.create({
   consent: { textAlign: 'center', marginTop: 12 },
   consentLink: { color: skyInk.soft, textDecorationLine: 'underline' },
@@ -455,23 +426,9 @@ const styles = StyleSheet.create({
   eyebrow: { letterSpacing: 2, marginBottom: 2 },
   title: { fontFamily: fonts.display, fontSize: 32, lineHeight: 37, color: skyInk.strong, letterSpacing: -1.1 },
   // Warmer and lighter than the button's ember, so it holds up as type on a dark sky.
-  accent: { color: '#FFA877' },
+  accent: { color: skyAccent },
   body: { paddingRight: 8 },
   bottom: { paddingHorizontal: GUTTER, gap: 22 },
   dots: { flexDirection: 'row', alignSelf: 'center', gap: 6, height: 6, alignItems: 'center' },
   dot: { height: 6, borderRadius: 3, backgroundColor: skyInk.strong },
-  cta: { height: CTA, justifyContent: 'center', alignItems: 'center' },
-  ctaLabel: { fontFamily: fonts.sansSemi, fontSize: 17, lineHeight: 22, color: skyInk.strong },
-  ctaDisc: {
-    position: 'absolute',
-    right: 6,
-    top: 6,
-    width: CTA - 12,
-    height: CTA - 12,
-    borderRadius: (CTA - 12) / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.ember,
-    boxShadow: '0 6px 18px rgba(226,118,60,0.45)',
-  },
 });

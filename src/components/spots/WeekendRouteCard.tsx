@@ -5,7 +5,8 @@ import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { formatDuration } from '@/lib/geo';
 import type { WeekendRoute } from '@/lib/spots';
-import { light, shadows } from '@/theme/tokens';
+import { skyInk } from '@/theme/sky';
+import { shadows } from '@/theme/tokens';
 
 /**
  * A whole outing, not a spot. This is the answer to the actual Saturday question — "where can I go
@@ -40,7 +41,7 @@ export function WeekendRouteCard({
         ))}
         {n > 3 ? (
           <View style={[styles.photo, styles.photoStacked, styles.more]}>
-            <Text variant="data" color={light.inkSoft}>
+            <Text variant="data" color={skyInk.soft}>
               +{n - 3}
             </Text>
           </View>
@@ -57,7 +58,7 @@ export function WeekendRouteCard({
           {formatDuration(route.totalMinutes)} out and back · {formatDuration(route.driveMinutes)} driving
         </Text>
         {route.cost === null ? null : (
-          <Text variant="data" color={light.inkFaint}>
+          <Text variant="data" color={skyInk.faint}>
             {route.cost === 0 ? 'Free' : `About ₹${route.cost.toLocaleString('en-IN')}`}
           </Text>
         )}
@@ -69,15 +70,15 @@ export function WeekendRouteCard({
 const styles = StyleSheet.create({
   card: {
     borderRadius: 24,
-    backgroundColor: light.panel,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
-    borderColor: light.line,
+    borderColor: skyInk.line,
     boxShadow: shadows.button,
     overflow: 'hidden',
   },
   photos: { flexDirection: 'row', height: 104, paddingLeft: 14, paddingTop: 14, alignItems: 'center' },
-  photo: { width: 74, height: 84, borderRadius: 14, backgroundColor: light.canvasTop },
-  photoStacked: { marginLeft: -22, borderWidth: 2, borderColor: light.panel },
-  more: { alignItems: 'center', justifyContent: 'center', backgroundColor: light.canvas, width: 48 },
+  photo: { width: 74, height: 84, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)' },
+  photoStacked: { marginLeft: -22, borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' },
+  more: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)', width: 48 },
   body: { padding: 16, paddingTop: 12, gap: 3 },
 });

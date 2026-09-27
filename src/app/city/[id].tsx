@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { setStatusBarStyle } from 'expo-status-bar';
-import { useCallback, useRef, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Extrapolation,
@@ -18,6 +17,8 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { Button } from '@/components/Button';
 import { CityHeroContent, HeroScrim } from '@/components/CityHero';
 import { IconButton } from '@/components/IconButton';
+import { Glass } from '@/components/sky/Glass';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { PANEL_HEADER_H, PanelTabs, restPeek } from '@/components/plan/PanelTabs';
 import { GoodToKnowSection, OverviewSection, PlacesSection, PlanSection } from '@/components/plan/PlanSections';
 import { Text } from '@/components/Text';
@@ -28,8 +29,9 @@ import { buildPlan } from '@/data/plan';
 import { daysNeeded } from '@/data/planner';
 import { terrainOf } from '@/lib/geo';
 import { haptic } from '@/lib/haptics';
+import { useHomeSky } from '@/state/sky';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { light, shadows } from '@/theme/tokens';
+import { deepGlass, SKY } from '@/theme/sky';
 
 // Top strip of photo that stays visible when the panel is fully up (holds the back button).
 const TOP_STRIP = 56;
@@ -48,6 +50,8 @@ export default function CityScreen() {
   const { notes, loading: notesLoading } = useCityNotes(city, collected);
   const { width: W, height: H } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // The bottom bar sits over the page's content, so it's deep glass to keep its type readable.
+  const look = SKY[useHomeSky()];
 
   const top = insets.top + TOP_STRIP;
   // Scroll distance from "panel resting" to "panel up against the top strip".
@@ -62,13 +66,6 @@ export default function CityScreen() {
   // The safety bar fills the first time Good to know becomes the active tab.
   const [seenSafety, setSeenSafety] = useState(false);
   if (active === 3 && !seenSafety) setSeenSafety(true);
-
-  useFocusEffect(
-    useCallback(() => {
-      setStatusBarStyle('light');
-      return () => setStatusBarStyle('dark');
-    }, []),
-  );
 
   const maxScroll = useSharedValue(Infinity);
   const onScroll = useAnimatedScrollHandler((e) => {
@@ -110,8 +107,9 @@ export default function CityScreen() {
       transform: [{ translateY: y * 0.45 }, { scale: interpolate(y, [0, rise], [1, 0.94], Extrapolation.CLAMP) }],
     };
   });
-  const dimStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.get(), [0, rise], [0, 1], Extrapolation.CLAMP),
+  // As the panel rises the photo fades away and the sky behind the whole page shows through.
+  const photoStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.get(), [0, rise], [1, 0], Extrapolation.CLAMP),
   }));
   const barStyle = useAnimatedStyle(() => {
     const t = interpolate(scrollY.get(), [rise * 0.5, rise * 0.8], [0, 1], Extrapolation.CLAMP);
@@ -160,10 +158,11 @@ export default function CityScreen() {
   };
 
   return (
-    <View style={styles.fill}>
-      <Image source={city.hero} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
-      <HeroScrim />
-      <Animated.View style={[StyleSheet.absoluteFill, styles.dim, dimStyle]} />
+    <SkyScreen>
+      <Animated.View style={[StyleSheet.absoluteFill, photoStyle]} pointerEvents="none">
+        <Image source={city.hero} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
+        <HeroScrim />
+      </Animated.View>
 
       <Animated.ScrollView
         ref={scrollRef}
@@ -221,8 +220,9 @@ export default function CityScreen() {
       </View>
 
       <Animated.View
-        style={[styles.bar, { paddingBottom: insets.bottom + 12, pointerEvents: barOn ? 'auto' : 'none' }, barStyle]}
+        style={[styles.barSlot, { pointerEvents: barOn ? 'auto' : 'none' }, barStyle]}
       >
+        <Glass tint={deepGlass(look)} radius={28} style={[styles.bar, { paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.barText}>
           <Text variant="bodyStrong">
             {places} {places === 1 ? 'place' : 'places'} from {reels} {reels === 1 ? 'video' : 'videos'}
@@ -234,32 +234,28 @@ export default function CityScreen() {
           ) : null}
         </View>
         <Button compact label={planned ? 'See your day' : 'Start planning'} onPress={start} />
+        </Glass>
       </Animated.View>
-    </View>
+    </SkyScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: '#000' },
-  dim: { backgroundColor: 'rgba(0,0,0,0.35)', pointerEvents: 'none' },
   scroll: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   hero: { position: 'absolute', left: 0 },
-  panelBody: { backgroundColor: light.panel },
+  // Clear: the sections are glass panes on the sky behind the page.
+  panelBody: {},
   back: { position: 'absolute', left: 16 },
+  barSlot: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   bar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
-    paddingTop: 12,
+    paddingTop: 14,
     paddingHorizontal: 20,
-    backgroundColor: light.panel,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: light.line,
-    boxShadow: shadows.panel,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    borderBottomWidth: 0,
   },
   barText: { flex: 1, gap: 2 },
 });

@@ -5,6 +5,7 @@ import Animated from 'react-native-reanimated';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { FADE_OUT, NUDGE_IN } from '@/lib/motion';
+import { skyInk } from '@/theme/sky';
 import { light, shadows } from '@/theme/tokens';
 
 /**
@@ -48,7 +49,7 @@ export function ArrivalBanner({
         accessibilityRole="button"
         accessibilityLabel="Dismiss"
       >
-        <Feather name="x" size={16} color={light.inkFaint} />
+        <Feather name="x" size={16} color={skyInk.faint} />
       </Pressable>
     </Animated.View>
   );
@@ -60,9 +61,9 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 14,
     borderRadius: 22,
-    backgroundColor: light.panel,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
-    borderColor: light.lineStrong,
+    borderColor: 'rgba(255,255,255,0.35)',
     boxShadow: shadows.button,
   },
   icon: {

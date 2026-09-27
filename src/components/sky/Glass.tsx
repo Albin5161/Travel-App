@@ -6,9 +6,11 @@ import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'reac
 import { Text } from '@/components/Text';
 import { skyInk } from '@/theme/sky';
 
+import { useScreenSky } from './SkyScreen';
+
 type Props = {
-  /** The sky's own glass tint (SKY[phase].glass), so the card reads as the same sky, frosted. */
-  tint: string;
+  /** The sky's own glass tint; defaults to the screen's sky (SkyScreen), so a card reads as the same sky, frosted. */
+  tint?: string;
   radius?: number;
   style?: StyleProp<ViewStyle>;
   children?: ReactNode;
@@ -25,7 +27,9 @@ const WEB_FROST =
  * A frosted panel over the sky: blurred sky behind, a darker note of that sky on top, and a thin
  * light rim. Children draw in white.
  */
-export function Glass({ tint, radius = 22, style, children }: Props) {
+export function Glass({ tint: asked, radius = 22, style, children }: Props) {
+  const screen = useScreenSky();
+  const tint = asked ?? screen.glass;
   return (
     <View style={[styles.card, { borderRadius: radius }, style]}>
       {Platform.OS === 'web' ? (

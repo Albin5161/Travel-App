@@ -8,13 +8,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/PressableScale';
 import { ProfilePhoto } from '@/components/ProfilePhoto';
+import { Glass } from '@/components/sky/Glass';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { allDistricts } from '@/data/regions';
 import { haptic } from '@/lib/haptics';
 import { fadeUp, REFLOW } from '@/lib/motion';
 import { useArrivalWatch, type Permissions } from '@/state/arrival';
 import { useSavedSpots, useTrips } from '@/state/trips';
-import { fonts, light } from '@/theme/tokens';
+import { skyInk } from '@/theme/sky';
+import { colors, fonts, light } from '@/theme/tokens';
 
 type IconName = ComponentProps<typeof Feather>['name'];
 
@@ -54,8 +57,8 @@ export default function Profile() {
         : 'Needs the two permissions below';
 
   return (
+    <SkyScreen>
     <ScrollView
-      style={styles.fill}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: insets.bottom + 110 }}
     >
@@ -84,7 +87,7 @@ export default function Profile() {
               onEndEditing={() => dispatch({ type: 'setMyName', name })}
               onBlur={() => dispatch({ type: 'setMyName', name })}
               placeholder="Add your name"
-              placeholderTextColor={light.inkFaint}
+              placeholderTextColor={skyInk.faint}
               autoCapitalize="words"
               maxLength={40}
               returnKeyType="done"
@@ -137,9 +140,11 @@ export default function Profile() {
                 haptic.selection();
                 dispatch({ type: 'setNotifyOnArrival', on });
               }}
-              trackColor={{ true: light.ink, false: light.lineStrong }}
-              thumbColor={light.panel}
-              ios_backgroundColor={light.lineStrong}
+              trackColor={{ true: colors.ember, false: 'rgba(255,255,255,0.22)' }}
+              thumbColor="#FFFFFF"
+              // Web draws its own green thumb when on unless told otherwise.
+              {...({ activeThumbColor: '#FFFFFF' } as object)}
+              ios_backgroundColor="rgba(255,255,255,0.22)"
               accessibilityLabel="Arrival alerts"
             />
           </Row>
@@ -197,6 +202,7 @@ export default function Profile() {
         </Section>
       </Animated.View>
     </ScrollView>
+    </SkyScreen>
   );
 }
 
@@ -204,7 +210,7 @@ function Stat({ value, label, onPress }: { value: number; label: string; onPress
   return (
     <PressableScale onPress={onPress} containerStyle={styles.statSlot} style={styles.stat} accessibilityRole="button" accessibilityLabel={`${value} ${label}`}>
       <Text style={styles.statValue}>{value}</Text>
-      <Text variant="label" color={light.inkSoft}>
+      <Text variant="label" color={skyInk.soft}>
         {label}
       </Text>
     </PressableScale>
@@ -219,9 +225,9 @@ function Section({ title, footer, children }: { title: string; footer?: string; 
       <Text variant="micro" style={styles.sectionTitle}>
         {title}
       </Text>
-      {rows.length ? <View style={styles.group}>{rows.map((r, i) => (i === 0 ? r : <Divided key={r.key}>{r}</Divided>))}</View> : null}
+      {rows.length ? <Glass style={styles.group}>{rows.map((r, i) => (i === 0 ? r : <Divided key={r.key}>{r}</Divided>))}</Glass> : null}
       {footer ? (
-        <Text variant="data" color={light.inkFaint} style={styles.sectionFooter}>
+        <Text variant="data" color={skyInk.faint} style={styles.sectionFooter}>
           {footer}
         </Text>
       ) : null}
@@ -265,7 +271,7 @@ function Row({
   const body = (
     <View style={[styles.row, dimmed && styles.dimmed]}>
       <View style={styles.icon}>
-        <Feather name={icon} size={16} color={light.ink} />
+        <Feather name={icon} size={16} color={skyInk.strong} />
       </View>
       <View style={styles.rowText}>
         <Text variant="bodyStrong" numberOfLines={1}>
@@ -278,12 +284,12 @@ function Row({
         ) : null}
       </View>
       {value ? (
-        <Text variant="data" color={light.inkSoft} numberOfLines={1}>
+        <Text variant="data" color={skyInk.soft} numberOfLines={1}>
           {value}
         </Text>
       ) : null}
       {children}
-      {onPress ? <Feather name={chevron} size={16} color={light.inkFaint} /> : null}
+      {onPress ? <Feather name={chevron} size={16} color={skyInk.faint} /> : null}
     </View>
   );
   return onPress ? (
@@ -301,10 +307,10 @@ function Choice({ label, detail, on, onPress }: { label: string; detail: string;
     <PressableScale onPress={onPress} pressedScale={0.99} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={label}>
       <View style={[styles.row, styles.choice]}>
         <View style={styles.rowText}>
-          <Text variant="body" color={light.ink}>
+          <Text variant="body" color={skyInk.strong}>
             {label}
           </Text>
-          <Text variant="data" color={light.inkFaint}>
+          <Text variant="data" color={skyInk.faint}>
             {detail}
           </Text>
         </View>
@@ -346,7 +352,7 @@ function PermissionRow({
     <Row icon={icon} label={label} detail={granted ? undefined : why} dimmed={dimmed}>
       {granted ? (
         <View style={styles.granted}>
-          <Feather name="check" size={13} color={light.inkSoft} />
+          <Feather name="check" size={13} color={skyInk.soft} />
           <Text variant="data">Allowed</Text>
         </View>
       ) : (
@@ -373,7 +379,6 @@ function PermissionRow({
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.canvas },
   header: { paddingHorizontal: GUTTER + 4, flexDirection: 'row', alignItems: 'center', gap: 16 },
   headerText: { flex: 1, gap: 2 },
   nameField: {
@@ -382,7 +387,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sansMedium,
     // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
     fontSize: 16,
-    color: light.inkSoft,
+    color: skyInk.soft,
     paddingVertical: 6,
   },
   stats: { flexDirection: 'row', gap: 10, paddingHorizontal: GUTTER, marginTop: 18 },
@@ -392,16 +397,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: light.panel,
-    borderWidth: 1,
-    borderColor: light.line,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
   statValue: {
     fontFamily: fonts.display,
     fontSize: 28,
     lineHeight: 33,
     letterSpacing: -1,
-    color: light.ink,
+    color: skyInk.strong,
     fontVariant: ['tabular-nums'],
   },
   section: { marginTop: 26, paddingHorizontal: GUTTER },
@@ -409,12 +414,8 @@ const styles = StyleSheet.create({
   sectionFooter: { marginTop: 8, marginHorizontal: 4, lineHeight: 18 },
   group: {
     borderRadius: 20,
-    backgroundColor: light.panel,
-    borderWidth: 1,
-    borderColor: light.line,
-    overflow: 'hidden',
   },
-  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: light.lineStrong, marginLeft: 56 },
+  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.35)', marginLeft: 56 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 10, paddingHorizontal: 14 },
   dimmed: { opacity: 0.45 },
   icon: {
@@ -423,19 +424,19 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: light.canvas,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   rowText: { flex: 1, gap: 1 },
   choice: { paddingLeft: 56, minHeight: 50 },
-  check: { width: 20, height: 20, borderRadius: 10, backgroundColor: light.ink, alignItems: 'center', justifyContent: 'center' },
+  check: { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.ember, alignItems: 'center', justifyContent: 'center' },
   granted: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pill: {
     height: 32,
     paddingHorizontal: 14,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: light.lineStrong,
-    backgroundColor: light.panel,
+    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },

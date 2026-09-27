@@ -20,6 +20,8 @@ import { IconButton } from '@/components/IconButton';
 import { ReelScanner } from '@/components/motion/ReelScanner';
 import { ReelTimeline, seconds } from '@/components/motion/ReelTimeline';
 import { PhotoCard } from '@/components/PhotoCard';
+import { Glass } from '@/components/sky/Glass';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { extractPlaces, getLinkPreview, isSampleLink } from '@/data/api';
 import { register } from '@/data/registry';
@@ -34,6 +36,7 @@ import { CARD_IN, CREDIT_IN, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import type { AssistReason } from '@/server/types';
 import { useTrips } from '@/state/trips';
 import { Tone } from '@/theme/tone';
+import { skyInk } from '@/theme/sky';
 import { colors, light } from '@/theme/tokens';
 
 type Phase = 'reading' | 'finding' | 'done';
@@ -137,7 +140,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   const cardW = W - 48;
 
   return (
-    <View style={[styles.fill, { paddingTop: insets.top + 8 }]}>
+    <SkyScreen style={{ paddingTop: insets.top + 8 }}>
       <IconButton
         icon="x"
         onPress={() => router.back()}
@@ -186,10 +189,12 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
           </View>
         </View>
 
+        {/* The finds on one pane of glass: what's happening in its header, a row per place. */}
+        <Glass style={styles.found}>
         <View style={styles.statusRow}>
           <Animated.View key={status} entering={FADE_IN} exiting={FADE_OUT} style={styles.status}>
             <StageGlyph kind={phase === 'reading' ? STAGE_GLYPHS[stage] : phase === 'done' ? 'done' : 'pin'} />
-            <Text variant="label" color={light.inkSoft} style={styles.statusText}>
+            <Text variant="label" style={styles.statusText}>
               {status}
             </Text>
           </Animated.View>
@@ -217,7 +222,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
                   </Text>
                 </View>
                 {/* Where in the video it was said: the same moment its marker sits at above. */}
-                <Text variant="data" color={light.inkFaint} style={styles.creditTime}>
+                <Text variant="data" color={skyInk.faint} style={styles.creditTime}>
                   {p.stamp ?? ''}
                 </Text>
               </Animated.View>
@@ -225,12 +230,13 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
           })}
           {shown > CREDITS_SHOWN ? <MoreCredits rest={found.slice(CREDITS_SHOWN, shown)} placed={placed} done={!!result} /> : null}
         </View>
+        </Glass>
       </View>
 
       {phase === 'done' && result ? (
         <View style={[styles.choice, { paddingBottom: insets.bottom + 12 }]}>
           <Animated.View entering={CHOICE_ENTER[0]}>
-            <Text variant="label" color={light.inkSoft} style={styles.center}>
+            <Text variant="label" color={skyInk.soft} style={styles.center}>
               {result.places.length >= CHECK_AS_LIST_FROM
                 ? 'Untick any we got wrong, then save.'
                 : 'Swipe through them. Right if we got it right.'}
@@ -238,6 +244,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
           </Animated.View>
           <Animated.View entering={CHOICE_ENTER[1]}>
             <Button
+              trailingArrow
               label={result.places.length === 1 ? 'Check this place' : `Check ${result.places.length} places`}
               onPress={check}
               accessibilityHint="Confirm each place before it's saved"
@@ -245,7 +252,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
           </Animated.View>
         </View>
       ) : null}
-    </View>
+    </SkyScreen>
   );
 }
 
@@ -331,7 +338,7 @@ function MoreCredits({ rest, placed, done }: { rest: Credit[]; placed: Set<strin
   return (
     <Animated.View entering={CREDIT_IN} style={styles.creditRow}>
       <View style={styles.moreDot}>
-        <Text variant="data" color={light.inkSoft}>
+        <Text variant="data" color={skyInk.soft}>
           +{rest.length}
         </Text>
       </View>
@@ -384,14 +391,14 @@ function ReadFailed({
     else router.replace('/');
   };
   return (
-    <View style={[styles.fill, { paddingTop: insetTop + 8 }]}>
+    <SkyScreen style={{ paddingTop: insetTop + 8 }}>
       <IconButton icon="x" onPress={another} accessibilityLabel="Close" style={styles.close} />
       <Animated.View entering={fadeUp(0)} style={styles.failed}>
         <View style={styles.failedIcon}>
-          <Feather name={copy.icon} size={22} color={light.ink} />
+          <Feather name={copy.icon} size={22} color={skyInk.strong} />
         </View>
         <Text variant="headline">{copy.title}</Text>
-        <Text variant="body" color={light.inkSoft}>
+        <Text variant="body">
           {copy.body}
         </Text>
       </Animated.View>
@@ -404,7 +411,7 @@ function ReadFailed({
           onPress={another}
         />
       </View>
-    </View>
+    </SkyScreen>
   );
 }
 
@@ -445,7 +452,7 @@ function StageGlyph({ kind }: { kind: Glyph }) {
   const name = kind === 'play' ? 'play' : kind === 'caption' ? 'align-left' : kind === 'done' ? 'check' : 'map-pin';
   return (
     <View style={styles.glyph}>
-      <Feather name={name} size={13} color={kind === 'done' ? light.ink : light.inkSoft} />
+      <Feather name={name} size={13} color={kind === 'done' ? colors.ember : skyInk.soft} />
     </View>
   );
 }
@@ -499,30 +506,43 @@ function PinDrop() {
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.canvas },
   close: { marginLeft: 16 },
   body: { flex: 1, paddingHorizontal: 24, paddingTop: 28 },
   // Right padding leaves room for the scanner sitting on the card's bottom-right edge.
   previewText: { position: 'absolute', left: 18, right: ORB_INSET + 28, bottom: 36, gap: 6 },
   timeline: { position: 'absolute', left: 18, bottom: 14 },
   sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  found: { marginTop: 26, padding: 14 },
   statusRow: {
-    marginTop: 28,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: skyInk.line,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     minHeight: 20,
   },
-  credits: { marginTop: 18, gap: 14 },
-  creditRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  credits: { marginTop: 12, gap: 8 },
+  // Each find is a lighter pane inside the glass.
+  creditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.line,
+  },
   creditTime: { flexShrink: 0 },
   creditName: { flex: 1, gap: 1 },
-  moreDot: { minWidth: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: light.line },
-  pin: { width: 14, alignItems: 'center', alignSelf: 'flex-start', marginTop: 4 },
+  moreDot: { minWidth: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: skyInk.line },
+  pin: { width: 14, alignItems: 'center' },
   status: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   glyph: { width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
   bars: { flexDirection: 'row', gap: 2 },
-  bar: { width: 2.5, height: 12, borderRadius: 1.5, backgroundColor: light.inkSoft },
+  bar: { width: 2.5, height: 12, borderRadius: 1.5, backgroundColor: skyInk.soft },
   choice: { position: 'absolute', left: 20, right: 20, bottom: 0 },
   center: { textAlign: 'center', paddingBottom: 12 },
   statusText: { flexShrink: 1 },
@@ -535,7 +555,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: light.canvasTop,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     marginBottom: 4,
   },
   failedActions: { gap: 10 },

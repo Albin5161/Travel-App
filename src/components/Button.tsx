@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTone } from '@/theme/tone';
@@ -23,7 +24,10 @@ type Props = {
 
 export function Button({ label, onPress, kind = 'primary', disabled, trailingArrow, compact, style, accessibilityHint }: Props) {
   const tone = useTone();
-  const text = trailingArrow ? `${label} →` : label;
+  const sky = tone === 'sky';
+  // Over the sky the main button is a black pill with its arrow at the far end, not after the words.
+  const skyArrow = sky && kind === 'primary' && !!trailingArrow && !compact;
+  const text = trailingArrow && !skyArrow ? `${label} →` : label;
   if (kind === 'text') {
     return (
       <View style={[styles.textWrap, style]}>
@@ -54,11 +58,13 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
           compact && styles.compact,
           primary ? styles.primary : styles.secondary,
           tone === 'light' && (primary ? styles.primaryLight : styles.secondaryLight),
-          tone === 'sky' && primary && styles.primarySky,
+          sky && (primary ? styles.primarySky : styles.secondarySky),
+          skyArrow && styles.tall,
           disabled && styles.disabled,
         ]}
       >
-        <Text style={[styles.label, { color: LABEL[tone][primary ? 'primary' : 'secondary'] }]}>{text}</Text>
+        <Text style={[styles.label, sky && styles.labelSky, { color: LABEL[tone][primary ? 'primary' : 'secondary'] }]}>{text}</Text>
+        {skyArrow ? <Feather name="arrow-right" size={22} color={skyInk.strong} style={styles.arrow} /> : null}
       </PressableScale>
     </View>
   );
@@ -66,8 +72,8 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
 
 const LABEL = {
   dark: { primary: colors.night, secondary: colors.mist },
-  // Over the sky: a white button with dark type, the one solid thing on a screen of glass.
-  sky: { primary: colors.night, secondary: colors.mist },
+  // Over the sky: black with white type, the one solid thing on a screen of glass.
+  sky: { primary: skyInk.strong, secondary: skyInk.strong },
   light: { primary: light.ctaInk, secondary: light.ink },
 } as const;
 
@@ -92,7 +98,21 @@ const styles = StyleSheet.create({
   // Light direction: solid black with white text.
   primaryLight: { backgroundColor: light.cta, boxShadow: shadows.cta },
   secondaryLight: { backgroundColor: light.panel, borderColor: light.lineStrong },
-  primarySky: { backgroundColor: '#FFFFFF', boxShadow: '0 8px 24px rgba(4,10,30,0.22)' },
+  // A faint light rim keeps the black edge visible against a night sky.
+  primarySky: {
+    backgroundColor: '#0E0F12',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+    boxShadow: '0 10px 28px rgba(0,0,0,0.32)',
+  },
+  secondarySky: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
+  },
+  tall: { height: 60 },
+  labelSky: { fontSize: 17 },
+  arrow: { position: 'absolute', right: 24 },
   disabled: { opacity: 0.4, boxShadow: 'none' },
   label: { fontFamily: fonts.sansSemi, fontSize: 16, letterSpacing: 0.1 },
   textWrap: { alignItems: 'center' },

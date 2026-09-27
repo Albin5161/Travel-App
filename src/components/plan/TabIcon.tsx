@@ -11,7 +11,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { light } from '@/theme/tokens';
+import { skyInk } from '@/theme/sky';
+
 
 export type TabIconName = 'overview' | 'places' | 'plan' | 'safety';
 
@@ -76,7 +77,7 @@ export function TabIcon({ name, active, size = 19 }: Props) {
       {name === 'safety' ? <Ring active={active} reduced={reduced} size={size + 12} /> : null}
       <Animated.View style={colourStyle}>
         <Animated.View style={glyphStyle}>
-          <Feather name={GLYPH[name]} size={size} color={active ? light.ink : light.inkFaint} />
+          <Feather name={GLYPH[name]} size={size} color={active ? skyInk.strong : skyInk.faint} />
         </Animated.View>
       </Animated.View>
     </View>
@@ -115,5 +116,5 @@ function Ring({ active, reduced, size }: { active: boolean; reduced: boolean; si
 
 const styles = StyleSheet.create({
   slot: { alignItems: 'center', justifyContent: 'center' },
-  ring: { position: 'absolute', borderWidth: 1.5, borderColor: light.ink },
+  ring: { position: 'absolute', borderWidth: 1.5, borderColor: skyInk.strong },
 });

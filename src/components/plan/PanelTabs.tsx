@@ -1,8 +1,10 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { css } from 'react-native-reanimated';
 
+import { Glass } from '@/components/sky/Glass';
 import { Tone } from '@/theme/tone';
-import { fonts, light } from '@/theme/tokens';
+import { skyInk } from '@/theme/sky';
+import { fonts } from '@/theme/tokens';
 
 import { TabIcon, type TabIconName } from './TabIcon';
 
@@ -28,8 +30,8 @@ type Props = {
 // (scroll-spy, in the screen).
 export function PanelTabs({ active, onTab }: Props) {
   return (
-    <Tone value="light">
-      <View style={styles.header}>
+    <Tone value="sky">
+      <Glass radius={PANEL_RADIUS} style={styles.header}>
         <View style={styles.grabber} />
         <View style={styles.row}>
           {PLAN_TABS.map((label, i) => (
@@ -45,7 +47,7 @@ export function PanelTabs({ active, onTab }: Props) {
               <TabIcon name={TAB_ICONS[i]} active={i === active} />
               <Animated.Text
                 numberOfLines={1}
-                style={[styles.label, { color: i === active ? light.ink : light.inkFaint }]}
+                style={[styles.label, { color: i === active ? skyInk.strong : skyInk.faint }]}
               >
                 {label}
               </Animated.Text>
@@ -53,7 +55,7 @@ export function PanelTabs({ active, onTab }: Props) {
           ))}
         </View>
         <View style={styles.rule} />
-      </View>
+      </Glass>
     </Tone>
   );
 }
@@ -61,9 +63,9 @@ export function PanelTabs({ active, onTab }: Props) {
 const styles = css.create({
   header: {
     height: PANEL_HEADER_H,
-    backgroundColor: light.panel,
-    borderTopLeftRadius: PANEL_RADIUS,
-    borderTopRightRadius: PANEL_RADIUS,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    borderBottomWidth: 0,
   },
   grabber: {
     alignSelf: 'center',
@@ -71,7 +73,7 @@ const styles = css.create({
     width: 36,
     height: 5,
     borderRadius: 3,
-    backgroundColor: light.lineStrong,
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   row: { flexDirection: 'row', paddingHorizontal: 10, marginTop: 8, height: 52 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1 },
@@ -82,5 +84,5 @@ const styles = css.create({
     transitionProperty: 'color',
     transitionDuration: '200ms',
   },
-  rule: { height: StyleSheet.hairlineWidth, backgroundColor: light.line },
+  rule: { height: StyleSheet.hairlineWidth, backgroundColor: skyInk.line },
 });

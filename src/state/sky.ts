@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import { getDistrict } from '@/data/regions';
+import type { LatLng } from '@/lib/geo';
 import { guessFromClock, phaseAt, type SkyPhase } from '@/lib/sun';
 
 import { useTrips } from './trips';
@@ -21,12 +22,13 @@ const PINNED = (() => {
 })();
 
 /**
- * The sky for where you are, worked out on the phone: your home district's centre if you picked
- * one, otherwise a guess from the phone's clock. Never your position, which the privacy policy
- * promises stays unused for anything but the location chip, drive times and arrival alerts.
- * Checked every five minutes and whenever the app comes back to the front.
+ * The sky's time of day, worked out on the phone. For a screen about one place, pass that place and
+ * the sky is the one over it right now. Otherwise it's the sky at home: your home district's centre
+ * if you picked one, else a guess from the phone's clock. Never your position, which the privacy
+ * policy keeps for the location chip, drive times and arrival alerts only. Checked every five
+ * minutes and whenever the app comes back to the front.
  */
-export function useHomeSky(): SkyPhase {
+export function useSkyPhase(place?: LatLng | null): SkyPhase {
   const { state } = useTrips();
   const [date, setDate] = useState(now);
   useEffect(() => {
@@ -37,6 +39,9 @@ export function useHomeSky(): SkyPhase {
       sub.remove();
     };
   }, []);
-  const at = getDistrict(state.homeDistrictId ?? undefined)?.centre ?? guessFromClock(date);
+  const at = place ?? getDistrict(state.homeDistrictId ?? undefined)?.centre ?? guessFromClock(date);
   return PINNED ?? phaseAt(at, date);
 }
+
+/** The sky over home. */
+export const useHomeSky = () => useSkyPhase();

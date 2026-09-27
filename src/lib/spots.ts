@@ -43,16 +43,6 @@ export const KIND_LABEL: Record<SpotKind, string> = {
 
 export const matchesKind = (p: Place, kind: SpotKind) => kind === 'all' || (p.type as PlaceType) === kind;
 
-/** Weekend reach, in drive-time minutes from where you are. `null` means no limit. */
-export type ReachMinutes = 45 | 90 | 180 | null;
-
-export const REACH_LABEL: Record<string, string> = {
-  '45': 'Under 45 min',
-  '90': 'Under 1½ hrs',
-  '180': 'Under 3 hrs',
-  null: 'Any distance',
-};
-
 /**
  * Drive time from a point to a spot. Uses the same detour-corrected estimate as trip planning,
  * so a 40 km hop through Kerala's roads reads as the hour and a half it really is, not 40 minutes.
@@ -72,10 +62,6 @@ export function kmAway(from: LatLng, spots: Place[]) {
   const km = distanceKm(from, { lat, lng });
   const rounded = km < 100 ? Math.round(km) : Math.round(km / 10) * 10;
   return `about ${rounded.toLocaleString('en-IN')} km`;
-}
-
-export function withinReach(from: LatLng, p: Place, reach: ReachMinutes) {
-  return reach === null || driveMinutes(from, p) <= reach;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,83 +1,13 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useDerivedValue, useReducedMotion, withTiming } from 'react-native-reanimated';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { haptic } from '@/lib/haptics';
-import { DURATION, EASE_OUT } from '@/lib/motion';
 import { skyFill, skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
 import { light } from '@/theme/tokens';
 
-/** The two-state split people actually see: near home, or away. Geography stops here. */
-export function ScopeToggle<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: { key: T; label: string; count: number }[];
-  value: T;
-  onChange: (key: T) => void;
-}) {
-  const sky = useTone() === 'sky';
-  return (
-    <View style={[styles.segment, sky && styles.segmentSky]}>
-      {options.map((o) => (
-        <Segment
-          key={o.key}
-          label={o.label}
-          count={o.count}
-          active={o.key === value}
-          sky={sky}
-          onPress={() => onChange(o.key)}
-        />
-      ))}
-    </View>
-  );
-}
-
-function Segment({
-  label,
-  count,
-  active,
-  sky,
-  onPress,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  sky: boolean;
-  onPress: () => void;
-}) {
-  const reduced = useReducedMotion();
-  const on = useDerivedValue(() =>
-    reduced ? (active ? 1 : 0) : withTiming(active ? 1 : 0, { duration: DURATION.small, easing: EASE_OUT }),
-  );
-  const style = useAnimatedStyle(() => ({ opacity: 0.35 + 0.65 * on.get() }));
-  return (
-    <PressableScale
-      onPress={() => {
-        if (!active) haptic.selection();
-        onPress();
-      }}
-      containerStyle={styles.segmentSlot}
-      style={[styles.segmentItem, active && styles.segmentItemOn]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-    >
-      <Animated.View style={[styles.segmentInner, style]}>
-        <Text variant="label" color={active || sky ? light.ctaInk : light.ink}>
-          {label}
-        </Text>
-        <Text variant="data" color={active || sky ? skyInk.faint : light.inkFaint}>
-          {count}
-        </Text>
-      </Animated.View>
-    </PressableScale>
-  );
-}
-
-/** Horizontal filter chips: the kind of spot, and how far you're willing to drive. */
+/** Horizontal filter chips: the kind of spot. */
 export function Chips<T extends string | number | null>({
   options,
   value,
@@ -119,20 +49,6 @@ export function Chips<T extends string | number | null>({
 }
 
 const styles = StyleSheet.create({
-  segment: {
-    flexDirection: 'row',
-    gap: 6,
-    padding: 4,
-    borderRadius: 999,
-    backgroundColor: light.canvas,
-    borderWidth: 1,
-    borderColor: light.line,
-  },
-  segmentSky: { backgroundColor: skyFill.well, borderColor: skyInk.line },
-  segmentSlot: { flex: 1 },
-  segmentItem: { height: 38, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  segmentItemOn: { backgroundColor: light.cta },
-  segmentInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   chipRow: { gap: 8, paddingRight: 8 },
   chip: {
     height: 34,

@@ -34,9 +34,11 @@ type Props = {
  * Built only from what a saved image keeps exactly (plain images, gradients, boxes and text): the
  * same card on screen and in the downloaded PNG.
  */
-export function ShareCard({ city, plan, width, issued, square }: Props) {
-  const height = Math.round(width * CARD_RATIO);
-  const s = width / 340;
+/**
+ * What the card says, worked out once for both the card on screen and the picture drawn from it on
+ * the web (src/lib/cardImage.ts). Sizes are in card units, a card 340 wide.
+ */
+export function cardFacts(city: City, plan: TripPlan, issued: Date) {
   const n = plan.days.length;
   const stops = plan.days.flatMap((d, day) => d.stops.map((stop) => ({ stop, day })));
   const km = plan.days.reduce((sum, d) => sum + d.totalKm, 0);
@@ -44,15 +46,42 @@ export function ShareCard({ city, plan, width, issued, square }: Props) {
   const last = stops[stops.length - 1]?.stop;
   const firstDate = plan.days[0]?.date;
   const lastDate = plan.days[n - 1]?.date;
-  const byDate = n > 1 && firstDate && lastDate;
-  const start = byDate ? formatDay(firstDate) : first ? formatClock(first.startMinutes) : '';
-  const end = byDate ? formatDay(lastDate) : last ? formatClock(last.startMinutes + last.place.minutes) : '';
+  const byDate = !!(n > 1 && firstDate && lastDate);
+  const start = byDate ? formatDay(firstDate!) : first ? formatClock(first.startMinutes) : '';
+  const end = byDate ? formatDay(lastDate!) : last ? formatClock(last.startMinutes + last.place.minutes) : '';
   const when = firstDate ? formatRange(firstDate, n) : n > 1 ? `${n} days` : null;
   const shown = stops.slice(0, MAX_ROWS);
   const more = stops.length - shown.length;
+  return {
+    n,
+    byDate,
+    start,
+    end,
+    chip: n === 1 ? 'DAY PLAN' : `${n}-DAY PLAN`,
+    kicker: (when ? `${city.state} · ${when}` : city.state).toUpperCase(),
+    dots: Math.min(6, stops.length),
+    rows: shown.map(({ stop, day }) => ({
+      id: stop.place.id,
+      name: clip(stop.place.name, n > 1 ? 22 : 30),
+      time: `${n > 1 ? `Day ${day + 1} · ` : ''}${formatClock(stop.startMinutes)}`,
+    })),
+    more: more > 0 ? `+ ${more} more ${more === 1 ? 'stop' : 'stops'}` : null,
+    issued: `ISSUED ${issueDate(issued)}`,
+    facts: `${stops.length} stops · ${km.toFixed(1)} km · xplore.expo.app`,
+    barcode: barcodeBars(`${city.id}${plan.seed}${stops.length}`),
+    // The pane's height follows its rows, so the photo gets every point the plan doesn't need.
+    paneUnits: 18 + 44 + 14 + shown.length * 26 + (more > 0 ? 20 : 0) + 16 + 38 + 16,
+  };
+}
 
-  // The pane's height follows its rows, so the photo gets every point the plan doesn't need.
-  const paneH = Math.round(s * (18 + 44 + 14 + shown.length * 26 + (more > 0 ? 20 : 0) + 16 + 38 + 16));
+export const CARD_INSET = INSET;
+
+export function ShareCard({ city, plan, width, issued, square }: Props) {
+  const height = Math.round(width * CARD_RATIO);
+  const s = width / 340;
+  const facts = cardFacts(city, plan, issued);
+  const { byDate, start, end } = facts;
+  const paneH = Math.round(s * facts.paneUnits);
   const paneTop = height - INSET * s - paneH;
   const blurred = useBlurredPhoto(city.hero);
 
@@ -69,14 +98,14 @@ export function ShareCard({ city, plan, width, issued, square }: Props) {
         <RNText style={[styles.brand, { fontSize: 18 * s, lineHeight: 23 * s }]}>Xplore</RNText>
         <View style={[styles.chip, { paddingHorizontal: 10 * s, paddingVertical: 5 * s }]}>
           <RNText style={[styles.chipText, { fontSize: 10 * s, lineHeight: 12 * s, letterSpacing: 1.6 * s }]}>
-            {n === 1 ? 'DAY PLAN' : `${n}-DAY PLAN`}
+            {facts.chip}
           </RNText>
         </View>
       </View>
 
       <View style={[styles.title, { left: 20 * s, right: 20 * s, bottom: height - paneTop + 14 * s }]}>
         <RNText style={[styles.kicker, { fontSize: 11 * s, lineHeight: 14 * s, letterSpacing: 1.8 * s }]} numberOfLines={1}>
-          {(when ? `${city.state} · ${when}` : city.state).toUpperCase()}
+          {facts.kicker}
         </RNText>
         <RNText style={[styles.city, { fontSize: 44 * s, lineHeight: 50 * s, letterSpacing: -1.6 * s }]} numberOfLines={1} adjustsFontSizeToFit>
           {city.name}
@@ -111,8 +140,8 @@ export function ShareCard({ city, plan, width, issued, square }: Props) {
             </View>
             <View style={[styles.track, { height: 26 * s }]}>
               <View style={[styles.trackLine, { top: 12 * s }]} />
-              {stops.slice(0, 6).map(({ stop }) => (
-                <View key={stop.place.id} style={[styles.dot, { width: 6 * s, height: 6 * s, borderRadius: 3 * s }]} />
+              {Array.from({ length: facts.dots }, (_, i) => (
+                <View key={i} style={[styles.dot, { width: 6 * s, height: 6 * s, borderRadius: 3 * s }]} />
               ))}
             </View>
             <View style={styles.end}>
@@ -124,24 +153,19 @@ export function ShareCard({ city, plan, width, issued, square }: Props) {
           </View>
 
           <View style={{ marginTop: 12 * s, gap: 6 * s }}>
-            {shown.map(({ stop, day }, i) => (
-              <View key={stop.place.id} style={[styles.row, { gap: 10 * s, height: 20 * s }]}>
+            {facts.rows.map((row, i) => (
+              <View key={row.id} style={[styles.row, { gap: 10 * s, height: 20 * s }]}>
                 <View style={[styles.num, { width: 18 * s, height: 18 * s, borderRadius: 9 * s }]}>
                   <RNText style={[styles.numText, { fontSize: 10 * s, lineHeight: 13 * s }]}>{i + 1}</RNText>
                 </View>
                 <RNText style={[styles.rowName, { fontSize: 14 * s, lineHeight: 18 * s }]} numberOfLines={1}>
-                  {clip(stop.place.name, n > 1 ? 22 : 30)}
+                  {row.name}
                 </RNText>
-                <RNText style={[styles.rowTime, { fontSize: 12 * s, lineHeight: 16 * s }]}>
-                  {n > 1 ? `Day ${day + 1} · ` : ''}
-                  {formatClock(stop.startMinutes)}
-                </RNText>
+                <RNText style={[styles.rowTime, { fontSize: 12 * s, lineHeight: 16 * s }]}>{row.time}</RNText>
               </View>
             ))}
-            {more > 0 ? (
-              <RNText style={[styles.more, { fontSize: 12 * s, lineHeight: 16 * s, marginLeft: 28 * s }]}>
-                + {more} more {more === 1 ? 'stop' : 'stops'}
-              </RNText>
+            {facts.more ? (
+              <RNText style={[styles.more, { fontSize: 12 * s, lineHeight: 16 * s, marginLeft: 28 * s }]}>{facts.more}</RNText>
             ) : null}
           </View>
 
@@ -149,13 +173,13 @@ export function ShareCard({ city, plan, width, issued, square }: Props) {
           <View style={styles.footer}>
             <View>
               <RNText style={[styles.label, { fontSize: 10 * s, lineHeight: 13 * s, letterSpacing: 1.2 * s }]}>
-                ISSUED {issueDate(issued)}
+                {facts.issued}
               </RNText>
               <RNText style={[styles.facts, { fontSize: 12 * s, lineHeight: 16 * s }]}>
-                {stops.length} stops · {km.toFixed(1)} km · xplore.expo.app
+                {facts.facts}
               </RNText>
             </View>
-            <Barcode seed={`${city.id}${plan.seed}${stops.length}`} s={s} />
+            <Barcode bars={facts.barcode} s={s} />
           </View>
         </View>
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.paneRim, { borderRadius: 22 * s }]} />
@@ -188,8 +212,8 @@ function Tear({ s }: { s: number }) {
   );
 }
 
-// Decorative, but stable: the same plan always gets the same bars. Boxes, for the same reason.
-function Barcode({ seed, s }: { seed: string; s: number }) {
+// Decorative, but stable: the same plan always gets the same bars, in card units within 72 × 26.
+function barcodeBars(seed: string) {
   let h = 2166136261;
   for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
   const bars: { x: number; w: number }[] = [];
@@ -200,6 +224,11 @@ function Barcode({ seed, s }: { seed: string; s: number }) {
     bars.push({ x, w });
     x += w + 1 + ((h >>> 7) % 3);
   }
+  return bars;
+}
+
+// Boxes, so a picture of the card keeps them exactly.
+function Barcode({ bars, s }: { bars: { x: number; w: number }[]; s: number }) {
   return (
     <View aria-hidden style={{ width: 72 * s, height: 26 * s }}>
       {bars.map((b) => (

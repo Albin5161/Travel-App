@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +17,7 @@ import { haptic } from '@/lib/haptics';
 import { FADE_IN, fadeUp } from '@/lib/motion';
 import { createTrip } from '@/lib/live/api';
 import { ensureUser, liveEnabled } from '@/lib/live/client';
+import type { CardData } from '@/lib/cardImage';
 import { planMessage, saveImage, sharePlanCard, webImageFile, type ImageKind } from '@/lib/share';
 import { startGroup } from '@/state/group';
 import { useHomeSky } from '@/state/sky';
@@ -41,9 +42,11 @@ export default function ShareScreen() {
   const card = useRef<View>(null);
   const story = useRef<View>(null);
   const look = SKY[useHomeSky()];
-  const images = useReadyImages(card, story, plan ? `xplore-${id}` : null);
-  const [saving, setSaving] = useState<ImageKind | null>(null);
   const [issued] = useState(() => new Date());
+  // Stable while nothing about the card changes, so the pictures are drawn once.
+  const cardData = useMemo<CardData | null>(() => (city && plan ? { city, plan, issued, look } : null), [city, plan, issued, look]);
+  const images = useReadyImages(cardData, `xplore-${id}`);
+  const [saving, setSaving] = useState<ImageKind | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -77,7 +80,13 @@ export default function ShareScreen() {
     haptic.light();
     setSaving(kind);
     try {
-      const result = await saveImage(kind === 'card' ? card : story, kind, `xplore-${city.id}${kind === 'story' ? '-story' : ''}`, images[kind]);
+      const result = await saveImage(
+        kind === 'card' ? card : story,
+        kind,
+        `xplore-${city.id}${kind === 'story' ? '-story' : ''}`,
+        { city, plan, issued, look },
+        images[kind],
+      );
       if (result === 'dismissed') return;
       haptic.success();
       track('plan image saved', { kind, how: result });
@@ -206,15 +215,18 @@ export default function ShareScreen() {
         )}
       </View>
 
-      {/* Off screen, drawn flat at their saved sizes: what the pictures are made from. */}
-      <View style={styles.offscreen} pointerEvents="none" aria-hidden>
-        <View ref={card} collapsable={false}>
-          <ShareCard city={city} plan={plan} width={360} issued={issued} square />
+      {/* Phone apps picture these: off screen, drawn flat at their saved sizes. The web draws its
+          pictures on a canvas instead, so it doesn't lay them out at all. */}
+      {Platform.OS === 'web' ? null : (
+        <View style={styles.offscreen} pointerEvents="none" aria-hidden>
+          <View ref={card} collapsable={false}>
+            <ShareCard city={city} plan={plan} width={360} issued={issued} square />
+          </View>
+          <View ref={story} collapsable={false}>
+            <ShareStory city={city} plan={plan} issued={issued} look={look} />
+          </View>
         </View>
-        <View ref={story} collapsable={false}>
-          <ShareStory city={city} plan={plan} issued={issued} look={look} />
-        </View>
-      </View>
+      )}
     </SkyScreen>
   );
 }
@@ -224,26 +236,27 @@ export default function ShareScreen() {
  * hands them over at once (an iPhone opens the share sheet only straight after a tap). Phones make
  * them on the tap, where there's no such limit.
  */
-function useReadyImages(card: React.RefObject<View | null>, story: React.RefObject<View | null>, name: string | null) {
+function useReadyImages(data: CardData | null, name: string) {
   const [files, setFiles] = useState<Record<ImageKind, File | null>>({ card: null, story: null });
+  // A moment after the card has come in: drawing them is quick, but not worth a dropped frame.
   useEffect(() => {
-    if (Platform.OS !== 'web' || !name) return;
+    if (Platform.OS !== 'web' || !data) return;
     let alive = true;
     const t = setTimeout(async () => {
       try {
-        const c = await webImageFile(card, 'card', name);
-        if (alive) setFiles((f) => ({ ...f, card: c }));
-        const st = await webImageFile(story, 'story', `${name}-story`);
-        if (alive) setFiles((f) => ({ ...f, story: st }));
+        const card = await webImageFile('card', data, name);
+        if (alive) setFiles((f) => ({ ...f, card }));
+        const story = await webImageFile('story', data, `${name}-story`);
+        if (alive) setFiles((f) => ({ ...f, story }));
       } catch {
         // Made on the tap instead.
       }
-    }, 1800);
+    }, 900);
     return () => {
       alive = false;
       clearTimeout(t);
     };
-  }, [card, story, name]);
+  }, [data, name]);
   return files;
 }
 

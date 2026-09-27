@@ -2,18 +2,19 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { CityMap, fitCameraToRect, flyTo, useCamera, type MapPin } from '@/components/CityMap';
+import { GoogleMap } from '@/components/GoogleMap';
 import { PressableScale } from '@/components/PressableScale';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen, useScreenSky } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { ArrivalBanner } from '@/components/spots/ArrivalBanner';
-import { Chips, ScopeToggle } from '@/components/spots/Chips';
+import { Chips } from '@/components/spots/Chips';
 import { SpotRow } from '@/components/spots/SpotRow';
 import { WeekendRouteCard } from '@/components/spots/WeekendRouteCard';
 import { getCity, getReel } from '@/data/api';
@@ -21,19 +22,7 @@ import { KERALA, getDistrict } from '@/data/regions';
 import type { Place } from '@/data/types';
 import type { Point } from '@/lib/geo';
 import { fadeUp } from '@/lib/motion';
-import {
-  KIND_LABEL,
-  REACH_LABEL,
-  clusterSpots,
-  DAY_TRIP_MINUTES,
-  driveMinutes,
-  kmAway,
-  matchesKind,
-  weekendRoutes,
-  withinReach,
-  type ReachMinutes,
-  type SpotKind,
-} from '@/lib/spots';
+import { KIND_LABEL, clusterSpots, DAY_TRIP_MINUTES, driveMinutes, kmAway, matchesKind, weekendRoutes, type SpotKind } from '@/lib/spots';
 import { useArrivalTargets, useSpotStatus, useSpotsByDistrict, useTrips } from '@/state/trips';
 import { useWhereIAm } from '@/state/where';
 import { deepGlass, skyFill, skyInk } from '@/theme/sky';
@@ -41,13 +30,11 @@ import { Tone } from '@/theme/tone';
 import { radii, space } from '@/theme/tokens';
 
 const KINDS: SpotKind[] = ['all', 'food', 'sight', 'experience'];
-const REACHES: ReachMinutes[] = [null, 45, 90, 180];
 const GUTTER = space.screen;
-const PANEL_RATIO = 0.56;
+// The map gets the top half: enough to see where everything is, the list takes the rest.
+const PANEL_RATIO = 0.5;
 /** A full day out, door to door. The reach chips do the real narrowing. */
 const DAY_BUDGET = 600;
-
-type Scope = 'home' | 'away';
 
 export default function SpotsMap() {
   const { district: districtParam } = useLocalSearchParams<{ district?: string }>();
@@ -59,34 +46,26 @@ export default function SpotsMap() {
   const { statusOf, toggle } = useSpotStatus();
   const where = useWhereIAm();
 
-  const [scope, setScope] = useState<Scope>('home');
+  // One filter, what kind of place. Near home and away are both listed, near home first, and every
+  // row says how far it is: no separate switches for scope or distance.
   const [kind, setKind] = useState<SpotKind>('all');
-  const [reach, setReach] = useState<ReachMinutes>(null);
 
   const homeGroups = groups.filter((g) => g.isHome);
   const awayGroups = groups.filter((g) => !g.isHome);
-  const scoped = scope === 'home' ? homeGroups : awayGroups;
+  const homeSpots = homeGroups.flatMap((g) => g.spots);
 
-  // A tapped arrival notification lands here, on that district.
+  // A tapped arrival notification lands here, on that district: everything shows, it comes first.
   const jumped = useRef<string | null>(null);
   useEffect(() => {
     if (!districtParam || jumped.current === districtParam) return;
     jumped.current = districtParam;
-    const isHome = state.homeDistrictId === districtParam;
-    setScope(isHome ? 'home' : 'away');
     setKind('all');
-    setReach(null);
-  }, [districtParam, state.homeDistrictId]);
+  }, [districtParam]);
 
-  const visible = useMemo(
-    () =>
-      scoped
-        .flatMap((g) => g.spots)
-        .filter((p) => matchesKind(p, kind) && withinReach(where.at, p, reach)),
-    [scoped, kind, reach, where.at],
-  );
+  const visible = useMemo(() => groups.flatMap((g) => g.spots).filter((p) => matchesKind(p, kind)), [groups, kind]);
 
-  // Only Kerala spots carry a position on the region map; the rest are listed, not plotted.
+  // The phone app draws the painted Kerala map, where only Kerala spots have a place; the web uses
+  // Google's map, where every spot does.
   const pins: MapPin[] = useMemo(
     () =>
       visible
@@ -122,6 +101,16 @@ export default function SpotsMap() {
     <SkyScreen>
       {/* The map is paper: its labels keep the paper palette. */}
       <Tone value="light">
+      {Platform.OS === 'web' ? (
+        <GoogleMap
+          pins={visible.map((p) => ({ id: p.id, name: p.name, coords: p.coords, photo: p.photo }))}
+          width={W}
+          height={H}
+          padding={{ top: insets.top + 80, bottom: panelH + 24, left: 40, right: 40 }}
+          focusId={null}
+          onPinPress={(id) => router.push({ pathname: '/place/[id]', params: { id } })}
+        />
+      ) : (
       <CityMap
         city={{ map: KERALA.map }}
         world={KERALA.world}
@@ -133,6 +122,7 @@ export default function SpotsMap() {
         pinSize={40}
         onPinPress={(id) => router.push({ pathname: '/place/[id]', params: { id } })}
       />
+      )}
       </Tone>
 
       <LinearGradient
@@ -170,26 +160,13 @@ export default function SpotsMap() {
                 spots={arrivedTarget.spots}
                 topArea={arrivedTarget.topArea}
                 onSee={() => {
-                  setScope(state.homeDistrictId === arrived ? 'home' : 'away');
                   setKind('all');
-                  setReach(null);
                   dispatch({ type: 'clearArrival' });
                 }}
                 onDismiss={() => dispatch({ type: 'clearArrival' })}
               />
             </View>
           ) : null}
-
-          <View style={styles.block}>
-            <ScopeToggle<Scope>
-              value={scope}
-              onChange={setScope}
-              options={[
-                { key: 'home', label: 'Near home', count: homeGroups.reduce((n, g) => n + g.spots.length, 0) },
-                { key: 'away', label: 'Away', count: awayGroups.reduce((n, g) => n + g.spots.length, 0) },
-              ]}
-            />
-          </View>
 
           <View style={styles.chips}>
             <Chips
@@ -198,27 +175,32 @@ export default function SpotsMap() {
               options={KINDS.map((k) => ({ key: k, label: KIND_LABEL[k] }))}
             />
           </View>
-          <View style={styles.chips}>
-            <Chips
-              value={reach}
-              onChange={setReach}
-              options={REACHES.map((r) => ({ key: r, label: REACH_LABEL[String(r)] }))}
-            />
-          </View>
 
-          {scope === 'home' ? (
-            <HomeScope spots={visible} where={where.at} statusOf={statusOf} toggle={toggle} width={W} />
-          ) : (
+          {visible.length === 0 ? (
+            <View style={styles.block}>
+              <Text variant="body">None of your saved spots are this kind yet.</Text>
+            </View>
+          ) : null}
+          {homeSpots.length > 0 ? (
+            <HomeScope
+              spots={homeSpots.filter((p) => matchesKind(p, kind))}
+              where={where.at}
+              statusOf={statusOf}
+              toggle={toggle}
+              width={W}
+            />
+          ) : null}
+          {awayGroups.length > 0 ? (
             <AwayScope
               groups={awayGroups}
               kind={kind}
-              reach={reach}
               from={where.at}
               statusOf={statusOf}
               toggle={toggle}
               focus={arrived ?? districtParam ?? null}
+              labelled={homeSpots.length > 0}
             />
-          )}
+          ) : null}
         </ScrollView>
       </DeepPanel>
     </SkyScreen>
@@ -254,13 +236,7 @@ function HomeScope({
   const clusters = useMemo(() => clusterSpots(spots), [spots]);
   const cardW = Math.min(268, width - GUTTER * 2 - 40);
 
-  if (spots.length === 0) {
-    return (
-      <View style={styles.block}>
-        <Text variant="body">Nothing near home matches that. Try widening the distance.</Text>
-      </View>
-    );
-  }
+  if (spots.length === 0) return null;
 
   return (
     <>
@@ -290,7 +266,7 @@ function HomeScope({
       ) : null}
 
       <View style={styles.sectionHead}>
-        <Text variant="micro">All {spots.length} near home</Text>
+        <Text variant="micro">Near home · {spots.length}</Text>
       </View>
       {clusters.map((c) => (
         <View key={c.id} style={styles.block}>
@@ -328,38 +304,35 @@ function ClusterHead({ label, count, alone, same }: { label: string; count: numb
 function AwayScope({
   groups,
   kind,
-  reach,
   from,
   statusOf,
   toggle,
   focus,
+  labelled,
 }: {
   groups: { districtId: string | null; name: string; state: string; spots: Place[] }[];
   kind: SpotKind;
-  reach: ReachMinutes;
   from: { lat: number; lng: number };
   statusOf: (id: string) => 'want' | 'been';
   toggle: (id: string) => void;
   focus: string | null;
+  /** With spots near home above, a heading says where "away" starts. */
+  labelled: boolean;
 }) {
   const shown = groups
-    .map((g) => ({
-      ...g,
-      spots: g.spots.filter((p) => matchesKind(p, kind) && withinReach(from, p, reach)),
-    }))
+    .map((g) => ({ ...g, spots: g.spots.filter((p) => matchesKind(p, kind)) }))
     .filter((g) => g.spots.length > 0)
     .sort((a, b) => Number(b.districtId === focus) - Number(a.districtId === focus));
 
-  if (shown.length === 0) {
-    return (
-      <View style={styles.block}>
-        <Text variant="body">No saved spots away from home match that yet.</Text>
-      </View>
-    );
-  }
+  if (shown.length === 0) return null;
 
   return (
     <>
+      {labelled ? (
+        <View style={styles.sectionHead}>
+          <Text variant="micro">Away from home</Text>
+        </View>
+      ) : null}
       {shown.map((g) => {
         const cityId = g.spots[0].cityId;
         const watched = !!getDistrict(g.districtId ?? undefined);

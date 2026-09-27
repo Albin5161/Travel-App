@@ -36,7 +36,7 @@ export function useBlurredPhoto(source: ImageSourcePropType | null | undefined):
   return baked?.from === source ? { source: { uri: baked.uri } } : { source: null };
 }
 
-function uriOf(source: ImageSourcePropType): string | null {
+export function uriOf(source: ImageSourcePropType): string | null {
   if (typeof source === 'number') return Asset.fromModule(source).uri ?? null;
   if (Array.isArray(source)) return source[0]?.uri ?? null;
   return (source as { uri?: string }).uri ?? null;

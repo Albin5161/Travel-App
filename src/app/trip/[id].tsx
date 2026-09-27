@@ -148,6 +148,8 @@ export default function TripSetup() {
       : needed <= 1
         ? `Your ${count} places fit in a day.`
         : `Your ${count} places need about ${needed} days at a balanced pace.`;
+  // The hint belongs to the question: close under it, with the question's usual room before the answers.
+  const showHint = !!hint && (step === 'when' || step === 'days' || step === 'dates');
   // The fewest days that fit everything, marked on the days question; past four, "4 or more".
   const suggested = Math.min(Math.max(needed, 1), 4);
 
@@ -190,11 +192,11 @@ export default function TripSetup() {
               <Text variant="eyebrow">Plan your trip · {city.name}</Text>
             </Animated.View>
             <Animated.View entering={ENTER[1]}>
-              <Text variant="display" accessibilityRole="header" style={styles.question}>
+              <Text variant="display" accessibilityRole="header" style={[styles.question, showHint && styles.questionWithHint]}>
                 {QUESTION[step]}
               </Text>
             </Animated.View>
-            {hint && (step === 'when' || step === 'days' || step === 'dates') ? (
+            {showHint ? (
               <Animated.View entering={ENTER[1]}>
                 <Text variant="body" style={styles.hint}>
                   {hint}
@@ -526,13 +528,14 @@ function Build({ cityName, count, prefs, onBuilt }: { cityName: string; count: n
 const CELL = 44;
 
 const styles = StyleSheet.create({
-  hint: { marginTop: 10 },
+  hint: { marginBottom: 22 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: space.screen },
   progress: { flex: 1, flexDirection: 'row', gap: 6, paddingRight: 8 },
   segment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: skyFill.pressed, overflow: 'hidden' },
   segmentFill: { ...StyleSheet.absoluteFill, backgroundColor: skyInk.strong, transformOrigin: 'left' },
   body: { flex: 1, paddingHorizontal: space.screen, paddingTop: 28 },
   question: { marginTop: 6, marginBottom: 22 },
+  questionWithHint: { marginBottom: 8 },
   options: { gap: 10 },
   option: {
     flexDirection: 'row',

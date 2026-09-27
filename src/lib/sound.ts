@@ -1,4 +1,5 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import { Platform } from 'react-native';
 
 // Three short sounds for the moments that matter, never for ordinary taps: places found, saved,
 // and a group locking in its plan. Soft mallet-on-glass notes synthesised for Xplore
@@ -21,6 +22,36 @@ function prepare(cue: Cue) {
   mode ??= setAudioModeAsync({ playsInSilentMode: false, interruptionMode: 'mixWithOthers' }).catch(() => {});
   players[cue] ??= createAudioPlayer(SOURCES[cue]);
   return mode;
+}
+
+// A phone's browser plays a sound only if that sound was first started by a tap, and the stamp's
+// thud and "places found" come on a timer. So the first tap anywhere starts each one silently and
+// stops it at once; after that they may play whenever their moment comes.
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  const unlock = () => {
+    document.removeEventListener('touchend', unlock, true);
+    document.removeEventListener('click', unlock, true);
+    (Object.keys(SOURCES) as Cue[]).forEach((cue) => {
+      void prepare(cue);
+      // The web player's own audio element: its play() says when it has really started.
+      const media = (players[cue] as unknown as { media?: HTMLAudioElement } | undefined)?.media;
+      if (!media) return;
+      media.muted = true;
+      media
+        .play()
+        .then(() => {
+          media.pause();
+          media.currentTime = 0;
+        })
+        // Unlocking is a courtesy; without it the moment is simply quiet.
+        .catch(() => {})
+        .finally(() => {
+          media.muted = false;
+        });
+    });
+  };
+  document.addEventListener('touchend', unlock, true);
+  document.addEventListener('click', unlock, true);
 }
 
 /** Pair each with haptic.success(): the sound is the extra, not the signal. */

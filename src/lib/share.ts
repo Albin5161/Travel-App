@@ -5,6 +5,7 @@ import { Platform, Share, type View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
 import type { Party } from '@/data/planner';
+import { drawCardImage, type CardData } from '@/lib/cardImage';
 
 /**
  * Where a shared plan opens: the group vote on the public web build (EAS Hosting). There's no
@@ -45,14 +46,10 @@ export const IMAGE_SIZE: Record<ImageKind, { width: number; height: number }> = 
 type WebNav = Navigator & { canShare?: (data: ShareData) => boolean };
 
 /**
- * The web's picture of a view, as a PNG file. Made ahead of the tap (see the Share screen): an
- * iPhone only opens the share sheet straight after a tap, and drawing the picture takes a moment.
+ * The web's picture of the card, drawn on a canvas (src/lib/cardImage.ts). Made ahead of the tap
+ * (see the Share screen): an iPhone only opens the share sheet straight after a tap.
  */
-export async function webImageFile(view: RefObject<View | null>, kind: ImageKind, name: string): Promise<File> {
-  const dataUri = await captureRef(view, { format: 'png', result: 'data-uri', ...IMAGE_SIZE[kind] });
-  const blob = await (await fetch(dataUri)).blob();
-  return new File([blob], `${name}.png`, { type: 'image/png' });
-}
+export const webImageFile = drawCardImage;
 
 /**
  * Saves the picture: into the share sheet where there is one (iPhone: Save Image, Instagram,
@@ -62,10 +59,11 @@ export async function saveImage(
   view: RefObject<View | null>,
   kind: ImageKind,
   name: string,
+  data: CardData,
   ready?: File | null,
 ): Promise<SaveResult> {
   if (Platform.OS === 'web') {
-    const file = ready ?? (await webImageFile(view, kind, name));
+    const file = ready ?? (await webImageFile(kind, data, name));
     const nav = navigator as WebNav;
     if (nav.canShare?.({ files: [file] })) {
       try {

@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   sectionTitle: { marginLeft: 4, marginBottom: 8 },
   sectionFooter: { marginTop: 8, marginHorizontal: 4, lineHeight: 18 },
   group: {},
-  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: skyInk.outline, marginLeft: 56 },
+  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: skyInk.line, marginLeft: 56, marginRight: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 10, paddingHorizontal: 14 },
   dimmed: { opacity: 0.45 },
   icon: {

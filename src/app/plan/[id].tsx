@@ -378,8 +378,13 @@ export default function PlanScreen() {
 
           <View style={styles.tools}>
             <Tool icon={editing ? 'check' : 'edit-2'} label={editing ? 'Done' : 'Edit'} on={editing} onPress={() => setEditing((e) => !e)} />
-            <Tool icon="refresh-cw" label={busy ? 'Reshuffling…' : 'Regenerate'} onPress={regenerate} />
-            <Tool icon="sliders" label="Change answers" onPress={() => router.push({ pathname: '/trip/[id]', params: { id, from: 'plan' } })} />
+            <Tool icon="refresh-cw" label={busy ? 'Shuffling…' : 'Reshuffle'} a11y="Reshuffle the plan" onPress={regenerate} />
+            <Tool
+              icon="sliders"
+              label="Adjust"
+              a11y="Change your answers"
+              onPress={() => router.push({ pathname: '/trip/[id]', params: { id, from: 'plan' } })}
+            />
           </View>
           {note ? (
             <Animated.View entering={FADE_IN} exiting={FADE_OUT}>
@@ -389,7 +394,7 @@ export default function PlanScreen() {
             </Animated.View>
           ) : (
             <Text variant="label" color={skyInk.faint} style={styles.note}>
-              {editing ? 'Move stops with the arrows, or tap ⋯ for more.' : 'Pin the stops you love. Regenerate keeps them and reshuffles the rest.'}
+              {editing ? 'Move stops with the arrows, or tap ⋯ for more.' : 'Pin the stops you love. Reshuffle keeps them and changes the rest.'}
             </Text>
           )}
 
@@ -602,22 +607,25 @@ export default function PlanScreen() {
   );
 }
 
+// Three equal buttons on one line: short labels, the full meaning for screen readers.
 function Tool({
   icon,
   label,
+  a11y,
   on,
   onPress,
 }: {
   icon: React.ComponentProps<typeof Feather>['name'];
   label: string;
+  a11y?: string;
   on?: boolean;
   onPress: () => void;
 }) {
   return (
-    <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+    <PressableScale onPress={onPress} containerStyle={styles.toolSlot} accessibilityRole="button" accessibilityLabel={a11y ?? label}>
       <View style={[styles.tool, on && styles.toolOn]}>
         <Feather name={icon} size={13} color={on ? skyCta : skyInk.strong} />
-        <Text variant="label" color={on ? skyCta : skyInk.strong}>
+        <Text variant="label" color={on ? skyCta : skyInk.strong} numberOfLines={1}>
           {label}
         </Text>
       </View>
@@ -869,13 +877,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   title: { marginTop: 6, marginBottom: 14 },
-  tools: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tools: { flexDirection: 'row', gap: 8 },
+  toolSlot: { flex: 1 },
   tool: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    minHeight: 36,
-    paddingHorizontal: 14,
+    minHeight: 44,
+    paddingHorizontal: 8,
     borderRadius: radii.pill,
     backgroundColor: skyFill.raised,
     borderWidth: StyleSheet.hairlineWidth,

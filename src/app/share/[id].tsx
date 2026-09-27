@@ -21,7 +21,6 @@ import { planMessage, sharePlanCard } from '@/lib/share';
 import { startGroup } from '@/state/group';
 import { useTrips } from '@/state/trips';
 import { skyFill, skyInk } from '@/theme/sky';
-import { Tone } from '@/theme/tone';
 import { fonts, space } from '@/theme/tokens';
 
 const HEAD_IN = fadeUp(0);
@@ -125,12 +124,9 @@ export default function ShareScreen() {
       <View style={styles.stage} onLayout={(e) => setStageH(e.nativeEvent.layout.height)}>
         {stageH ? (
           <View style={{ transform: [{ scale: fit }] }}>
-            {/* The pass is a paper ticket, the image that gets sent: it keeps the paper palette. */}
-            <Tone value="light">
-              <TiltCard width={cardW} height={cardH} delay={160} faceRef={card}>
-                <PlanPass city={city} plan={plan} width={cardW} height={cardH} issued={issued} />
-              </TiltCard>
-            </Tone>
+            <TiltCard width={cardW} height={cardH} delay={160} faceRef={card}>
+              <PlanPass city={city} plan={plan} width={cardW} height={cardH} issued={issued} />
+            </TiltCard>
           </View>
         ) : null}
       </View>

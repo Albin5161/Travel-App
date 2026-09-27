@@ -3,9 +3,10 @@ import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { Button } from '@/components/Button';
+import { Glass } from '@/components/sky/Glass';
 import { Text } from '@/components/Text';
 import { fadeUp } from '@/lib/motion';
-import { light } from '@/theme/tokens';
+import { skyFill, skyInk } from '@/theme/sky';
 
 type Props = {
   ownerName: string;
@@ -30,42 +31,37 @@ const STEPS: { icon: keyof typeof Feather.glyphMap; title: string; body: (owner:
 export function JoinWelcome({ ownerName, cityName, stops, days, onStart, onDismiss }: Props) {
   const span = days > 1 ? `${days} days` : 'a day';
   return (
-    <Animated.View entering={fadeUp(0)} style={styles.card} accessibilityRole="summary">
-      <Text variant="micro">You’re in</Text>
-      <Text variant="headline" style={styles.title}>
+    <Animated.View entering={fadeUp(0)} style={styles.wrap} accessibilityRole="summary">
+      <Glass style={styles.card}>
+      <Text variant="eyebrow">You’re in</Text>
+      <Text variant="headline" accessibilityRole="header" style={styles.title}>
         {ownerName} picked {stops} {stops === 1 ? 'place' : 'places'} for {span} in {cityName}
       </Text>
       <View style={styles.steps}>
         {STEPS.map((s) => (
           <View key={s.title} style={styles.step}>
             <View style={styles.icon}>
-              <Feather name={s.icon} size={18} color={light.ink} />
+              <Feather name={s.icon} size={18} color={skyInk.strong} />
             </View>
             <View style={styles.stepText}>
               <Text variant="bodyStrong">{s.title}</Text>
-              <Text variant="label" color={light.inkSoft}>
+              <Text variant="label" color={skyInk.soft}>
                 {s.body(ownerName)}
               </Text>
             </View>
           </View>
         ))}
       </View>
-      <Button label="Start voting" onPress={onStart} />
+      <Button trailingArrow label="Start voting" onPress={onStart} />
       <Button kind="text" label="Look at the plan first" onPress={onDismiss} />
+      </Glass>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    marginTop: 16,
-    padding: 20,
-    gap: 6,
-    borderRadius: 24,
-    backgroundColor: light.panel,
-    borderWidth: 1,
-    borderColor: light.line,
-  },
+  wrap: { marginTop: 16 },
+  card: { padding: 20, gap: 6 },
   title: { marginBottom: 8 },
   steps: { gap: 14, marginVertical: 10 },
   step: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
@@ -75,7 +71,7 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: light.canvasTop,
+    backgroundColor: skyFill.raised,
   },
   stepText: { flex: 1, gap: 2 },
 });

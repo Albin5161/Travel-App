@@ -15,7 +15,10 @@ import { member, type Member, type Verdict, type Vote, type VoteKind } from '@/d
 import type { Place } from '@/data/types';
 import { haptic } from '@/lib/haptics';
 import { EASE_IN_OUT, EASE_OUT } from '@/lib/motion';
-import { fonts, light } from '@/theme/tokens';
+import { skyAccent, skyAccentText, skyCta, skyFill, skyInk } from '@/theme/sky';
+import { fonts } from '@/theme/tokens';
+
+import { Glass } from '@/components/sky/Glass';
 
 import { Avatar } from './Avatar';
 
@@ -34,7 +37,7 @@ const POP = web
     }).duration(320);
 const NOTE_IN = web ? undefined : FadeIn.duration(220);
 
-export const VOTE_COLOR: Record<VoteKind, string> = { keep: light.ink, swap: light.accent, drop: light.inkFaint };
+export const VOTE_COLOR: Record<VoteKind, string> = { keep: skyInk.strong, swap: skyAccent, drop: 'rgba(255,255,255,0.4)' };
 
 type Props = {
   place: Place;
@@ -80,7 +83,7 @@ export function StopVote({ place, meta, votes, verdict, swap, members }: Props) 
   const swappers = list.filter(([, v]) => v.kind === 'swap').map(([id]) => member(id, members).name);
 
   return (
-    <View style={[styles.card, verdict === 'drop' && styles.cardDropped]}>
+    <Glass style={[styles.card, verdict === 'drop' && styles.cardDropped]}>
       <View>
         <Animated.View style={[styles.face, front]}>
           <Head place={place} meta={meta} dropped={verdict === 'drop'} />
@@ -108,7 +111,7 @@ export function StopVote({ place, meta, votes, verdict, swap, members }: Props) 
 
       <View style={styles.votes}>
         {list.length === 0 ? (
-          <Text variant="data" color={light.inkFaint}>
+          <Text variant="data" color={skyInk.faint}>
             Waiting for votes…
           </Text>
         ) : (
@@ -132,7 +135,7 @@ export function StopVote({ place, meta, votes, verdict, swap, members }: Props) 
           </Text>
         </Animated.View>
       ) : null}
-    </View>
+    </Glass>
   );
 }
 
@@ -142,7 +145,7 @@ function Head({ place, meta, dropped, kicker }: { place: Place; meta: string; dr
       <Image source={place.photo} style={styles.thumb} contentFit="cover" transition={0} />
       <View style={styles.headText}>
         {kicker ? (
-          <Text variant="micro" color={light.accent}>
+          <Text variant="micro" color={skyAccentText}>
             {kicker}
           </Text>
         ) : null}
@@ -158,10 +161,10 @@ function Head({ place, meta, dropped, kicker }: { place: Place; meta: string; dr
 }
 
 const PILL: Record<Verdict, { label: string; bg: string; ink: string }> = {
-  waiting: { label: 'Voting…', bg: 'transparent', ink: light.inkFaint },
-  keep: { label: 'Keeping', bg: light.ink, ink: light.ctaInk },
-  swap: { label: 'Swapped', bg: light.accent, ink: light.ctaInk },
-  drop: { label: 'Dropped', bg: light.line, ink: light.inkSoft },
+  waiting: { label: 'Voting…', bg: 'transparent', ink: skyInk.faint },
+  keep: { label: 'Keeping', bg: skyInk.strong, ink: skyCta },
+  swap: { label: 'Swapped', bg: skyAccent, ink: skyCta },
+  drop: { label: 'Dropped', bg: skyFill.raised, ink: skyInk.soft },
 };
 
 function VerdictPill({ verdict }: { verdict: Verdict }) {
@@ -185,25 +188,18 @@ function SlotFill({ color }: { color: string }) {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: light.panel,
-    borderRadius: 22,
-    padding: 14,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: light.line,
-  },
+  card: { padding: 14, gap: 12 },
   cardDropped: { opacity: 0.6 },
   face: { flexDirection: 'row', alignItems: 'center', gap: 10, backfaceVisibility: 'hidden' },
   backFace: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
   head: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  thumb: { width: 52, height: 52, borderRadius: 14, backgroundColor: light.canvasTop },
+  thumb: { width: 52, height: 52, borderRadius: 14, backgroundColor: skyFill.raised },
   headText: { flex: 1, gap: 1 },
-  struck: { textDecorationLine: 'line-through', color: light.inkSoft },
+  struck: { textDecorationLine: 'line-through', color: skyInk.soft },
   pill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   pillText: { fontFamily: fonts.sansSemi, fontSize: 12, lineHeight: 15 },
   bar: { flexDirection: 'row', gap: 4, height: 6 },
-  slot: { flex: 1, borderRadius: 3, backgroundColor: light.line, overflow: 'hidden' },
+  slot: { flex: 1, borderRadius: 3, backgroundColor: skyInk.line, overflow: 'hidden' },
   fill: { transformOrigin: 'left' },
   votes: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 28 },
   chip: {
@@ -214,7 +210,7 @@ const styles = StyleSheet.create({
     paddingRight: 8,
     paddingVertical: 3,
     borderRadius: 999,
-    backgroundColor: light.canvas,
+    backgroundColor: skyFill.pane,
   },
   emoji: { fontSize: 14, lineHeight: 18 },
   note: {
@@ -224,7 +220,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 14,
     borderTopLeftRadius: 4,
-    backgroundColor: light.canvas,
+    backgroundColor: skyFill.pane,
   },
-  noteName: { fontFamily: fonts.sansSemi, color: light.ink },
+  noteName: { fontFamily: fonts.sansSemi, color: skyInk.strong },
 });

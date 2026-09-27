@@ -1,7 +1,7 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -207,7 +207,9 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
           ) : null}
         </View>
 
-        <View style={styles.credits}>
+        {/* Scrolls inside the card when a short screen (a phone browser, with its bars) can't fit
+            every row above the button. */}
+        <ScrollView style={styles.creditsScroll} contentContainerStyle={styles.credits} showsVerticalScrollIndicator={false}>
           {found.slice(0, Math.min(shown, CREDITS_SHOWN)).map((p) => {
             const missing = !!result && !placed.has(p.name.toLowerCase());
             return (
@@ -229,7 +231,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
             );
           })}
           {shown > CREDITS_SHOWN ? <MoreCredits rest={found.slice(CREDITS_SHOWN, shown)} placed={placed} done={!!result} /> : null}
-        </View>
+        </ScrollView>
         </Glass>
       </View>
 
@@ -507,12 +509,14 @@ function PinDrop() {
 
 const styles = StyleSheet.create({
   close: { marginLeft: space.screen },
-  body: { flex: 1, paddingHorizontal: space.screen, paddingTop: 28 },
+  body: { flex: 1, minHeight: 0, paddingHorizontal: space.screen, paddingTop: 28 },
   // Right padding leaves room for the scanner sitting on the card's bottom-right edge.
   previewText: { position: 'absolute', left: 18, right: ORB_INSET + 28, bottom: 36, gap: 6 },
   timeline: { position: 'absolute', left: 18, bottom: 14 },
   sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  found: { marginTop: 26, padding: 14 },
+  // Shrinks to the room left above the button; its list scrolls inside.
+  found: { marginTop: 26, padding: 14, flexShrink: 1, minHeight: 0 },
+  creditsScroll: { flexShrink: 1 },
   statusRow: {
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -522,7 +526,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 20,
   },
-  credits: { marginTop: 12, gap: 8 },
+  credits: { paddingTop: 12, gap: 8 },
   // Each find is a lighter pane inside the glass.
   creditRow: {
     flexDirection: 'row',
@@ -543,12 +547,13 @@ const styles = StyleSheet.create({
   glyph: { width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
   bars: { flexDirection: 'row', gap: 2 },
   bar: { width: 2.5, height: 12, borderRadius: 1.5, backgroundColor: skyInk.soft },
-  choice: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },
+  // In the page's flow, under the list, so the two can never overlap.
+  choice: { paddingHorizontal: space.screen, paddingTop: 12 },
   center: { textAlign: 'center', paddingBottom: 12 },
   statusText: { flexShrink: 1 },
   scanner: { position: 'absolute', pointerEvents: 'none' },
   missing: { opacity: 0.45 },
-  failed: { flex: 1, justifyContent: 'center', paddingHorizontal: space.screen, gap: 12, paddingBottom: 120 },
+  failed: { flex: 1, justifyContent: 'center', paddingHorizontal: space.screen, gap: 12, paddingBottom: 24 },
   failedIcon: {
     width: 48,
     height: 48,

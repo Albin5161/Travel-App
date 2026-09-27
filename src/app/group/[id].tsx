@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
@@ -11,6 +12,8 @@ import { Confetti } from '@/components/group/Confetti';
 import { JoinWelcome } from '@/components/group/JoinWelcome';
 import { StopVote } from '@/components/group/StopVote';
 import { IconButton } from '@/components/IconButton';
+import { Glass } from '@/components/sky/Glass';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { getCity, getPlace } from '@/data/api';
 import { member, PARTY_COPY, whoLine } from '@/data/group';
@@ -20,9 +23,11 @@ import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT, fadeUp } from '@/lib/motion';
 import { useGroupVote } from '@/state/group';
+import { useHomeSky } from '@/state/sky';
 import { usePlanWriter } from '@/state/live';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { light } from '@/theme/tokens';
+import { SKY, skyAccentText, skyFill, skyInk, withAlpha } from '@/theme/sky';
+import { radii, space } from '@/theme/tokens';
 
 const web = Platform.OS === 'web';
 const HEAD_IN = fadeUp(0);
@@ -40,6 +45,7 @@ const TOAST_OUT = web ? undefined : FadeOut.duration(200);
 // share screen, a trip in the Trips tab, or cold from the shared link. When every stop is decided,
 // confetti (once, whenever you first see it), and "Lock it in" applies the swaps and drops.
 export default function GroupScreen() {
+  const look = SKY[useHomeSky()];
   const { id, welcome } = useLocalSearchParams<{ id: string; welcome?: string }>();
   // Once, straight after joining from a link: what this is and what to do. Not on later visits.
   const [welcoming, setWelcoming] = useState(welcome === '1');
@@ -127,20 +133,20 @@ export default function GroupScreen() {
       : `${votesIn} of ${total} votes in`;
 
   return (
-    <View style={[styles.fill, { paddingTop: insets.top + 8 }]}>
+    <SkyScreen style={{ paddingTop: insets.top + 8 }}>
       <View style={styles.topBar}>
         <IconButton icon="x" onPress={() => router.dismissTo('/trips')} accessibilityLabel="Close" />
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 140 }}
+        contentContainerStyle={{ paddingHorizontal: space.screen, paddingBottom: insets.bottom + 160 }}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={HEAD_IN} style={styles.head}>
-          <Text variant="micro">
+          <Text variant="eyebrow">
             {city.name} · {copy.vote}
           </Text>
-          <Text variant="display" style={styles.title}>
+          <Text variant="display" accessibilityRole="header" style={styles.title}>
             {title}
           </Text>
           <Text variant="data">{sub}</Text>
@@ -179,11 +185,11 @@ export default function GroupScreen() {
           </View>
           <View style={styles.toastWrap}>
             {toast ? (
-              <Animated.View key={toast} entering={TOAST_IN} exiting={TOAST_OUT} style={styles.toast}>
+              <Animated.View key={toast} entering={TOAST_IN} exiting={TOAST_OUT} style={styles.toast} accessibilityLiveRegion="polite">
                 <Text variant="label">{toast}</Text>
               </Animated.View>
             ) : (
-              <Text variant="label" color={light.inkSoft}>
+              <Text variant="label" color={skyInk.soft}>
                 {remote
                   ? members.length
                     ? liveWho()
@@ -200,7 +206,7 @@ export default function GroupScreen() {
           {locked && plan
             ? plan.days.flatMap((d, day) =>
                 d.stops.map((s) => (
-                  <View key={s.place.id} style={styles.final}>
+                  <Glass key={s.place.id} radius={radii.pane} style={styles.final}>
                     <Image source={s.place.photo} style={styles.finalThumb} contentFit="cover" transition={0} />
                     <View style={styles.finalText}>
                       <Text variant="bodyStrong" numberOfLines={1}>
@@ -212,11 +218,11 @@ export default function GroupScreen() {
                       </Text>
                     </View>
                     {Object.values(group?.swapFor ?? {}).includes(s.place.id) ? (
-                      <Text variant="micro" color={light.accent}>
+                      <Text variant="micro" color={skyAccentText}>
                         Swapped in
                       </Text>
                     ) : null}
-                  </View>
+                  </Glass>
                 )),
               )
             : stops.map(({ stop, day }) => {
@@ -237,22 +243,29 @@ export default function GroupScreen() {
         </View>
       </ScrollView>
 
+      {/* The actions float over the list's end: a fade into the sky keeps them clear of it. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[withAlpha(look.stops[2], 0), withAlpha(look.stops[2], 1)]}
+        locations={[0, 0.3]}
+        style={[styles.fade, { height: insets.bottom + 190 }]}
+      />
       <View style={[styles.actions, { paddingBottom: insets.bottom + 12 }]}>
         {locked ? (
-          <Button label="Done" onPress={() => router.dismissTo('/trips')} />
+          <Button trailingArrow label="Done" onPress={() => router.dismissTo('/trips')} />
         ) : remote ? (
           <>
             {isOwner && approved ? (
-              <Button label="Lock it in" onPress={lockIn} />
+              <Button trailingArrow label="Lock it in" onPress={lockIn} />
             ) : isVoter && !myVotesDone ? (
-              <Button label="Vote" onPress={vote} />
+              <Button trailingArrow label="Vote" onPress={vote} />
             ) : isOwner ? (
               <Button kind="secondary" label="Invite someone" onPress={() => router.push({ pathname: '/share/[id]', params: { id } })} />
             ) : (
               <Button kind="secondary" label="Change my votes" onPress={vote} />
             )}
             {approved && !isOwner ? (
-              <Text variant="label" color={light.inkSoft} style={styles.waitNote}>
+              <Text variant="label" color={skyInk.soft} style={styles.waitNote}>
                 Waiting for {remote.ownerName} to lock it in
               </Text>
             ) : (
@@ -261,7 +274,7 @@ export default function GroupScreen() {
           </>
         ) : approved ? (
           <>
-            <Button label="Lock it in" onPress={lockIn} />
+            <Button trailingArrow label="Lock it in" onPress={lockIn} />
             <Button kind="text" label={passLabel} onPress={() => router.push({ pathname: '/vote/[id]', params: { id } })} />
           </>
         ) : (
@@ -275,13 +288,12 @@ export default function GroupScreen() {
       </View>
 
       {celebrate ? <Confetti originY={insets.top + 110} /> : null}
-    </View>
+    </SkyScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.canvas },
-  topBar: { paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'flex-end' },
+  topBar: { paddingHorizontal: space.screen, flexDirection: 'row', justifyContent: 'flex-end' },
   waitNote: { textAlign: 'center', paddingVertical: 10 },
   head: { paddingHorizontal: 4, gap: 6 },
   title: { marginTop: 2 },
@@ -295,17 +307,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: light.lineStrong,
-    backgroundColor: light.canvas,
+    borderColor: skyInk.outline,
+    backgroundColor: skyFill.pane,
   },
   toastWrap: { flex: 1, minHeight: 32, justifyContent: 'center', alignItems: 'flex-start' },
   toast: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: light.panel,
-    borderWidth: 1,
-    borderColor: light.line,
+    borderRadius: radii.pill,
+    backgroundColor: skyFill.raised,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
   },
   list: { gap: 12 },
   final: {
@@ -313,21 +325,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     padding: 12,
-    borderRadius: 18,
-    backgroundColor: light.panel,
-    borderWidth: 1,
-    borderColor: light.line,
   },
-  finalThumb: { width: 44, height: 44, borderRadius: 12, backgroundColor: light.canvasTop },
+  finalThumb: { width: 44, height: 44, borderRadius: 12, backgroundColor: skyFill.pane },
   finalText: { flex: 1, gap: 1 },
+  fade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   actions: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 20,
+    paddingHorizontal: space.screen,
     paddingTop: 16,
     gap: 4,
-    backgroundColor: 'rgba(245,244,241,0.94)',
   },
 });

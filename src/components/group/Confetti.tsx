@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+
+import { skyAccent } from '@/theme/sky';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 
 import { seeded } from '@/data/group';
-import { light } from '@/theme/tokens';
 
 // One burst of paper confetti, for the moment the whole group agrees. Pieces are thrown up and out
 // from a point, then fall under gravity, tumbling, and fade at the end. One shared clock drives
@@ -11,7 +12,8 @@ import { light } from '@/theme/tokens';
 
 const COUNT = 28;
 const DURATION = 1900;
-const COLORS = [light.accent, light.ink, '#F4CDB0', '#C3DDD6', '#DAD1F3', '#F2B84B'];
+// Light pieces, so they show against the sky.
+const COLORS = [skyAccent, '#FFFFFF', '#F4CDB0', '#C3DDD6', '#DAD1F3', '#F2B84B'];
 
 type Piece = { vx: number; vy: number; spin: number; delay: number; color: string; w: number; h: number };
 

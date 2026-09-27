@@ -18,7 +18,7 @@ import { LinkBox } from '@/components/LinkBox';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { Segmented } from '@/components/Segmented';
-import { Glass, GlassLabel } from '@/components/sky/Glass';
+import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { EXAMPLE_LINKS, getCity, getReel } from '@/data/api';
 import { places } from '@/data/catalog';
@@ -45,8 +45,6 @@ const INSPIRATION = ['meg-dawki', 'kochi-mural', 'gok-om', 'meg-falls', 'gok-hal
 /** The floating tab bar sits over the scroll, so the last row of tiles has to clear it. */
 const TAB_BAR_CLEARANCE = 100;
 const GAP = 10;
-/** The glass card's side padding. */
-const PANEL_PAD = 12;
 /** Three across. Tighter than two, and the grid reads as a collection rather than a shortlist. */
 const COLUMNS = 3;
 
@@ -107,8 +105,7 @@ export default function Home() {
   // Offer the first example whose place isn't collected yet, so each tap shows something new.
   const example = EXAMPLE_LINKS.find((e) => !state.collections[e.cityId]) ?? EXAMPLE_LINKS[0];
   const fresh = state.freshCityId;
-  // Inside the glass card now, so its padding comes off the row too.
-  const tileW = (W - GUTTER * 2 - PANEL_PAD * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
+    const tileW = (W - GUTTER * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
 
   useEffect(() => {
     if (!fresh) return;
@@ -167,8 +164,9 @@ export default function Home() {
               save, fading up as it lands, rather than greeting a new user with two empty tabs. */}
           {collections.length === 0 ? null : (
             <Animated.View entering={ENTER[2]} style={styles.panelWrap}>
-              <Glass tint={look.glass} style={styles.panel}>
-              <GlassLabel icon="bookmark">My collections</GlassLabel>
+              <Text variant="eyebrow" accessibilityRole="header">
+                My collections
+              </Text>
               <Segmented
                 value={tab}
                 onChange={(t) => dispatch({ type: 'setHomeTab', tab: t })}
@@ -215,7 +213,6 @@ export default function Home() {
                   })
                 )}
               </Animated.View>
-              </Glass>
             </Animated.View>
           )}
         </Animated.ScrollView>
@@ -355,8 +352,8 @@ const styles = StyleSheet.create({
   sticky: { paddingHorizontal: GUTTER },
   frost: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   frostFill: { flex: 1, borderWidth: 0 },
-  panelWrap: { marginTop: 8, paddingHorizontal: GUTTER },
-  panel: { paddingTop: 14, paddingHorizontal: PANEL_PAD, paddingBottom: 16, gap: 14 },
+  // Straight on the sky, no card: the caption, the switch and the tiles, like a weather app's list.
+  panelWrap: { marginTop: 16, paddingHorizontal: GUTTER, gap: 14 },
   empty: { width: '100%', gap: 8, paddingHorizontal: 4, paddingTop: 4, paddingBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: GAP, rowGap: 18 },
 });

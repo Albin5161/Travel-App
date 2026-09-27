@@ -8,6 +8,8 @@ import { Text } from '@/components/Text';
 import { formatDay, formatRange, type TripPlan } from '@/data/planner';
 import type { City } from '@/data/types';
 import { formatClock } from '@/lib/geo';
+import { useHomeSky } from '@/state/sky';
+import { SKY, skyAccent, skyCta, skyInk } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
 import { fonts, light } from '@/theme/tokens';
 
@@ -25,6 +27,8 @@ type Props = { city: City; plan: TripPlan; width: number; height: number; issued
 
 export function PlanPass({ city, plan, width, height, issued }: Props) {
   const tilt = useTilt();
+  // The ticket is cut from the sky it was shared under, so it matches the screen it sits on.
+  const look = SKY[useHomeSky()];
   const photo = useAnimatedStyle(() => ({
     transform: [{ translateX: tilt.x.get() * PARALLAX }, { translateY: -tilt.y.get() * PARALLAX }],
   }));
@@ -49,6 +53,7 @@ export function PlanPass({ city, plan, width, height, issued }: Props) {
 
   return (
     <View style={styles.fill}>
+      <LinearGradient colors={[look.stops[1], look.stops[0]]} style={StyleSheet.absoluteFill} />
       <View style={[styles.photoWrap, { height: photoHeight }]}>
         <Animated.View style={[styles.photo, photo]}>
           <Image source={city.hero} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
@@ -78,8 +83,9 @@ export function PlanPass({ city, plan, width, height, issued }: Props) {
         </Tone>
       </View>
 
-      <Perforation width={width} />
+      <Perforation width={width} notch={look.stops[1]} />
 
+      <Tone value="sky">
       <View style={styles.stub}>
         <View style={styles.times}>
           <View>
@@ -114,7 +120,7 @@ export function PlanPass({ city, plan, width, height, issued }: Props) {
             </View>
           ))}
           {more > 0 ? (
-            <Text variant="data" color={light.inkFaint} style={styles.more}>
+            <Text variant="data" color={skyInk.faint} style={styles.more}>
               + {more} more {more === 1 ? 'stop' : 'stops'}
             </Text>
           ) : null}
@@ -123,26 +129,27 @@ export function PlanPass({ city, plan, width, height, issued }: Props) {
         <View style={styles.footer}>
           <View>
             <Text variant="micro">Issued</Text>
-            <Text variant="data" color={light.ink}>
+            <Text variant="data" color={skyInk.strong}>
               {issueDate(issued)} · {stops.length} stops · {km.toFixed(1)} km
             </Text>
           </View>
           <Barcode seed={`${city.id}${plan.seed}${stops.length}`} />
         </View>
       </View>
+      </Tone>
     </View>
   );
 }
 
 // The tear line, with a half-circle bitten out of each edge in the colour of the page behind.
-function Perforation({ width }: { width: number }) {
+function Perforation({ width, notch }: { width: number; notch: string }) {
   return (
     <View style={styles.perf}>
-      <View style={[styles.notch, { left: -NOTCH / 2 }]} />
+      <View style={[styles.notch, { left: -NOTCH / 2, backgroundColor: notch }]} />
       <Svg width={width} height={2} style={styles.perfLine}>
-        <Line x1={NOTCH} y1={1} x2={width - NOTCH} y2={1} stroke={light.lineStrong} strokeWidth={1.5} strokeDasharray="5 5" />
+        <Line x1={NOTCH} y1={1} x2={width - NOTCH} y2={1} stroke={skyInk.outline} strokeWidth={1.5} strokeDasharray="5 5" />
       </Svg>
-      <View style={[styles.notch, { right: -NOTCH / 2 }]} />
+      <View style={[styles.notch, { right: -NOTCH / 2, backgroundColor: notch }]} />
     </View>
   );
 }
@@ -163,7 +170,7 @@ function Barcode({ seed }: { seed: string }) {
     <View aria-hidden>
       <Svg width={86} height={28}>
         {bars.map((b) => (
-          <Rect key={b.x} x={b.x} y={0} width={b.w} height={28} fill={light.ink} />
+          <Rect key={b.x} x={b.x} y={0} width={b.w} height={28} fill={skyInk.strong} />
         ))}
       </Svg>
     </View>
@@ -181,8 +188,8 @@ function issueDate(d: Date) {
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.panel },
-  photoWrap: { overflow: 'hidden', backgroundColor: light.canvasTop },
+  fill: { flex: 1, overflow: 'hidden' },
+  photoWrap: { overflow: 'hidden' },
   photo: { position: 'absolute', left: -PARALLAX - 2, right: -PARALLAX - 2, top: -PARALLAX - 2, bottom: -PARALLAX - 2 },
   photoTop: {
     position: 'absolute',
@@ -213,11 +220,10 @@ const styles = StyleSheet.create({
     width: NOTCH,
     height: NOTCH,
     borderRadius: NOTCH / 2,
-    backgroundColor: light.canvas,
   },
   stub: { flex: 1, paddingHorizontal: 18, paddingTop: 6, paddingBottom: 16 },
   times: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
-  time: { fontFamily: fonts.displayBold, fontSize: 18, lineHeight: 24, letterSpacing: -0.4, color: light.ink, fontVariant: ['tabular-nums'] },
+  time: { fontFamily: fonts.displayBold, fontSize: 18, lineHeight: 24, letterSpacing: -0.4, color: skyInk.strong, fontVariant: ['tabular-nums'] },
   alignEnd: { alignItems: 'flex-end' },
   track: { flex: 1, height: 26, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   trackLine: {
@@ -227,20 +233,20 @@ const styles = StyleSheet.create({
     top: 12,
     height: 2,
     borderRadius: 1,
-    backgroundColor: light.line,
+    backgroundColor: skyInk.line,
   },
-  trackDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: light.accent },
+  trackDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: skyAccent },
   rows: { marginTop: 14, gap: 7 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   num: {
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: light.ink,
+    backgroundColor: skyInk.strong,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  numText: { fontFamily: fonts.sansSemi, fontSize: 10, color: light.ctaInk, fontVariant: ['tabular-nums'] },
+  numText: { fontFamily: fonts.sansSemi, fontSize: 10, color: skyCta, fontVariant: ['tabular-nums'] },
   rowName: { flex: 1 },
   rowTime: { fontSize: 12 },
   more: { marginLeft: 28, fontSize: 12 },
@@ -248,7 +254,7 @@ const styles = StyleSheet.create({
     marginTop: 'auto',
     paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: light.lineStrong,
+    borderColor: 'rgba(255,255,255,0.35)',
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',

@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { Button } from '@/components/Button';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { LaunchIntro } from '@/components/motion/LaunchIntro';
 import { Text } from '@/components/Text';
 import { ScreenViews, track } from '@/lib/analytics';
@@ -24,17 +25,19 @@ import { ScreenViews, track } from '@/lib/analytics';
 import '@/lib/arrival';
 import { GroupScripts } from '@/state/group';
 import { TripsProvider } from '@/state/trips';
-import { SKY } from '@/theme/sky';
-import { light } from '@/theme/tokens';
+import { SKY, skyInk } from '@/theme/sky';
+import { space } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync();
 
 const theme = {
   ...DefaultTheme,
-  colors: { ...DefaultTheme.colors, background: light.canvas, card: light.canvas, primary: light.ink, text: light.ink },
+  // Navigation's own backing (behind screens, under the tab bar): the sky's deep blue and white type.
+  colors: { ...DefaultTheme.colors, background: SKY.night.stops[1], card: SKY.night.stops[1], primary: skyInk.strong, text: skyInk.strong },
 };
 
-// Sheets draw the sky themselves; until they do, their backing is the sky's deep blue, not white.
+// Every screen draws its own sky; behind them, and behind a sheet before it draws, is the sky's
+// deep blue, never cream, so no white flashes between screens.
 const SHEET_BG = SKY.night.stops[1];
 
 export default function RootLayout() {
@@ -60,14 +63,14 @@ export default function RootLayout() {
   if (!loaded || !inBrowser) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: light.canvas }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: SHEET_BG }}>
       <ThemeProvider value={theme}>
         <TripsProvider>
-          <StatusBar style="dark" />
+          <StatusBar style="light" />
           <Stack
             screenOptions={{
               headerShown: false,
-              contentStyle: { backgroundColor: light.canvas },
+              contentStyle: { backgroundColor: SHEET_BG },
               animation: reduced ? 'fade' : 'default',
             }}
           >
@@ -160,23 +163,23 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
     }
   };
   return (
-    <View style={crash.fill}>
-      <Text variant="headline" style={crash.center}>
+    <SkyScreen style={crash.fill}>
+      <Text variant="headline" accessibilityRole="header" style={crash.center}>
         Something went wrong
       </Text>
-      <Text variant="body" color={light.inkSoft} style={crash.center}>
+      <Text variant="body" style={crash.center}>
         Your saved places and plans are safe. Try again, or start from home.
       </Text>
       <View style={crash.actions}>
         <Button label="Try again" onPress={() => void retry()} />
         <Button kind="text" label="Go home" onPress={home} />
       </View>
-    </View>
+    </SkyScreen>
   );
 }
 
 const crash = StyleSheet.create({
-  fill: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 32, backgroundColor: light.canvas },
+  fill: { alignItems: 'center', justifyContent: 'center', gap: 10, padding: space.screen },
   center: { textAlign: 'center' },
   actions: { alignSelf: 'stretch', marginTop: 18, gap: 4 },
 });

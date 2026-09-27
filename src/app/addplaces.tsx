@@ -9,6 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
 import { PhotoCard } from '@/components/PhotoCard';
+import { Glass } from '@/components/sky/Glass';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { PlaceSearchSheet } from '@/components/verify/PlaceSearchSheet';
 import { getReel } from '@/data/api';
@@ -21,7 +23,8 @@ import { haptic } from '@/lib/haptics';
 import { fadeUp } from '@/lib/motion';
 import { useTrips } from '@/state/trips';
 import { Tone } from '@/theme/tone';
-import { colors, light } from '@/theme/tokens';
+import { skyCta, skyFill, skyInk } from '@/theme/sky';
+import { colors, radii, space } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2].map((i) => fadeUp(i * 60));
 
@@ -87,15 +90,17 @@ export default function AddPlaces() {
     router.replace('/');
   };
 
-  const cardW = W - 48;
+  const cardW = W - space.screen * 2;
   return (
-    <View style={[styles.fill, { paddingTop: insets.top + 8 }]}>
+    <SkyScreen style={{ paddingTop: insets.top + 8 }}>
       <IconButton icon="x" onPress={close} accessibilityLabel="Close without saving" style={styles.close} />
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 140 }]}>
         <Animated.View entering={ENTER[0]} style={styles.titles}>
-          <Text variant="micro">Instagram reel</Text>
-          <Text variant="headline">Add the places yourself</Text>
-          <Text variant="body" color={light.inkSoft}>
+          <Text variant="eyebrow">Instagram reel</Text>
+          <Text variant="display" accessibilityRole="header">
+            Add the places yourself
+          </Text>
+          <Text variant="body">
             Watch the reel, then search for each place you spot.
           </Text>
         </Animated.View>
@@ -119,8 +124,8 @@ export default function AddPlaces() {
                   ) : null}
                 </View>
                 <View style={styles.watch}>
-                  <Feather name="play" size={14} color={light.ink} />
-                  <Text variant="label" color={light.ink}>
+                  <Feather name="play" size={14} color={skyCta} />
+                  <Text variant="label" color={skyCta}>
                     Watch on Instagram
                   </Text>
                 </View>
@@ -131,17 +136,17 @@ export default function AddPlaces() {
 
         <Animated.View entering={ENTER[2]} style={styles.list}>
           {added.map(({ place, where }) => (
-            <View key={place.id} style={styles.row}>
+            <Glass key={place.id} radius={radii.pane} style={styles.row}>
               <Image source={place.photo} style={styles.thumb} contentFit="cover" transition={0} />
               <View style={styles.rowText}>
                 <Text variant="bodyStrong" numberOfLines={1}>
                   {place.name}
                 </Text>
-                <Text variant="label" color={light.inkSoft} numberOfLines={1}>
+                <Text variant="label" color={skyInk.soft} numberOfLines={1}>
                   {where}
                 </Text>
                 {place.photoCredit ? (
-                  <Text variant="label" color={light.inkFaint} numberOfLines={1}>
+                  <Text variant="label" color={skyInk.faint} numberOfLines={1}>
                     Photo: {place.photoCredit}
                   </Text>
                 ) : null}
@@ -151,7 +156,7 @@ export default function AddPlaces() {
                 onPress={() => setAdded((list) => list.filter((a) => a.place.id !== place.id))}
                 accessibilityLabel={`Remove ${place.name}`}
               />
-            </View>
+            </Glass>
           ))}
           <Button kind="secondary" label={added.length ? 'Add another place' : 'Add a place'} onPress={() => setSearching(true)} />
         </Animated.View>
@@ -159,6 +164,7 @@ export default function AddPlaces() {
 
       <View style={[styles.save, { paddingBottom: insets.bottom + 12 }]}>
         <Button
+          trailingArrow={added.length > 0}
           label={added.length === 0 ? 'Save' : `Save ${added.length} ${added.length === 1 ? 'place' : 'places'}`}
           onPress={save}
           disabled={added.length === 0}
@@ -173,14 +179,13 @@ export default function AddPlaces() {
         onPick={pick}
         onClose={() => setSearching(false)}
       />
-    </View>
+    </SkyScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.canvas },
-  close: { marginLeft: 16 },
-  body: { paddingHorizontal: 24, paddingTop: 20, gap: 24 },
+  close: { marginLeft: space.screen },
+  body: { paddingHorizontal: space.screen, paddingTop: 20, gap: 24 },
   titles: { gap: 8 },
   reelText: { position: 'absolute', left: 18, right: 18, bottom: 56, gap: 6 },
   sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -193,12 +198,12 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: light.canvas,
+    borderRadius: radii.pill,
+    backgroundColor: skyInk.strong,
   },
   list: { gap: 12 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  thumb: { width: 48, height: 48, borderRadius: 12, backgroundColor: light.canvasTop },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10 },
+  thumb: { width: 48, height: 48, borderRadius: 12, backgroundColor: skyFill.pane },
   rowText: { flex: 1, gap: 2 },
-  save: { position: 'absolute', left: 20, right: 20, bottom: 0 },
+  save: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },
 });

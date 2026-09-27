@@ -72,9 +72,10 @@ export const SKY: Record<SkyPhase, SkyLook> = {
 
 /**
  * Glass for a pane over something light (a paper map, a photo's bright sky): the sky's deepest
- * colour, mostly opaque, so white type on it stays readable whatever is underneath.
+ * colour, mostly opaque, so white type on it stays readable whatever is underneath: at 0.88 over
+ * the palest map, the faintest ink still clears 4.5:1.
  */
-export function deepGlass(look: SkyLook, alpha = 0.78) {
+export function deepGlass(look: SkyLook, alpha = 0.88) {
   return withAlpha(look.stops[0], alpha);
 }
 

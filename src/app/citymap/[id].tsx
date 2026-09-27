@@ -14,13 +14,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { CityMap, fitCameraToRect, flyTo, useCamera } from '@/components/CityMap';
 import { IconButton } from '@/components/IconButton';
+import { Glass } from '@/components/sky/Glass';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { GoogleMap } from '@/components/GoogleMap';
 import { getCity, getReel, isLiveCity } from '@/data/api';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT, SPRING_SHEET } from '@/lib/motion';
+import { useHomeSky } from '@/state/sky';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { light, shadows } from '@/theme/tokens';
+import { deepGlass, SKY } from '@/theme/sky';
+import { Tone } from '@/theme/tone';
+import { radii, space } from '@/theme/tokens';
 
 const PANEL_H = 270;
 
@@ -30,6 +35,7 @@ export default function CityMapScreen() {
   const { collected } = useCityPlaces(id);
   const { state } = useTrips();
   const { width: W, height: H } = useWindowDimensions();
+  const look = SKY[useHomeSky()];
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const [revealing] = useState(reveal === '1');
@@ -100,7 +106,9 @@ export default function CityMapScreen() {
   };
 
   return (
-    <View style={styles.fill}>
+    <SkyScreen>
+      {/* The map is paper: its labels keep the paper palette. */}
+      <Tone value="light">
       <Animated.View style={[StyleSheet.absoluteFill, mapStyle]}>
         {live ? (
           <GoogleMap
@@ -126,10 +134,11 @@ export default function CityMapScreen() {
           />
         )}
       </Animated.View>
+      </Tone>
 
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(245,244,241,0.85)', 'rgba(245,244,241,0)']}
+        colors={['rgba(4,10,30,0.5)', 'rgba(4,10,30,0)']}
         style={[styles.topFade, { height: insets.top + 90 }]}
       />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
@@ -140,41 +149,42 @@ export default function CityMapScreen() {
         />
       </View>
 
-      <Animated.View style={[styles.panel, { paddingBottom: insets.bottom + 16 }, panelStyle]}>
-        <Text variant="micro">
+      <Animated.View style={[styles.panelSlot, panelStyle]}>
+        {/* Deep glass: it rests on the pale map, where light glass would wash out the type. */}
+        <Glass tint={deepGlass(look)} radius={radii.sheet} style={[styles.panel, { paddingBottom: insets.bottom + 16 }]}>
+        <Text variant="eyebrow">
           {collected.length} places{firstReel ? ` · from ${firstReel.creator}` : ''}
         </Text>
-        <Text variant="display">{city.name}</Text>
+        <Text variant="display" accessibilityRole="header">
+          {city.name}
+        </Text>
         <Text variant="body">Tap a pin to see a place, or turn them into a plan.</Text>
         <Button
+          trailingArrow
           label={state.tripPlans[id] ? 'Open your plan' : `Plan a trip with ${kept} places`}
           onPress={() =>
             router.push({ pathname: state.tripPlans[id] ? '/plan/[id]' : '/trip/[id]', params: { id } })
           }
           style={styles.cta}
         />
+        </Glass>
       </Animated.View>
-    </View>
+    </SkyScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.mapLand },
   topFade: { position: 'absolute', left: 0, right: 0, top: 0 },
-  topBar: { position: 'absolute', left: 16, top: 0 },
-  // White panel resting on the map, like the Atlys sheet over its photo.
+  topBar: { position: 'absolute', left: space.screen, top: 0 },
+  panelSlot: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  // A pane of the sky resting on the map.
   panel: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 24,
+    paddingHorizontal: space.screen,
     paddingTop: 24,
     gap: 8,
-    backgroundColor: light.panel,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    boxShadow: shadows.panel,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    borderBottomWidth: 0,
   },
   cta: { marginTop: 12 },
 });

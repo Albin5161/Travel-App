@@ -4,9 +4,11 @@ import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '@/components/IconButton';
+import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import type { LegalDoc } from '@/data/legal';
-import { light } from '@/theme/tokens';
+import { skyInk } from '@/theme/sky';
+import { space } from '@/theme/tokens';
 
 /**
  * The privacy policy or the terms. Plain, like the photo credits: something to read and check, not a
@@ -16,7 +18,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
   const insets = useSafeAreaInsets();
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
   return (
-    <View style={[styles.fill, { paddingTop: insets.top + 8 }]}>
+    <SkyScreen style={{ paddingTop: insets.top + 8 }}>
       <View style={styles.header}>
         <IconButton icon="chevron-left" onPress={back} accessibilityLabel="Back" />
       </View>
@@ -24,7 +26,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
         <Text variant="display" accessibilityRole="header">
           {doc.title}
         </Text>
-        <Text variant="label" color={light.inkFaint} style={styles.updated}>
+        <Text variant="label" color={skyInk.faint} style={styles.updated}>
           Last updated {doc.updated}
         </Text>
         {doc.intro.map((p) => (
@@ -58,7 +60,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
           </View>
         ))}
       </ScrollView>
-    </View>
+    </SkyScreen>
   );
 }
 
@@ -83,14 +85,13 @@ function Linked({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: light.canvas },
-  header: { paddingHorizontal: 16 },
-  body: { paddingHorizontal: 24, paddingTop: 20, maxWidth: 720, width: '100%', alignSelf: 'center' },
+  header: { paddingHorizontal: space.screen },
+  body: { paddingHorizontal: space.screen, paddingTop: 20, maxWidth: 720, width: '100%', alignSelf: 'center' },
   updated: { marginTop: 6, marginBottom: 8 },
   heading: { marginTop: 26, marginBottom: 2 },
   para: { marginTop: 8 },
   list: { marginTop: 8, gap: 8 },
   item: { flexDirection: 'row', gap: 8 },
   itemText: { flex: 1 },
-  link: { color: light.ink, textDecorationLine: 'underline' },
+  link: { color: skyInk.strong, textDecorationLine: 'underline' },
 });

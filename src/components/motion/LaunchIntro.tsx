@@ -13,7 +13,11 @@ import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { haptic } from '@/lib/haptics';
-import { fonts, light } from '@/theme/tokens';
+import { useHomeSky } from '@/state/sky';
+import { SKY, skyAccent, skyInk } from '@/theme/sky';
+import { fonts } from '@/theme/tokens';
+
+import { Sky } from '../sky/Sky';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -28,8 +32,9 @@ const BOUNCE = Easing.bezierFn(0.34, 1.56, 0.64, 1);
 const TOTAL = 1600;
 const HOLD = 250;
 const FADE_OUT = 350;
-const INK = light.ink;
-const ACCENT = light.accent;
+// Drawn on the sky: white letters, the route in headline orange.
+const INK = skyInk.strong;
+const ACCENT = skyAccent;
 
 // Wordmark set in Plus Jakarta Sans ExtraBold 40, centred on x=150, baseline 166. Letter advances
 // are the font's own (X .682, p .673, l .26, o .651, r .386, e .611 em) less the wordmark's -0.04 em
@@ -89,6 +94,7 @@ function seg(t: number, start: number, dur: number) {
 type Props = { onDone: () => void };
 
 export function LaunchIntro({ onDone }: Props) {
+  const phase = useHomeSky();
   const { width: W } = useWindowDimensions();
   const t = useSharedValue(0);
   const layer = useSharedValue(1);
@@ -185,6 +191,7 @@ export function LaunchIntro({ onDone }: Props) {
 
   return (
     <Animated.View style={[styles.layer, layerStyle]} accessibilityLabel="Xplore">
+      <Sky phase={phase} />
       <View style={{ width: box, height: box }}>
         <Svg width={box} height={box} viewBox="0 0 300 300" style={StyleSheet.absoluteFill}>
           <AnimatedPath
@@ -236,7 +243,7 @@ export function LaunchIntro({ onDone }: Props) {
                 d="M 197,133 C 191,126 188,121 188,115 C 188,109.5 192,105 197,105 C 202,105 206,109.5 206,115 C 206,121 203,126 197,133 Z"
                 fill={ACCENT}
               />
-              <Circle cx={197} cy={115} r={3.2} fill={light.canvas} />
+              <Circle cx={197} cy={115} r={3.2} fill={SKY[phase].stops[1]} />
             </G>
           </Svg>
         </Animated.View>
@@ -314,6 +321,5 @@ const styles = StyleSheet.create({
     zIndex: 100,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: light.canvas,
   },
 });

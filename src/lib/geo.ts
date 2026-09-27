@@ -121,10 +121,17 @@ export function smoothPath(pts: Point[], closed = false) {
 
 // Length of smoothPath(pts), by sampling each Bézier segment.
 export function smoothPathLength(pts: Point[]) {
+  const at = smoothPathStops(pts);
+  return at[at.length - 1] ?? 0;
+}
+
+/** How far along smoothPath(pts) each point lies: 0 for the first, the whole length for the last. */
+export function smoothPathStops(pts: Point[]) {
   const n = pts.length;
-  if (n < 2) return 0;
+  if (n === 0) return [];
   const get = (i: number) => pts[Math.max(0, Math.min(n - 1, i))];
   let len = 0;
+  const at = [0];
   for (let i = 0; i < n - 1; i++) {
     const p0 = get(i - 1);
     const p1 = get(i);
@@ -141,8 +148,9 @@ export function smoothPathLength(pts: Point[]) {
       len += Math.hypot(x - prev[0], y - prev[1]);
       prev = [x, y];
     }
+    at.push(len);
   }
-  return len;
+  return at;
 }
 
 export function fitCamera(points: Point[], viewW: number, viewH: number, padding = 90) {

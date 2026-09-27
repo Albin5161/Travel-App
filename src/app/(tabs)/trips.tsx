@@ -13,6 +13,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
+import { DayStrip, RouteShape, tripWhen } from '@/components/trips/TripJourney';
 import { getCity } from '@/data/api';
 import { PARTY_COPY, whoLine } from '@/data/group';
 import { formatRange, partyOf, type TripPlan } from '@/data/planner';
@@ -99,6 +100,7 @@ function TripCard({ city, plan }: { city: City; plan: TripPlan }) {
   const { group, members, votesIn, total, approved } = summarize(plan, state.groups[city.id]);
   const stops = plan.days.reduce((n, d) => n + d.stops.length, 0);
   const when = plan.days[0]?.date ? formatRange(plan.days[0].date, plan.days.length) : `${plan.days.length} ${plan.days.length === 1 ? 'day' : 'days'}`;
+  const where = tripWhen(plan);
 
   const status: Status =
     party === 'solo'
@@ -120,27 +122,49 @@ function TripCard({ city, plan }: { city: City; plan: TripPlan }) {
   const joined = group ? members.filter((m) => group.joined.includes(m.id)) : [];
 
   return (
-    <PressableScale onPress={open} accessibilityRole="button" accessibilityLabel={`${city.name}, ${when}, ${status.label}`}>
+    <PressableScale
+      onPress={open}
+      accessibilityRole="button"
+      accessibilityLabel={`${city.name}, ${when}, ${where.label}, ${stops} stops, ${status.label}`}
+    >
       <Glass>
       <View style={styles.photo}>
         <Image source={city.hero} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
-        <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)']} locations={[0.35, 1]} style={StyleSheet.absoluteFill} />
+        <LinearGradient
+          colors={['rgba(0,0,0,0.28)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.7)']}
+          locations={[0, 0.25, 0.5, 1]}
+          style={StyleSheet.absoluteFill}
+        />
         <Tone value="dark">
-          <View style={styles.photoText}>
-            <Text variant="micro" color={light.photoInkSoft}>
-              {when} · {stops} stops
-            </Text>
-            <Text style={styles.city}>{city.name}</Text>
+          <View style={[styles.when, where.today !== undefined && styles.whenNow]}>
+            <Text style={[styles.whenText, where.today !== undefined && styles.whenTextNow]}>{where.label}</Text>
+          </View>
+          <View style={styles.photoRow}>
+            <View style={[styles.photoText, styles.flex]}>
+              <Text variant="micro" color={light.photoInkSoft}>
+                {when} · {stops} stops
+              </Text>
+              <Text style={styles.city} numberOfLines={1}>
+                {city.name}
+              </Text>
+            </View>
+            <View style={styles.shape}>
+              <RouteShape plan={plan} />
+            </View>
           </View>
         </Tone>
       </View>
 
+      {/* Solo, the strip and the status share a row; a group trip has its people under it. */}
+      <View style={[styles.days, party === 'solo' && styles.daysSolo]}>
+        <View style={styles.flex}>
+          <DayStrip plan={plan} today={where.today} />
+        </View>
+        {party === 'solo' ? <StatusChip status={status} /> : null}
+      </View>
+
+      {party === 'solo' ? null : (
       <View style={styles.footer}>
-        {party === 'solo' ? (
-          <Text variant="label" color={skyInk.soft} style={styles.flex}>
-            Just you
-          </Text>
-        ) : (
           <View style={styles.people}>
             {joined.length ? (
               <View style={styles.avatars}>
@@ -153,9 +177,9 @@ function TripCard({ city, plan }: { city: City; plan: TripPlan }) {
               {group && joined.length ? whoLine(group.party, group.joined, true) : party === 'family' ? 'Family trip' : party === 'partner' ? 'For two' : 'With friends'}
             </Text>
           </View>
-        )}
         <StatusChip status={status} />
       </View>
+      )}
       {status.progress !== undefined ? <Progress value={status.progress} /> : null}
       </Glass>
     </PressableScale>
@@ -208,8 +232,24 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },
   list: { gap: 16 },
-  photo: { height: 150, justifyContent: 'flex-end', backgroundColor: skyFill.pane },
+  photo: { height: 168, justifyContent: 'space-between', backgroundColor: skyFill.pane },
+  photoRow: { flexDirection: 'row', alignItems: 'flex-end' },
   photoText: { padding: 16, gap: 2 },
+  shape: { padding: 12, paddingLeft: 0 },
+  // Where the trip stands, on the photo's top edge: a quiet frosted chip, ember while it's on.
+  when: {
+    alignSelf: 'flex-start',
+    margin: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.38)',
+  },
+  whenNow: { backgroundColor: skyAccent },
+  whenText: { fontFamily: fonts.sansSemi, fontSize: 12, lineHeight: 15, color: light.photoInk },
+  whenTextNow: { color: colors.night },
+  days: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 2 },
+  daysSolo: { paddingBottom: 14 },
   city: { fontFamily: fonts.display, fontSize: 30, lineHeight: 36, letterSpacing: -1.1, color: light.photoInk },
   footer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
   people: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },

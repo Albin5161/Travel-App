@@ -23,6 +23,11 @@ export type GoogleMapProps = {
   /** Room kept clear around the pins, for panels that sit over the map. */
   padding?: { top?: number; bottom?: number; left?: number; right?: number };
   onPinPress?: (id: string) => void;
+  /**
+   * The stop the plan is on, as someone scrolls it. The map tilts and glides to it, and the route
+   * so far lights up; null goes back to the whole day, flat.
+   */
+  focusId?: string | null;
 };
 
 /**

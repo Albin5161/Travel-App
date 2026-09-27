@@ -3,12 +3,14 @@ import { memo, useEffect, useMemo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
   ReduceMotion,
   useAnimatedReaction,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withDelay,
+  withSequence,
   withSpring,
   withTiming,
   type SharedValue,
@@ -28,11 +30,35 @@ export const WORLD = { x0: -150, y0: -350, w: 1350, h: 2100 };
 export type World = typeof WORLD;
 const DEFAULT_PIN = 44;
 
-export type Camera = { x: SharedValue<number>; y: SharedValue<number>; s: SharedValue<number> };
-export type CameraValue = { x: number; y: number; s: number };
+/** `t` is the tilt, in degrees: 0 looks straight down, more lays the paper back like a view ahead. */
+export type Camera = { x: SharedValue<number>; y: SharedValue<number>; s: SharedValue<number>; t: SharedValue<number> };
+export type CameraValue = { x: number; y: number; s: number; t?: number };
 
 export function useCamera(init: CameraValue): Camera {
-  return { x: useSharedValue(init.x), y: useSharedValue(init.y), s: useSharedValue(init.s) };
+  return { x: useSharedValue(init.x), y: useSharedValue(init.y), s: useSharedValue(init.s), t: useSharedValue(init.t ?? 0) };
+}
+
+// How far the eye is from a tilted map, in points. Nearer exaggerates the depth; this reads as a
+// gentle look ahead on a phone-sized map, not a plunge.
+const DEPTH = 800;
+
+/**
+ * Where a point that would sit (dx, dy) from the view's centre on the flat map lands once the map is
+ * tilted by t degrees, and how much nearer (bigger) it looks there. Pins use it to stay upright.
+ */
+function tilted(dx: number, dy: number, t: number) {
+  'worklet';
+  const a = (t * Math.PI) / 180;
+  const z = dy * Math.sin(a);
+  // Nothing may come closer than a fifth of the depth: past that it would flip over the eye.
+  const k = DEPTH / Math.max(DEPTH * 0.2, DEPTH - z);
+  return { x: dx * k, y: dy * Math.cos(a) * k, k, behind: DEPTH - z < DEPTH * 0.2 };
+}
+
+/** The flat-map offset from centre that lands `d` points below the centre once tilted by t degrees. */
+export function untilt(d: number, t: number) {
+  const a = (t * Math.PI) / 180;
+  return (d * DEPTH) / (DEPTH * Math.cos(a) + d * Math.sin(a));
 }
 
 /** Fit points into a sub-rectangle of the map view (e.g. the area above a bottom panel). */
@@ -72,6 +98,41 @@ export function flyTo(camera: Camera, target: CameraValue, duration = 450) {
   camera.x.set(withTiming(target.x, cfg));
   camera.y.set(withTiming(target.y, cfg));
   camera.s.set(withTiming(target.s, cfg));
+  camera.t.set(withTiming(target.t ?? 0, cfg));
+}
+
+// A lift-off eases out and a landing settles, so a long glide reads as one arc.
+const EASE_OUT_SINE = Easing.bezier(0.61, 1, 0.88, 1);
+const EASE_IN_OUT_SINE = Easing.bezier(0.37, 0, 0.63, 1);
+
+/**
+ * Travel to a stop the way a map app does: a short hop just slides over; a long one lifts off (eases
+ * out a little, to keep both ends in sight) and settles again. `view` is the map's size in points.
+ */
+export function glideTo(camera: Camera, target: CameraValue, view: { w: number; h: number }) {
+  'worklet';
+  const s0 = camera.s.get();
+  // How far the hop is, in screen points at the scale it ends on.
+  const hop = Math.hypot(target.x - camera.x.get(), target.y - camera.y.get()) * target.s;
+  const far = hop / Math.min(view.w, view.h);
+  const duration = Math.round(Math.min(1100, 520 + far * 260));
+  const cfg = { duration, easing: EASE_IN_OUT, reduceMotion: ReduceMotion.System };
+  camera.x.set(withTiming(target.x, cfg));
+  camera.y.set(withTiming(target.y, cfg));
+  camera.t.set(withTiming(target.t ?? 0, cfg));
+  if (far < 0.6) {
+    camera.s.set(withTiming(target.s, cfg));
+    return;
+  }
+  // Lift off: out to where both ends fit, never below half the landing scale, then back down.
+  const lift = Math.max(target.s * 0.5, Math.min(s0, target.s) / Math.min(2, 0.6 + far * 0.5));
+  const half = { duration: duration / 2, reduceMotion: ReduceMotion.System };
+  camera.s.set(
+    withSequence(
+      withTiming(lift, { ...half, easing: EASE_OUT_SINE }),
+      withTiming(target.s, { ...half, easing: EASE_IN_OUT_SINE }),
+    ),
+  );
 }
 
 export type MapPin = {
@@ -133,6 +194,11 @@ export function CityMap({
       ],
     };
   });
+  // The paper lays back about the view's centre. Flat, it carries no 3D transform at all.
+  const tiltStyle = useAnimatedStyle(() => {
+    const t = camera.t.get();
+    return { transform: t > 0.01 ? [{ perspective: DEPTH }, { rotateX: `${t}deg` }] : [] };
+  });
 
   const start = useSharedValue({ x: 0, y: 0, s: 1 });
   const gesture = useMemo(() => {
@@ -172,10 +238,12 @@ export function CityMap({
         style={[styles.root, { width, height, backgroundColor: city.map.coast ? light.mapSea : light.mapLand }]}
         collapsable={false}
       >
-        <Animated.View style={[styles.world, { width: world.w * r, height: world.h * r }, worldStyle]}>
-          <MapArt art={city.map} r={r} world={world}>
-            {artChildren}
-          </MapArt>
+        <Animated.View style={[StyleSheet.absoluteFill, tiltStyle]}>
+          <Animated.View style={[styles.world, { width: world.w * r, height: world.h * r }, worldStyle]}>
+            <MapArt art={city.map} r={r} world={world}>
+              {artChildren}
+            </MapArt>
+          </Animated.View>
         </Animated.View>
         {pins.map((pin, i) => (
           <MapPinView
@@ -341,15 +409,19 @@ function MapPinView({ pin, index, camera, width, height, activeId, reveal, revea
     const s = camera.s.get();
     const p = drop.get();
     const at = pin.point ?? pin.place.map;
-    const x = width / 2 + (at[0] - camera.x.get()) * s - size / 2;
-    const y = height / 2 + (at[1] - camera.y.get()) * s - size / 2;
+    // Where the pin's spot on the paper ends up once the paper is tilted. The pin itself stays
+    // upright, a little smaller the further back it stands.
+    const on = tilted((at[0] - camera.x.get()) * s, (at[1] - camera.y.get()) * s, camera.t.get());
+    const x = width / 2 + on.x - size / 2;
+    const y = height / 2 + on.y - size / 2;
     const lift = reduced ? 0 : (1 - p) * -24;
+    const depth = Math.min(1.12, Math.max(0.78, on.k));
     return {
-      opacity: Math.min(1, p * 1.4),
+      opacity: on.behind ? 0 : Math.min(1, p * 1.4),
       transform: [
         { translateX: x },
         { translateY: y + lift },
-        { scale: (reduced ? 1 : 0.9 + 0.1 * p) * (1 + 0.27 * selected.get()) },
+        { scale: (reduced ? 1 : 0.9 + 0.1 * p) * (1 + 0.27 * selected.get()) * depth },
       ],
     };
   });

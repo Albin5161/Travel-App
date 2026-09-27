@@ -17,9 +17,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Path } from 'react-native-svg';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { Button } from '@/components/Button';
-import { CityMap, fitCameraToRect, flyTo, useCamera } from '@/components/CityMap';
+import { CityMap, fitCameraToRect, flyTo, glideTo, untilt, useCamera } from '@/components/CityMap';
 import { IconButton } from '@/components/IconButton';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
@@ -28,7 +29,7 @@ import { StopActions } from '@/components/plan/StopActions';
 import { costLabel, typeLine } from '@/components/PlaceMeta';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
-import { GoogleMap } from '@/components/GoogleMap';
+import { GoogleMap, type GoogleMapProps } from '@/components/GoogleMap';
 import { getCity, getLocalPicks, isLiveCity } from '@/data/api';
 import {
   addStop,
@@ -49,7 +50,7 @@ import {
   type TripStop,
 } from '@/data/planner';
 import type { DayPart, Place } from '@/data/types';
-import { formatClock, formatDuration, smoothPath, smoothPathLength } from '@/lib/geo';
+import { formatClock, formatDuration, smoothPath, smoothPathStops } from '@/lib/geo';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_IN_OUT, FADE_IN, FADE_OUT, fadeUp, REFLOW } from '@/lib/motion';
@@ -57,9 +58,9 @@ import { customStops } from '@/data/custom';
 import { usePlanWriter } from '@/state/live';
 import { useHomeSky } from '@/state/sky';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { deepGlass, SKY, skyAccentText, skyAccentWash, skyCta, skyFill, skyInk, withAlpha } from '@/theme/sky';
+import { deepGlass, SKY, skyAccent, skyAccentText, skyAccentWash, skyCta, skyFill, skyInk, withAlpha } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
-import { fonts, radii, space } from '@/theme/tokens';
+import { colors, fonts, radii, space } from '@/theme/tokens';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const PART_TITLE: Record<DayPart, string> = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening' };
@@ -70,6 +71,8 @@ const PACE_LABEL = { relaxed: 'Relaxed', balanced: 'Balanced', packed: 'Packed' 
 const GETTING_LABEL = { local: 'Walking and autos', drive: 'Own vehicle', bus: 'By bus' } as const;
 const ROW_ENTER = fadeUp(0);
 const READING_LINE = 150;
+// How far the painted map lays back while it follows the plan: a look ahead, not a plunge.
+const JOURNEY_TILT = 40;
 // A regenerate is a moment, not a wait: long enough to read as work, short enough not to stall.
 const REGENERATE_MS = 900;
 // Seeds tried before admitting the places only fit one way.
@@ -113,6 +116,9 @@ export default function PlanScreen() {
   const focusScale = fit.s * 1.6;
   const camera = useCamera(fit);
   const activeId = useSharedValue<string | null>(null);
+  // Which stop the plan is on as it's scrolled, -1 before the first: the map follows it, the route
+  // and the stop numbers light up to it.
+  const activeIdx = useSharedValue(-1);
 
   // The route redraws for each day and after each edit; the camera fits the day it's showing.
   const routeKey = `${dayIndex}:${stops.map((s) => s.place.id).join('|')}`;
@@ -124,13 +130,18 @@ export default function PlanScreen() {
     progress.set(0);
     progress.set(withDelay(delay, withTiming(1, { duration: reduced ? 250 : 900, easing: EASE_IN_OUT })));
     activeId.set(null);
+    activeIdx.set(-1);
     flyTo(camera, fit);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeKey]);
 
-  // Scroll-synced camera: the stop crossing the reading line becomes active.
+  // Scroll-synced camera, the way a run's map follows it: at the top the whole day, flat; once the
+  // plan moves, the map lays back and lands on the first stop, then glides on as each stop crosses
+  // the reading line.
   const scrollY = useSharedValue(0);
   const rowYs = useSharedValue<number[]>([]);
+  // Rows measure themselves from the top of the list, which sits below the title and tools.
+  const listY = useSharedValue(0);
   const rowYsRef = useRef<number[]>([]);
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.set(e.contentOffset.y);
@@ -146,9 +157,9 @@ export default function PlanScreen() {
     () => {
       const y = scrollY.get();
       if (y < 40) return -1;
-      const line = y + READING_LINE;
+      const line = y + READING_LINE - listY.get();
       const ys = rowYs.get();
-      let idx = -1;
+      let idx = 0;
       for (let i = 0; i < ys.length; i++) if (ys[i] !== undefined && ys[i] <= line) idx = i;
       return idx;
     },
@@ -156,12 +167,19 @@ export default function PlanScreen() {
       if (idx === prev) return;
       if (idx < 0 || idx >= points.length) {
         activeId.set(null);
-        flyTo(camera, fit);
+        activeIdx.set(-1);
+        flyTo(camera, fit, 600);
         return;
       }
       activeId.set(stopIds[idx]);
+      activeIdx.set(idx);
       const [px, py] = points[idx];
-      flyTo(camera, { x: px, y: py - (visibleCy - MAP_H / 2) / focusScale, s: focusScale });
+      // The stop lands in the middle of the part of the map no panel covers, tilt and all.
+      glideTo(
+        camera,
+        { x: px, y: py - untilt(visibleCy - MAP_H / 2, JOURNEY_TILT) / focusScale, s: focusScale, t: JOURNEY_TILT },
+        { w: W, h: MAP_H },
+      );
     },
     [routeKey],
   );
@@ -290,7 +308,8 @@ export default function PlanScreen() {
       <Tone value="light">
       <View style={{ height: MAP_H }}>
         {isLiveCity(city.id) ? (
-          <GoogleMap
+          <LiveJourneyMap
+            activeId={activeId}
             pins={stops.map((s, i) => ({
               id: s.place.id,
               name: s.place.name,
@@ -319,7 +338,14 @@ export default function PlanScreen() {
             onPinPress={(pid) => router.push({ pathname: '/place/[id]', params: { id: pid } })}
             artChildren={
               points.length > 1 ? (
-                <Route key={routeKey} d={smoothPath(points)} length={smoothPathLength(points)} progress={progress} width={3 / fit.s} />
+                <Route
+                  key={routeKey}
+                  d={smoothPath(points)}
+                  stops={smoothPathStops(points)}
+                  progress={progress}
+                  activeIdx={activeIdx}
+                  width={3 / fit.s}
+                />
               ) : null
             }
           />
@@ -405,7 +431,7 @@ export default function PlanScreen() {
             </ScrollView>
           ) : null}
 
-          <View style={[styles.list, busy && styles.busy]}>
+          <View style={[styles.list, busy && styles.busy]} onLayout={(e) => listY.set(e.nativeEvent.layout.y)}>
             <Text variant="data" style={styles.daySummary}>
               {stops.length} {stops.length === 1 ? 'stop' : 'stops'}
               {today.totalKm > 0 ? ` · ${today.totalKm.toFixed(1)} km` : ''}
@@ -417,7 +443,7 @@ export default function PlanScreen() {
               </Text>
             ) : null}
 
-            {/* Flat children so each row's onLayout y is relative to the scroll content. */}
+            {/* Flat children so each row's onLayout y is relative to the list; listY adds the rest. */}
             {parts.flatMap((part) => [
               <Animated.View key={`h-${part.part}-${part.stops[0].i}`} layout={REFLOW} style={styles.partHeader}>
                 <Text variant="headline" accessibilityRole="header">{PART_TITLE[part.part]}</Text>
@@ -431,12 +457,20 @@ export default function PlanScreen() {
                   onLayout={(e) => setRowY(i, e.nativeEvent.layout.y)}
                 >
                   {stop.legBefore ? (
-                    <Leg leg={stop.legBefore} compact={j === 0} from={i === 0 ? plan.prefs.stay?.name : undefined} />
+                    <Leg
+                      leg={stop.legBefore}
+                      compact={j === 0}
+                      from={i === 0 ? plan.prefs.stay?.name : undefined}
+                      index={i}
+                      activeIdx={activeIdx}
+                    />
                   ) : null}
                   <StopRow
                     stop={stop}
                     number={i + 1}
+                    index={i}
                     activeId={activeId}
+                    activeIdx={activeIdx}
                     flash={flash.has(stop.place.id)}
                     editing={editing}
                     first={i === 0}
@@ -591,24 +625,92 @@ function Tool({
   );
 }
 
-function Route({ d, length, progress, width }: { d: string; length: number; progress: SharedValue<number>; width: number }) {
-  const animatedProps = useAnimatedProps(() => ({ strokeDashoffset: length * (1 - progress.get()) }));
+/** The day's route drawing itself in, and over it in ember, the way so far to the stop the plan is on. */
+function Route({
+  d,
+  stops,
+  progress,
+  activeIdx,
+  width,
+}: {
+  d: string;
+  stops: number[];
+  progress: SharedValue<number>;
+  activeIdx: SharedValue<number>;
+  width: number;
+}) {
+  const length = stops[stops.length - 1] ?? 0;
+  const drawn = useAnimatedProps(() => ({ strokeDashoffset: length * (1 - progress.get()) }));
+  const reached = useSharedValue(0);
+  useAnimatedReaction(
+    () => activeIdx.get(),
+    (i) => {
+      reached.set(withTiming(i > 0 ? stops[Math.min(i, stops.length - 1)] : 0, { duration: 700, easing: EASE_IN_OUT }));
+    },
+  );
+  const travelled = useAnimatedProps(() => ({ strokeDashoffset: length - reached.get() }));
   return (
-    <AnimatedPath
-      d={d}
-      fill="none"
-      stroke={PAPER_INK}
-      strokeWidth={width}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeDasharray={[length, length]}
-      animatedProps={animatedProps}
-    />
+    <>
+      <AnimatedPath
+        d={d}
+        fill="none"
+        stroke={PAPER_INK}
+        strokeWidth={width}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeDasharray={[length, length]}
+        animatedProps={drawn}
+      />
+      <AnimatedPath
+        d={d}
+        fill="none"
+        stroke={colors.ember}
+        strokeWidth={width * 1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeDasharray={[length, length]}
+        animatedProps={travelled}
+      />
+    </>
   );
 }
 
+/**
+ * The Google map for a real city, following the plan. It hears which stop the plan is on from the
+ * scroll, and only it re-renders when that changes, not the whole plan.
+ */
+function LiveJourneyMap({ activeId, ...props }: GoogleMapProps & { activeId: SharedValue<string | null> }) {
+  const [focus, setFocus] = useState<string | null>(null);
+  useAnimatedReaction(
+    () => activeId.get(),
+    (id, prev) => {
+      if (id !== prev) scheduleOnRN(setFocus, id);
+    },
+  );
+  return <GoogleMap {...props} focusId={focus} />;
+}
+
 /** A drive or walk between stops; the day's first one says where from, the last one where back to. */
-function Leg({ leg, compact, from, to }: { leg: NonNullable<TripStop['legBefore']>; compact?: boolean; from?: string; to?: string }) {
+function Leg({
+  leg,
+  compact,
+  from,
+  to,
+  index,
+  activeIdx,
+}: {
+  leg: NonNullable<TripStop['legBefore']>;
+  compact?: boolean;
+  from?: string;
+  to?: string;
+  /** The stop this leg leads to: once the plan reaches it, the leg is travelled and turns ember. */
+  index?: number;
+  activeIdx?: SharedValue<number>;
+}) {
+  const travelled = useAnimatedStyle(() => {
+    const on = activeIdx && index !== undefined && index > 0 && activeIdx.get() >= index;
+    return { transform: [{ scaleY: withTiming(on ? 1 : 0, { duration: 400, easing: EASE_IN_OUT }) }] };
+  });
   const how =
     leg.mode === 'walk'
       ? `${leg.minutes} min walk · ${leg.km.toFixed(1)} km`
@@ -616,7 +718,9 @@ function Leg({ leg, compact, from, to }: { leg: NonNullable<TripStop['legBefore'
   const label = from ? `${how} from ${from}` : to ? `Back to ${to} · ${how}` : how;
   return (
     <View style={[styles.leg, compact && styles.legCompact]}>
-      <View style={styles.legLine} />
+      <View style={styles.legLine}>
+        <Animated.View style={[styles.legLineOn, travelled]} />
+      </View>
       <Feather name={leg.mode === 'walk' ? 'navigation' : 'truck'} size={12} color={skyInk.faint} />
       <Text variant="data">{label}</Text>
     </View>
@@ -626,7 +730,9 @@ function Leg({ leg, compact, from, to }: { leg: NonNullable<TripStop['legBefore'
 function StopRow({
   stop,
   number,
+  index,
   activeId,
+  activeIdx,
   flash,
   editing,
   first,
@@ -637,7 +743,9 @@ function StopRow({
 }: {
   stop: TripStop;
   number: number;
+  index: number;
   activeId: SharedValue<string | null>;
+  activeIdx: SharedValue<number>;
   flash: boolean;
   editing: boolean;
   first: boolean;
@@ -659,6 +767,17 @@ function StopRow({
     glow.set(withDelay(250, withTiming(0, { duration: 1200 })));
   }, [flash, glow]);
   const glowStyle = useAnimatedStyle(() => ({ opacity: glow.get() }));
+  // Progress through the day: stops the plan has reached fill ember; the one it's on wears a ring.
+  const reached = useAnimatedStyle(() => ({
+    opacity: withTiming(activeIdx.get() >= index ? 1 : 0, { duration: 300 }),
+  }));
+  const here = useAnimatedStyle(() => {
+    const on = activeIdx.get() === index;
+    return {
+      opacity: withTiming(on ? 1 : 0, { duration: 300 }),
+      transform: [{ scale: withTiming(on ? 1 : 0.7, { duration: 300, easing: EASE_IN_OUT }) }],
+    };
+  });
 
   // The row's own press and its buttons are siblings, never nested: a button inside a button is
   // invalid on web and confusing to screen readers everywhere.
@@ -673,6 +792,8 @@ function StopRow({
         accessibilityLabel={`Stop ${number}, ${stop.place.name}, ${formatClock(stop.startMinutes)}`}
       >
         <View style={styles.stopNumber}>
+          <Animated.View style={[styles.stopRing, here]} />
+          <Animated.View style={[styles.stopReached, reached]} />
           <Text style={styles.stopNumberText}>{number}</Text>
         </View>
         <Image source={stop.place.photo} style={styles.thumb} contentFit="cover" transition={0} />
@@ -804,6 +925,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  stopReached: { ...StyleSheet.absoluteFill, borderRadius: 12, backgroundColor: skyAccent },
+  stopRing: { position: 'absolute', left: -5, top: -5, right: -5, bottom: -5, borderRadius: 17, borderWidth: 2, borderColor: skyAccent },
   stopNumberText: { fontFamily: fonts.sansSemi, fontSize: 12, color: skyCta, fontVariant: ['tabular-nums'] },
   thumb: { width: 56, height: 56, borderRadius: radii.thumb, backgroundColor: skyFill.pane },
   stopText: { flex: 1, gap: 2 },
@@ -823,7 +946,8 @@ const styles = StyleSheet.create({
   smallDisabled: { opacity: 0.3 },
   leg: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 5, paddingVertical: 8 },
   legCompact: { paddingTop: 0 },
-  legLine: { width: 2, height: 18, borderRadius: 1, backgroundColor: skyInk.line, marginRight: 4 },
+  legLine: { width: 2, height: 18, borderRadius: 1, backgroundColor: skyInk.line, marginRight: 4, overflow: 'hidden' },
+  legLineOn: { ...StyleSheet.absoluteFill, backgroundColor: skyAccent, transformOrigin: 'top' },
   addOwn: {
     flexDirection: 'row',
     alignItems: 'center',

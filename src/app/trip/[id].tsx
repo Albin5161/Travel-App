@@ -33,7 +33,7 @@ import { haptic } from '@/lib/haptics';
 import { findStay } from '@/lib/extract';
 import { terrainOf, type Getting, type LatLng } from '@/lib/geo';
 import { FADE_IN, FADE_OUT, fadeUp, SPRING_SETTLE } from '@/lib/motion';
-import { useCityPlaces, useTrips } from '@/state/trips';
+import { isNearHome, useCityPlaces, useTrips } from '@/state/trips';
 import { skyAccent, skyAccentRim, skyAccentText, skyAccentWash, skyCta, skyFill, skyInk } from '@/theme/sky';
 import { radii, space } from '@/theme/tokens';
 
@@ -41,14 +41,19 @@ type Step = 'who' | 'when' | 'dates' | 'days' | 'pace' | 'getting' | 'stay' | 'b
 const STEPS: Step[] = ['who', 'when', 'dates', 'days', 'pace', 'getting', 'stay'];
 const ADVANCE_MS = 260;
 const MAX_DAYS = 7;
-const CALENDAR_WEEKS = 4;
+/** How far ahead dates can be picked: this month and the next six. */
+const MONTHS_AHEAD = 6;
 const ENTER = [0, 1, 2, 3, 4].map((i) => fadeUp(60 + i * 50));
 
 /**
- * Six quick questions before a plan: who's going, when, how long (only if the dates don't say),
- * what pace, how you're getting around, and where you're staying. Who's going decides whether sharing the plan starts a
- * vote, and who's in it. One per screen, answered with a tap that moves you on, so it
+ * Quick questions before a plan: who's going, when, how long (only if the dates don't say), what
+ * pace, how you're getting around, and where you're staying. Who's going decides whether sharing the
+ * plan starts a vote, and who's in it. One per screen, answered with a tap that moves you on, so it
  * feels like a conversation rather than a form. The last step builds the plan in place.
+ *
+ * Only the questions that change the plan are asked. One place has nothing to fit or pace, so it
+ * goes straight to a plan for this Saturday (Change answers is on the plan). Near home, you sleep at
+ * home, so where you're staying isn't asked.
  */
 export default function TripSetup() {
   // `from: plan` means Change answers: finishing goes back to that plan instead of stacking a new one.
@@ -59,6 +64,9 @@ export default function TripSetup() {
   const { state, dispatch } = useTrips();
   const insets = useSafeAreaInsets();
   const today = useMemo(() => new Date(), []);
+  const nearHome = isNearHome(state.collections[id]?.placeIds ?? [], state.homeDistrictId);
+  // A single place, planned for the first time: no questions, a day out this weekend.
+  const [single] = useState(() => !from && !state.tripPlans[id] && collected.length === 1);
 
   // Changing answers starts from the ones already given.
   const previous = state.tripPlans[id]?.prefs;
@@ -66,6 +74,9 @@ export default function TripSetup() {
   const saved = !previous && state.draft?.stage === 'questions' && state.draft.cityId === id ? state.draft : null;
   const [prefs, setPrefs] = useState<TripPrefs>(
     previous ??
+      (single
+        ? { party: 'friends', when: 'this-weekend', start: weekend(today, 'this').start, days: 1, pace: 'balanced', getting: nearHome ? 'drive' : 'local' }
+        : null) ??
       saved?.prefs ?? { party: 'friends', when: 'this-weekend', start: null, days: 2, pace: 'balanced', getting: 'local' },
   );
   const [answered, setAnswered] = useState<Partial<Record<Step, boolean>>>(
@@ -77,6 +88,7 @@ export default function TripSetup() {
   const [stayInTown, setStayInTown] = useState(!!previous?.stay || !!saved?.stayInTown);
   // Never resumed onto the build step itself: that one runs when the last answer is given.
   const [history, setHistory] = useState<Step[]>(() => {
+    if (single) return ['build'];
     const kept = (saved?.history ?? []).filter((h): h is Step => h !== 'build' && STEPS.includes(h as Step));
     return kept.length ? kept : ['who'];
   });
@@ -84,13 +96,14 @@ export default function TripSetup() {
 
   // The middle question only exists for "Pick dates" and "Not sure yet".
   const middle: Step | null = prefs.when === 'dates' ? 'dates' : prefs.when === 'flexible' ? 'days' : null;
-  const sequence: Step[] = ['who', 'when', ...(middle ? [middle] : []), 'pace', 'getting', 'stay'];
+  const sequence: Step[] = ['who', 'when', ...(middle ? [middle] : []), 'pace', 'getting', ...(nearHome ? [] : ['stay' as Step])];
   const position = step === 'build' ? sequence.length : sequence.indexOf(step);
 
-  // Each answer is kept as it's given, so closing the app loses nothing. Changing the answers of a
-  // plan that exists already isn't a draft: that plan is still there.
+  // Each answer is kept as it's given, so closing the app loses nothing. Opening the questions and
+  // leaving before answering one isn't planning left half-done, and changing the answers of a plan
+  // that exists already isn't a draft either: that plan is still there.
   useEffect(() => {
-    if (previous || !city) return;
+    if (previous || !city || Object.keys(answered).length === 0) return;
     dispatch({
       type: 'setDraft',
       draft: { stage: 'questions', cityId: id, prefs, answered, history, stayInTown, at: Date.now() },
@@ -268,7 +281,7 @@ export default function TripSetup() {
             {step === 'getting' ? (
               <Options
                 selected={answered.getting ? prefs.getting : null}
-                onPick={(k) => answer({ getting: k as Getting }, 'getting', 'stay')}
+                onPick={(k) => answer({ getting: k as Getting }, 'getting', nearHome ? 'build' : 'stay')}
                 options={[
                   { key: 'local', title: 'Walking and autos', detail: 'Walk the short hops, auto or cab the rest' },
                   { key: 'drive', title: 'Own vehicle', detail: 'Car or bike, door to door' },
@@ -295,7 +308,8 @@ export default function TripSetup() {
             <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
               <Button
                 trailingArrow={!!prefs.start}
-                label={prefs.start ? `Continue with ${formatRange(prefs.start, prefs.days)}` : 'Pick a start day'}
+                // The dates are said in full above the calendar; the button keeps to what fits a small phone.
+                label={prefs.start ? 'Continue' : 'Pick a start day'}
                 disabled={!prefs.start}
                 onPress={() => {
                   haptic.light();
@@ -401,8 +415,20 @@ function OptionRow({ option, on, onPress }: { option: Option; on: boolean; onPre
 }
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-/** Four weeks from today. Tap a first day, then a last; tapping again starts over. */
+/** The first of the month `iso` falls in, as an iso day. */
+const monthOf = (iso: string) => `${iso.slice(0, 7)}-01`;
+const shiftMonth = (month: string, n: number) => {
+  const d = fromIso(month);
+  return isoDay(new Date(d.getFullYear(), d.getMonth() + n, 1));
+};
+
+/**
+ * One month at a time, from this one to six ahead. Tap your first day, then your last. Days that
+ * can't be picked look it: the past, and (while choosing the last day) anything past a week's trip.
+ * The chosen days join into one band, the way a range reads on paper.
+ */
 function Calendar({
   today,
   start,
@@ -415,11 +441,25 @@ function Calendar({
   onChange: (start: string | null, days: number) => void;
 }) {
   const first = isoDay(today);
-  // Weeks start on Sunday: pad the first row so dates sit under their weekday.
-  const lead = today.getDay();
-  const cells = Array.from({ length: CALENDAR_WEEKS * 7 }, (_, i) => (i < lead ? null : addDays(first, i - lead)));
   const end = start ? addDays(start, days - 1) : null;
   const [picking, setPicking] = useState<'start' | 'end'>(start && days > 1 ? 'start' : start ? 'end' : 'start');
+  const [month, setMonth] = useState(() => monthOf(start ?? first));
+  const earliest = monthOf(first);
+  const latest = shiftMonth(earliest, MONTHS_AHEAD);
+  // While choosing the last day, the longest trip there is marks how far it can go.
+  const lastPickable = picking === 'end' && start ? addDays(start, MAX_DAYS - 1) : null;
+
+  // The month's days under their weekdays, in whole weeks, one row each: every row is seven equal
+  // cells whatever the screen's width, so a narrow phone never wraps a week onto two lines.
+  const m = fromIso(month);
+  const lead = m.getDay();
+  const inMonth = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+  const cells: (string | null)[] = [
+    ...Array.from({ length: lead }, () => null),
+    ...Array.from({ length: inMonth }, (_, i) => addDays(month, i)),
+  ];
+  while (cells.length % 7) cells.push(null);
+  const weeks = Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
 
   const tap = (iso: string) => {
     haptic.selection();
@@ -428,52 +468,99 @@ function Calendar({
       setPicking('end');
     } else {
       const span = Math.round((fromIso(iso).getTime() - fromIso(start).getTime()) / 86400000) + 1;
-      onChange(start, Math.min(span, MAX_DAYS));
+      onChange(start, span);
       setPicking('start');
     }
   };
 
+  const hint = !start
+    ? 'Tap the day you set off.'
+    : picking === 'end'
+      ? `${formatDay(start)} is day one. Tap your last day, up to ${MAX_DAYS} days, or continue with just the one.`
+      : `${formatRange(start, days)}, ${days} ${days === 1 ? 'day' : 'days'}. Tap any day to start again.`;
+
   return (
     <View style={styles.calendar}>
-      <Text variant="label" color={skyInk.soft}>
-        {!start ? 'Tap your first day.' : picking === 'end' ? `From ${formatDay(start)}. Tap your last day, or continue with one.` : `Up to ${MAX_DAYS} days.`}
+      <Text variant="label" color={skyInk.soft} accessibilityLiveRegion="polite">
+        {hint}
       </Text>
-      <View style={styles.weekRow}>
+      <View style={styles.monthRow}>
+        <MonthStep icon="chevron-left" label="Previous month" disabled={month <= earliest} onPress={() => setMonth((x) => shiftMonth(x, -1))} />
+        <Text variant="title" accessibilityRole="header">
+          {MONTHS[m.getMonth()]} {m.getFullYear()}
+        </Text>
+        <MonthStep icon="chevron-right" label="Next month" disabled={month >= latest} onPress={() => setMonth((x) => shiftMonth(x, 1))} />
+      </View>
+      <View style={styles.week}>
         {WEEKDAYS.map((d, i) => (
           <Text key={i} variant="micro" style={styles.weekday}>
             {d}
           </Text>
         ))}
       </View>
-      <View style={styles.grid}>
-        {cells.map((iso, i) => {
-          if (!iso) return <View key={i} style={styles.cell} />;
-          const inRange = !!start && !!end && iso >= start && iso <= end;
-          const edge = iso === start || iso === end;
-          return (
-            <Pressable
-              key={iso}
-              onPress={() => tap(iso)}
-              style={[styles.cell, inRange && styles.cellRange, edge && styles.cellEdge]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: inRange }}
-              accessibilityLabel={formatDay(iso)}
-            >
-              <Text variant="data" color={edge ? skyCta : iso === first ? skyAccentText : skyInk.strong}>
-                {fromIso(iso).getDate()}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {weeks.map((week, w) => (
+        <View key={w} style={styles.week}>
+          {week.map((iso, i) => {
+            if (!iso) return <View key={i} style={styles.cell} />;
+            const off = iso < first || (!!lastPickable && iso > lastPickable);
+            const inRange = !!start && !!end && iso >= start && iso <= end;
+            const edge = iso === start || iso === end;
+            const band = inRange && start !== end;
+            return (
+              <Pressable
+                key={iso}
+                onPress={() => tap(iso)}
+                disabled={off}
+                style={styles.cell}
+                accessibilityRole="button"
+                accessibilityState={{ selected: inRange, disabled: off }}
+                accessibilityLabel={formatDay(iso)}
+              >
+                {band ? <View style={[styles.band, iso === start && styles.bandStart, iso === end && styles.bandEnd]} /> : null}
+                <View style={[styles.day, edge && styles.dayEdge, off && styles.dayOff]}>
+                  <Text
+                    variant="data"
+                    color={edge ? skyCta : off ? skyInk.faint : iso === first ? skyAccentText : skyInk.strong}
+                  >
+                    {fromIso(iso).getDate()}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
     </View>
+  );
+}
+
+function MonthStep({ icon, label, disabled, onPress }: { icon: 'chevron-left' | 'chevron-right'; label: string; disabled: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={() => {
+        haptic.selection();
+        onPress();
+      }}
+      disabled={disabled}
+      style={({ pressed }) => [styles.monthStep, pressed && styles.optionPressed, disabled && styles.monthStepOff]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+    >
+      <Feather name={icon} size={20} color={skyInk.strong} />
+    </Pressable>
   );
 }
 
 /** The plan being built, step by step, then handed to the plan screen. */
 function Build({ cityName, count, prefs, onBuilt }: { cityName: string; count: number; prefs: TripPrefs; onBuilt: () => void }) {
-  const lines = [
-    `Grouping your ${count} ${count === 1 ? 'spot' : 'spots'} by area`,
+  // One place has nothing to group or fit: it gets a day, a time, and something nearby.
+  const lines = count === 1 ? [
+    prefs.start ? `Setting it for ${formatDay(prefs.start)}` : 'Picking a day for it',
+    'Finding the best time to go',
+    'Looking for a good dinner nearby',
+  ] : [
+    `Grouping your ${count} spots by area`,
     `Fitting them into ${prefs.days} ${prefs.days === 1 ? 'day' : 'days'} at a ${prefs.pace} pace`,
     prefs.getting === 'drive' ? 'Timing the drives between them' : prefs.getting === 'bus' ? 'Timing the buses between them' : 'Timing the walks and autos between them',
     'Looking for a good dinner nearby',
@@ -526,6 +613,8 @@ function Build({ cityName, count, prefs, onBuilt }: { cityName: string; count: n
 }
 
 const CELL = 44;
+/** The circle behind a day: fits seven across on the narrowest phone. */
+const DAY = 40;
 
 const styles = StyleSheet.create({
   hint: { marginBottom: 22 },
@@ -564,13 +653,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   footer: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },
-  calendar: { gap: 14 },
-  weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  weekday: { width: CELL, textAlign: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 6 },
-  cell: { width: CELL, height: CELL, borderRadius: CELL / 2, alignItems: 'center', justifyContent: 'center' },
-  cellRange: { backgroundColor: skyFill.raised },
-  cellEdge: { backgroundColor: skyInk.strong },
+  calendar: { gap: 6 },
+  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 4 },
+  monthStep: { width: CELL, height: CELL, borderRadius: CELL / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: skyFill.pane },
+  monthStepOff: { opacity: 0.35 },
+  week: { flexDirection: 'row' },
+  weekday: { flex: 1, textAlign: 'center' },
+  // Seven equal cells a row, each a full 44pt tall.
+  cell: { flex: 1, height: CELL, alignItems: 'center', justifyContent: 'center' },
+  // The range as one band behind the days, starting and stopping at the middle of its end days.
+  band: { position: 'absolute', top: (CELL - DAY) / 2, bottom: (CELL - DAY) / 2, left: 0, right: 0, backgroundColor: skyFill.raised },
+  bandStart: { left: '50%' },
+  bandEnd: { right: '50%' },
+  day: { width: DAY, height: DAY, borderRadius: DAY / 2, alignItems: 'center', justifyContent: 'center' },
+  dayEdge: { backgroundColor: skyInk.strong },
+  // Can't be picked, and looks it: well back from the days that can.
+  dayOff: { opacity: 0.4 },
   build: { flex: 1, paddingHorizontal: space.screen, paddingTop: 28 },
   buildLines: { gap: 16 },
   buildLine: { flexDirection: 'row', alignItems: 'center', gap: 12 },

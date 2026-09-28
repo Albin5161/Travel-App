@@ -22,7 +22,8 @@ import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { sound } from '@/lib/sound';
 import { FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
-import { isNearHome, useTrips } from '@/state/trips';
+import { getCity } from '@/data/api';
+import { isNearHome, savedElsewhere, useTrips } from '@/state/trips';
 import { skyCta, skyFill, skyInk } from '@/theme/sky';
 import { colors, light, radii, shadows, space } from '@/theme/tokens';
 
@@ -124,6 +125,13 @@ export default function Verify() {
 
   if (!extraction) return null;
   const { city, reel } = extraction;
+  // Places this video shares with one saved before stay in that first collection.
+  const already = saved.flatMap((p) => {
+    const home = savedElsewhere(state.collections, p.id, city.id);
+    const where = home && getCity(home.cityId)?.name;
+    return where ? [{ id: p.id, name: p.name, where }] : [];
+  });
+  const fresh = saved.filter((p) => !already.some((a) => a.id === p.id));
   // A real link searches Google, leaning toward where its places are; the samples search the catalog.
   const live = isLiveReel(reel)
     ? {
@@ -196,9 +204,10 @@ export default function Verify() {
 
       {done ? (
         <Done
-          count={saved.length}
+          count={fresh.length}
           city={city.name}
-          near={isNearHome(city.id, state.homeDistrictId)}
+          near={isNearHome(state.collections[city.id]?.placeIds ?? fresh.map((p) => p.id), state.homeDistrictId)}
+          already={already}
           left={wrong}
           fixes={fixes}
           onFix={(p) => setSheet({ wrong: p })}
@@ -416,6 +425,7 @@ function Done({
   onFix,
   onAdd,
   bottomInset,
+  already,
 }: {
   count: number;
   city: string;
@@ -425,8 +435,15 @@ function Done({
   onFix: (place: Place) => void;
   onAdd: () => void;
   bottomInset: number;
+  already: { name: string; where: string }[];
 }) {
   const where = near ? 'Near Home' : 'Cities';
+  const alreadyLine =
+    already.length === 1
+      ? `${already[0].name} was already saved in ${already[0].where}, so it stays there.`
+      : already.length > 1
+        ? `${already.length} of them were already saved from other videos, so they stay where they are.`
+        : null;
   return (
     <View style={[styles.done, { paddingBottom: bottomInset + 16 }]}>
       <View style={{ flex: 1 }} />
@@ -437,12 +454,14 @@ function Done({
       ) : null}
       <Animated.View entering={DONE_ENTER[1]}>
         <Text variant="display" accessibilityRole="header" style={styles.center}>
-          {count === 0 ? 'Nothing saved.' : `${count} ${count === 1 ? 'place' : 'places'} saved.`}
+          {count === 0 ? (already.length ? 'Already saved.' : 'Nothing saved.') : `${count} ${count === 1 ? 'place' : 'places'} saved.`}
         </Text>
       </Animated.View>
       <Animated.View entering={DONE_ENTER[2]}>
         <Text variant="body" style={styles.center}>
-          {count === 0 ? "None of them were right. That one's on us." : `Find ${city} under ${where}.`}
+          {count === 0
+            ? (alreadyLine ?? "None of them were right. That one's on us.")
+            : `Find ${city} under ${where}.${alreadyLine ? ` ${alreadyLine}` : ''}`}
         </Text>
       </Animated.View>
 

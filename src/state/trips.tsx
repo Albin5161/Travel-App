@@ -2,11 +2,12 @@ import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNo
 
 import { getPlace, getCity, isSampleLink } from '@/data/api';
 import { live, refreshed, register, restore, snapshot, type LiveSnapshot } from '@/data/registry';
-import { allDistricts } from '@/data/regions';
+import { allDistricts, getDistrict } from '@/data/regions';
 import type { Group, GroupState, Member, Vote } from '@/data/group';
 import type { TripPlan, TripPrefs } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
 import { betterPhoto, framePhoto, refreshPlace } from '@/lib/extract';
+import { distanceKm } from '@/lib/geo';
 import { deviceStorage } from '@/lib/live/storage';
 import { fromWire, toWire, type WirePlan } from '@/lib/live/wire';
 import { clusterSpots, districtOf } from '@/lib/spots';
@@ -19,17 +20,17 @@ export interface CityCollection {
 }
 
 /**
- * Planning that was started and not finished, so closing the app mid-way doesn't lose it. One at a
- * time, the latest, and it moves forward with each step: the video being read, its places being
- * checked, the places saved, the questions part-answered, a plan built but not yet saved. Saving the
- * plan (or stopping on purpose) clears it.
+ * Something started and left part-way, so closing the app mid-way doesn't lose it. One at a time,
+ * the latest, and it moves forward with each step: the video being read, its places being checked,
+ * the questions part-answered, a plan built but not yet saved. Saving the places ends the first
+ * part: a saved collection is finished, not abandoned, and planning it is a choice for later. Saving
+ * the plan (or stopping on purpose) clears it.
  */
 export type Draft =
   | { stage: 'reading'; url: string; at: number }
   /** The extraction is kept for real links only: a sample's catalog photos can't be stored, and a
    * sample reads again instantly from its link. */
   | { stage: 'checking'; url: string; extraction: Extraction | null; cityId?: string; reelId?: string; at: number }
-  | { stage: 'saved'; cityId: string; at: number }
   | {
       stage: 'questions';
       cityId: string;
@@ -41,15 +42,13 @@ export type Draft =
     }
   | { stage: 'plan'; cityId: string; at: number };
 
-/** How far along a draft is, in the steps a person sees: read 20, checked 50, questions to 80, plan 90. */
+/** How far along a draft is, in the steps a person sees: reading 10, checking 20, questions 50 to 80, plan 90. */
 export function draftProgress(d: Draft): number {
   switch (d.stage) {
     case 'reading':
       return 10;
     case 'checking':
       return 20;
-    case 'saved':
-      return 50;
     case 'questions':
       return 50 + Math.round((30 * Math.min(Object.keys(d.answered).length, 6)) / 6);
     case 'plan':
@@ -165,11 +164,30 @@ const initial: State = {
   liveVersion: 0,
 };
 
-/** Home-district places live under Near Home; everywhere else is a City. */
-export function isNearHome(cityId: string, homeDistrictId: string | null) {
-  const city = getCity(cityId);
-  const home = allDistricts.find((d) => d.id === homeDistrictId);
-  return !!city && !!home && city.district === home.name;
+/**
+ * How far from home still counts as Near Home: about 45 km in a straight line, an hour and a half
+ * on Kerala roads, the reach of a free Saturday. From Kottayam that takes in Kumarakom, Vagamon and
+ * Alappuzha, and leaves Kochi and Munnar as Cities.
+ */
+export const NEAR_HOME_KM = 45;
+
+/**
+ * Near Home or a City, decided by where a collection's places actually are, measured from home:
+ * Near Home when most of them are within reach. Never by what the video called the place: one reel
+ * says "Kottayam", another "Kumarakom", a third just "Kerala", and all three are the same Saturday
+ * drive. Most, not their middle, so one café near home can't pull a whole city in with it.
+ */
+export function isNearHome(placeIds: string[], homeDistrictId: string | null) {
+  const home = getDistrict(homeDistrictId ?? undefined);
+  const points = placeIds.flatMap((id) => getPlace(id)?.coords ?? []);
+  if (!home || points.length === 0) return false;
+  const near = points.filter((p) => distanceKm(home.centre, p) <= NEAR_HOME_KM).length;
+  return near * 2 > points.length;
+}
+
+/** The collection a place is already saved in, other than `cityId`'s own. A place lives in one. */
+export function savedElsewhere(collections: State['collections'], placeId: string, cityId: string) {
+  return Object.values(collections).find((c) => c.cityId !== cityId && c.placeIds.includes(placeId)) ?? null;
 }
 
 function reducer(state: State, action: Action): State {
@@ -205,7 +223,11 @@ function reducer(state: State, action: Action): State {
       return { ...state, homeTab: action.tab };
     case 'commitExtraction': {
       const { city, reel, places } = action.extraction;
-      const confirmed = action.placeIds ?? places.map((p) => p.id);
+      // A place already saved from another video stays where it is: one place, one collection, so
+      // it can never show under Near Home and Cities at once.
+      const confirmed = (action.placeIds ?? places.map((p) => p.id)).filter(
+        (id) => !savedElsewhere(state.collections, id, city.id),
+      );
       if (confirmed.length === 0) return { ...state, lastExtraction: null, pendingLink: null, draft: null };
       const existing = state.collections[city.id];
       const placeIds = [...new Set([...(existing?.placeIds ?? []), ...confirmed])];
@@ -218,9 +240,10 @@ function reducer(state: State, action: Action): State {
           ...state.collections,
           [city.id]: { cityId: city.id, placeIds, reelIds, addedAt: existing?.addedAt ?? Date.now() },
         },
-        draft: { stage: 'saved', cityId: city.id, at: Date.now() },
+        // Saving is the end of collecting, not a planning left half-done: nothing to continue.
+        draft: null,
         freshCityId: existing ? state.freshCityId : city.id,
-        homeTab: isNearHome(city.id, state.homeDistrictId) ? 'near' : 'cities',
+        homeTab: isNearHome(placeIds, state.homeDistrictId) ? 'near' : 'cities',
       };
     }
     case 'decide':
@@ -391,14 +414,15 @@ function loadTrips(): Partial<State> {
     });
     // Real places first: the plans below are rebuilt from their ids.
     restore(s.live);
-    const draft = restoreDraft(s.draft ?? null, s.collections);
+    const collections = onePerPlace(s.collections, s.tripPlans);
+    const draft = restoreDraft(s.draft ?? null, collections);
     const tripPlans = Object.fromEntries(Object.entries(s.tripPlans).map(([cityId, w]) => [cityId, fromWire(w)]));
     return {
       homeDistrictId: s.homeDistrictId,
       spotStatus: s.spotStatus,
       notifyOnArrival: s.notifyOnArrival,
       onboarded: s.onboarded,
-      collections: s.collections,
+      collections,
       skipped: s.skipped,
       addedLocals: s.addedLocals,
       savedTrips: s.savedTrips,
@@ -414,9 +438,29 @@ function loadTrips(): Partial<State> {
   }
 }
 
+/**
+ * Copies saved before a place could live in only one collection can hold it twice (a café from two
+ * videos, filed under two names). The first collection keeps it; one left empty, with no plan made
+ * from it, goes.
+ */
+function onePerPlace(collections: State['collections'], plans: Record<string, unknown>): State['collections'] {
+  const seen = new Set<string>();
+  const kept = Object.values(collections)
+    .sort((a, b) => a.addedAt - b.addedAt)
+    .map((c) => {
+      const placeIds = c.placeIds.filter((id) => !seen.has(id));
+      placeIds.forEach((id) => seen.add(id));
+      return { ...c, placeIds };
+    })
+    .filter((c) => c.placeIds.length > 0 || !!plans[c.cityId]);
+  return Object.fromEntries(kept.map((c) => [c.cityId, c]));
+}
+
 /** A draft back from storage: its real places re-registered, and dropped if what it points at is gone. */
 function restoreDraft(d: Draft | null, collections: State['collections']): Draft | null {
   if (!d) return null;
+  // Older copies kept "places saved" as planning to continue; saving is finished, not left part-way.
+  if ((d.stage as string) === 'saved') return null;
   if (d.stage === 'checking' && d.extraction) {
     const { city, reel, places } = d.extraction;
     register({ city, reel, places });
@@ -507,6 +551,22 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       state.draft,
     ],
   );
+
+  // A saved real place points at the collection it lives in. Reading another video that shows it
+  // again registers it under that video's city; the collection it was saved in wins.
+  useEffect(() => {
+    let moved = false;
+    Object.values(state.collections).forEach((c) =>
+      c.placeIds.forEach((id) => {
+        const p = live.places[id];
+        if (p && p.cityId !== c.cityId) {
+          live.places[id] = { ...p, cityId: c.cityId };
+          moved = true;
+        }
+      }),
+    );
+    if (moved) dispatch({ type: 'livePlacesRefreshed' });
+  }, [state.collections]);
 
   // Saved real places whose coordinates are more than 30 days old are asked of Google again, a few
   // at a time, once per launch. One that can't be refreshed (offline, today's cap) stays as it was.

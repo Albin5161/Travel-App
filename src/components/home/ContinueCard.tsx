@@ -23,8 +23,6 @@ function stepLine(d: Draft, places: number): string {
       return 'Reading your video';
     case 'checking':
       return places ? `${places} places found · check them` : 'Places found · check them';
-    case 'saved':
-      return 'Places saved · a few questions to go';
     case 'questions':
       return 'Answering a few questions';
     case 'plan':
@@ -65,7 +63,6 @@ export function ContinueCard() {
           router.push('/analysing');
         }
         return;
-      case 'saved':
       case 'questions':
         router.push({ pathname: '/trip/[id]', params: { id: d.cityId } });
         return;

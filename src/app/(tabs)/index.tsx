@@ -90,8 +90,9 @@ export default function Home() {
   }));
 
   const collections = Object.values(state.collections).sort((a, b) => b.addedAt - a.addedAt);
-  const near = collections.filter((c) => isNearHome(c.cityId, state.homeDistrictId));
-  const away = collections.filter((c) => !isNearHome(c.cityId, state.homeDistrictId));
+  // Filed by where the places are, never picked: each collection lands in exactly one of the two.
+  const near = collections.filter((c) => isNearHome(c.placeIds, state.homeDistrictId));
+  const away = collections.filter((c) => !near.includes(c));
   const tab = state.homeTab;
   const shown = tab === 'near' ? near : away;
   const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? 'home';

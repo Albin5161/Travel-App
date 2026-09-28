@@ -173,7 +173,12 @@ $$;
 drop trigger if exists guard_lock on public.trips;
 create trigger guard_lock before update on public.trips for each row execute function public.guard_lock();
 
-grant select, update on public.trips to authenticated;
+-- Members change the plan and (the owner, per guard_lock) the lock, nothing else: with every column
+-- open, a member could make themselves owner and take the lock, or change the code so the share link
+-- stops working. The revoke clears the whole-table grant earlier versions of this file gave.
+revoke update on public.trips from authenticated;
+grant select on public.trips to authenticated;
+grant update (plan, locked) on public.trips to authenticated;
 grant select on public.members to authenticated;
 grant select, insert, update on public.votes to authenticated;
 grant execute on function public.create_trip, public.join_trip to authenticated;

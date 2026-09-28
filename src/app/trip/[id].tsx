@@ -85,11 +85,15 @@ export default function TripSetup() {
       : (saved?.answered ?? {}),
   );
   // "In town" is looked up when the plan is built; a stay found before is kept while it's fresh.
-  const [stayInTown, setStayInTown] = useState(!!previous?.stay || !!saved?.stayInTown);
+  // Near home there's no stay to keep, even one chosen before this counted as near home.
+  const [stayInTown, setStayInTown] = useState(!nearHome && (!!previous?.stay || !!saved?.stayInTown));
   // Never resumed onto the build step itself: that one runs when the last answer is given.
   const [history, setHistory] = useState<Step[]>(() => {
     if (single) return ['build'];
-    const kept = (saved?.history ?? []).filter((h): h is Step => h !== 'build' && STEPS.includes(h as Step));
+    // Nor onto a question this trip no longer asks: near home has no stay.
+    const kept = (saved?.history ?? []).filter(
+      (h): h is Step => h !== 'build' && STEPS.includes(h as Step) && !(nearHome && h === 'stay'),
+    );
     return kept.length ? kept : ['who'];
   });
   const step = history[history.length - 1];
@@ -425,9 +429,9 @@ const shiftMonth = (month: string, n: number) => {
 };
 
 /**
- * One month at a time, from this one to six ahead. Tap your first day, then your last. Days that
- * can't be picked look it: the past, and (while choosing the last day) anything past a week's trip.
- * The chosen days join into one band, the way a range reads on paper.
+ * One month at a time, from this one to six ahead. Tap your first day, then your last; a day more
+ * than a week on starts again from there. Past days can't be picked, and look it. The chosen days
+ * join into one band, the way a range reads on paper.
  */
 function Calendar({
   today,
@@ -446,7 +450,8 @@ function Calendar({
   const [month, setMonth] = useState(() => monthOf(start ?? first));
   const earliest = monthOf(first);
   const latest = shiftMonth(earliest, MONTHS_AHEAD);
-  // While choosing the last day, the longest trip there is marks how far it can go.
+  // While choosing the last day, the longest trip there is marks how far it can go. A day past it
+  // isn't locked: tapping one starts again from there, as tapping a day before the start does.
   const lastPickable = picking === 'end' && start ? addDays(start, MAX_DAYS - 1) : null;
 
   // The month's days under their weekdays, in whole weeks, one row each: every row is seven equal
@@ -463,7 +468,7 @@ function Calendar({
 
   const tap = (iso: string) => {
     haptic.selection();
-    if (picking === 'start' || !start || iso < start) {
+    if (picking === 'start' || !start || iso < start || (!!lastPickable && iso > lastPickable)) {
       onChange(iso, 1);
       setPicking('end');
     } else {
@@ -476,7 +481,7 @@ function Calendar({
   const hint = !start
     ? 'Tap the day you set off.'
     : picking === 'end'
-      ? `${formatDay(start)} is day one. Tap your last day, up to ${MAX_DAYS} days, or continue with just the one.`
+      ? `${formatDay(start)} is day one. Tap your last day (up to ${MAX_DAYS} days), a later day to start there instead, or continue with just the one.`
       : `${formatRange(start, days)}, ${days} ${days === 1 ? 'day' : 'days'}. Tap any day to start again.`;
 
   return (
@@ -502,7 +507,7 @@ function Calendar({
         <View key={w} style={styles.week}>
           {week.map((iso, i) => {
             if (!iso) return <View key={i} style={styles.cell} />;
-            const off = iso < first || (!!lastPickable && iso > lastPickable);
+            const off = iso < first;
             const inRange = !!start && !!end && iso >= start && iso <= end;
             const edge = iso === start || iso === end;
             const band = inRange && start !== end;

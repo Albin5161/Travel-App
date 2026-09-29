@@ -458,7 +458,7 @@ function drawBlurred(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: nu
 }
 
 /** The city's photo, readable back from a canvas; none when its host won't allow that. */
-async function loadImage(source: City['hero']): Promise<HTMLImageElement | null> {
+export async function loadImage(source: City['hero']): Promise<HTMLImageElement | null> {
   const uri = source ? uriOf(source) : null;
   if (!uri) return null;
   try {

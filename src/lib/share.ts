@@ -6,6 +6,7 @@ import { captureRef } from '@/lib/capture';
 
 import type { Party } from '@/data/planner';
 import { drawCardImage, type CardData } from '@/lib/cardImage';
+import type { PdfInput } from '@/lib/planPdf';
 
 /**
  * Where a shared plan opens: the group vote on the public web build (EAS Hosting). There's no
@@ -62,31 +63,19 @@ export async function saveImage(
   data: CardData,
   ready?: File | null,
 ): Promise<SaveResult> {
-  if (Platform.OS === 'web') {
-    const file = ready ?? (await webImageFile(kind, data, name));
-    const nav = navigator as WebNav;
-    if (nav.canShare?.({ files: [file] })) {
-      try {
-        await nav.share({ files: [file] });
-        return 'shared';
-      } catch (e) {
-        if ((e as Error).name === 'AbortError') return 'dismissed';
-        // Not allowed this time (the tap's moment passed): fall through to a download.
-      }
-    }
-    const url = URL.createObjectURL(file);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    return 'downloaded';
-  }
+  if (Platform.OS === 'web') return deliver(ready ?? (await webImageFile(kind, data, name)));
   const uri = await captureRef(view, { format: 'png', result: 'tmpfile', ...IMAGE_SIZE[kind] });
   await Sharing.shareAsync(uri, { mimeType: 'image/png', UTI: 'public.png', dialogTitle: 'Save or share your plan' });
   return 'shared';
+}
+
+/**
+ * The plan as a PDF: into the share sheet where there is one (iPhone: Save to Files, WhatsApp,
+ * Mail), else as a download. Web only for now; the PDF code loads on the first ask.
+ */
+export async function savePlanPdf(input: PdfInput): Promise<SaveResult> {
+  const { planPdfFile } = await import('@/lib/planPdf');
+  return deliver(await planPdfFile(input));
 }
 
 /**
@@ -121,4 +110,27 @@ export async function sharePlanCard(card: RefObject<View | null>, message: strin
   }
   await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your plan' });
   return 'shared';
+}
+
+/** A made file, on the web: the share sheet where the browser has one, else a download. */
+async function deliver(file: File): Promise<SaveResult> {
+  const nav = navigator as WebNav;
+  if (nav.canShare?.({ files: [file] })) {
+    try {
+      await nav.share({ files: [file] });
+      return 'shared';
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return 'dismissed';
+      // Not allowed this time (the tap's moment passed): fall through to a download.
+    }
+  }
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  return 'downloaded';
 }

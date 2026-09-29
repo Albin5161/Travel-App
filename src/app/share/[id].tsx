@@ -8,6 +8,7 @@ import { Button } from '@/components/Button';
 import { CARD_RATIO, ShareCard, ShareStory } from '@/components/share/ShareCard';
 import { PatternBackdrop } from '@/components/share/PatternBackdrop';
 import { TiltCard } from '@/components/share/TiltCard';
+import { usePlanPdf } from '@/components/share/usePlanPdf';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { getCity } from '@/data/api';
@@ -63,6 +64,7 @@ export default function ShareScreen() {
     if (!plan) router.dismissTo('/');
   }, [plan]);
 
+  const pdf = usePlanPdf(city, plan);
   if (!city || !plan) return null;
   const stops = plan.days.reduce((sum, d) => sum + d.stops.length, 0);
   const party = partyOf(plan.prefs);
@@ -77,6 +79,13 @@ export default function ShareScreen() {
   const cardW = Math.min(W - 64, 340);
   const cardH = Math.round(cardW * CARD_RATIO);
   const fit = stageH ? Math.min(1, (stageH - 20) / cardH) : 1;
+
+  const savePdf = async () => {
+    const result = await pdf.save();
+    if (result === 'failed') setNote('Couldn’t make the PDF. Try again?');
+    else if (result === 'downloaded') setNote('PDF saved to your downloads.');
+    else if (result === 'shared') setNote('PDF ready. Keep it for the trip.');
+  };
 
   const save = async (kind: ImageKind) => {
     if (saving) return;
@@ -201,7 +210,7 @@ export default function ShareScreen() {
           <Button
             kind="secondary"
             compact
-            label={saving === 'card' ? 'Making it…' : 'Save image'}
+            label={saving === 'card' ? 'Making…' : pdf.available ? 'Image' : 'Save image'}
             onPress={() => save('card')}
             style={styles.save}
             accessibilityHint="Saves the card as a picture you can post"
@@ -209,11 +218,21 @@ export default function ShareScreen() {
           <Button
             kind="secondary"
             compact
-            label={saving === 'story' ? 'Making it…' : 'Story size'}
+            label={saving === 'story' ? 'Making…' : pdf.available ? 'Story' : 'Story size'}
             onPress={() => save('story')}
             style={styles.save}
             accessibilityHint="Saves a tall version for Instagram or WhatsApp stories"
           />
+          {pdf.available ? (
+            <Button
+              kind="secondary"
+              compact
+              label={pdf.making ? 'Making…' : 'PDF'}
+              onPress={savePdf}
+              style={styles.save}
+              accessibilityHint="Saves the plan as a PDF: every day, to print or keep for the trip"
+            />
+          ) : null}
         </View>
         {sent && party === 'solo' ? null : (
           <Button kind="text" label={sent ? 'Done' : 'Done for now'} onPress={() => router.dismissTo('/trips')} />

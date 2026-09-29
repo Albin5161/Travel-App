@@ -25,6 +25,7 @@ import { IconButton } from '@/components/IconButton';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { PassportStamp } from '@/components/motion/PassportStamp';
+import { usePlanPdf } from '@/components/share/usePlanPdf';
 import { StopActions } from '@/components/plan/StopActions';
 import { costLabel, typeLine } from '@/components/PlaceMeta';
 import { PressableScale } from '@/components/PressableScale';
@@ -100,6 +101,7 @@ export default function PlanScreen() {
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<Set<string>>(new Set());
   const [note, setNote] = useState<string | null>(null);
+  const pdf = usePlanPdf(city, plan);
   const [stamping, setStamping] = useState(false);
 
   // No plan yet (a reload, or a deep link): ask the questions first.
@@ -568,6 +570,21 @@ export default function PlanScreen() {
               Places found by AI from videos; times and drives are estimates. It can make mistakes, so check
               before you go.
             </Text>
+            {/* A copy to keep: every day, its reasons and its stops, to print or open offline. */}
+            {pdf.available ? (
+              <Button
+                kind="secondary"
+                compact
+                label={pdf.making ? 'Making the PDF…' : 'Download as PDF'}
+                onPress={async () => {
+                  const result = await pdf.save();
+                  if (result === 'failed') setNote('Couldn’t make the PDF. Try again?');
+                  else if (result === 'downloaded') setNote('PDF saved to your downloads.');
+                }}
+                style={styles.pdf}
+                accessibilityHint="A printable copy of every day, to keep for the trip"
+              />
+            ) : null}
           </View>
         </Animated.ScrollView>
 
@@ -1022,6 +1039,7 @@ const styles = StyleSheet.create({
   legLineOn: { ...StyleSheet.absoluteFill, backgroundColor: skyAccent, transformOrigin: 'top' },
   // Quiet small print at the foot of the plan, clear of the floating Save button.
   aiNote: { marginTop: 24, textAlign: 'center' },
+  pdf: { alignSelf: 'center', marginTop: 16 },
   addOwn: {
     flexDirection: 'row',
     alignItems: 'center',

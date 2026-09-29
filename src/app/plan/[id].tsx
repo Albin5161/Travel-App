@@ -407,7 +407,7 @@ export default function PlanScreen() {
             </Animated.View>
           ) : (
             <Text variant="label" color={skyInk.faint} style={styles.note}>
-              {editing ? 'Move stops with the arrows, or tap ⋯ for more.' : 'Pin the stops you love. Reshuffle keeps them and changes the rest.'}
+              {editing ? 'Move stops with the arrows. Tap ⋯ to lock one in place, swap or remove it.' : 'Love a stop? Tap Edit to lock it. Reshuffle keeps locked stops and changes the rest.'}
             </Text>
           )}
 
@@ -458,7 +458,7 @@ export default function PlanScreen() {
 
             {stops.length === 0 ? (
               <Text variant="body" style={styles.emptyDay}>
-                Nothing planned this day. Add a saved spot below, move one here, or regenerate.
+                Nothing planned this day. Add a saved spot below, move one here, or reshuffle.
               </Text>
             ) : null}
 
@@ -495,10 +495,6 @@ export default function PlanScreen() {
                     editing={editing}
                     first={i === 0}
                     last={i === stops.length - 1}
-                    onPin={() => {
-                      haptic.selection();
-                      update(togglePin(plan, dayIndex, stop.place.id));
-                    }}
                     onMove={(by) => {
                       haptic.selection();
                       update(reorder(plan, dayIndex, stop.place.id, by));
@@ -805,7 +801,6 @@ function StopRow({
   editing,
   first,
   last,
-  onPin,
   onMove,
   onMore,
 }: {
@@ -819,7 +814,6 @@ function StopRow({
   editing: boolean;
   first: boolean;
   last: boolean;
-  onPin: () => void;
   onMove: (by: -1 | 1) => void;
   onMore: () => void;
 }) {
@@ -867,9 +861,12 @@ function StopRow({
         </View>
         <Image source={stop.place.photo} style={styles.thumb} contentFit="cover" transition={0} />
         <View style={styles.stopText}>
-          <Text variant="bodyStrong" numberOfLines={1}>
-            {stop.place.name}
-          </Text>
+          <View style={styles.nameRow}>
+            {stop.pinned ? <Feather name="lock" size={12} color={skyInk.soft} accessibilityLabel="Locked" /> : null}
+            <Text variant="bodyStrong" numberOfLines={1} style={styles.name}>
+              {stop.place.name}
+            </Text>
+          </View>
           <Text variant="data" numberOfLines={1}>
             {[formatClock(stop.startMinutes), formatDuration(stop.place.minutes), costLabel(stop.place.cost)].filter(Boolean).join(' · ')}
           </Text>
@@ -893,8 +890,6 @@ function StopRow({
             <SmallButton icon="chevron-down" label="Move later" disabled={last} onPress={() => onMove(1)} />
             <SmallButton icon="more-horizontal" label={`More for ${stop.place.name}`} onPress={onMore} />
           </View>
-        ) : !stop.suggested ? (
-          <SmallButton icon="map-pin" label={stop.pinned ? 'Unpin' : 'Pin'} on={stop.pinned} onPress={onPin} />
         ) : null}
     </Animated.View>
   );
@@ -1000,6 +995,8 @@ const styles = StyleSheet.create({
   whyTick: { marginTop: 3 },
   whyText: { flex: 1 },
   stopWhy: { marginTop: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  name: { flexShrink: 1 },
   emptyDay: { marginTop: 14 },
   partHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 20, marginBottom: 10 },
   stop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },

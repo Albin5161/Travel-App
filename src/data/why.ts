@@ -95,7 +95,7 @@ export function whyStop(plan: TripPlan, day: number, index: number): string | nu
     return p.type === 'food' && part === 'evening' ? 'Dinner nearby: the day had no evening meal.' : 'A local pick close to your stops.';
   }
   if (isCustom(p)) return `Your own stop, in the ${p.bestTime} as asked.`;
-  if (s.pinned) return 'You pinned it here, so it stays when you reshuffle.';
+  if (s.pinned) return 'Locked by you: it stays on this day when you reshuffle.';
   // Earlier than its best time: the planner never does that, so it was moved by hand. Later: the
   // stops before it ran on, and this is the first slot after them.
   if (RANK[p.bestTime] > RANK[part]) return `Best in the ${p.bestTime}; moved earlier by you.`;

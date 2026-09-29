@@ -43,7 +43,7 @@ export default function SpotsMap() {
   const { state, dispatch } = useTrips();
   const groups = useSpotsByDistrict();
   const targets = useArrivalTargets();
-  const { statusOf, toggle } = useSpotStatus();
+  const { statusOf } = useSpotStatus();
   const where = useWhereIAm();
 
   // One filter, what kind of place. Near home and away are both listed, near home first, and every
@@ -199,7 +199,6 @@ export default function SpotsMap() {
               spots={homeSpots.filter((p) => matchesKind(p, kind))}
               where={where.at}
               statusOf={statusOf}
-              toggle={toggle}
               width={W}
             />
           ) : null}
@@ -209,7 +208,6 @@ export default function SpotsMap() {
               kind={kind}
               from={where.at}
               statusOf={statusOf}
-              toggle={toggle}
               focus={arrived ?? districtParam ?? null}
               labelled={homeSpots.length > 0}
             />
@@ -234,13 +232,11 @@ function HomeScope({
   spots,
   where,
   statusOf,
-  toggle,
   width,
 }: {
   spots: Place[];
   where: { lat: number; lng: number };
   statusOf: (id: string) => 'want' | 'been';
-  toggle: (id: string) => void;
   width: number;
 }) {
   // Somewhere you've already been is not a weekend suggestion.
@@ -290,7 +286,6 @@ function HomeScope({
               spot={s}
               minutes={driveMinutes(where, s)}
               status={statusOf(s.id)}
-              onToggleStatus={() => toggle(s.id)}
               onPress={() => router.push({ pathname: '/place/[id]', params: { id: s.id } })}
             />
           ))}
@@ -319,7 +314,6 @@ function AwayScope({
   kind,
   from,
   statusOf,
-  toggle,
   focus,
   labelled,
 }: {
@@ -327,7 +321,6 @@ function AwayScope({
   kind: SpotKind;
   from: { lat: number; lng: number };
   statusOf: (id: string) => 'want' | 'been';
-  toggle: (id: string) => void;
   focus: string | null;
   /** With spots near home above, a heading says where "away" starts. */
   labelled: boolean;
@@ -383,8 +376,7 @@ function AwayScope({
                     minutes={far ? null : driveMinutes(from, s)}
                     showCreator={creators.size > 1}
                     status={statusOf(s.id)}
-                    onToggleStatus={() => toggle(s.id)}
-                    onPress={() => router.push({ pathname: '/place/[id]', params: { id: s.id } })}
+                          onPress={() => router.push({ pathname: '/place/[id]', params: { id: s.id } })}
                   />
                 ))}
               </View>

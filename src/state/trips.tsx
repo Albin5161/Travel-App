@@ -4,7 +4,7 @@ import { getPlace, getCity, isSampleLink } from '@/data/api';
 import { live, refreshed, register, restore, snapshot, type LiveSnapshot } from '@/data/registry';
 import { allDistricts, getDistrict } from '@/data/regions';
 import type { Group, GroupState, Member, Vote } from '@/data/group';
-import type { TripPlan, TripPrefs } from '@/data/planner';
+import { isoDay, type TripPlan, type TripPrefs } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
 import { betterPhoto, framePhoto, refreshPlace } from '@/lib/extract';
 import { distanceKm } from '@/lib/geo';
@@ -68,6 +68,8 @@ interface State {
   homeDistrictId: string | null;
   /** Want to go, or already been. Absent means want. */
   spotStatus: Record<string, SpotStatus>;
+  /** Trips whose "did you make it?" has been answered (or waved off), by city: asked once. */
+  recapped: Record<string, boolean>;
   /** Whether arrival notifications are switched on, independent of the OS permission. */
   notifyOnArrival: boolean;
   /** A district just arrived in, for the in-app banner. Cleared when dismissed or acted on. */
@@ -137,6 +139,7 @@ type Action =
   | { type: 'clearFresh' }
   | { type: 'setHomeDistrict'; districtId: string }
   | { type: 'setSpotStatus'; placeId: string; status: SpotStatus }
+  | { type: 'finishRecap'; cityId: string; been: string[] }
   | { type: 'setNotifyOnArrival'; on: boolean }
   | { type: 'arrived'; districtId: string }
   | { type: 'clearArrival' }
@@ -148,6 +151,7 @@ const initial: State = {
   draft: null,
   homeDistrictId: 'kottayam',
   spotStatus: {},
+  recapped: {},
   notifyOnArrival: true,
   arrivedDistrictId: null,
   onboarded: false,
@@ -335,6 +339,12 @@ function reducer(state: State, action: Action): State {
       return { ...state, homeDistrictId: action.districtId };
     case 'setSpotStatus':
       return { ...state, spotStatus: { ...state.spotStatus, [action.placeId]: action.status } };
+    case 'finishRecap':
+      return {
+        ...state,
+        spotStatus: { ...state.spotStatus, ...Object.fromEntries(action.been.map((id) => [id, 'been' as const])) },
+        recapped: { ...state.recapped, [action.cityId]: true },
+      };
     case 'setNotifyOnArrival':
       return { ...state, notifyOnArrival: action.on };
     case 'arrived':
@@ -393,6 +403,8 @@ type SavedTrips = {
   v: 1;
   homeDistrictId: string | null;
   spotStatus: State['spotStatus'];
+  /** Absent in saves from before the trip recap. */
+  recapped?: State['recapped'];
   notifyOnArrival: boolean;
   onboarded: boolean;
   collections: State['collections'];
@@ -453,6 +465,7 @@ function loadTrips(): Partial<State> {
     return {
       homeDistrictId: s.homeDistrictId,
       spotStatus: s.spotStatus,
+      recapped: s.recapped ?? {},
       notifyOnArrival: s.notifyOnArrival,
       onboarded: s.onboarded,
       collections,
@@ -530,6 +543,7 @@ function saveTrips(state: State) {
     pricesHonest: true,
     homeDistrictId: state.homeDistrictId,
     spotStatus: state.spotStatus,
+    recapped: state.recapped,
     notifyOnArrival: state.notifyOnArrival,
     onboarded: state.onboarded,
     collections: state.collections,
@@ -589,6 +603,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     [
       state.homeDistrictId,
       state.spotStatus,
+      state.recapped,
       state.notifyOnArrival,
       state.onboarded,
       state.collections,
@@ -796,6 +811,24 @@ export function useArrivalTargets() {
         ];
       }),
     [groups],
+  );
+}
+
+/**
+ * The first saved trip whose dates are over and whose "did you make it?" hasn't been answered, by
+ * city id; null when there's none. Trips without dates are never asked (their places can be marked
+ * on each place's page).
+ */
+export function useTripToRecap(): string | null {
+  const { state } = useTrips();
+  const today = isoDay(new Date());
+  return (
+    Object.keys(state.savedTrips).find((id) => {
+      if (!state.savedTrips[id] || state.recapped[id]) return false;
+      const days = state.tripPlans[id]?.days ?? [];
+      const last = days[days.length - 1]?.date;
+      return !!last && last < today;
+    }) ?? null
   );
 }
 

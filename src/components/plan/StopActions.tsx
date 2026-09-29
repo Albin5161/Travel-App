@@ -24,7 +24,7 @@ type Props = {
 };
 
 /**
- * Everything you can do to one stop, in a sheet from the bottom: pin it, move it to another day,
+ * Everything you can do to one stop, in a sheet from the bottom: lock it, move it to another day,
  * swap it for something else, or take it out. The list rows sit in thumb reach; the swap list only
  * opens when asked for, so the common actions stay one tap away.
  */
@@ -94,9 +94,9 @@ export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap
             <View style={styles.actions}>
               {!stop.suggested ? (
                 <Action
-                  icon="map-pin"
-                  label={stop.pinned ? 'Unpin' : 'Pin to this day'}
-                  detail={stop.pinned ? 'Regenerating may move it' : 'Regenerating keeps it here'}
+                  icon={stop.pinned ? 'unlock' : 'lock'}
+                  label={stop.pinned ? 'Unlock' : 'Lock in place'}
+                  detail={stop.pinned ? 'Reshuffle can move it again' : 'Reshuffle keeps it on this day'}
                   onPress={onPin}
                 />
               ) : null}

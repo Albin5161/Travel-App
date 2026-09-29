@@ -1,17 +1,19 @@
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
-import { Linking, StyleSheet, useWindowDimensions } from 'react-native';
+import { Linking, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, useReducedMotion } from 'react-native-reanimated';
 
 import { Button } from '@/components/Button';
 import { Reveal, RevealProvider, useReveal } from '@/components/motion/Reveal';
 import { PlaceCard } from '@/components/PlaceCard';
 import { Glass } from '@/components/sky/Glass';
+import { Tick } from '@/components/sky/Tick';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { getPlace } from '@/data/api';
 import { usePlaceInfo } from '@/lib/details';
-import { useTrips } from '@/state/trips';
+import { haptic } from '@/lib/haptics';
+import { useSpotStatus, useTrips } from '@/state/trips';
 import { skyInk } from '@/theme/sky';
 import { space } from '@/theme/tokens';
 
@@ -19,6 +21,7 @@ export default function PlaceSheet() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const place = getPlace(id);
   const { state, dispatch } = useTrips();
+  const { statusOf, toggle } = useSpotStatus();
   const { height: H } = useWindowDimensions();
   const { info, loading } = usePlaceInfo(place);
   const { frame, ...scrollProps } = useReveal();
@@ -60,6 +63,23 @@ export default function PlaceSheet() {
           onPress={() => dispatch({ type: 'decide', placeId: place.id, keep: skipped })}
           style={styles.action}
         />
+      </Reveal>
+      {/* Been here: for a place visited outside a planned trip (a trip's recap asks after its dates). */}
+      <Reveal>
+        <Pressable
+          onPress={() => {
+            haptic.selection();
+            toggle(place.id);
+          }}
+          style={styles.been}
+          accessibilityRole="checkbox"
+          aria-checked={statusOf(place.id) === 'been'}
+        >
+          <Tick on={statusOf(place.id) === 'been'} />
+          <Text variant="label" color={skyInk.soft}>
+            I’ve been here
+          </Text>
+        </Pressable>
       </Reveal>
       {skipped ? (
         <Text variant="label" color={skyInk.faint} style={styles.note}>
@@ -151,6 +171,8 @@ function OnGoogle({ info, onOpen }: { info: Info; onOpen: () => void }) {
 }
 
 const styles = StyleSheet.create({
+  // A 44pt row: the tick and its words both take the tap.
+  been: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, alignSelf: 'center', marginTop: 8 },
   googleWrap: { marginTop: 24 },
   google: { padding: space.lg, gap: 10 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

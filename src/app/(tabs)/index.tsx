@@ -23,6 +23,7 @@ import { SkyScreen } from '@/components/sky/SkyScreen';
 import { EXAMPLE_LINKS, getCity, getReel } from '@/data/api';
 import { places, smallPhoto } from '@/data/catalog';
 import { ContinueCard } from '@/components/home/ContinueCard';
+import { RecapCard } from '@/components/home/RecapCard';
 import { PhotoStrip } from '@/components/home/PhotoStrip';
 import { allDistricts } from '@/data/regions';
 import type { Platform as SourcePlatform } from '@/data/types';
@@ -192,6 +193,7 @@ export default function Home() {
           </Animated.View>
 
           <View style={styles.continue}>
+            <RecapCard />
             <ContinueCard />
           </View>
 

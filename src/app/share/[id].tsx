@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { CARD_RATIO, ShareCard, ShareStory } from '@/components/share/ShareCard';
+import { PatternBackdrop } from '@/components/share/PatternBackdrop';
 import { TiltCard } from '@/components/share/TiltCard';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
@@ -19,6 +20,7 @@ import { createTrip } from '@/lib/live/api';
 import { ensureUser, liveEnabled } from '@/lib/live/client';
 import type { CardData } from '@/lib/cardImage';
 import { planMessage, saveImage, sharePlanCard, webImageFile, type ImageKind } from '@/lib/share';
+import { patternFor } from '@/lib/patterns';
 import { startGroup } from '@/state/group';
 import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
@@ -42,6 +44,7 @@ export default function ShareScreen() {
   const card = useRef<View>(null);
   const story = useRef<View>(null);
   const look = SKY[useHomeSky()];
+  const backdrop = patternFor(city?.state ?? '');
   const [issued] = useState(() => new Date());
   // Stable while nothing about the card changes, so the pictures are drawn once.
   const cardData = useMemo<CardData | null>(() => (city && plan ? { city, plan, issued, look } : null), [city, plan, issued, look]);
@@ -140,6 +143,7 @@ export default function ShareScreen() {
 
   return (
     <SkyScreen style={{ paddingTop: insets.top + 24, paddingBottom: insets.bottom + 12 }}>
+      <PatternBackdrop pattern={backdrop.pattern} top={look.stops[0]} calm={insets.top + 150} />
       <View style={styles.head}>
         <Animated.View entering={HEAD_IN}>
           <Text variant="eyebrow">
@@ -162,6 +166,9 @@ export default function ShareScreen() {
           </View>
         ) : null}
       </View>
+      <Text variant="micro" color={skyInk.soft} style={styles.credit}>
+        Background · {backdrop.credit}
+      </Text>
 
       <View style={styles.actions}>
         {note ? (
@@ -264,6 +271,7 @@ const styles = StyleSheet.create({
   head: { paddingHorizontal: space.screen },
   title: { marginTop: 8 },
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  credit: { textAlign: 'center', marginTop: 6, marginBottom: 10 },
   actions: { paddingHorizontal: space.screen, gap: 4 },
   note: { textAlign: 'center', marginBottom: 8 },
   saves: { flexDirection: 'row', gap: 10, marginTop: 10 },

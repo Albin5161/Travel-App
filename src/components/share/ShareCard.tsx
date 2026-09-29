@@ -1,14 +1,18 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image, StyleSheet, Text as RNText, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
 
 import { formatDay, formatRange, type TripPlan } from '@/data/planner';
 import type { City } from '@/data/types';
 import { useBlurredPhoto } from '@/lib/blur';
 import { formatClock } from '@/lib/geo';
+import { patternFor } from '@/lib/patterns';
+import { QR_PATH, QR_QUIET, QR_SIZE } from '@/lib/qr';
 import { skyAccent, type SkyLook } from '@/theme/sky';
 import { fonts, light } from '@/theme/tokens';
 
+import { PatternBackdrop } from './PatternBackdrop';
 import { useOptionalTilt } from './TiltCard';
 
 /** Feed-friendly 4:5, the tallest Instagram keeps whole in a post. */
@@ -67,10 +71,12 @@ export function cardFacts(city: City, plan: TripPlan, issued: Date) {
     })),
     more: more > 0 ? `+ ${more} more ${more === 1 ? 'stop' : 'stops'}` : null,
     issued: `ISSUED ${issueDate(issued)}`,
-    facts: `${stops.length} stops · ${km.toFixed(1)} km · xplore.expo.app`,
-    barcode: barcodeBars(`${city.id}${plan.seed}${stops.length}`),
-    // The pane's height follows its rows, so the photo gets every point the plan doesn't need.
-    paneUnits: 18 + 44 + 14 + shown.length * 26 + (more > 0 ? 20 : 0) + 16 + 38 + 16,
+    facts: [`${stops.length} ${stops.length === 1 ? 'stop' : 'stops'}`, km >= 0.1 ? `${km.toFixed(1)} km` : null, 'xplore.expo.app']
+      .filter(Boolean)
+      .join(' · '),
+    // The pane's height follows its rows, so the photo gets every point the plan doesn't need. The
+    // foot is the QR's height, QR_UNITS.
+    paneUnits: 18 + 44 + 14 + shown.length * 26 + (more > 0 ? 20 : 0) + 16 + 12 + QR_UNITS + 16,
   };
 }
 
@@ -179,7 +185,7 @@ export function ShareCard({ city, plan, width, issued, square }: Props) {
                 {facts.facts}
               </RNText>
             </View>
-            <Barcode bars={facts.barcode} s={s} />
+            <QrTile s={s} />
           </View>
         </View>
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.paneRim, { borderRadius: 22 * s }]} />
@@ -212,28 +218,21 @@ function Tear({ s }: { s: number }) {
   );
 }
 
-// Decorative, but stable: the same plan always gets the same bars, in card units within 72 × 26.
-function barcodeBars(seed: string) {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
-  const bars: { x: number; w: number }[] = [];
-  let x = 0;
-  while (x < 70) {
-    h = Math.imul(h ^ (h >>> 13), 1274126177);
-    const w = 1 + ((h >>> 3) % 3);
-    bars.push({ x, w });
-    x += w + 1 + ((h >>> 7) % 3);
-  }
-  return bars;
-}
+/** The QR tile's side, in card units: large enough for a phone to read it off a story. */
+export const QR_UNITS = 40;
 
-// Boxes, so a picture of the card keeps them exactly.
-function Barcode({ bars, s }: { bars: { x: number; w: number }[]; s: number }) {
+/**
+ * Where the barcode was: a real QR code that opens xplore.expo.app, on a white tile so it reads on
+ * any photo's frost. One path, so a picture of the card keeps it exactly.
+ */
+function QrTile({ s }: { s: number }) {
+  const side = QR_UNITS * s;
+  const span = QR_SIZE + QR_QUIET * 2;
   return (
-    <View aria-hidden style={{ width: 72 * s, height: 26 * s }}>
-      {bars.map((b) => (
-        <View key={b.x} style={[styles.bar, { left: b.x * s, width: b.w * s, height: 26 * s }]} />
-      ))}
+    <View style={[styles.qr, { width: side, height: side, borderRadius: 6 * s }]} accessibilityLabel="QR code: opens xplore.expo.app">
+      <Svg width={side} height={side} viewBox={`${-QR_QUIET} ${-QR_QUIET} ${span} ${span}`}>
+        <Path d={QR_PATH} fill={light.ink} />
+      </Svg>
     </View>
   );
 }
@@ -255,9 +254,11 @@ function issueDate(d: Date) {
  */
 export function ShareStory({ city, plan, issued, look }: { city: City; plan: TripPlan; issued: Date; look: SkyLook }) {
   const n = plan.days.length;
+  const { pattern, credit } = patternFor(city.state);
   return (
     <View style={styles.story}>
       <LinearGradient colors={[...look.stops]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
+      <PatternBackdrop pattern={pattern} top={look.stops[0]} />
       <View style={styles.storyHead}>
         <RNText style={styles.storyKicker}>{n === 1 ? 'MY NEXT DAY OUT' : 'MY NEXT TRIP'}</RNText>
         <RNText style={styles.storyTitle} numberOfLines={2}>
@@ -267,6 +268,7 @@ export function ShareStory({ city, plan, issued, look }: { city: City; plan: Tri
       <View style={styles.storyCard}>
         <ShareCard city={city} plan={plan} width={280} issued={issued} />
       </View>
+      <RNText style={styles.storyCredit}>{`BACKGROUND · ${credit.toUpperCase()}`}</RNText>
       <View style={styles.storyFoot}>
         <RNText style={styles.storyLine}>Turned from a travel reel, stop by stop.</RNText>
         <RNText style={styles.storyBrand}>Xplore · xplore.expo.app</RNText>
@@ -314,9 +316,10 @@ const styles = StyleSheet.create({
   more: { fontFamily: fonts.sansMedium, color: light.inkSoft },
   tear: { flexDirection: 'row', overflow: 'hidden' },
   tearDash: { borderRadius: 1, backgroundColor: 'rgba(17,17,17,0.22)' },
-  footer: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  // The facts sit level with the middle of the QR tile.
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   facts: { fontFamily: fonts.sansMedium, color: light.ink },
-  bar: { position: 'absolute', top: 0, backgroundColor: light.ink },
+  qr: { backgroundColor: '#FFFFFF', overflow: 'hidden', flexShrink: 0 },
   story: { width: 360, height: 640, overflow: 'hidden', alignItems: 'center' },
   storyHead: { alignSelf: 'stretch', paddingHorizontal: 40, paddingTop: 52, gap: 8 },
   storyKicker: { fontFamily: fonts.sansSemi, fontSize: 11, lineHeight: 14, letterSpacing: 2, color: 'rgba(255,255,255,0.85)' },
@@ -324,6 +327,7 @@ const styles = StyleSheet.create({
   storyAccent: { color: skyAccent },
   storyCard: { marginTop: 22, borderRadius: 28, boxShadow: '0 20px 50px rgba(0,0,0,0.35)' },
   storyFoot: { position: 'absolute', left: 32, right: 32, bottom: 40, alignItems: 'center', gap: 6 },
+  storyCredit: { marginTop: 16, fontFamily: fonts.sansSemi, fontSize: 10, lineHeight: 12, letterSpacing: 1.2, color: 'rgba(255,255,255,0.72)' },
   storyLine: { fontFamily: fonts.sansMedium, fontSize: 14, lineHeight: 19, color: 'rgba(255,255,255,0.88)', textAlign: 'center' },
   storyBrand: { fontFamily: fonts.displayBold, fontSize: 16, lineHeight: 21, color: '#FFFFFF' },
 });

@@ -1,7 +1,9 @@
-import { CARD_INSET, CARD_RATIO, cardFacts } from '@/components/share/ShareCard';
+import { CARD_INSET, CARD_RATIO, cardFacts, QR_UNITS } from '@/components/share/ShareCard';
 import type { TripPlan } from '@/data/planner';
 import type { City } from '@/data/types';
 import { uriOf } from '@/lib/blur';
+import { PATTERN_ALPHA, PATTERN_GOLD, patternFor, type Pattern } from '@/lib/patterns';
+import { QR_QUIET, QR_RUNS, QR_SIZE } from '@/lib/qr';
 import { skyAccent, type SkyLook } from '@/theme/sky';
 import { fonts, light } from '@/theme/tokens';
 
@@ -218,16 +220,28 @@ function paintCard(
     ctx.fill();
   }
 
-  // Issued and the facts on the left (29 tall), the barcode (26 tall) sitting on the same line.
+  // The QR tile (QR_UNITS square) on the right; issued and the facts (29 tall) level with its middle.
   const foot = tear + 1.5 * s + 12 * s;
+  const mid = foot + ((QR_UNITS - 29) / 2) * s;
   setFont(ctx, fonts.sansSemi, 10 * s);
   ctx.fillStyle = light.inkFaint;
-  text(ctx, f.issued, left, foot + 6.5 * s, { spacing: 1.2 * s, baseline: 'middle' });
+  text(ctx, f.issued, left, mid + 6.5 * s, { spacing: 1.2 * s, baseline: 'middle' });
   setFont(ctx, fonts.sansMedium, 12 * s);
   ctx.fillStyle = light.ink;
-  text(ctx, f.facts, left, foot + 21 * s, { baseline: 'middle' });
-  const codeX = right - 72 * s;
-  for (const b of f.barcode) ctx.fillRect(codeX + b.x * s, foot + 3 * s, b.w * s, 26 * s);
+  text(ctx, f.facts, left, mid + 21 * s, { baseline: 'middle' });
+  const side = QR_UNITS * s;
+  const codeX = right - side;
+  roundRect(ctx, codeX, foot, side, side, 6 * s);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fill();
+  const m = side / (QR_SIZE + QR_QUIET * 2);
+  ctx.fillStyle = light.ink;
+  // Each module a whole pixel or more, snapped, so the saved code stays sharp enough to read.
+  for (const r of QR_RUNS) {
+    const x = Math.round(codeX + (r.x + QR_QUIET) * m);
+    const y = Math.round(foot + (r.y + QR_QUIET) * m);
+    ctx.fillRect(x, y, Math.round(codeX + (r.x + r.w + QR_QUIET) * m) - x, Math.round(foot + (r.y + 1 + QR_QUIET) * m) - y);
+  }
 
   ctx.restore();
 }
@@ -245,6 +259,15 @@ function paintStory(ctx: CanvasRenderingContext2D, k: number, data: CardData, ph
   sky.addColorStop(1, data.look.stops[2]);
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H);
+  // The state's pattern over the sky, eased out under the headline so the words stay clear.
+  const { pattern, credit } = patternFor(data.city.state);
+  paintPattern(ctx, pattern, W, H, k);
+  const calm = ctx.createLinearGradient(0, 0, 0, 190 * k);
+  calm.addColorStop(0, data.look.stops[0]);
+  calm.addColorStop(0.6, withAlphaHex(data.look.stops[0], 0.75));
+  calm.addColorStop(1, withAlphaHex(data.look.stops[0], 0));
+  ctx.fillStyle = calm;
+  ctx.fillRect(0, 0, W, 190 * k);
 
   const n = data.plan.days.length;
   const left = 40 * k;
@@ -297,6 +320,59 @@ function paintStory(ctx: CanvasRenderingContext2D, k: number, data: CardData, ph
     baseline: 'middle',
     align: 'center',
   });
+  // Whose pattern it is, said small under the card.
+  setFont(ctx, fonts.sansSemi, 10 * k);
+  ctx.fillStyle = 'rgba(255,255,255,0.72)';
+  text(ctx, `BACKGROUND · ${credit.toUpperCase()}`, W / 2, cardY + cardH + 22 * k, {
+    baseline: 'middle',
+    align: 'center',
+    spacing: 1.2 * k,
+  });
+}
+
+/** One tile of the pattern drawn at the story's scale, then repeated across the whole picture. */
+function paintPattern(ctx: CanvasRenderingContext2D, pattern: Pattern, W: number, H: number, k: number) {
+  const tile = document.createElement('canvas');
+  tile.width = Math.round(pattern.w * k);
+  tile.height = Math.round(pattern.h * k);
+  const t = tile.getContext('2d');
+  if (!t) return;
+  t.scale(tile.width / pattern.w, tile.height / pattern.h);
+  t.lineCap = 'round';
+  t.lineJoin = 'round';
+  for (const shape of pattern.shapes) {
+    const path = new Path2D(shape.d);
+    t.globalAlpha = Math.min(1, PATTERN_ALPHA * (shape.alpha ?? 1));
+    const colour = shape.gold ? PATTERN_GOLD : '#FFFFFF';
+    if (shape.stroke) {
+      t.strokeStyle = colour;
+      t.lineWidth = shape.stroke;
+      t.stroke(path);
+    } else {
+      t.fillStyle = colour;
+      t.fill(path);
+    }
+  }
+  const fill = ctx.createPattern(tile, pattern.hem ? 'repeat-x' : 'repeat');
+  if (!fill) return;
+  ctx.fillStyle = fill;
+  if (pattern.hem) {
+    // A border: one band along the bottom edge.
+    ctx.save();
+    ctx.translate(0, H - tile.height);
+    ctx.fillRect(0, 0, W, tile.height);
+    ctx.restore();
+  } else {
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+/** "#1B2A4E" at an alpha, for fading a sky colour out. */
+function withAlphaHex(hex: string, alpha: number) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
 }
 
 // ---------------------------------------------------------------------------------------------

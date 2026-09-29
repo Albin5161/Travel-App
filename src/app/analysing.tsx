@@ -1,6 +1,6 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
@@ -19,7 +19,7 @@ import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
 import { ReelScanner } from '@/components/motion/ReelScanner';
 import { ReelTimeline, seconds } from '@/components/motion/ReelTimeline';
-import { PhotoCard } from '@/components/PhotoCard';
+import { GlassRim, PhotoCard } from '@/components/PhotoCard';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
@@ -33,6 +33,7 @@ import { CHECK_AS_LIST_FROM, readLink } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
 import { sound } from '@/lib/sound';
 import { CARD_IN, CREDIT_IN, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
+import { parseLink } from '@/server/links';
 import type { AssistReason } from '@/server/types';
 import { useTrips } from '@/state/trips';
 import { Tone } from '@/theme/tone';
@@ -40,19 +41,71 @@ import { skyAccentText, skyFill, skyInk } from '@/theme/sky';
 import { colors, radii, space } from '@/theme/tokens';
 
 type Phase = 'reading' | 'finding' | 'done';
-// While the link is being read, the status line walks through what the extraction actually does,
-// in order, one step per beat. Honest steps make a wait feel like work; the wink keeps it light.
-const STAGES = [
-  'Pressing play…',
-  'Reading the caption. Skipping the hashtags.',
-  'Listening for place names…',
-  'Pinning them on a map…',
-];
-const STAGE_MS = 700;
-// A real link takes 5–15 s to read, so its steps are spread over that instead of rushing to the last.
-const LIVE_STAGE_MS = 2600;
+
+/**
+ * What the status line says while a link is read, step by step, at the moment each step really
+ * starts on the server, and how long the whole read usually takes. Honest steps make a wait feel
+ * like work. A sample plays from the catalog in a couple of seconds, so it keeps its quick, winking
+ * steps; a real link gets the steps its platform actually goes through, and never stops on one that
+ * isn't happening.
+ */
+type Script = {
+  stages: { at: number; text: string; glyph: Glyph }[];
+  /** How long reading usually takes: what the progress line eases toward. */
+  expectMs: number;
+  /** Said under the status, so nobody wonders whether it's stuck. */
+  expect: string | null;
+  /** Past the usual time, said instead: the clock and the promise never disagree. */
+  late: { after: number; text: string } | null;
+  /** Said in turn once the last step has run long. */
+  still: string[];
+};
+const SAMPLE: Script = {
+  stages: [
+    { at: 0, text: 'Pressing play…', glyph: 'play' },
+    { at: 700, text: 'Reading the caption. Skipping the hashtags.', glyph: 'caption' },
+    { at: 1400, text: 'Listening for place names…', glyph: 'listen' },
+    { at: 2100, text: 'Pinning them on a map…', glyph: 'pin' },
+  ],
+  expectMs: 2800,
+  expect: null,
+  late: null,
+  still: [],
+};
+// YouTube: the title and description are read, then the AI lists the places. About 5–10 s.
+const YOUTUBE: Script = {
+  stages: [
+    { at: 0, text: 'Opening the video…', glyph: 'play' },
+    { at: 2000, text: 'Reading the title and description…', glyph: 'caption' },
+    { at: 5000, text: 'Picking out the places…', glyph: 'pin' },
+  ],
+  expectMs: 10_000,
+  expect: 'Usually about 10 seconds',
+  late: { after: 15_000, text: 'Taking longer than usual. Hang on a little.' },
+  still: ['Still reading. Long descriptions take a little longer.', 'Still on it. Nearly every video gets there.'],
+};
+// Instagram: the reel is opened through Apify (up to 45 s), its caption and comments read, and if
+// they name nothing, its audio is listened to as well (up to 100 s more).
+const INSTAGRAM: Script = {
+  stages: [
+    { at: 0, text: 'Opening the reel on Instagram…', glyph: 'play' },
+    { at: 8000, text: 'Reading the caption and comments…', glyph: 'caption' },
+    { at: 18_000, text: 'Picking out the places…', glyph: 'pin' },
+    { at: 40_000, text: 'Listening to the reel, in case the places are only said out loud…', glyph: 'listen' },
+  ],
+  expectMs: 35_000,
+  expect: 'Instagram reels usually take 20–45 seconds',
+  late: { after: 45_000, text: 'Longer than usual: this one needs listening to. Up to two minutes.' },
+  still: ['Still listening. Long reels take up to two minutes.', 'Still on it. Places said out loud take longer to catch.'],
+};
+/** After the last step has run this long, the status says so instead of holding still. */
+const STILL_AFTER_MS = 12_000;
+const STILL_EVERY_MS = 8000;
+/** Past this, a real link offers to carry on without you. */
+const OFFER_LEAVE_MS = 5000;
+
 const STATUS: Record<Exclude<Phase, 'reading'>, string> = {
-  finding: 'Writing them down…',
+  finding: 'Finding each one on the map…',
   done: 'All found',
 };
 // One place per beat, slow enough that each marker's pop and each pin's drop read on their own.
@@ -60,7 +113,6 @@ const CREDIT_GAP_MS = 300;
 /** Names listed one by one; past this, the rest roll into a "+9 more" line, quicker. */
 const CREDITS_SHOWN = 5;
 const MORE_GAP_MS = 90;
-const WATCH_MS = STAGES.length * STAGE_MS;
 const CHOICE_ENTER = [0, 1].map((i) => fadeUp(i * 60));
 const SCANNER = 132;
 // Where the scanner's orb sits: on the card's bottom edge, near the right corner.
@@ -80,9 +132,15 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   const { dispatch } = useTrips();
   const insets = useSafeAreaInsets();
   const { width: W } = useWindowDimensions();
-  const { preview, names, result, failure } = useReading(url);
+  // Whether whoever pasted is still here: leaving (Keep browsing, or back) lets the reading finish
+  // and wait on Home; the ✕ stops it.
+  const away = useRef<Away>('here');
+  const { preview, names, result, failure } = useReading(url, away);
   const [shown, setShown] = useState(0);
-  const [stage, setStage] = useState(0);
+  const link = useMemo(() => parseLink(url), [url]);
+  const script = isSampleLink(url) ? SAMPLE : link?.platform === 'instagram' ? INSTAGRAM : YOUTUBE;
+  const early = useMemo(() => earlyReel(url), [url]);
+  const card = preview ?? early;
   // Names land in the order the video mentions them, so the list and the timeline agree.
   const found = useMemo(() => [...names].sort((a, b) => seconds(a.stamp) - seconds(b.stamp)), [names]);
   const markers = useMemo(() => {
@@ -95,15 +153,25 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   // A name that couldn't be put on the map stays in the list, marked, so nothing silently vanishes.
   const placed = useMemo(() => new Set(result?.places.map((p) => p.name.toLowerCase()) ?? []), [result]);
   const phase: Phase = names.length === 0 ? 'reading' : !result || shown < names.length ? 'finding' : 'done';
-  const status = phase === 'reading' ? STAGES[stage] : STATUS[phase];
 
-  // Step through the stages, holding on the last one if the extraction runs long.
+  // The time since the paste, while nothing has come back: it moves the steps on, and is shown.
+  const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     sound.preload('found');
-    if (names.length > 0 || stage >= STAGES.length - 1) return;
-    const t = setTimeout(() => setStage((n) => n + 1), isSampleLink(url) ? STAGE_MS : LIVE_STAGE_MS);
-    return () => clearTimeout(t);
-  }, [names.length, stage, url]);
+    if (names.length > 0) return;
+    const started = Date.now();
+    const t = setInterval(() => setElapsed(Date.now() - started), 250);
+    return () => clearInterval(t);
+  }, [names.length]);
+  const stage = script.stages.reduce((at, s, i) => (elapsed >= s.at ? i : at), 0);
+  const last = script.stages[script.stages.length - 1];
+  const overdue = elapsed - last.at - STILL_AFTER_MS;
+  const reading =
+    overdue >= 0 && script.still.length
+      ? { text: script.still[Math.floor(overdue / STILL_EVERY_MS) % script.still.length], glyph: last.glyph }
+      : script.stages[stage];
+  const status = phase === 'reading' ? reading.text : STATUS[phase];
+  const canLeave = phase === 'reading' && script !== SAMPLE && elapsed >= OFFER_LEAVE_MS;
 
   // Roll the place names in like film credits, as soon as they're known; matching them to real
   // places carries on underneath. When the last one lands and the matching is done, the work is
@@ -145,6 +213,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
         icon="x"
         onPress={() => {
           // Stopping on purpose isn't an interruption: nothing to continue later.
+          away.current = 'stopped';
           dispatch({ type: 'setDraft', draft: null });
           router.back();
         }}
@@ -154,24 +223,28 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
 
       <View style={styles.body}>
         <View>
-          {preview ? (
+          {card ? (
             <Animated.View entering={CARD_IN}>
               <Tone value="dark">
-                <PhotoCard source={preview.thumbnail} style={{ width: cardW, height: cardW * 0.62 }}>
+                <ReelCard reel={card} width={cardW} height={cardW * 0.62}>
                   <View style={styles.previewText}>
                     <View style={styles.sourceRow}>
                       <Ionicons
-                        name={preview.platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'}
+                        name={card.platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'}
                         size={14}
                         color={colors.mist}
                       />
                       <Text variant="micro" color={colors.mist}>
-                        {preview.creator} · {preview.duration}
+                        {[card.creator, card.duration].filter(Boolean).join(' · ')}
                       </Text>
                     </View>
-                    <Text variant="bodyStrong" numberOfLines={2}>
-                      {preview.title}
-                    </Text>
+                    {card.title ? (
+                      <Animated.View key={card.title} entering={FADE_IN}>
+                        <Text variant="bodyStrong" numberOfLines={2}>
+                          {card.title}
+                        </Text>
+                      </Animated.View>
+                    ) : null}
                   </View>
                   <View style={styles.timeline}>
                     <ReelTimeline
@@ -179,10 +252,10 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
                       watching={!result}
                       markers={markers}
                       revealed={shown}
-                      watchMs={WATCH_MS}
+                      watchMs={script.expectMs}
                     />
                   </View>
-                </PhotoCard>
+                </ReelCard>
               </Tone>
             </Animated.View>
           ) : (
@@ -197,7 +270,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
         <Glass style={styles.found}>
         <View style={styles.statusRow}>
           <Animated.View key={status} entering={FADE_IN} exiting={FADE_OUT} style={styles.status}>
-            <StageGlyph kind={phase === 'reading' ? STAGE_GLYPHS[stage] : phase === 'done' ? 'done' : 'pin'} />
+            <StageGlyph kind={phase === 'reading' ? reading.glyph : phase === 'done' ? 'done' : 'pin'} />
             <Text variant="label" style={styles.statusText}>
               {status}
             </Text>
@@ -208,8 +281,18 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
                 ? `Found ${result.places.length} ${result.places.length === 1 ? 'place' : 'places'} in ${result.city.name}`
                 : `Found ${shown} ${shown === 1 ? 'place' : 'places'}`}
             </Text>
+          ) : script.expect ? (
+            // A running clock: a wait that visibly moves reads as work, not as stuck.
+            <Text variant="data" color={skyInk.soft} accessibilityLabel={`${Math.floor(elapsed / 1000)} seconds so far`}>
+              {clock(elapsed)}
+            </Text>
           ) : null}
         </View>
+        {phase === 'reading' && script.expect ? (
+          <Text variant="label" color={skyInk.soft} style={styles.expect}>
+            {script.late && elapsed >= script.late.after ? script.late.text : script.expect}
+          </Text>
+        ) : null}
 
         {/* Scrolls inside the card when a short screen (a phone browser, with its bars) can't fit
             every row above the button. */}
@@ -235,9 +318,29 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
             );
           })}
           {shown > CREDITS_SHOWN ? <MoreCredits rest={found.slice(CREDITS_SHOWN, shown)} placed={placed} done={!!result} /> : null}
+          {/* Where the places will land, held open while the video is read. */}
+          {phase === 'reading' ? [0, 1, 2].map((i) => <PendingRow key={i} index={i} />) : null}
         </ScrollView>
         </Glass>
       </View>
+
+      {canLeave ? (
+        <Animated.View entering={CHOICE_ENTER[0]} style={[styles.choice, { paddingBottom: insets.bottom + 12 }]}>
+          <Text variant="label" color={skyInk.soft} style={styles.center}>
+            No need to wait here. It keeps reading, and waits for you on Home.
+          </Text>
+          <Button
+            kind="secondary"
+            label="Keep browsing"
+            onPress={() => {
+              haptic.light();
+              away.current = 'left';
+              if (router.canGoBack()) router.back();
+              else router.replace('/');
+            }}
+          />
+        </Animated.View>
+      ) : null}
 
       {phase === 'done' && result ? (
         <View style={[styles.choice, { paddingBottom: insets.bottom + 12 }]}>
@@ -262,6 +365,69 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   );
 }
 
+/** Whether whoever pasted is still on the screen, left it to carry on, or stopped the read. */
+type Away = 'here' | 'left' | 'stopped';
+
+/**
+ * The video as far as the link alone says, so the card is there from the first moment instead of
+ * a gap: a YouTube link names its video, whose thumbnail is public; an Instagram link gives nothing
+ * to show yet, so its card is the reel's shape with Instagram's mark. The real details replace it.
+ */
+function earlyReel(url: string): Reel | null {
+  if (isSampleLink(url)) return null;
+  const link = parseLink(url);
+  if (!link) return null;
+  return link.platform === 'youtube'
+    ? { id: `yt:${link.videoId}`, platform: 'youtube', creator: 'YouTube video', title: '', duration: '', thumbnail: { uri: `https://i.ytimg.com/vi/${link.videoId}/hqdefault.jpg` }, cityId: '', placeIds: [] }
+    : { id: `ig:${link.shortcode}`, platform: 'instagram', creator: 'Instagram reel', title: '', duration: '', thumbnail: 0, cityId: '', placeIds: [] };
+}
+
+/** "0:07": the wait so far. */
+function clock(ms: number) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** The video's card: its picture when there is one, else the reel's shape with its platform's mark. */
+function ReelCard({ reel, width, height, children }: { reel: Reel; width: number; height: number; children: ReactNode }) {
+  if (reel.thumbnail) {
+    return (
+      <PhotoCard source={reel.thumbnail} style={{ width, height }}>
+        {children}
+      </PhotoCard>
+    );
+  }
+  return (
+    <View style={[styles.blankCard, { width, height }]}>
+      <View style={styles.blankMark} pointerEvents="none">
+        <Ionicons name={reel.platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'} size={56} color={colors.mist} />
+      </View>
+      {children}
+      <GlassRim radius={radii.card} />
+    </View>
+  );
+}
+
+/** A row held open for a place not found yet: quiet, breathing slowly, still when motion is off. */
+function PendingRow({ index }: { index: number }) {
+  const reduced = useReducedMotion();
+  const o = useSharedValue(0.5);
+  useEffect(() => {
+    if (reduced) return;
+    o.set(withDelay(index * 180, withRepeat(withSequence(withTiming(1, { duration: 900 }), withTiming(0.5, { duration: 900 })), -1)));
+  }, [index, o, reduced]);
+  const breathe = useAnimatedStyle(() => ({ opacity: o.get() }));
+  return (
+    <Animated.View style={[styles.creditRow, styles.pendingRow, breathe]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View style={styles.pin} />
+      <View style={styles.creditName}>
+        <View style={[styles.skeleton, { width: `${[62, 48, 55][index]}%` }]} />
+        <View style={[styles.skeleton, styles.skeletonShort, { width: `${[34, 40, 28][index]}%` }]} />
+      </View>
+    </Animated.View>
+  );
+}
+
 /** A name in the rolling list: known before it's matched to a real place. */
 type Credit = { id: string; name: string; area: string; stamp?: string };
 
@@ -281,7 +447,8 @@ const creditOf = (p: Place, i: number): Credit => ({
  * The link, read. Sample links play from the catalog; anything else goes to the API, and its place
  * names arrive (`names`) before they're matched to real places (`result`).
  */
-function useReading(url: string) {
+function useReading(url: string, away: RefObject<Away>) {
+  const { dispatch } = useTrips();
   const [preview, setPreview] = useState<Reel | null>(null);
   const [names, setNames] = useState<Credit[]>([]);
   const [result, setResult] = useState<Extraction | null>(null);
@@ -295,7 +462,15 @@ function useReading(url: string) {
     const took = () => Math.round((Date.now() - startedAt) / 1000);
     const failed = (reason: string) => track('link failed', { ...measure, reason, seconds: took() });
     const done = (r: Extraction) => {
-      if (cancelled) return;
+      if (cancelled) {
+        // Read after its screen was left (not stopped): it waits on Home as places to check.
+        if (away.current !== 'left') return;
+        track('places found', { ...measure, count: r.places.length, seconds: took(), away: true });
+        haptic.success();
+        void sound.play('found');
+        dispatch({ type: 'readInBackground', url, extraction: r });
+        return;
+      }
       track('places found', { ...measure, count: r.places.length, seconds: took() });
       setPreview(r.reel);
       setNames((n) => (n.length ? n : r.places.map(creditOf)));
@@ -332,8 +507,10 @@ function useReading(url: string) {
     }
     return () => {
       cancelled = true;
+      // Gone without the ✕ (Keep browsing, a swipe back): the reading carries on.
+      if (away.current === 'here') away.current = 'left';
     };
-  }, [url]);
+  }, [url, away, dispatch]);
 
   return { preview, names, result, failure };
 }
@@ -452,7 +629,6 @@ function failureCopy(f: Failure): { icon: keyof typeof Feather.glyphMap; title: 
 const clamp = (v: number) => Math.min(0.97, Math.max(0.03, v));
 
 type Glyph = 'play' | 'caption' | 'listen' | 'pin' | 'done';
-const STAGE_GLYPHS: Glyph[] = ['play', 'caption', 'listen', 'pin'];
 
 /** A small moving picture of the step in progress, so the status line is more than words. */
 function StageGlyph({ kind }: { kind: Glyph }) {
@@ -559,6 +735,14 @@ const styles = StyleSheet.create({
   statusText: { flexShrink: 1 },
   scanner: { position: 'absolute', pointerEvents: 'none' },
   missing: { opacity: 0.45 },
+  expect: { paddingTop: 10 },
+  // A place still to come: the row's shape, two soft lines where its name and area will be.
+  pendingRow: { paddingVertical: 14 },
+  skeleton: { height: 10, borderRadius: 5, backgroundColor: skyFill.raised },
+  skeletonShort: { height: 8, marginTop: 6 },
+  // An Instagram reel before anything of it is known: the card's shape, its platform's mark faint in it.
+  blankCard: { overflow: 'hidden', borderRadius: radii.card, backgroundColor: colors.basalt },
+  blankMark: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', paddingBottom: 40, opacity: 0.35 },
   failed: { flex: 1, justifyContent: 'center', paddingHorizontal: space.screen, gap: 12, paddingBottom: 24 },
   failedIcon: {
     width: 48,

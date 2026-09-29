@@ -114,6 +114,8 @@ type Action =
   | { type: 'setDraft'; draft: Draft | null }
   /** What the link turned into, held until the user has checked it. Nothing is saved yet. */
   | { type: 'stageExtraction'; extraction: Extraction }
+  /** A link read after its screen was left: it waits on Home, to be checked. */
+  | { type: 'readInBackground'; url: string; extraction: Extraction }
   /** Save the places the user confirmed. Omitting placeIds saves every place found. */
   | { type: 'commitExtraction'; extraction: Extraction; placeIds?: string[] }
   | { type: 'setHomeTab'; tab: HomeTab }
@@ -215,6 +217,25 @@ function reducer(state: State, action: Action): State {
           extraction: keep ? action.extraction : null,
           cityId: action.extraction.city.id,
           reelId: action.extraction.reel.id,
+          at: Date.now(),
+        },
+      };
+    }
+    case 'readInBackground': {
+      // Only if it's still the link being read: a newer paste, or stopping, has taken its place.
+      const d = state.draft;
+      if (d?.stage !== 'reading' || d.url !== action.url) return state;
+      const { extraction, url } = action;
+      return {
+        ...state,
+        lastExtraction: extraction,
+        pendingLink: state.pendingLink === url ? null : state.pendingLink,
+        draft: {
+          stage: 'checking',
+          url,
+          extraction: isSampleLink(url) ? null : extraction,
+          cityId: extraction.city.id,
+          reelId: extraction.reel.id,
           at: Date.now(),
         },
       };

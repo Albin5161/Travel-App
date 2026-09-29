@@ -16,8 +16,18 @@ export function register(items: { places?: Place[]; city?: City; reel?: Reel }, 
     live.places[p.id] = p;
     live.placedAt[p.id] ??= at;
   });
-  if (items.city) live.cities[items.city.id] = items.city;
+  if (items.city) live.cities[items.city.id] = keepCover(live.cities[items.city.id], items.city);
   if (items.reel) live.reels[items.reel.id] = items.reel;
+}
+
+/**
+ * A city read again (a second video of Mumbai, say) keeps the cover it had: the share ticket and
+ * the Home card shouldn't change photo because another video was pasted. A cover that is still a
+ * video's frame (no photo credit) gives way to a real photo when one arrives.
+ */
+function keepCover(known: City | undefined, next: City): City {
+  if (!known || (!known.heroCredit && next.heroCredit)) return next;
+  return { ...next, hero: known.hero, heroCredit: known.heroCredit };
 }
 
 export type LiveSnapshot = {

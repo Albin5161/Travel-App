@@ -60,6 +60,10 @@ export function SpotRow({
         accessibilityLabel={been ? `Mark ${spot.name} as not visited` : `Mark ${spot.name} as been`}
       >
         <Tick on={been} />
+        {/* Said, not just ticked: an unlabelled tick read as "pin it" or "select". */}
+        <Text variant="micro" color={been ? skyInk.strong : skyInk.soft} style={styles.checkLabel}>
+          Been
+        </Text>
       </Pressable>
     </PressableScale>
   );
@@ -71,5 +75,6 @@ const styles = StyleSheet.create({
   thumbBeen: { opacity: 0.45 },
   body: { flex: 1, gap: 2 },
   // Padded so the tick's tap area is 44pt: the web ignores hitSlop.
-  check: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  check: { width: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  checkLabel: { fontSize: 10, lineHeight: 12, letterSpacing: 0.6 },
 });

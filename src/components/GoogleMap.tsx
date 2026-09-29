@@ -12,6 +12,8 @@ export type GoogleMapPin = {
   photo: ImageSourcePropType;
   /** The stop's place in the day, shown on the pin. */
   number?: number;
+  /** Somewhere you've already been: the pin goes grey, with a tick. */
+  been?: boolean;
 };
 
 export type GoogleMapProps = {

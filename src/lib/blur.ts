@@ -14,17 +14,20 @@ export function useBlurredPhoto(source: ImageSourcePropType | null | undefined):
   source: ImageSourcePropType | null;
   blurRadius?: number;
 } {
-  const [baked, setBaked] = useState<{ from: unknown; uri: string } | null>(null);
   const web = Platform.OS === 'web';
+  // Baked ahead (see prebake): there from the first frame, so the frost never pops in.
+  const [baked, setBaked] = useState<{ from: unknown; uri: string } | null>(() => {
+    const uri = web && source ? uriOf(source) : null;
+    const out = uri ? ready.get(uri) : undefined;
+    return out ? { from: source, uri: out } : null;
+  });
 
   useEffect(() => {
     if (!web || !source) return;
     let alive = true;
     const uri = uriOf(source);
     if (!uri) return;
-    bake(uri)
-      .then((out) => alive && out && setBaked({ from: source, uri: out }))
-      .catch(() => {});
+    void bakeOnce(uri).then((out) => alive && out && setBaked({ from: source, uri: out }));
     return () => {
       alive = false;
     };
@@ -40,6 +43,35 @@ export function uriOf(source: ImageSourcePropType): string | null {
   if (typeof source === 'number') return Asset.fromModule(source).uri ?? null;
   if (Array.isArray(source)) return source[0]?.uri ?? null;
   return (source as { uri?: string }).uri ?? null;
+}
+
+/**
+ * Starts baking a photo's blur before the screen that shows it opens (the share card, while the
+ * stamp lands), so it's ready when that screen appears. Web only; a phone blurs as it draws.
+ */
+export function prebake(source: ImageSourcePropType | null | undefined) {
+  if (Platform.OS !== 'web' || !source) return;
+  const uri = uriOf(source);
+  if (uri) void bakeOnce(uri);
+}
+
+// One bake per photo, shared by whoever asks first; `ready` holds the finished ones for a first render.
+const bakes = new Map<string, Promise<string | null>>();
+const ready = new Map<string, string>();
+
+function bakeOnce(uri: string): Promise<string | null> {
+  let job = bakes.get(uri);
+  if (!job) {
+    job = bake(uri)
+      .then((out) => {
+        if (out) ready.set(uri, out);
+        return out;
+      })
+      // A host that won't allow reading the photo back (CORS): no blur, the frost stays plain.
+      .catch(() => null);
+    bakes.set(uri, job);
+  }
+  return job;
 }
 
 const SMALL = 28;

@@ -28,6 +28,8 @@ import { skyCta, skyFill, skyInk } from '@/theme/sky';
 import { colors, light, radii, shadows, space } from '@/theme/tokens';
 
 const DONE_ENTER = [0, 1, 2, 3].map((i) => fadeUp(i * 60));
+/** Said where people judge what the AI found, the one moment it matters. */
+const AI_NOTE = 'Xplore’s AI read the video, and it can make mistakes.';
 const OFFER_IN = fadeUp(0);
 // Long enough to read "Removed X · Fix it" and reach for it; short enough not to nag.
 const OFFER_MS = 3500;
@@ -171,7 +173,8 @@ export default function Verify() {
   };
 
   const cardW = W - space.screen * 2;
-  const cardH = Math.min(H - insets.top - insets.bottom - 250, 580);
+  // Room for the heading and the AI note above, the buttons below.
+  const cardH = Math.min(H - insets.top - insets.bottom - 272, 580);
   const visible = places.slice(index, index + 3);
 
   return (
@@ -249,6 +252,9 @@ export default function Verify() {
               </Text>
             </View>
             <Text variant="display" accessibilityRole="header">Did we get it right?</Text>
+            <Text variant="label" color={skyInk.soft}>
+              {AI_NOTE}
+            </Text>
           </View>
           <View style={[styles.stack, { height: cardH + 30 }]}>
             {visible
@@ -357,7 +363,7 @@ function CheckList({
           </View>
           <Text variant="display" accessibilityRole="header">Did we get these right?</Text>
           <Text variant="body">
-            {`We found ${places.length - extras.length} places. Untick any that are wrong.`}
+            {`We found ${places.length - extras.length} places. ${AI_NOTE} Untick any that are wrong.`}
           </Text>
         </View>
         <Glass style={styles.rows}>

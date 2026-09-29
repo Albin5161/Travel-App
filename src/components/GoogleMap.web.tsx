@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/Text';
 import type { LatLng } from '@/lib/geo';
+import { skyAccent, skyCta } from '@/theme/sky';
 import { colors, fonts, light, shadows } from '@/theme/tokens';
 
 import type { GoogleMapProps } from './GoogleMap';
@@ -106,7 +107,7 @@ function GoogleMapOrPanel({
             zIndex={p.id === focusId ? 2 : 1}
             onClick={() => onPinPress?.(p.id)}
           >
-            <PhotoPin photo={p.photo} number={p.number} active={p.id === focusId} />
+            <PhotoPin photo={p.photo} number={p.number} active={p.id === focusId} been={p.been} />
           </AdvancedMarker>
         ))}
         {route && pins.length > 1 ? (
@@ -288,7 +289,7 @@ function Journey({
 }
 
 /** The same white-rimmed photo pin as the drawn maps, with the stop number on it for a plan. */
-function PhotoPin({ photo, number, active }: { photo: ImageSourcePropType; number?: number; active?: boolean }) {
+function PhotoPin({ photo, number, active, been }: { photo: ImageSourcePropType; number?: number; active?: boolean; been?: boolean }) {
   const uri = typeof photo === 'object' && photo && 'uri' in photo ? photo.uri : undefined;
   const size = number ? 34 : 40;
   return (
@@ -316,8 +317,37 @@ function PhotoPin({ photo, number, active }: { photo: ImageSourcePropType; numbe
           boxSizing: 'border-box',
         }}
       >
-        {uri ? <img src={uri} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+        {uri ? (
+          <img
+            src={uri}
+            alt=""
+            // Been there: greyed back, so what's still to see stands out on the map.
+            style={{ width: '100%', height: '100%', objectFit: 'cover', filter: been ? 'grayscale(1)' : undefined, opacity: been ? 0.6 : 1 }}
+          />
+        ) : null}
       </div>
+      {been ? (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: -4,
+            right: -4,
+            width: 18,
+            height: 18,
+            borderRadius: 9,
+            background: skyAccent,
+            border: `2px solid ${light.panel}`,
+            boxSizing: 'border-box',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={skyCta} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+      ) : null}
       {number ? (
         <div
           style={{

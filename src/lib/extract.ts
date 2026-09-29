@@ -359,8 +359,10 @@ function toPlaces(pairs: { found: FoundPlace; match: MatchedPlace }[], reel: Ree
 }
 
 function toCity(id: string, name: string, state: string, places: Place[], reel: Reel, terrain?: Terrain): City {
-  // The first place with its own photo makes the cover; a frame from the video if none has one.
-  const covered = places.find((p) => p.photoCredit);
+  // The cover: a sight or an experience with its own photo (a fort says "Mumbai" better than a
+  // hotel lobby), then any place with one, then a frame from the video.
+  const covered =
+    places.find((p) => p.photoCredit && (p.type === 'sight' || p.type === 'experience')) ?? places.find((p) => p.photoCredit);
   return {
     id,
     name,

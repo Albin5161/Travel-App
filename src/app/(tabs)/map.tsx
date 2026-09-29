@@ -103,7 +103,7 @@ export default function SpotsMap() {
       <Tone value="light">
       {Platform.OS === 'web' ? (
         <GoogleMap
-          pins={visible.map((p) => ({ id: p.id, name: p.name, coords: p.coords, photo: p.photo }))}
+          pins={visible.map((p) => ({ id: p.id, name: p.name, coords: p.coords, photo: p.photo, been: statusOf(p.id) === 'been' }))}
           width={W}
           height={H}
           padding={{ top: insets.top + 80, bottom: panelH + 24, left: 40, right: 40 }}

@@ -395,28 +395,40 @@ type SavedTrips = {
 function loadTrips(): Partial<State> {
   const raw = read(TRIPS_KEY);
   if (!raw) return {};
+  let s: SavedTrips;
   try {
-    const s = JSON.parse(raw) as SavedTrips;
-    if (s.v !== 1) return {};
-    if (!s.pricesHonest) {
-      const unguess = (places: LiveSnapshot['places'] = []) => places.forEach((p) => (p.cost = null));
-      unguess(s.live.places);
-      Object.values(s.tripPlans).forEach((w) => unguess(w.live?.places));
-    }
+    s = JSON.parse(raw) as SavedTrips;
+  } catch {
+    keepAside(raw);
+    return {};
+  }
+  if (s?.v !== 1) {
+    keepAside(raw);
+    return {};
+  }
+  try {
+    const unguess = (places: LiveSnapshot['places'] = []) => places.forEach((p) => (p.cost = null));
     // Where someone's staying came from Google, whose coordinates may be kept 30 days: an older
     // one is dropped with the drives out and back, and the next plan looks it up again.
     const STAY_KEEP_MS = 30 * 24 * 60 * 60 * 1000;
     const staleStay = (w: WirePlan) => !!w.prefs.stay && Date.now() - w.prefs.stay.at >= STAY_KEEP_MS;
-    Object.values(s.tripPlans).forEach((w) => {
-      if (!staleStay(w)) return;
-      w.prefs = { ...w.prefs, stay: null };
-      w.days = w.days.map((d) => ({ ...d, home: undefined, stops: d.stops.map((st, i) => (i === 0 ? { ...st, leg: undefined } : st)) }));
-    });
+    // Each plan is brought up to date on its own: one that can't be read is dropped, not everything.
+    const wires = Object.entries(s.tripPlans ?? {}).flatMap(([cityId, w]) =>
+      attempt<[string, WirePlan][]>(() => {
+        if (!s.pricesHonest) unguess(w.live?.places);
+        if (staleStay(w)) {
+          w.prefs = { ...w.prefs, stay: null };
+          w.days = w.days.map((d) => ({ ...d, home: undefined, stops: d.stops.map((st, i) => (i === 0 ? { ...st, leg: undefined } : st)) }));
+        }
+        return [[cityId, w]];
+      }, []),
+    );
+    if (!s.pricesHonest) unguess(s.live.places);
     // Real places first: the plans below are rebuilt from their ids.
     restore(s.live);
-    const collections = onePerPlace(s.collections, s.tripPlans);
-    const draft = restoreDraft(s.draft ?? null, collections);
-    const tripPlans = Object.fromEntries(Object.entries(s.tripPlans).map(([cityId, w]) => [cityId, fromWire(w)]));
+    const collections = onePerPlace(s.collections, Object.fromEntries(wires));
+    const draft = attempt(() => restoreDraft(s.draft ?? null, collections), null);
+    const tripPlans = Object.fromEntries(wires.flatMap(([cityId, w]) => attempt<[string, TripPlan][]>(() => [[cityId, fromWire(w)]], [])));
     return {
       homeDistrictId: s.homeDistrictId,
       spotStatus: s.spotStatus,
@@ -433,9 +445,28 @@ function loadTrips(): Partial<State> {
       draft,
     };
   } catch {
-    // A copy from an older version, or damaged: start fresh rather than crash.
-    return {};
+    // Damaged past reading: start fresh rather than crash, but keep the copy aside (the next save
+    // would write over it) and keep that onboarding is done, so it isn't asked again.
+    keepAside(raw);
+    return { onboarded: !!s.onboarded, homeDistrictId: s.homeDistrictId ?? initial.homeDistrictId };
   }
+}
+
+const attempt = <T,>(run: () => T, fallback: T): T => {
+  try {
+    return run();
+  } catch {
+    return fallback;
+  }
+};
+
+/**
+ * A saved copy that couldn't be read goes to a second key before anything is saved over it, so the
+ * trips in it can still be recovered by hand. The first one kept stays: it's the one worth having.
+ */
+const ASIDE_KEY = 'xplore.trips.unread';
+function keepAside(raw: string) {
+  if (!read(ASIDE_KEY)) write(ASIDE_KEY, raw);
 }
 
 /**
@@ -603,8 +634,33 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       p.id.startsWith('g:') &&
       p.source.kind === 'reel' &&
       (uriOf(p.photo) === thumbOf(p) || (!!p.photoFromVideo && Date.now() - p.photoFromVideo > COORDS_DAYS * 86400_000));
+    // A cover that is a video's thumbnail, or a café's or a hotel's photo while the city has a
+    // sight with one: a sight's real photo, then any place's, else a frame. Set directly: register
+    // keeps a known city's cover on purpose. Says whether any cover changed.
+    const fixCovers = () => {
+      let changed = false;
+      const landmark = (p: Place) => p.type === 'sight' || p.type === 'experience';
+      for (const city of Object.values(live.cities)) {
+        const inCity = Object.values(live.places).filter((p) => p.cityId === city.id && p.photoCredit);
+        const best = inCity.find(landmark);
+        const reel = Object.values(live.reels).find((r) => r.cityId === city.id && uriOf(r.thumbnail) === uriOf(city.hero));
+        const coverOf = inCity.find((p) => uriOf(p.photo) === uriOf(city.hero));
+        if (reel) {
+          const withPhoto = best ?? inCity[0];
+          live.cities[city.id] = { ...city, hero: withPhoto?.photo ?? framePhoto(reel, 1), heroCredit: withPhoto?.photoCredit };
+          changed = true;
+        } else if (best && coverOf && !landmark(coverOf)) {
+          live.cities[city.id] = { ...city, hero: best.photo, heroCredit: best.photoCredit };
+          changed = true;
+        }
+      }
+      return changed;
+    };
     const todo = Object.values(live.places).filter(due).slice(0, 30);
-    if (todo.length === 0) return;
+    if (todo.length === 0) {
+      if (fixCovers()) dispatch({ type: 'livePlacesRefreshed' });
+      return;
+    }
     let stopped = false;
     (async () => {
       const turns = new Map<string, number>();
@@ -618,13 +674,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
         if (better.photoCredit) refreshed(better);
         else register({ places: [better] });
       }
-      // A cover that is a video's thumbnail: the first place in the city with a real photo, else a frame.
-      for (const city of Object.values(live.cities)) {
-        const reel = Object.values(live.reels).find((r) => r.cityId === city.id && uriOf(r.thumbnail) === uriOf(city.hero));
-        if (!reel) continue;
-        const withPhoto = Object.values(live.places).find((p) => p.cityId === city.id && p.photoCredit);
-        register({ city: { ...city, hero: withPhoto?.photo ?? framePhoto(reel, 1), heroCredit: withPhoto?.photoCredit } });
-      }
+      fixCovers();
       if (!stopped) dispatch({ type: 'livePlacesRefreshed' });
     })();
     return () => {

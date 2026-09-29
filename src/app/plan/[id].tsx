@@ -50,6 +50,7 @@ import {
   type TripStop,
 } from '@/data/planner';
 import type { DayPart, Place } from '@/data/types';
+import { prebake, uriOf } from '@/lib/blur';
 import { formatClock, formatDuration, smoothPath, smoothPathStops } from '@/lib/geo';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
@@ -250,7 +251,16 @@ export default function PlanScreen() {
 
   // The stamp's paper veil fades into the share card. Replaced, not pushed: the plan is saved, so
   // there's nothing to come back to.
-  const save = () => setStamping(true);
+  // What the ticket needs is fetched while the stamp lands, so it's there as the stamp lifts: the
+  // share screen's code (the web loads each screen on first use), the city's photo and its blur.
+  const save = () => {
+    setStamping(true);
+    void import('../share/[id]').catch(() => {});
+    if (!city) return;
+    prebake(city.hero);
+    const photo = uriOf(city.hero);
+    if (photo) void Image.prefetch(photo).catch(() => {});
+  };
   const saved = () => {
     dispatch({ type: 'saveTrip', cityId: id });
     track('trip planned', { days: plan.days.length });
@@ -550,6 +560,11 @@ export default function PlanScreen() {
                 ))}
               </View>
             ) : null}
+
+            <Text variant="label" color={skyInk.soft} style={styles.aiNote}>
+              Places found by AI from videos; times and drives are estimates. It can make mistakes, so check
+              before you go.
+            </Text>
           </View>
         </Animated.ScrollView>
 
@@ -958,6 +973,8 @@ const styles = StyleSheet.create({
   legCompact: { paddingTop: 0 },
   legLine: { width: 2, height: 18, borderRadius: 1, backgroundColor: skyInk.line, marginRight: 4, overflow: 'hidden' },
   legLineOn: { ...StyleSheet.absoluteFill, backgroundColor: skyAccent, transformOrigin: 'top' },
+  // Quiet small print at the foot of the plan, clear of the floating Save button.
+  aiNote: { marginTop: 24, textAlign: 'center' },
   addOwn: {
     flexDirection: 'row',
     alignItems: 'center',

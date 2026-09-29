@@ -28,7 +28,8 @@ const INOUT = Easing.bezierFn(0.42, 0, 0.58, 1);
 const RING = Easing.bezierFn(0.1, 0.8, 0.3, 1);
 const TOTAL = 1100;
 const IMPACT = 350;
-const HOLD = 700;
+// Long enough to see the stamp has landed; the ticket is fetched meanwhile, so no longer is needed.
+const HOLD = 400;
 // Headline orange: the stamp is large type, which passes 3:1 on the veil.
 const INK = skyAccent;
 

@@ -10,7 +10,17 @@ import type { DayPart, Place } from '@/data/types';
 // from a pasted link isn't in anyone else's catalog, so it travels whole, with its city and video,
 // and is added to the other phone's records before the plan is rebuilt.
 
-type WireCustom = { title: string; note?: string; by: string; bestTime: DayPart; minutes: number; near?: string };
+type WireCustom = {
+  title: string;
+  note?: string;
+  by: string;
+  bestTime: DayPart;
+  minutes: number;
+  /** The real stop it borrowed its pin from: for plans sent before `at` was. */
+  near?: string;
+  /** Its pin, exactly as placed. */
+  at?: Pick<Place, 'coords' | 'map'>;
+};
 
 type WireStop = {
   id: string;
@@ -58,7 +68,8 @@ export function toWire(plan: TripPlan): WirePlan {
                 by: s.place.source.by,
                 bestTime: s.place.bestTime,
                 minutes: s.place.minutes,
-                near: d.stops[i - 1]?.place.id ?? d.stops[i + 1]?.place.id,
+                near: realNeighbour(d.stops.map((t) => ({ id: t.place.id, custom: t.place.source.kind === 'custom' })), i),
+                at: { coords: s.place.coords, map: s.place.map },
               }
             : undefined,
       })),
@@ -76,7 +87,7 @@ export function toWire(plan: TripPlan): WirePlan {
 export function fromWire(wire: WirePlan): TripPlan {
   // A friend's real places first: everything below looks places up by id.
   if (wire.live) restore(wire.live);
-  const placeOf = (s: WireStop): Place | undefined =>
+  const placeOf = (s: WireStop, day: WireStop[], i: number): Place | undefined =>
     s.custom
       ? customPlace(
           {
@@ -86,7 +97,10 @@ export function fromWire(wire: WirePlan): TripPlan {
             by: s.custom.by,
             bestTime: s.custom.bestTime,
             minutes: s.custom.minutes,
-            near: s.custom.near ? getPlace(s.custom.near) : undefined,
+            // Older plans named the stop before, which could be another typed-in stop with no
+            // place of its own: the nearest real stop in the day stands in for it.
+            near: getPlace(s.custom.near ?? '') ?? getPlace(realNeighbour(day.map((t) => ({ id: t.id, custom: !!t.custom })), i) ?? ''),
+            at: s.custom.at && (s.custom.at.coords.lat || s.custom.at.coords.lng) ? s.custom.at : undefined,
           },
           s.id,
         )
@@ -99,8 +113,8 @@ export function fromWire(wire: WirePlan): TripPlan {
       date: d.date,
       totalKm: d.totalKm,
       ...(d.home ? { home: d.home } : {}),
-      stops: d.stops.flatMap((s) => {
-        const place = placeOf(s);
+      stops: d.stops.flatMap((s, i) => {
+        const place = placeOf(s, d.stops, i);
         return place ? [{ place, startMinutes: s.start, legBefore: s.leg, pinned: s.pinned, suggested: s.suggested }] : [];
       }),
     })),
@@ -109,4 +123,12 @@ export function fromWire(wire: WirePlan): TripPlan {
     removed: wire.removed,
     seed: wire.seed,
   };
+}
+
+/** The closest stop to the i-th that is a real place (not typed in), looking before it first. */
+function realNeighbour(stops: { id: string; custom: boolean }[], i: number): string | undefined {
+  for (let step = 1; step < stops.length; step++) {
+    for (const j of [i - step, i + step]) if (stops[j] && !stops[j].custom) return stops[j].id;
+  }
+  return undefined;
 }

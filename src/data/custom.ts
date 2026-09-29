@@ -1,5 +1,6 @@
 import { getCity } from './api';
 import { places } from './catalog';
+import { live } from './registry';
 import type { DayPart, Place } from './types';
 
 export interface CustomStopInput {
@@ -11,6 +12,8 @@ export interface CustomStopInput {
   by: string;
   /** A stop it happens near, for the map pin and the travel time. Without one, it's in the city. */
   near?: Place;
+  /** Where it was pinned, exactly, when that's known (a plan arriving from another phone). */
+  at?: Pick<Place, 'coords' | 'map'>;
 }
 
 /**
@@ -20,8 +23,10 @@ export interface CustomStopInput {
  */
 export function customPlace(input: CustomStopInput, id = `custom-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`): Place {
   const city = getCity(input.cityId);
-  // Nothing to be near: somewhere in the city, so travel times stay sensible.
-  const near = input.near ?? Object.values(places).find((p) => p.cityId === input.cityId);
+  // Nothing to be near: somewhere in the city (a sample's places, or a pasted city's), so the pin
+  // and travel times stay sensible. Never 0°, 0°, which is the sea off West Africa.
+  const inCity = (p: Place) => p.cityId === input.cityId && !isCustom(p);
+  const near = input.near ?? Object.values(places).find(inCity) ?? Object.values(live.places).find(inCity);
   return {
     id,
     cityId: input.cityId,
@@ -34,8 +39,8 @@ export function customPlace(input: CustomStopInput, id = `custom-${Date.now().to
     bestTime: input.bestTime,
     cost: 0,
     minutes: input.minutes,
-    coords: near?.coords ?? { lat: 0, lng: 0 },
-    map: near?.map ?? [500, 700],
+    coords: input.at?.coords ?? near?.coords ?? { lat: 0, lng: 0 },
+    map: input.at?.map ?? near?.map ?? [500, 700],
     order: 99,
   };
 }

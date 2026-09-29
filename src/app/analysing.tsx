@@ -1,6 +1,6 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
+import { ReadingScene, type Topic } from '@/components/mascots/ReadingScene';
 import { ReelScanner } from '@/components/motion/ReelScanner';
 import { ReelTimeline, seconds } from '@/components/motion/ReelTimeline';
 import { GlassRim, PhotoCard } from '@/components/PhotoCard';
@@ -32,7 +33,7 @@ import { platformOfLink, track } from '@/lib/analytics';
 import { CHECK_AS_LIST_FROM, readLink } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
 import { sound } from '@/lib/sound';
-import { CARD_IN, CREDIT_IN, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
+import { CARD_IN, CREDIT_IN, FADE_IN, FADE_OUT, REFLOW, fadeUp } from '@/lib/motion';
 import { parseLink } from '@/server/links';
 import type { AssistReason } from '@/server/types';
 import { useTrips } from '@/state/trips';
@@ -166,12 +167,19 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   const stage = script.stages.reduce((at, s, i) => (elapsed >= s.at ? i : at), 0);
   const last = script.stages[script.stages.length - 1];
   const overdue = elapsed - last.at - STILL_AFTER_MS;
-  const reading =
-    overdue >= 0 && script.still.length
-      ? { text: script.still[Math.floor(overdue / STILL_EVERY_MS) % script.still.length], glyph: last.glyph }
-      : script.stages[stage];
+  const stillGoing = overdue >= 0 && script.still.length > 0;
+  const reading = stillGoing
+    ? { text: script.still[Math.floor(overdue / STILL_EVERY_MS) % script.still.length], glyph: last.glyph }
+    : script.stages[stage];
   const status = phase === 'reading' ? reading.text : STATUS[phase];
   const canLeave = phase === 'reading' && script !== SAMPLE && elapsed >= OFFER_LEAVE_MS;
+
+  // Amma and the child keep the wait company, talking through each step, and cheer the finds
+  // before stepping aside for them.
+  const late = stillGoing || (!!script.late && elapsed >= script.late.after);
+  const topic: Topic = phase !== 'reading' ? 'found' : late ? 'wait' : reading.glyph === 'done' ? 'found' : reading.glyph;
+  const [sceneGone, setSceneGone] = useState(false);
+  const stepAside = useCallback(() => setSceneGone(true), []);
 
   // Roll the place names in like film credits, as soon as they're known; matching them to real
   // places carries on underneath. When the last one lands and the matching is done, the work is
@@ -297,10 +305,15 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
         {/* Scrolls inside the card when a short screen (a phone browser, with its bars) can't fit
             every row above the button. */}
         <ScrollView style={styles.creditsScroll} contentContainerStyle={styles.credits} showsVerticalScrollIndicator={false}>
+          {sceneGone ? null : (
+            <Animated.View exiting={FADE_OUT}>
+              <ReadingScene topic={topic} count={names.length} width={Math.min(cardW - 28, 320)} onCheered={stepAside} />
+            </Animated.View>
+          )}
           {found.slice(0, Math.min(shown, CREDITS_SHOWN)).map((p) => {
             const missing = !!result && !placed.has(p.name.toLowerCase());
             return (
-              <Animated.View key={p.id} entering={CREDIT_IN} style={[styles.creditRow, missing && styles.missing]}>
+              <Animated.View key={p.id} entering={CREDIT_IN} layout={REFLOW} style={[styles.creditRow, missing && styles.missing]}>
                 {missing ? <View style={styles.pin} /> : <PinDrop />}
                 <View style={styles.creditName}>
                   <Text variant="title" numberOfLines={1}>
@@ -318,8 +331,6 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
             );
           })}
           {shown > CREDITS_SHOWN ? <MoreCredits rest={found.slice(CREDITS_SHOWN, shown)} placed={placed} done={!!result} /> : null}
-          {/* Where the places will land, held open while the video is read. */}
-          {phase === 'reading' ? [0, 1, 2].map((i) => <PendingRow key={i} index={i} />) : null}
         </ScrollView>
         </Glass>
       </View>
@@ -405,26 +416,6 @@ function ReelCard({ reel, width, height, children }: { reel: Reel; width: number
       {children}
       <GlassRim radius={radii.card} />
     </View>
-  );
-}
-
-/** A row held open for a place not found yet: quiet, breathing slowly, still when motion is off. */
-function PendingRow({ index }: { index: number }) {
-  const reduced = useReducedMotion();
-  const o = useSharedValue(0.5);
-  useEffect(() => {
-    if (reduced) return;
-    o.set(withDelay(index * 180, withRepeat(withSequence(withTiming(1, { duration: 900 }), withTiming(0.5, { duration: 900 })), -1)));
-  }, [index, o, reduced]);
-  const breathe = useAnimatedStyle(() => ({ opacity: o.get() }));
-  return (
-    <Animated.View style={[styles.creditRow, styles.pendingRow, breathe]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <View style={styles.pin} />
-      <View style={styles.creditName}>
-        <View style={[styles.skeleton, { width: `${[62, 48, 55][index]}%` }]} />
-        <View style={[styles.skeleton, styles.skeletonShort, { width: `${[34, 40, 28][index]}%` }]} />
-      </View>
-    </Animated.View>
   );
 }
 
@@ -736,10 +727,6 @@ const styles = StyleSheet.create({
   scanner: { position: 'absolute', pointerEvents: 'none' },
   missing: { opacity: 0.45 },
   expect: { paddingTop: 10 },
-  // A place still to come: the row's shape, two soft lines where its name and area will be.
-  pendingRow: { paddingVertical: 14 },
-  skeleton: { height: 10, borderRadius: 5, backgroundColor: skyFill.raised },
-  skeletonShort: { height: 8, marginTop: 6 },
   // An Instagram reel before anything of it is known: the card's shape, its platform's mark faint in it.
   blankCard: { overflow: 'hidden', borderRadius: radii.card, backgroundColor: colors.basalt },
   blankMark: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', paddingBottom: 40, opacity: 0.35 },

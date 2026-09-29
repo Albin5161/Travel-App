@@ -1,12 +1,15 @@
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
+import { planningScript } from '@/components/mascots/planScript';
+import { PlanningScene } from '@/components/mascots/ReadingScene';
+import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { TICK } from '@/components/sky/Tick';
 import { Text } from '@/components/Text';
@@ -26,6 +29,7 @@ import {
   weekend,
   type Pace,
   type Party,
+  type TripPlan,
   type TripPrefs,
   type When,
 } from '@/data/planner';
@@ -182,7 +186,8 @@ export default function TripSetup() {
           cityName={city.name}
           count={collected.length}
           prefs={prefs}
-          onBuilt={async () => {
+          nearHome={nearHome}
+          make={async () => {
             // New answers rebuild the plan; stops people typed in stay, on their day where it still exists.
             const custom = customStops(state.tripPlans[id]);
             const points = collected.map((p) => p.coords);
@@ -197,6 +202,9 @@ export default function TripSetup() {
               removed: [],
               seed: 1,
             });
+            return plan;
+          }}
+          onDone={(plan) => {
             dispatch({ type: 'setTripPlan', plan });
             if (from === 'plan') router.back();
             else router.replace({ pathname: '/plan/[id]', params: { id } });
@@ -557,40 +565,54 @@ function MonthStep({ icon, label, disabled, onPress }: { icon: 'chevron-left' | 
   );
 }
 
-/** The plan being built, step by step, then handed to the plan screen. */
-function Build({ cityName, count, prefs, onBuilt }: { cityName: string; count: number; prefs: TripPrefs; onBuilt: () => void }) {
-  // One place has nothing to group or fit: it gets a day, a time, and something nearby.
-  const lines = count === 1 ? [
-    prefs.start ? `Setting it for ${formatDay(prefs.start)}` : 'Picking a day for it',
-    'Finding the best time to go',
-    'Looking for a good dinner nearby',
-  ] : [
-    `Grouping your ${count} spots by area`,
-    `Fitting them into ${prefs.days} ${prefs.days === 1 ? 'day' : 'days'} at a ${prefs.pace} pace`,
-    prefs.getting === 'drive' ? 'Timing the drives between them' : prefs.getting === 'bus' ? 'Timing the buses between them' : 'Timing the walks and autos between them',
-    'Looking for a good dinner nearby',
-  ];
-  const [done, setDone] = useState(0);
-  const handed = useRef(false);
-  // Held in a ref: the parent passes a new function each render, and the hand-off timer must not be
-  // cleared by one.
-  const built = useRef(onBuilt);
+/**
+ * The plan being put together, with Amma and the child talking it through from the traveller's own
+ * answers. The plan is built from the first moment (the stay may be looked up online) and handed to
+ * the plan screen once it's back and they've cheered, or at once on Skip.
+ */
+function Build({
+  cityName,
+  count,
+  prefs,
+  nearHome,
+  make,
+  onDone,
+}: {
+  cityName: string;
+  count: number;
+  prefs: TripPrefs;
+  nearHome: boolean;
+  make: () => Promise<TripPlan>;
+  onDone: (plan: TripPlan) => void;
+}) {
+  const { width: W } = useWindowDimensions();
+  const [plan, setPlan] = useState<TripPlan | null>(null);
+  const [cheered, setCheered] = useState(false);
+  const [skipped, setSkipped] = useState(false);
+  // Written once: the answers don't change while it plays, and a re-render mustn't re-roll the lines.
+  const [{ script, finale }] = useState(() => planningScript({ city: cityName, count, prefs, nearHome }));
+  // Held in refs: the parent passes new functions each render, and neither the build nor the
+  // hand-off may start twice because of one.
+  const calls = useRef({ make, onDone });
   useEffect(() => {
-    built.current = onBuilt;
+    calls.current = { make, onDone };
   });
   useEffect(() => {
-    if (done < lines.length) {
-      const t = setTimeout(() => {
-        haptic.selection();
-        setDone((n) => n + 1);
-      }, done === 0 ? 400 : 480);
-      return () => clearTimeout(t);
-    }
-    if (handed.current) return;
+    let live = true;
+    void calls.current.make().then((p) => live && setPlan(p));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const handed = useRef(false);
+  useEffect(() => {
+    if (!plan || !(cheered || skipped) || handed.current) return;
     handed.current = true;
     haptic.success();
-    setTimeout(() => built.current(), 350);
-  }, [done, lines.length]);
+    calls.current.onDone(plan);
+  }, [plan, cheered, skipped]);
+  const cheer = useCallback(() => setCheered(true), []);
+  const sceneW = Math.min(W - space.screen * 2 - 28, 320);
 
   return (
     <View style={styles.build}>
@@ -598,21 +620,25 @@ function Build({ cityName, count, prefs, onBuilt }: { cityName: string; count: n
       <Text variant="display" accessibilityRole="header" style={styles.question}>
         Building your plan
       </Text>
-      <View style={styles.buildLines}>
-        {lines.map((line, i) =>
-          i <= done ? (
-            <Animated.View key={line} entering={FADE_IN} style={styles.buildLine}>
-              <View style={[styles.buildDot, i < done && styles.buildDotDone]}>
-                {i < done ? <Feather name="check" size={11} color={skyCta} /> : null}
-              </View>
-              <Text variant="body" color={i < done ? skyInk.strong : skyInk.soft}>
-                {line}
-                {i === done ? '…' : ''}
-              </Text>
-            </Animated.View>
-          ) : null,
-        )}
-      </View>
+      {/* The scene on glass, cut off by the card's foot, as on the reading screen. */}
+      <Glass style={styles.buildCard}>
+        <View style={styles.buildScene}>
+          <PlanningScene script={script} finale={finale} ready={!!plan} width={sceneW} onCheered={cheer} />
+        </View>
+      </Glass>
+      <Pressable
+        onPress={() => {
+          haptic.light();
+          setSkipped(true);
+        }}
+        style={styles.skip}
+        accessibilityRole="button"
+        accessibilityLabel="Skip to the plan"
+      >
+        <Text variant="label" color={skyInk.soft}>
+          Skip
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -675,8 +701,8 @@ const styles = StyleSheet.create({
   // Can't be picked, and looks it: well back from the days that can.
   dayOff: { opacity: 0.4 },
   build: { flex: 1, paddingHorizontal: space.screen, paddingTop: 28 },
-  buildLines: { gap: 16 },
-  buildLine: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  buildDot: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: skyInk.outline, alignItems: 'center', justifyContent: 'center' },
-  buildDotDone: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
+  buildCard: { paddingTop: 14, paddingHorizontal: 14, alignItems: 'center' },
+  buildScene: { overflow: 'hidden' },
+  // A quiet way out for anyone who's seen it: 44pt tall, centred under the card.
+  skip: { alignSelf: 'center', minHeight: 44, minWidth: 88, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
 });

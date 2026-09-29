@@ -236,21 +236,28 @@ export function KidArm() {
   );
 }
 
-/** The phone they share, with Amma's hand under it. */
-export function Phone({ x, y }: { x: number; y: number }) {
-  const screen = `mascotScreen${useId().replace(/:/g, '')}`;
+/** The phone they share, with Amma's hand under it: a reel playing, or a map while they plan. */
+export function Phone({ x, y, screen = 'play' }: { x: number; y: number; screen?: 'play' | 'map' }) {
+  const glass = `mascotScreen${useId().replace(/:/g, '')}`;
   return (
     <G>
       <G transform={`translate(${x} ${y}) rotate(-8)`}>
         <Defs>
-          <LinearGradient id={screen} x1="0" y1="0" x2="0" y2="1">
+          <LinearGradient id={glass} x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor="#FFB98F" />
             <Stop offset="1" stopColor="#C85C7A" />
           </LinearGradient>
         </Defs>
         <Rect x={-15} y={-26} width={30} height={52} rx={6} fill={colors.night} />
-        <Rect x={-12} y={-22} width={24} height={44} rx={3.5} fill={`url(#${screen})`} />
-        <Path d="M -3 -6 L 6 0 L -3 6 Z" fill="rgba(255,255,255,0.9)" />
+        <Rect x={-12} y={-22} width={24} height={44} rx={3.5} fill={`url(#${glass})`} />
+        {screen === 'play' ? (
+          <Path d="M -3 -6 L 6 0 L -3 6 Z" fill="rgba(255,255,255,0.9)" />
+        ) : (
+          <>
+            <Path d="M 0 -10 C 5 -10 7 -6.5 7 -3.5 C 7 1.5 0 8 0 8 C 0 8 -7 1.5 -7 -3.5 C -7 -6.5 -5 -10 0 -10 Z" fill="rgba(255,255,255,0.92)" />
+            <Circle cx={0} cy={-3.5} r={2.6} fill="#C85C7A" />
+          </>
+        )}
       </G>
       <Ellipse cx={x - 12} cy={y + 22} rx={9} ry={7.5} fill={INK.skin} />
     </G>

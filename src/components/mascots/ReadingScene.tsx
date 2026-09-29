@@ -25,7 +25,7 @@ import { BUBBLE, BUBBLE_INK, motion } from './motion';
 /** What the reading is doing, as the scene tells it: the status line's steps, a long wait, the finds. */
 export type Topic = 'play' | 'caption' | 'pin' | 'listen' | 'wait' | 'found';
 
-type Line = { who: 'amma' | 'kid'; text: string };
+export type Line = { who: 'amma' | 'kid'; text: string };
 
 // Two lines a step, taking turns, then they fall quiet and watch. English only for now.
 const LINES: Record<Exclude<Topic, 'found'>, Line[]> = {
@@ -86,20 +86,71 @@ export const ReadingScene = memo(function ReadingScene({
   width: number;
   onCheered: () => void;
 }) {
-  const reduced = useReducedMotion();
-  const k = width / W;
-  const glowId = `mascotGlow${useId().replace(/:/g, '')}`;
   const { line, n, prev, current } = useChat(topic, count);
-  const talking = useTalking(line, n);
   // The scene's own step, which trails the reading's so every exchange is finished.
   const cheer = current === 'found';
-  const waiting = current === 'wait';
+  useCheer(cheer, onCheered);
+  return (
+    <Scene width={width} line={line} n={n} prev={prev} cheer={cheer} waiting={current === 'wait'} screen="play" about="Amma and a child watch the video together." />
+  );
+});
 
+/**
+ * Amma and the child planning the trip while the plan is put together: a short script from the
+ * traveller's own answers, then a cheer once the plan is back (`ready`). The last line holds until
+ * it is.
+ */
+export const PlanningScene = memo(function PlanningScene({
+  script,
+  finale,
+  ready,
+  width,
+  onCheered,
+}: {
+  script: Line[];
+  finale: Line;
+  ready: boolean;
+  width: number;
+  onCheered: () => void;
+}) {
+  const { line, n, prev, cheer } = useScript(script, finale, ready);
+  useCheer(cheer, onCheered);
+  return <Scene width={width} line={line} n={n} prev={prev} cheer={cheer} waiting={false} screen="map" about="Amma and a child plan the trip together." />;
+});
+
+/** The cheer holds CHEER_MS, then the scene steps aside. */
+function useCheer(cheer: boolean, onCheered: () => void) {
   useEffect(() => {
     if (!cheer) return;
     const t = setTimeout(onCheered, CHEER_MS);
     return () => clearTimeout(t);
   }, [cheer, onCheered]);
+}
+
+/** The drawing: Amma, the phone, the child, and whoever is talking. */
+function Scene({
+  width,
+  line,
+  n,
+  prev,
+  cheer,
+  waiting,
+  screen,
+  about,
+}: {
+  width: number;
+  line: Line | null;
+  n: number;
+  prev: Said | null;
+  cheer: boolean;
+  waiting: boolean;
+  screen: 'play' | 'map';
+  about: string;
+}) {
+  const reduced = useReducedMotion();
+  const k = width / W;
+  const glowId = `mascotGlow${useId().replace(/:/g, '')}`;
+  const talking = useTalking(line, n);
 
   const ammaMood: Mood = cheer ? 'cheer' : 'idle';
   const kidMood: Mood = cheer ? 'cheer' : waiting ? 'wait' : 'idle';
@@ -117,7 +168,7 @@ export const ReadingScene = memo(function ReadingScene({
       style={[styles.scene, { width, height: H * k }]}
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`Amma and a child watch the video together. ${said}`}
+      accessibilityLabel={`${about} ${said}`}
     >
       <Animated.View style={[StyleSheet.absoluteFill, !reduced && motion.glow]}>
         <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`}>
@@ -139,7 +190,7 @@ export const ReadingScene = memo(function ReadingScene({
         <Head layers={ammaFace} at={AMMA} box={AMMA_HEAD_BOX} k={k} tilt={ammaTilt} talking={ammaTalks} who="amma" reduced={reduced} cheer={cheer} />
       </Animated.View>
       <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} style={StyleSheet.absoluteFill}>
-        <Phone x={PHONE.x} y={PHONE.y} />
+        <Phone x={PHONE.x} y={PHONE.y} screen={screen} />
       </Svg>
       <Animated.View style={[StyleSheet.absoluteFill, !reduced && cheer && motion.hop]}>
         <Animated.View style={[StyleSheet.absoluteFill, !reduced && motion.kidBreath]}>
@@ -160,7 +211,7 @@ export const ReadingScene = memo(function ReadingScene({
       {line ? <Bubble key={n} line={line} k={k} reduced={reduced} /> : null}
     </View>
   );
-});
+}
 
 type Said = { line: Line; n: number };
 type Chat = { topic: Topic; i: number; n: number; since: number; line: Line | null; prev: Said | null };
@@ -201,6 +252,33 @@ function useChat(topic: Topic, count: number): { line: Line | null; n: number; p
   }, [at, topic, found]);
 
   return { line: at?.line ?? null, n: at?.n ?? 0, prev: at?.prev ?? null, current: at?.topic ?? null };
+}
+
+type Scripted = { i: number; n: number; since: number; line: Line; prev: Said | null };
+
+/**
+ * A fixed script, a line at a time at the same readable pace, then the finale (a cheer) once
+ * `ready`. Until then the last line stays up.
+ */
+function useScript(script: Line[], finale: Line, ready: boolean): { line: Line | null; n: number; prev: Said | null; cheer: boolean } {
+  const [at, setAt] = useState<Scripted | null>(null);
+  useEffect(() => {
+    const next = at ? at.i + 1 : 0;
+    // The finale holds; and it waits for the plan.
+    if (next > script.length || (next === script.length && !ready)) return;
+    const wait = at ? Math.max(0, at.since + lineMs(at.line) - Date.now()) : 0;
+    const t = setTimeout(() => {
+      setAt((a) => ({
+        i: next,
+        n: (a?.n ?? 0) + 1,
+        since: Date.now(),
+        line: next === script.length ? finale : script[next],
+        prev: a ? { line: a.line, n: a.n } : null,
+      }));
+    }, wait);
+    return () => clearTimeout(t);
+  }, [at, ready, script, finale]);
+  return { line: at?.line ?? null, n: at?.n ?? 0, prev: at?.prev ?? null, cheer: !!at && at.i === script.length };
 }
 
 /** Who is mid-sentence: the speaker's mouth moves for about as long as the line takes to say. */

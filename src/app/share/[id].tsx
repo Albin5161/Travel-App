@@ -143,7 +143,8 @@ export default function ShareScreen() {
 
   return (
     <SkyScreen style={{ paddingTop: insets.top + 24, paddingBottom: insets.bottom + 12 }}>
-      <PatternBackdrop look={backdrop} calm={{ top: look.stops[0], height: insets.top + 150 }} />
+      {/* The state's own cloth, as the saved story prints it: what's on screen is what gets posted. */}
+      <PatternBackdrop look={backdrop} ground calm={{ top: backdrop.ground, height: insets.top + 150 }} />
       <View style={styles.head}>
         <Animated.View entering={HEAD_IN}>
           <Text variant="eyebrow">

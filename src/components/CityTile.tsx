@@ -20,6 +20,8 @@ type FaceProps = {
   badge?: string;
   /** Tile width, so the face can shrink with it. Omit for the full-size face. */
   width?: number;
+  /** Who took a Google cover photo, credited on the photo. */
+  photoCredit?: string;
 };
 
 type Props = FaceProps & {
@@ -65,7 +67,8 @@ function faceScale(width: number | undefined) {
 }
 
 // Tall photo card for the home grid (after Atlys's country cards): name in heavy Jakarta over the
-// photo, a hairline, one stat row, and a two-line caption below the card.
+// photo, a hairline, one stat row, and a two-line caption below the card (the source, then who made
+// the videos). A Google photo's credit sits on the photo.
 export function CityTile({
   name,
   photo,
@@ -99,7 +102,7 @@ export function CityTile({
     >
       <View ref={photoRef} style={[styles.shadow, { borderRadius: f.radius }, lifted && styles.lifted]}>
         <PhotoCard source={photo} radius={f.radius} style={{ width, height: width * TILE_RATIO }}>
-          <CityTileFace name={name} statLabel={statLabel} statValue={statValue} badge={badge} width={width} />
+          <CityTileFace name={name} statLabel={statLabel} statValue={statValue} badge={badge} width={width} photoCredit={photoCredit} />
         </PhotoCard>
       </View>
       <View style={[styles.caption, f.compact && styles.captionCompact]}>
@@ -126,18 +129,13 @@ export function CityTile({
         <Text variant="label" numberOfLines={1} style={f.compact && styles.captionText}>
           {captionValue}
         </Text>
-        {photoCredit ? (
-          <Text variant="label" color={sky ? skyInk.faint : light.inkFaint} numberOfLines={1} style={styles.captionText}>
-            Photo: {photoCredit}
-          </Text>
-        ) : null}
       </View>
     </PressableScale>
   );
 }
 
 /** What sits on the tile's photo. Also drawn on the growing card, fading out as it opens. */
-export function CityTileFace({ name, statLabel, statValue, badge, width }: FaceProps) {
+export function CityTileFace({ name, statLabel, statValue, badge, width, photoCredit }: FaceProps) {
   const f = faceScale(width);
   return (
     <>
@@ -164,6 +162,19 @@ export function CityTileFace({ name, statLabel, statValue, badge, width }: FaceP
             {statValue}
           </Text>
         </View>
+        {/* Google asks for the photographer's credit wherever its photo shows: on the photo, so the
+            caption below the card keeps to its two lines. */}
+        {photoCredit ? (
+          <Text
+            variant="micro"
+            color={light.photoInkSoft}
+            numberOfLines={1}
+            style={[styles.creditText, f.compact && styles.creditTextCompact]}
+            accessibilityLabel={`Photo by ${photoCredit}`}
+          >
+            Photo: {photoCredit}
+          </Text>
+        ) : null}
       </View>
     </>
   );
@@ -186,6 +197,9 @@ const styles = StyleSheet.create({
   badgeCompact: { top: 7, left: 7, paddingHorizontal: 6, paddingVertical: 3 },
   badgeText: { fontSize: 9, letterSpacing: 0.6 },
   badgeTextCompact: { fontSize: 7, letterSpacing: 0.4 },
+  // Under the stat row, across the tile's width, over the photo's darkened foot.
+  creditText: { fontSize: 9, lineHeight: 12, letterSpacing: 0.2, textTransform: 'none', marginTop: 6 },
+  creditTextCompact: { fontSize: 7, lineHeight: 9, marginTop: 4 },
   body: { position: 'absolute' },
   name: {
     fontFamily: fonts.display,

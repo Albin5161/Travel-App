@@ -1,4 +1,4 @@
-import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useId, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useReducedMotion } from 'react-native-reanimated';
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
@@ -50,12 +50,14 @@ const LINES: Record<Exclude<Topic, 'found'>, Line[]> = {
     { who: 'amma', text: 'Good places take a moment.' },
   ],
 };
-/** How long each line stays up before the other answers. */
-const LINE_MS = 2800;
-/** A line is never cut short before it can be read, however quickly the steps move on. */
-const MIN_LINE_MS = 1400;
+/**
+ * How long a line stays up: by its length, long enough to read it twice without hurrying ("Ooh,
+ * show me!" 2.4 s, "Write the places down, Amma!" 3.3 s). Lines are never cut short, and a question
+ * always gets its answer, however quickly the reading moves on.
+ */
+const lineMs = (line: Line) => Math.min(4200, Math.max(2400, 1200 + line.text.length * 75));
 /** The cheer when the places arrive, before the scene steps aside for them. */
-export const CHEER_MS = 1400;
+export const CHEER_MS = 2200;
 
 // The scene is drawn on a 300 × 185 grid and scaled to the width it's given.
 const W = 300;
@@ -87,9 +89,11 @@ export const ReadingScene = memo(function ReadingScene({
   const reduced = useReducedMotion();
   const k = width / W;
   const glowId = `mascotGlow${useId().replace(/:/g, '')}`;
-  const { line, n } = useChat(topic, count);
+  const { line, n, prev, current } = useChat(topic, count);
   const talking = useTalking(line, n);
-  const cheer = topic === 'found';
+  // The scene's own step, which trails the reading's so every exchange is finished.
+  const cheer = current === 'found';
+  const waiting = current === 'wait';
 
   useEffect(() => {
     if (!cheer) return;
@@ -98,12 +102,12 @@ export const ReadingScene = memo(function ReadingScene({
   }, [cheer, onCheered]);
 
   const ammaMood: Mood = cheer ? 'cheer' : 'idle';
-  const kidMood: Mood = cheer ? 'cheer' : topic === 'wait' ? 'wait' : 'idle';
+  const kidMood: Mood = cheer ? 'cheer' : waiting ? 'wait' : 'idle';
   const ammaTalks = talking?.who === 'amma';
   const kidTalks = talking?.who === 'kid';
   // Heads lean in to the phone, lift a little to speak, and tip back to cheer.
   const ammaTilt = cheer ? -4 : ammaTalks ? 3 : 7;
-  const kidTilt = cheer ? 6 : kidTalks ? -4 : topic === 'wait' ? -2 : -9;
+  const kidTilt = cheer ? 6 : kidTalks ? -4 : waiting ? -2 : -9;
   const ammaFace = useMemo(() => ammaHead(ammaMood, 1.5), [ammaMood]);
   const kidFace = useMemo(() => kidHead(kidMood, -1.5), [kidMood]);
 
@@ -151,42 +155,52 @@ export const ReadingScene = memo(function ReadingScene({
         </Animated.View>
       </Animated.View>
 
+      {/* The line before fades as the next one pops in, so talk flows instead of blinking. */}
+      {prev && !reduced ? <Bubble key={prev.n} line={prev.line} k={k} reduced={reduced} leaving /> : null}
       {line ? <Bubble key={n} line={line} k={k} reduced={reduced} /> : null}
     </View>
   );
 });
 
+type Said = { line: Line; n: number };
+type Chat = { topic: Topic; i: number; n: number; since: number; line: Line | null; prev: Said | null };
+
 /**
- * The line on screen: each step's lines in turn, then quiet; a new step starts its own lines once
- * the one showing has had time to be read. The finds cut straight in. `n` counts showings, so the
- * same line said twice is still a new line.
+ * The talk, one line at a time, at a pace that can be read: each line stays up lineMs, a
+ * question's answer always follows it, and only then does the scene move to the newest step
+ * (skipping any it missed). After a step's lines they fall quiet until the next. The finds wait
+ * for the exchange in progress too, then the cheer holds until the scene steps aside. `n` counts
+ * showings; `prev` is the line just replaced, for its fade.
  */
-function useChat(topic: Topic, count: number): { line: Line | null; n: number } {
-  const [at, setAt] = useState<{ topic: Topic; i: number; n: number } | null>(null);
-  const since = useRef(0);
+function useChat(topic: Topic, count: number): { line: Line | null; n: number; prev: Said | null; current: Topic | null } {
+  const [at, setAt] = useState<Chat | null>(null);
   const found = useMemo<Line>(() => ({ who: 'kid', text: `${count} ${count === 1 ? 'place' : 'places'}!` }), [count]);
 
   useEffect(() => {
-    if (at?.topic === topic) return;
-    const wait = topic === 'found' ? 0 : Math.max(0, since.current + MIN_LINE_MS - Date.now());
+    if (at?.topic === 'found') return;
+    const speaking = !!at?.line;
+    // Quiet, with nothing new to say: wait for the reading to move on.
+    if (!speaking && at?.topic === topic) return;
+    const wait = speaking && at?.line ? Math.max(0, at.since + lineMs(at.line) - Date.now()) : 0;
     const t = setTimeout(() => {
-      since.current = Date.now();
-      setAt((prev) => ({ topic, i: 0, n: (prev?.n ?? 0) + 1 }));
+      setAt((a) => {
+        const n = (a?.n ?? 0) + 1;
+        const prev = a?.line ? { line: a.line, n: a.n } : null;
+        const since = Date.now();
+        const lines = (of: Topic) => (of === 'found' ? [found] : LINES[of]);
+        // The answer to what was just said.
+        if (a && a.line && a.i + 1 < lines(a.topic).length) {
+          return { topic: a.topic, i: a.i + 1, n, since, line: lines(a.topic)[a.i + 1], prev };
+        }
+        // The newest step, or quiet.
+        if (!a || topic !== a.topic) return { topic, i: 0, n, since, line: lines(topic)[0], prev };
+        return { ...a, n, since, line: null, prev };
+      });
     }, wait);
     return () => clearTimeout(t);
-  }, [topic, at?.topic]);
+  }, [at, topic, found]);
 
-  useEffect(() => {
-    if (!at || at.topic === 'found' || at.i >= LINES[at.topic].length) return;
-    const t = setTimeout(() => {
-      since.current = Date.now();
-      setAt({ topic: at.topic, i: at.i + 1, n: at.n + 1 });
-    }, LINE_MS);
-    return () => clearTimeout(t);
-  }, [at]);
-
-  if (!at) return { line: null, n: 0 };
-  return { line: at.topic === 'found' ? found : (LINES[at.topic][at.i] ?? null), n: at.n };
+  return { line: at?.line ?? null, n: at?.n ?? 0, prev: at?.prev ?? null, current: at?.topic ?? null };
 }
 
 /** Who is mid-sentence: the speaker's mouth moves for about as long as the line takes to say. */
@@ -250,7 +264,7 @@ function Head({
 }
 
 /** A speech bubble over whoever is talking, its tail pointing at them. */
-function Bubble({ line, k, reduced }: { line: Line; k: number; reduced: boolean }) {
+function Bubble({ line, k, reduced, leaving }: { line: Line; k: number; reduced: boolean; leaving?: boolean }) {
   const amma = line.who === 'amma';
   // From the bubble's near edge to the speaker's head.
   const reach = (amma ? AMMA.x - EDGE : W - EDGE - KID.x) * k;
@@ -260,8 +274,9 @@ function Bubble({ line, k, reduced }: { line: Line; k: number; reduced: boolean 
         styles.bubble,
         amma ? { left: EDGE * k, transformOrigin: 'left bottom' } : { right: EDGE * k, transformOrigin: 'right bottom' },
         { top: 8 * k, maxWidth: (W - EDGE * 2) * k, minWidth: reach + 22 },
-        !reduced && motion.pop,
+        !reduced && (leaving ? motion.fadeAway : motion.pop),
       ]}
+      aria-hidden={leaving}
     >
       {/* One line, always: the room above the heads holds one line at 1.3× text, and no more. */}
       <Text variant="label" color={BUBBLE_INK} numberOfLines={1} maxFontSizeMultiplier={1.3}>

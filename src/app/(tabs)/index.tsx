@@ -36,6 +36,8 @@ import { fonts, space } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
 const GUTTER = space.screen;
+/** Room kept clear at each end of the top row (the wordmark's width and a gap) for the centred chip. */
+const TOP_SIDE = 88;
 /** How far the photo strip tucks under the link box. */
 const STRIP_TUCK = 22;
 // First-run strip: one striking place from each sample video, so the promise is visual.
@@ -148,11 +150,12 @@ export default function Home() {
           contentContainerStyle={{ flexGrow: 1, paddingTop: 12, paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }}
         >
           <View style={styles.header} onLayout={(e) => setStickAt(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
+            {/* The wordmark left, search right, and where you are in the middle, so the row balances. */}
             <View style={styles.topRow} onLayout={measure('top')}>
               <Text style={styles.wordmark}>Xplore</Text>
-              <View style={styles.topActions}>
-                {collections.length > 0 ? <SearchButton /> : null}
-                <HereChip />
+              {collections.length > 0 ? <SearchButton /> : null}
+              <View style={styles.hereSlot} pointerEvents="box-none">
+                <HereChip maxWidth={W - GUTTER * 2 - TOP_SIDE * 2} />
               </View>
             </View>
             {/* Hidden for the one frame before it's measured, so it appears already in place. */}
@@ -289,7 +292,7 @@ function SearchButton() {
  * Where you are, as a town, like a delivery app's header. Asks for location only when tapped; the
  * town is worked out on the phone and the position goes nowhere (state/where).
  */
-function HereChip() {
+function HereChip({ maxWidth }: { maxWidth: number }) {
   const { here, find } = useHere();
   const label =
     here.status === 'found'
@@ -304,15 +307,17 @@ function HereChip() {
     <PressableScale
       onPress={find}
       disabled={here.status === 'finding'}
-      style={styles.herePill}
+      style={[styles.hereTap, { maxWidth }]}
       accessibilityRole="button"
       accessibilityLabel={here.status === 'found' && here.town ? `You're in ${here.town}. Tap to check again.` : label}
       accessibilityHint={here.status === 'unknown' ? 'Asks to use your location. It stays on your phone.' : undefined}
     >
-      <Feather name="map-pin" size={13} color={quiet ? skyInk.faint : skyInk.strong} />
-      <Text variant="label" color={quiet ? skyInk.faint : skyInk.strong} numberOfLines={1} style={styles.hereText}>
-        {label}
-      </Text>
+      <View style={styles.herePill}>
+        <Feather name="map-pin" size={13} color={quiet ? skyInk.faint : skyInk.strong} />
+        <Text variant="label" color={quiet ? skyInk.faint : skyInk.strong} numberOfLines={1} style={styles.hereText}>
+          {label}
+        </Text>
+      </View>
     </PressableScale>
   );
 }
@@ -362,14 +367,17 @@ const styles = StyleSheet.create({
   // The strip's lower edge runs under the sticky link box below it (a later sibling, so it draws
   // on top), which is what makes the prints read as tucked behind the field.
   strip: { marginTop: 14, marginBottom: -STRIP_TUCK },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 44 },
+  // Centred on the screen, not in the gap left over, whatever the two ends measure.
+  hereSlot: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  // A 44pt tap around the 34pt pill.
   // A pill of the same glass as the link box, so the header reads as one family of controls.
+  hereTap: { height: 44, justifyContent: 'center' },
   herePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     height: 34,
-    maxWidth: 200,
     paddingHorizontal: 14,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
@@ -377,7 +385,6 @@ const styles = StyleSheet.create({
     backgroundColor: skyFill.raised,
   },
   hereText: { flexShrink: 1 },
-  topActions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   // The chip's glass, round: 44pt, the size of every tap.
   searchButton: {
     width: 44,

@@ -29,10 +29,10 @@ const INOUT = Easing.bezierFn(0.42, 0, 0.58, 1);
 const RING = Easing.bezierFn(0.1, 0.8, 0.3, 1);
 const TOTAL = 1100;
 const IMPACT = 350;
-// Long enough to see the stamp has landed and read the child's line under it; the ticket is fetched
+// Long enough to see the stamp has landed and read Amma's line under it; the ticket is fetched
 // meanwhile. Tap to skip.
-const HOLD = 900;
-// The child's joke once the trip is sealed, one of these at random.
+const HOLD = 1200;
+// Amma's joke once the trip is sealed, one of these at random.
 const QUIPS = ['Now ask Papa for permission!', 'Who’s telling Papa? Not me!', 'Don’t forget to ask Papa!'];
 // Headline orange: the stamp is large type, which passes 3:1 on the veil.
 const INK = skyAccent;
@@ -233,5 +233,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     pointerEvents: 'none',
   },
-  quip: { marginTop: 8, paddingHorizontal: 20 },
+  // Clear air between the stamp and Amma's line, so the two read as a beat and its punchline.
+  quip: { marginTop: 36, paddingHorizontal: 20 },
 });

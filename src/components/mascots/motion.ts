@@ -29,6 +29,11 @@ const RISE_IN = css.keyframes({
   to: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }] },
 });
 
+const RISE_OUT = css.keyframes({
+  from: { opacity: 1, transform: [{ translateY: 0 }] },
+  to: { opacity: 0, transform: [{ translateY: -4 }] },
+});
+
 const blinking = { animationTimingFunction: 'linear', animationIterationCount: 'infinite' } as const;
 export const motion = css.create({
   // Each breathes at its own pace, so the two never rise in step.
@@ -41,9 +46,11 @@ export const motion = css.create({
   flap: { animationName: FLAP_FRAMES, animationDuration: '260ms', animationTimingFunction: 'linear', animationIterationCount: 'infinite' },
   // The phone's light, softly brighter and dimmer as the reel plays.
   glow: { animationName: PULSE, animationDuration: '2.4s', animationTimingFunction: 'ease-in-out', animationIterationCount: 'infinite' },
-  hop: { animationName: HOPS, animationDuration: '700ms', animationTimingFunction: 'ease-in-out' },
+  hop: { animationName: HOPS, animationDuration: '900ms', animationTimingFunction: 'ease-in-out' },
   // A new line pops up from its tail.
-  pop: { animationName: RISE_IN, animationDuration: '220ms', animationTimingFunction: cubicBezier(0.23, 1, 0.32, 1) },
+  pop: { animationName: RISE_IN, animationDuration: '280ms', animationDelay: '120ms', animationFillMode: 'both', animationTimingFunction: cubicBezier(0.23, 1, 0.32, 1) },
+  // The line before drifts up and away as the next arrives, and stays gone.
+  fadeAway: { animationName: RISE_OUT, animationDuration: '240ms', animationFillMode: 'forwards', animationTimingFunction: 'ease-out' },
   tilt: { transitionProperty: 'transform', transitionDuration: 400, transitionTimingFunction: 'ease-in-out' },
   // The stamp's joke: in just after the stamp lands (its thud is at 350ms), then a hop.
   popAfterStamp: { animationName: RISE_IN, animationDuration: '260ms', animationDelay: '450ms', animationFillMode: 'both', animationTimingFunction: cubicBezier(0.23, 1, 0.32, 1) },

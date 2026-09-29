@@ -185,7 +185,7 @@ export const AMMA_BODY = { x: -70, y: 20, w: 140, h: 130 };
 export const KID_BODY = { x: -55, y: 15, w: 110, h: 120 };
 
 /** Amma from the neck down: the saree, its pallu over her shoulder, and the arm holding the phone. */
-export function AmmaBody() {
+export function AmmaBody({ arm = true }: { arm?: boolean }) {
   const b = AMMA_BODY;
   return (
     <Svg width="100%" height="100%" viewBox={`${b.x} ${b.y} ${b.w} ${b.h}`} style={StyleSheet.absoluteFill}>
@@ -195,7 +195,7 @@ export function AmmaBody() {
       <Path d="M -14 150 L 22 64" stroke={INK.gold} strokeWidth={7} strokeLinecap="round" />
       <Path d="M -4 150 L 28 76" stroke={INK.goldDeep} strokeWidth={2} strokeLinecap="round" />
       <Rect x={-9} y={24} width={18} height={30} rx={8} fill={INK.skinShade} />
-      <Path d="M 30 72 Q 40 92 56 80" stroke={INK.skin} strokeWidth={14} fill="none" strokeLinecap="round" />
+      {arm ? <Path d="M 30 72 Q 40 92 56 80" stroke={INK.skin} strokeWidth={14} fill="none" strokeLinecap="round" /> : null}
     </Svg>
   );
 }

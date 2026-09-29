@@ -33,7 +33,7 @@ import { platformOfLink, track } from '@/lib/analytics';
 import { CHECK_AS_LIST_FROM, readLink } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
 import { sound } from '@/lib/sound';
-import { CARD_IN, CREDIT_IN, DURATION, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
+import { CARD_IN, CREDIT_IN, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { parseLink } from '@/server/links';
 import type { AssistReason } from '@/server/types';
 import { useTrips } from '@/state/trips';
@@ -102,8 +102,8 @@ const INSTAGRAM: Script = {
 /** After the last step has run this long, the status says so instead of holding still. */
 const STILL_AFTER_MS = 12_000;
 const STILL_EVERY_MS = 8000;
-/** Past this, a real link offers to carry on without you. */
-const OFFER_LEAVE_MS = 5000;
+/** How long the scene takes to fold away after the cheer: unhurried, it's the hand-off to the list. */
+const FOLD_MS = 450;
 
 const STATUS: Record<Exclude<Phase, 'reading'>, string> = {
   finding: 'Finding each one on the map…',
@@ -172,7 +172,6 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
     ? { text: script.still[Math.floor(overdue / STILL_EVERY_MS) % script.still.length], glyph: last.glyph }
     : script.stages[stage];
   const status = phase === 'reading' ? reading.text : STATUS[phase];
-  const canLeave = phase === 'reading' && script !== SAMPLE && elapsed >= OFFER_LEAVE_MS;
 
   // Amma and the child keep the wait company, talking through each step, and cheer the finds
   // before stepping aside for them.
@@ -184,15 +183,17 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   const reduced = useReducedMotion();
   useEffect(() => {
     if (scene !== 'leaving') return;
-    const t = setTimeout(() => setScene('gone'), reduced ? 0 : DURATION.uiMax);
+    const t = setTimeout(() => setScene('gone'), reduced ? 0 : FOLD_MS);
     return () => clearTimeout(t);
   }, [scene, reduced]);
 
   // Roll the place names in like film credits, as soon as they're known; matching them to real
   // places carries on underneath. When the last one lands and the matching is done, the work is
   // done: chime, haptic, and the extraction is held for checking. Nothing is saved until the user
-  // confirms it.
+  // confirms it. The names wait for Amma and the child to finish cheering: the scene is the wait's
+  // payoff, and the list follows it.
   useEffect(() => {
+    if (scene === 'on') return;
     if (shown < names.length) {
       const t = setTimeout(() => {
         haptic.selection();
@@ -204,7 +205,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
     haptic.success();
     void sound.play('found');
     dispatch({ type: 'stageExtraction', extraction: result });
-  }, [dispatch, names.length, result, shown]);
+  }, [dispatch, names.length, result, shown, scene]);
 
   const retry = () => {
     haptic.light();
@@ -291,7 +292,8 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
               {status}
             </Text>
           </Animated.View>
-          {names.length > 0 ? (
+          {/* The count starts with the first name in the list, not while the scene still cheers. */}
+          {shown > 0 ? (
             <Text variant="data">
               {phase === 'done' && result
                 ? `Found ${result.places.length} ${result.places.length === 1 ? 'place' : 'places'} in ${result.city.name}`
@@ -350,23 +352,6 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
         </Glass>
       </View>
 
-      {canLeave ? (
-        <Animated.View entering={CHOICE_ENTER[0]} style={[styles.choice, { paddingBottom: insets.bottom + 12 }]}>
-          <Text variant="label" color={skyInk.soft} style={styles.center}>
-            No need to wait here. It keeps reading, and waits for you on Home.
-          </Text>
-          <Button
-            kind="secondary"
-            label="Keep browsing"
-            onPress={() => {
-              haptic.light();
-              away.current = 'left';
-              if (router.canGoBack()) router.back();
-              else router.replace('/');
-            }}
-          />
-        </Animated.View>
-      ) : null}
 
       {phase === 'done' && result ? (
         <View style={[styles.choice, { paddingBottom: insets.bottom + 12 }]}>
@@ -713,7 +698,7 @@ const styles = StyleSheet.create({
   sceneFolded: { maxHeight: 0, marginTop: 0, marginBottom: 0, opacity: 0 },
   sceneFold: {
     transitionProperty: ['maxHeight', 'marginTop', 'marginBottom', 'opacity'],
-    transitionDuration: DURATION.uiMax,
+    transitionDuration: FOLD_MS,
     transitionTimingFunction: 'ease-in-out',
   },
   statusRow: {

@@ -5,30 +5,30 @@ import { Text } from '@/components/Text';
 import { skyFill, skyInk } from '@/theme/sky';
 import { radii } from '@/theme/tokens';
 
-import { KID_BODY, KID_HEAD_BOX, KidBody, kidHead } from './figures';
+import { AMMA_BODY, AMMA_HEAD_BOX, AmmaBody, ammaHead } from './figures';
 import { BUBBLE, BUBBLE_INK, motion } from './motion';
 
-// The child, head and shoulders in a round badge, as a chat shows who's talking: a frame of 80
-// units around the head's centre, from 40 left to 40 right and 36 above to 44 below.
-const FRAME = { x: -40, y: -36, side: 80 };
-const FACE = kidHead('cheer', 0);
+// Amma, head and shoulders in a round badge, as a chat shows who's talking: a frame of 100 units
+// around her head's centre, from 50 left to 50 right and 48 above (her bun) to 52 below.
+const FRAME = { x: -50, y: -48, side: 100 };
+const FACE = ammaHead('cheer', 0);
 
 /**
- * The child's one-liner after the stamp lands: a joke for the moment a trip is sealed. It pops in
- * just after the thud; with Reduce Motion it's simply there.
+ * Amma's one-liner after the stamp lands: a joke for the moment a trip is sealed. It pops in just
+ * after the thud; with Reduce Motion it's simply there.
  */
 export function Quip({ text, size = 56 }: { text: string; size?: number }) {
   const reduced = useReducedMotion();
   const k = size / FRAME.side;
   const at = (x: number, y: number) => ({ left: (x - FRAME.x) * k, top: (y - FRAME.y) * k });
-  const head = KID_HEAD_BOX * k;
+  const head = AMMA_HEAD_BOX * k;
   return (
     <Animated.View style={[styles.row, !reduced && motion.popAfterStamp]}>
       <Animated.View style={[styles.badge, { width: size, height: size, borderRadius: size / 2 }, !reduced && motion.hopAfterStamp]}>
-        <View style={{ position: 'absolute', ...at(KID_BODY.x, KID_BODY.y), width: KID_BODY.w * k, height: KID_BODY.h * k }}>
-          <KidBody />
+        <View style={{ position: 'absolute', ...at(AMMA_BODY.x, AMMA_BODY.y), width: AMMA_BODY.w * k, height: AMMA_BODY.h * k }}>
+          <AmmaBody arm={false} />
         </View>
-        <View style={{ position: 'absolute', ...at(-KID_HEAD_BOX / 2, -KID_HEAD_BOX / 2), width: head, height: head }}>
+        <View style={{ position: 'absolute', ...at(-AMMA_HEAD_BOX / 2, -AMMA_HEAD_BOX / 2), width: head, height: head }}>
           {FACE.base}
           {FACE.eyes}
           {FACE.mouth}

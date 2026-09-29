@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
-import { ReadingScene, type Topic } from '@/components/mascots/ReadingScene';
+import { ReadingScene, sceneHeight, type Topic } from '@/components/mascots/ReadingScene';
 import { ReelScanner } from '@/components/motion/ReelScanner';
 import { ReelTimeline, seconds } from '@/components/motion/ReelTimeline';
 import { GlassRim, PhotoCard } from '@/components/PhotoCard';
@@ -33,7 +33,7 @@ import { platformOfLink, track } from '@/lib/analytics';
 import { CHECK_AS_LIST_FROM, readLink } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
 import { sound } from '@/lib/sound';
-import { CARD_IN, CREDIT_IN, FADE_IN, FADE_OUT, REFLOW, fadeUp } from '@/lib/motion';
+import { CARD_IN, CREDIT_IN, DURATION, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { parseLink } from '@/server/links';
 import type { AssistReason } from '@/server/types';
 import { useTrips } from '@/state/trips';
@@ -51,7 +51,7 @@ type Phase = 'reading' | 'finding' | 'done';
  * isn't happening.
  */
 type Script = {
-  stages: { at: number; text: string; glyph: Glyph }[];
+  stages: { at: number; text: string; glyph: StepGlyph }[];
   /** How long reading usually takes: what the progress line eases toward. */
   expectMs: number;
   /** Said under the status, so nobody wonders whether it's stuck. */
@@ -177,9 +177,16 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   // Amma and the child keep the wait company, talking through each step, and cheer the finds
   // before stepping aside for them.
   const late = stillGoing || (!!script.late && elapsed >= script.late.after);
-  const topic: Topic = phase !== 'reading' ? 'found' : late ? 'wait' : reading.glyph === 'done' ? 'found' : reading.glyph;
-  const [sceneGone, setSceneGone] = useState(false);
-  const stepAside = useCallback(() => setSceneGone(true), []);
+  const topic: Topic = phase !== 'reading' ? 'found' : late ? 'wait' : reading.glyph;
+  // After the cheer the scene folds away (height and opacity, once), then leaves.
+  const [scene, setScene] = useState<'on' | 'leaving' | 'gone'>('on');
+  const stepAside = useCallback(() => setScene('leaving'), []);
+  const reduced = useReducedMotion();
+  useEffect(() => {
+    if (scene !== 'leaving') return;
+    const t = setTimeout(() => setScene('gone'), reduced ? 0 : DURATION.uiMax);
+    return () => clearTimeout(t);
+  }, [scene, reduced]);
 
   // Roll the place names in like film credits, as soon as they're known; matching them to real
   // places carries on underneath. When the last one lands and the matching is done, the work is
@@ -214,6 +221,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   };
 
   const cardW = W - space.screen * 2;
+  const sceneW = Math.min(cardW - 28, 320);
 
   return (
     <SkyScreen style={{ paddingTop: insets.top + 8 }}>
@@ -308,7 +316,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
           {found.slice(0, Math.min(shown, CREDITS_SHOWN)).map((p) => {
             const missing = !!result && !placed.has(p.name.toLowerCase());
             return (
-              <Animated.View key={p.id} entering={CREDIT_IN} layout={REFLOW} style={[styles.creditRow, missing && styles.missing]}>
+              <Animated.View key={p.id} entering={CREDIT_IN} style={[styles.creditRow, missing && styles.missing]}>
                 {missing ? <View style={styles.pin} /> : <PinDrop />}
                 <View style={styles.creditName}>
                   <Text variant="title" numberOfLines={1}>
@@ -328,9 +336,15 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
           {shown > CREDITS_SHOWN ? <MoreCredits rest={found.slice(CREDITS_SHOWN, shown)} placed={placed} done={!!result} /> : null}
         </ScrollView>
         {/* Last in the card, so its bottom edge crops them; the finds roll in above. */}
-        {sceneGone ? null : (
-          <Animated.View exiting={FADE_OUT} style={styles.scene}>
-            <ReadingScene topic={topic} count={names.length} width={Math.min(cardW - 28, 320)} onCheered={stepAside} />
+        {scene === 'gone' ? null : (
+          <Animated.View
+            style={[
+              styles.scene,
+              scene === 'leaving' ? styles.sceneFolded : { maxHeight: sceneHeight(sceneW) },
+              !reduced && styles.sceneFold,
+            ]}
+          >
+            <ReadingScene topic={topic} count={names.length} width={sceneW} onCheered={stepAside} />
           </Animated.View>
         )}
         </Glass>
@@ -621,6 +635,8 @@ function failureCopy(f: Failure): { icon: keyof typeof Feather.glyphMap; title: 
 const clamp = (v: number) => Math.min(0.97, Math.max(0.03, v));
 
 type Glyph = 'play' | 'caption' | 'listen' | 'pin' | 'done';
+/** A step of the reading: every glyph but the finish. */
+type StepGlyph = Exclude<Glyph, 'done'>;
 
 /** A small moving picture of the step in progress, so the status line is more than words. */
 function StageGlyph({ kind }: { kind: Glyph }) {
@@ -691,8 +707,15 @@ const styles = StyleSheet.create({
   // Shrinks to the room left above the button; its list scrolls inside.
   found: { marginTop: 26, padding: 14, flexShrink: 1, minHeight: 0 },
   creditsScroll: { flexShrink: 1 },
-  // Down to the card's edge, through its padding.
-  scene: { marginTop: 4, marginBottom: -14 },
+  // Down to the card's edge, through its padding. On a short screen it gives up its lower part (the
+  // bodies; faces and words are at the top) well before the finds do.
+  scene: { marginTop: 4, marginBottom: -14, flexShrink: 4, minHeight: 0, overflow: 'hidden' },
+  sceneFolded: { maxHeight: 0, marginTop: 0, marginBottom: 0, opacity: 0 },
+  sceneFold: {
+    transitionProperty: ['maxHeight', 'marginTop', 'marginBottom', 'opacity'],
+    transitionDuration: DURATION.uiMax,
+    transitionTimingFunction: 'ease-in-out',
+  },
   statusRow: {
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,

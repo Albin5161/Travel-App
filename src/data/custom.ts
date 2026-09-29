@@ -25,7 +25,7 @@ export function customPlace(input: CustomStopInput, id = `custom-${Date.now().to
   const city = getCity(input.cityId);
   // Nothing to be near: somewhere in the city (a sample's places, or a pasted city's), so the pin
   // and travel times stay sensible. Never 0°, 0°, which is the sea off West Africa.
-  const inCity = (p: Place) => p.cityId === input.cityId && !isCustom(p);
+  const inCity = (p: Place) => p.cityId === input.cityId && hasPin(p);
   const near = input.near ?? Object.values(places).find(inCity) ?? Object.values(live.places).find(inCity);
   return {
     id,
@@ -46,6 +46,9 @@ export function customPlace(input: CustomStopInput, id = `custom-${Date.now().to
 }
 
 export const isCustom = (p: Place) => p.source.kind === 'custom';
+
+/** Whether a place has a real pin: 0°, 0° is what a stop with nothing to borrow from once got. */
+export const hasPin = (p: Pick<Place, 'coords'>) => p.coords.lat !== 0 || p.coords.lng !== 0;
 
 /** The stops people typed in, so a rebuilt plan (regenerate, new answers) keeps them. */
 export function customStops(plan: { days: { stops: { place: Place }[] }[] } | undefined) {

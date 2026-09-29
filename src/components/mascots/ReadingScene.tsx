@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useReducedMotion } from 'react-native-reanimated';
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
@@ -42,7 +42,7 @@ const LINES: Record<Exclude<Topic, 'found'>, Line[]> = {
     { who: 'amma', text: 'Writing them down.' },
   ],
   listen: [
-    { who: 'amma', text: 'Shh… they’re saying the names.' },
+    { who: 'amma', text: 'Shh… they’re saying names.' },
     { who: 'kid', text: 'I’m listening too!' },
   ],
   wait: [
@@ -64,17 +64,31 @@ const AMMA = { x: 96, y: 92 };
 const KID = { x: 222, y: 118 };
 const PHONE = { x: 166, y: 150 };
 const EDGE = 10;
+/** The scene's height at a width. */
+export const sceneHeight = (width: number) => (H * width) / W;
 
 /**
  * Amma and the child watching the reel together while it's read: they talk about each step as it
  * really happens, and cheer when the places come back. With Reduce Motion on they hold still and
  * only the words change.
  */
-export function ReadingScene({ topic, count, width, onCheered }: { topic: Topic; count: number; width: number; onCheered: () => void }) {
+// Memo: the loading screen re-renders four times a second for its clock, and none of that is news here.
+export const ReadingScene = memo(function ReadingScene({
+  topic,
+  count,
+  width,
+  onCheered,
+}: {
+  topic: Topic;
+  count: number;
+  width: number;
+  onCheered: () => void;
+}) {
   const reduced = useReducedMotion();
   const k = width / W;
-  const line = useChat(topic, count);
-  const talking = useTalking(line);
+  const glowId = `mascotGlow${useId().replace(/:/g, '')}`;
+  const { line, n } = useChat(topic, count);
+  const talking = useTalking(line, n);
   const cheer = topic === 'found';
 
   useEffect(() => {
@@ -104,12 +118,12 @@ export function ReadingScene({ topic, count, width, onCheered }: { topic: Topic;
       <Animated.View style={[StyleSheet.absoluteFill, !reduced && motion.glow]}>
         <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`}>
           <Defs>
-            <RadialGradient id="mascotGlow" cx="50%" cy="50%" r="50%">
+            <RadialGradient id={glowId} cx="50%" cy="50%" r="50%">
               <Stop offset="0" stopColor="#FFD6BE" stopOpacity={0.55} />
               <Stop offset="1" stopColor="#FFD6BE" stopOpacity={0} />
             </RadialGradient>
           </Defs>
-          <Ellipse cx={PHONE.x - 6} cy={PHONE.y - 10} rx={46} ry={40} fill="url(#mascotGlow)" />
+          <Ellipse cx={PHONE.x - 6} cy={PHONE.y - 10} rx={46} ry={40} fill={`url(#${glowId})`} />
         </Svg>
       </Animated.View>
 
@@ -137,17 +151,18 @@ export function ReadingScene({ topic, count, width, onCheered }: { topic: Topic;
         </Animated.View>
       </Animated.View>
 
-      {line ? <Bubble key={`${line.who}:${line.text}`} line={line} k={k} reduced={reduced} /> : null}
+      {line ? <Bubble key={n} line={line} k={k} reduced={reduced} /> : null}
     </View>
   );
-}
+});
 
 /**
  * The line on screen: each step's lines in turn, then quiet; a new step starts its own lines once
- * the one showing has had time to be read. The finds cut straight in.
+ * the one showing has had time to be read. The finds cut straight in. `n` counts showings, so the
+ * same line said twice is still a new line.
  */
-function useChat(topic: Topic, count: number): Line | null {
-  const [at, setAt] = useState<{ topic: Topic; i: number } | null>(null);
+function useChat(topic: Topic, count: number): { line: Line | null; n: number } {
+  const [at, setAt] = useState<{ topic: Topic; i: number; n: number } | null>(null);
   const since = useRef(0);
   const found = useMemo<Line>(() => ({ who: 'kid', text: `${count} ${count === 1 ? 'place' : 'places'}!` }), [count]);
 
@@ -156,7 +171,7 @@ function useChat(topic: Topic, count: number): Line | null {
     const wait = topic === 'found' ? 0 : Math.max(0, since.current + MIN_LINE_MS - Date.now());
     const t = setTimeout(() => {
       since.current = Date.now();
-      setAt({ topic, i: 0 });
+      setAt((prev) => ({ topic, i: 0, n: (prev?.n ?? 0) + 1 }));
     }, wait);
     return () => clearTimeout(t);
   }, [topic, at?.topic]);
@@ -165,24 +180,24 @@ function useChat(topic: Topic, count: number): Line | null {
     if (!at || at.topic === 'found' || at.i >= LINES[at.topic].length) return;
     const t = setTimeout(() => {
       since.current = Date.now();
-      setAt({ topic: at.topic, i: at.i + 1 });
+      setAt({ topic: at.topic, i: at.i + 1, n: at.n + 1 });
     }, LINE_MS);
     return () => clearTimeout(t);
   }, [at]);
 
-  if (!at) return null;
-  return at.topic === 'found' ? found : (LINES[at.topic][at.i] ?? null);
+  if (!at) return { line: null, n: 0 };
+  return { line: at.topic === 'found' ? found : (LINES[at.topic][at.i] ?? null), n: at.n };
 }
 
 /** Who is mid-sentence: the speaker's mouth moves for about as long as the line takes to say. */
-function useTalking(line: Line | null): Line | null {
-  const [finished, setFinished] = useState<Line | null>(null);
+function useTalking(line: Line | null, n: number): Line | null {
+  const [finished, setFinished] = useState(0);
   useEffect(() => {
     if (!line) return;
-    const t = setTimeout(() => setFinished(line), Math.min(1800, Math.max(700, line.text.length * 55)));
+    const t = setTimeout(() => setFinished(n), Math.min(1800, Math.max(700, line.text.length * 55)));
     return () => clearTimeout(t);
-  }, [line]);
-  return line && finished !== line ? line : null;
+  }, [line, n]);
+  return line && finished !== n ? line : null;
 }
 
 function Body({ at, box, k, children }: { at: { x: number; y: number }; box: { x: number; y: number; w: number; h: number }; k: number; children: React.ReactNode }) {
@@ -248,7 +263,8 @@ function Bubble({ line, k, reduced }: { line: Line; k: number; reduced: boolean 
         !reduced && motion.pop,
       ]}
     >
-      <Text variant="label" color={BUBBLE_INK} numberOfLines={2} maxFontSizeMultiplier={1.3}>
+      {/* One line, always: the room above the heads holds one line at 1.3× text, and no more. */}
+      <Text variant="label" color={BUBBLE_INK} numberOfLines={1} maxFontSizeMultiplier={1.3}>
         {line.text}
       </Text>
       <View style={[styles.tail, amma ? { left: reach - 6 } : { right: reach - 6 }]} />

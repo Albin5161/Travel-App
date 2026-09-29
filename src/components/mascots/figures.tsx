@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { StyleSheet } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
@@ -203,16 +204,18 @@ export function AmmaBody() {
 export function KidBody() {
   const b = KID_BODY;
   const shirt = 'M -42 130 C -42 70, -26 40, 0 38 C 26 40, 42 70, 42 130 Z';
+  // Ids are page-wide on the web: each drawing gets its own, as PatternBackdrop does.
+  const clip = `kidShirt${useId().replace(/:/g, '')}`;
   return (
     <Svg width="100%" height="100%" viewBox={`${b.x} ${b.y} ${b.w} ${b.h}`} style={StyleSheet.absoluteFill}>
       <Defs>
-        <ClipPath id="kidShirt">
+        <ClipPath id={clip}>
           <Path d={shirt} />
         </ClipPath>
       </Defs>
       <Path d={shirt} fill={INK.ember} />
       <Path d="M -10 39 Q 0 50 10 39" stroke={INK.emberDeep} strokeWidth={4} fill="none" strokeLinecap="round" />
-      <Path d="M -50 88 L 50 88" stroke={INK.kasavu} strokeWidth={5} clipPath="url(#kidShirt)" />
+      <Path d="M -50 88 L 50 88" stroke={INK.kasavu} strokeWidth={5} clipPath={`url(#${clip})`} />
       <Rect x={-7} y={18} width={14} height={24} rx={6} fill={INK.skinKidShade} />
     </Svg>
   );
@@ -235,17 +238,18 @@ export function KidArm() {
 
 /** The phone they share, with Amma's hand under it. */
 export function Phone({ x, y }: { x: number; y: number }) {
+  const screen = `mascotScreen${useId().replace(/:/g, '')}`;
   return (
     <G>
       <G transform={`translate(${x} ${y}) rotate(-8)`}>
         <Defs>
-          <LinearGradient id="mascotScreen" x1="0" y1="0" x2="0" y2="1">
+          <LinearGradient id={screen} x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor="#FFB98F" />
             <Stop offset="1" stopColor="#C85C7A" />
           </LinearGradient>
         </Defs>
         <Rect x={-15} y={-26} width={30} height={52} rx={6} fill={colors.night} />
-        <Rect x={-12} y={-22} width={24} height={44} rx={3.5} fill="url(#mascotScreen)" />
+        <Rect x={-12} y={-22} width={24} height={44} rx={3.5} fill={`url(#${screen})`} />
         <Path d="M -3 -6 L 6 0 L -3 6 Z" fill="rgba(255,255,255,0.9)" />
       </G>
       <Ellipse cx={x - 12} cy={y + 22} rx={9} ry={7.5} fill={INK.skin} />

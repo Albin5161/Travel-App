@@ -7,7 +7,7 @@ import { Button } from '@/components/Button';
 import { Chips } from '@/components/spots/Chips';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
-import { customPlace, isCustom } from '@/data/custom';
+import { customPlace, hasPin } from '@/data/custom';
 import { addCustomStop, formatDay } from '@/data/planner';
 import type { DayPart } from '@/data/types';
 import { haptic } from '@/lib/haptics';
@@ -61,8 +61,9 @@ function AddStopForm() {
 
   const add = () => {
     if (!title.trim()) return;
-    // Borrow a location from the real stop it sits after, so the map and travel times stay sensible.
-    const stops = plan.days[day].stops.filter((s) => !isCustom(s.place));
+    // Borrow a location from the stop it sits after (any with a real pin, typed-in ones too), so the
+    // map and travel times stay sensible.
+    const stops = plan.days[day].stops.filter((s) => hasPin(s.place));
     const near = [...stops].reverse().find((s) => RANK[s.place.bestTime] <= RANK[part])?.place ?? stops[0]?.place;
     const place = customPlace({ cityId: id, title, note, bestTime: part, minutes, by: state.myName ?? 'You', near });
     writePlan(addCustomStop(plan, day, place));

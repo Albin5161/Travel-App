@@ -1,5 +1,5 @@
 import { getPlace } from '@/data/api';
-import { customPlace } from '@/data/custom';
+import { customPlace, hasPin } from '@/data/custom';
 import { live, restore, snapshot, type LiveSnapshot } from '@/data/registry';
 import type { TripPlan, TripStop } from '@/data/planner';
 import type { DayPart, Place } from '@/data/types';
@@ -100,7 +100,7 @@ export function fromWire(wire: WirePlan): TripPlan {
             // Older plans named the stop before, which could be another typed-in stop with no
             // place of its own: the nearest real stop in the day stands in for it.
             near: getPlace(s.custom.near ?? '') ?? getPlace(realNeighbour(day.map((t) => ({ id: t.id, custom: !!t.custom })), i) ?? ''),
-            at: s.custom.at && (s.custom.at.coords.lat || s.custom.at.coords.lng) ? s.custom.at : undefined,
+            at: s.custom.at && hasPin(s.custom.at) ? s.custom.at : undefined,
           },
           s.id,
         )

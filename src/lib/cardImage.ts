@@ -2,7 +2,7 @@ import { CARD_INSET, CARD_RATIO, cardFacts, QR_UNITS } from '@/components/share/
 import type { TripPlan } from '@/data/planner';
 import type { City } from '@/data/types';
 import { uriOf } from '@/lib/blur';
-import { PATTERN_ALPHA, PATTERN_GOLD, patternFor, type Pattern } from '@/lib/patterns';
+import { HEM, HEM_GOLD, lookFor, shapeColour, type Pattern } from '@/lib/patterns';
 import { QR_QUIET, QR_RUNS, QR_SIZE } from '@/lib/qr';
 import { skyAccent, type SkyLook } from '@/theme/sky';
 import { fonts, light } from '@/theme/tokens';
@@ -253,21 +253,22 @@ function paintCard(
 function paintStory(ctx: CanvasRenderingContext2D, k: number, data: CardData, photo: HTMLImageElement | null) {
   const W = 360 * k;
   const H = 640 * k;
-  const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, data.look.stops[0]);
-  sky.addColorStop(0.55, data.look.stops[1]);
-  sky.addColorStop(1, data.look.stops[2]);
-  ctx.fillStyle = sky;
+  // The state's colour and its pattern, tone on tone like printed cloth, deeper at top and foot.
+  const look = lookFor(data.city.state);
+  ctx.fillStyle = look.ground;
   ctx.fillRect(0, 0, W, H);
-  // The state's pattern over the sky, eased out under the headline so the words stay clear.
-  const { pattern, credit } = patternFor(data.city.state);
-  paintPattern(ctx, pattern, W, H, k);
-  const calm = ctx.createLinearGradient(0, 0, 0, 190 * k);
-  calm.addColorStop(0, data.look.stops[0]);
-  calm.addColorStop(0.6, withAlphaHex(data.look.stops[0], 0.75));
-  calm.addColorStop(1, withAlphaHex(data.look.stops[0], 0));
-  ctx.fillStyle = calm;
-  ctx.fillRect(0, 0, W, 190 * k);
+  paintPattern(ctx, look.pattern, W, H, k);
+  const shade = ctx.createLinearGradient(0, 0, 0, H);
+  shade.addColorStop(0, 'rgba(0,0,0,0.28)');
+  shade.addColorStop(0.25, 'rgba(0,0,0,0)');
+  shade.addColorStop(0.7, 'rgba(0,0,0,0)');
+  shade.addColorStop(1, 'rgba(0,0,0,0.32)');
+  ctx.fillStyle = shade;
+  ctx.fillRect(0, 0, W, H);
+  if (look.hem) {
+    ctx.fillStyle = HEM_GOLD;
+    for (const b of HEM.bands) ctx.fillRect(0, H - HEM.height * k + b.y * k, W, b.h * k);
+  }
 
   const n = data.plan.days.length;
   const left = 40 * k;
@@ -320,14 +321,6 @@ function paintStory(ctx: CanvasRenderingContext2D, k: number, data: CardData, ph
     baseline: 'middle',
     align: 'center',
   });
-  // Whose pattern it is, said small under the card.
-  setFont(ctx, fonts.sansSemi, 10 * k);
-  ctx.fillStyle = 'rgba(255,255,255,0.72)';
-  text(ctx, `BACKGROUND · ${credit.toUpperCase()}`, W / 2, cardY + cardH + 22 * k, {
-    baseline: 'middle',
-    align: 'center',
-    spacing: 1.2 * k,
-  });
 }
 
 /** One tile of the pattern drawn at the story's scale, then repeated across the whole picture. */
@@ -342,37 +335,19 @@ function paintPattern(ctx: CanvasRenderingContext2D, pattern: Pattern, W: number
   t.lineJoin = 'round';
   for (const shape of pattern.shapes) {
     const path = new Path2D(shape.d);
-    t.globalAlpha = Math.min(1, PATTERN_ALPHA * (shape.alpha ?? 1));
-    const colour = shape.gold ? PATTERN_GOLD : '#FFFFFF';
     if (shape.stroke) {
-      t.strokeStyle = colour;
+      t.strokeStyle = shapeColour(shape);
       t.lineWidth = shape.stroke;
       t.stroke(path);
     } else {
-      t.fillStyle = colour;
+      t.fillStyle = shapeColour(shape);
       t.fill(path);
     }
   }
-  const fill = ctx.createPattern(tile, pattern.hem ? 'repeat-x' : 'repeat');
+  const fill = ctx.createPattern(tile, 'repeat');
   if (!fill) return;
   ctx.fillStyle = fill;
-  if (pattern.hem) {
-    // A border: one band along the bottom edge.
-    ctx.save();
-    ctx.translate(0, H - tile.height);
-    ctx.fillRect(0, 0, W, tile.height);
-    ctx.restore();
-  } else {
-    ctx.fillRect(0, 0, W, H);
-  }
-}
-
-/** "#1B2A4E" at an alpha, for fading a sky colour out. */
-function withAlphaHex(hex: string, alpha: number) {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return hex;
-  const n = parseInt(m[1], 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+  ctx.fillRect(0, 0, W, H);
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -112,6 +112,9 @@ export default function CityScreen() {
   const photoStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.get(), [0, rise], [1, 0], Extrapolation.CLAMP),
   }));
+  const backingStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.get(), [rise - 24, rise], [0, 1], Extrapolation.CLAMP),
+  }));
   const barStyle = useAnimatedStyle(() => {
     const t = interpolate(scrollY.get(), [rise * 0.5, rise * 0.8], [0, 1], Extrapolation.CLAMP);
     return { opacity: t, transform: [{ translateY: (1 - t) * 24 }] };
@@ -193,7 +196,12 @@ export default function CityScreen() {
           </Animated.View>
         </View>
 
-        <PanelTabs active={active} onTab={goToTab} />
+        <View>
+          {/* Once the panel is up, a solid sky behind the glass tabs: what scrolls under them no
+              longer shows through the frost or in its rounded corners. At rest it's clear, over the photo. */}
+          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: look.stops[0] }, backingStyle]} pointerEvents="none" />
+          <PanelTabs active={active} onTab={goToTab} />
+        </View>
 
         <View style={[styles.panelBody, { paddingBottom: insets.bottom + 120, minHeight: H - top }]}>
           <OverviewSection

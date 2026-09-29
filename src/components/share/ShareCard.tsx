@@ -7,7 +7,7 @@ import { formatDay, formatRange, type TripPlan } from '@/data/planner';
 import type { City } from '@/data/types';
 import { useBlurredPhoto } from '@/lib/blur';
 import { formatClock } from '@/lib/geo';
-import { patternFor } from '@/lib/patterns';
+import { lookFor } from '@/lib/patterns';
 import { QR_PATH, QR_QUIET, QR_SIZE } from '@/lib/qr';
 import { skyAccent, type SkyLook } from '@/theme/sky';
 import { fonts, light } from '@/theme/tokens';
@@ -254,11 +254,9 @@ function issueDate(d: Date) {
  */
 export function ShareStory({ city, plan, issued, look }: { city: City; plan: TripPlan; issued: Date; look: SkyLook }) {
   const n = plan.days.length;
-  const { pattern, credit } = patternFor(city.state);
   return (
     <View style={styles.story}>
-      <LinearGradient colors={[...look.stops]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
-      <PatternBackdrop pattern={pattern} top={look.stops[0]} />
+      <PatternBackdrop look={lookFor(city.state)} ground />
       <View style={styles.storyHead}>
         <RNText style={styles.storyKicker}>{n === 1 ? 'MY NEXT DAY OUT' : 'MY NEXT TRIP'}</RNText>
         <RNText style={styles.storyTitle} numberOfLines={2}>
@@ -268,7 +266,6 @@ export function ShareStory({ city, plan, issued, look }: { city: City; plan: Tri
       <View style={styles.storyCard}>
         <ShareCard city={city} plan={plan} width={280} issued={issued} />
       </View>
-      <RNText style={styles.storyCredit}>{`BACKGROUND · ${credit.toUpperCase()}`}</RNText>
       <View style={styles.storyFoot}>
         <RNText style={styles.storyLine}>Turned from a travel reel, stop by stop.</RNText>
         <RNText style={styles.storyBrand}>Xplore · xplore.expo.app</RNText>
@@ -327,7 +324,6 @@ const styles = StyleSheet.create({
   storyAccent: { color: skyAccent },
   storyCard: { marginTop: 22, borderRadius: 28, boxShadow: '0 20px 50px rgba(0,0,0,0.35)' },
   storyFoot: { position: 'absolute', left: 32, right: 32, bottom: 40, alignItems: 'center', gap: 6 },
-  storyCredit: { marginTop: 16, fontFamily: fonts.sansSemi, fontSize: 10, lineHeight: 12, letterSpacing: 1.2, color: 'rgba(255,255,255,0.72)' },
   storyLine: { fontFamily: fonts.sansMedium, fontSize: 14, lineHeight: 19, color: 'rgba(255,255,255,0.88)', textAlign: 'center' },
   storyBrand: { fontFamily: fonts.displayBold, fontSize: 16, lineHeight: 21, color: '#FFFFFF' },
 });

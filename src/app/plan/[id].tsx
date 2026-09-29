@@ -52,6 +52,7 @@ import {
 import type { DayPart, Place } from '@/data/types';
 import { prebake, uriOf } from '@/lib/blur';
 import { formatClock, formatDuration, smoothPath, smoothPathStops } from '@/lib/geo';
+import { whyDay, whyStop, type Reason } from '@/data/why';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_IN_OUT, FADE_IN, FADE_OUT, fadeUp, REFLOW } from '@/lib/motion';
@@ -451,6 +452,7 @@ export default function PlanScreen() {
               {stops.length} {stops.length === 1 ? 'stop' : 'stops'}
               {today.totalKm > 0 ? ` · ${today.totalKm.toFixed(1)} km` : ''}
             </Text>
+            <WhyCard reasons={whyDay(plan, dayIndex)} />
 
             {stops.length === 0 ? (
               <Text variant="body" style={styles.emptyDay}>
@@ -482,6 +484,7 @@ export default function PlanScreen() {
                   ) : null}
                   <StopRow
                     stop={stop}
+                    why={whyStop(plan, dayIndex, i)}
                     number={i + 1}
                     index={i}
                     activeId={activeId}
@@ -750,8 +753,33 @@ function Leg({
   );
 }
 
+/** Why the day is arranged as it is: the planner's reasons, a line each, lead in bold. */
+function WhyCard({ reasons }: { reasons: Reason[] }) {
+  if (reasons.length === 0) return null;
+  return (
+    <View style={styles.why}>
+      <View style={styles.whyHead}>
+        <Feather name="compass" size={13} color={skyAccentText} />
+        <Text variant="eyebrow" color={skyAccentText} accessibilityRole="header">
+          Why this day works
+        </Text>
+      </View>
+      {reasons.map((r) => (
+        <View key={r.lead} style={styles.whyRow}>
+          <Feather name="check" size={13} color={skyInk.soft} style={styles.whyTick} />
+          <Text variant="label" color={skyInk.soft} style={styles.whyText}>
+            <Text variant="label">{r.lead}. </Text>
+            {r.text}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function StopRow({
   stop,
+  why,
   number,
   index,
   activeId,
@@ -765,6 +793,7 @@ function StopRow({
   onMore,
 }: {
   stop: TripStop;
+  why: string | null;
   number: number;
   index: number;
   activeId: SharedValue<string | null>;
@@ -827,12 +856,16 @@ function StopRow({
           <Text variant="data" numberOfLines={1}>
             {[formatClock(stop.startMinutes), formatDuration(stop.place.minutes), costLabel(stop.place.cost)].filter(Boolean).join(' · ')}
           </Text>
-          {stop.suggested ? (
+          {/* Why it's here, now: the plan's own reasoning, so it never reads as a random list. */}
+          {why ? (
+            <Text variant="label" color={skyInk.faint} numberOfLines={2} style={styles.stopWhy}>
+              {stop.suggested ? <Text variant="label" color={skyAccentText}>Suggested · </Text> : null}
+              {why}
+            </Text>
+          ) : stop.suggested ? (
             <Text variant="micro" color={skyAccentText}>
               Suggested · local pick
             </Text>
-          ) : stop.pinned ? (
-            <Text variant="micro">Pinned</Text>
           ) : null}
         </View>
       </PressableScale>
@@ -936,6 +969,20 @@ const styles = StyleSheet.create({
   list: { marginTop: 6 },
   busy: { opacity: 0.4 },
   daySummary: { marginTop: 14 },
+  why: {
+    marginTop: 12,
+    padding: 14,
+    gap: 10,
+    borderRadius: radii.pane,
+    backgroundColor: skyFill.pane,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.line,
+  },
+  whyHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  whyRow: { flexDirection: 'row', gap: 10 },
+  whyTick: { marginTop: 3 },
+  whyText: { flex: 1 },
+  stopWhy: { marginTop: 2 },
   emptyDay: { marginTop: 14 },
   partHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 20, marginBottom: 10 },
   stop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },

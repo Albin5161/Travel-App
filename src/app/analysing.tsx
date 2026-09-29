@@ -305,11 +305,6 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
         {/* Scrolls inside the card when a short screen (a phone browser, with its bars) can't fit
             every row above the button. */}
         <ScrollView style={styles.creditsScroll} contentContainerStyle={styles.credits} showsVerticalScrollIndicator={false}>
-          {sceneGone ? null : (
-            <Animated.View exiting={FADE_OUT}>
-              <ReadingScene topic={topic} count={names.length} width={Math.min(cardW - 28, 320)} onCheered={stepAside} />
-            </Animated.View>
-          )}
           {found.slice(0, Math.min(shown, CREDITS_SHOWN)).map((p) => {
             const missing = !!result && !placed.has(p.name.toLowerCase());
             return (
@@ -332,6 +327,12 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
           })}
           {shown > CREDITS_SHOWN ? <MoreCredits rest={found.slice(CREDITS_SHOWN, shown)} placed={placed} done={!!result} /> : null}
         </ScrollView>
+        {/* Last in the card, so its bottom edge crops them; the finds roll in above. */}
+        {sceneGone ? null : (
+          <Animated.View exiting={FADE_OUT} style={styles.scene}>
+            <ReadingScene topic={topic} count={names.length} width={Math.min(cardW - 28, 320)} onCheered={stepAside} />
+          </Animated.View>
+        )}
         </Glass>
       </View>
 
@@ -690,6 +691,8 @@ const styles = StyleSheet.create({
   // Shrinks to the room left above the button; its list scrolls inside.
   found: { marginTop: 26, padding: 14, flexShrink: 1, minHeight: 0 },
   creditsScroll: { flexShrink: 1 },
+  // Down to the card's edge, through its padding.
+  scene: { marginTop: 4, marginBottom: -14 },
   statusRow: {
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,

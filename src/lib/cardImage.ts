@@ -231,9 +231,7 @@ function paintCard(
   text(ctx, f.facts, left, mid + 21 * s, { baseline: 'middle' });
   const side = QR_UNITS * s;
   const codeX = right - side;
-  roundRect(ctx, codeX, foot, side, side, 6 * s);
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fill();
+  // Ink straight on the frost, as on screen: no white tile.
   const m = side / (QR_SIZE + QR_QUIET * 2);
   ctx.fillStyle = light.ink;
   // Each module a whole pixel or more, snapped, so the saved code stays sharp enough to read.

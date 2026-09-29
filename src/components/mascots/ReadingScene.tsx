@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { css, cubicBezier, useReducedMotion } from 'react-native-reanimated';
+import Animated, { useReducedMotion } from 'react-native-reanimated';
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
 
 import { Text } from '@/components/Text';
-import { skyFill, skyInk } from '@/theme/sky';
 import { radii } from '@/theme/tokens';
 
 import {
@@ -21,6 +20,7 @@ import {
   type HeadLayers,
   type Mood,
 } from './figures';
+import { BUBBLE, BUBBLE_INK, motion } from './motion';
 
 /** What the reading is doing, as the scene tells it: the status line's steps, a long wait, the finds. */
 export type Topic = 'play' | 'caption' | 'pin' | 'listen' | 'wait' | 'found';
@@ -104,16 +104,11 @@ export function ReadingScene({ topic, count, width, onCheered }: { topic: Topic;
       <Animated.View style={[StyleSheet.absoluteFill, !reduced && motion.glow]}>
         <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`}>
           <Defs>
-            <RadialGradient id="mascotMoon" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor="#5A6FA8" stopOpacity={0.5} />
-              <Stop offset="1" stopColor="#5A6FA8" stopOpacity={0} />
-            </RadialGradient>
             <RadialGradient id="mascotGlow" cx="50%" cy="50%" r="50%">
               <Stop offset="0" stopColor="#FFD6BE" stopOpacity={0.55} />
               <Stop offset="1" stopColor="#FFD6BE" stopOpacity={0} />
             </RadialGradient>
           </Defs>
-          <Ellipse cx={150} cy={150} rx={140} ry={130} fill="url(#mascotMoon)" />
           <Ellipse cx={PHONE.x - 6} cy={PHONE.y - 10} rx={46} ry={40} fill="url(#mascotGlow)" />
         </Svg>
       </Animated.View>
@@ -261,59 +256,10 @@ function Bubble({ line, k, reduced }: { line: Line; k: number; reduced: boolean 
   );
 }
 
-// Solid, so the tail (a turned square tucked under the bubble) doesn't show through it.
-const BUBBLE = '#F2F2F6';
-const BUBBLE_INK = '#14131A';
-
-// Keyframes, registered once.
-/** A slow rise and fall. */
-const RISE = css.keyframes({ '0%': { transform: [{ translateY: 0 }] }, '50%': { transform: [{ translateY: -1.2 }] }, '100%': { transform: [{ translateY: 0 }] } });
-// A blink: shut for about a tenth of a second, once per cycle.
-const EYES_OPEN = css.keyframes({ '0%': { opacity: 1 }, '95%': { opacity: 1 }, '96%': { opacity: 0 }, '98.5%': { opacity: 0 }, '99.5%': { opacity: 1 } });
-const EYES_SHUT = css.keyframes({ '0%': { opacity: 0 }, '95%': { opacity: 0 }, '96%': { opacity: 1 }, '98.5%': { opacity: 1 }, '99.5%': { opacity: 0 } });
-// Mouth open, mouth shut, about four syllables a second.
-const FLAP_FRAMES = css.keyframes({ '0%': { opacity: 1 }, '55%': { opacity: 1 }, '56%': { opacity: 0 }, '100%': { opacity: 0 } });
-const PULSE = css.keyframes({ '0%': { opacity: 0.8 }, '50%': { opacity: 1 }, '100%': { opacity: 0.8 } });
-// Two little hops of joy.
-const HOPS = css.keyframes({
-  '0%': { transform: [{ translateY: 0 }] },
-  '25%': { transform: [{ translateY: -9 }] },
-  '50%': { transform: [{ translateY: 0 }] },
-  '72%': { transform: [{ translateY: -5 }] },
-  '100%': { transform: [{ translateY: 0 }] },
-});
-const RISE_IN = css.keyframes({
-  from: { opacity: 0, transform: [{ translateY: 4 }, { scale: 0.94 }] },
-  to: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }] },
-});
-
-const blinking = { animationTimingFunction: 'linear', animationIterationCount: 'infinite' } as const;
-const motion = css.create({
-  // Each breathes at its own pace, so the two never rise in step.
-  ammaBreath: { animationName: RISE, animationDuration: '3.2s', animationTimingFunction: 'ease-in-out', animationIterationCount: 'infinite' },
-  kidBreath: { animationName: RISE, animationDuration: '2.6s', animationDelay: '0.7s', animationTimingFunction: 'ease-in-out', animationIterationCount: 'infinite' },
-  ammaOpen: { animationName: EYES_OPEN, animationDuration: '4.6s', ...blinking },
-  ammaShut: { animationName: EYES_SHUT, animationDuration: '4.6s', ...blinking },
-  kidOpen: { animationName: EYES_OPEN, animationDuration: '3.7s', ...blinking },
-  kidShut: { animationName: EYES_SHUT, animationDuration: '3.7s', ...blinking },
-  flap: { animationName: FLAP_FRAMES, animationDuration: '260ms', animationTimingFunction: 'linear', animationIterationCount: 'infinite' },
-  // The phone's light, softly brighter and dimmer as the reel plays.
-  glow: { animationName: PULSE, animationDuration: '2.4s', animationTimingFunction: 'ease-in-out', animationIterationCount: 'infinite' },
-  hop: { animationName: HOPS, animationDuration: '700ms', animationTimingFunction: 'ease-in-out' },
-  // A new line pops up from its tail.
-  pop: { animationName: RISE_IN, animationDuration: '220ms', animationTimingFunction: cubicBezier(0.23, 1, 0.32, 1) },
-  tilt: { transitionProperty: 'transform', transitionDuration: 400, transitionTimingFunction: 'ease-in-out' },
-});
-
 const styles = StyleSheet.create({
-  scene: {
-    alignSelf: 'center',
-    overflow: 'hidden',
-    borderRadius: radii.pane,
-    backgroundColor: skyFill.pane,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: skyInk.line,
-  },
+  // Straight on the glass, no panel of its own: its bottom edge is the card's, so the two are cut
+  // off by the card like figures behind a window sill.
+  scene: { alignSelf: 'center', overflow: 'hidden' },
   hidden: { opacity: 0 },
   bubble: {
     position: 'absolute',

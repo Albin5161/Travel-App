@@ -282,6 +282,14 @@ export function lookFor(state: string): Look {
   return { pattern: PATTERNS[s.key], ground: s.ground, hem: s.hem };
 }
 
+/**
+ * How strongly every pattern prints, on screen and in the saved picture alike. Turned down to 0.6
+ * after Albin's phone test (29 Sep 2026): at full strength the cloth competed with the ticket.
+ */
+const STRENGTH = 0.6;
+
 /** The colour a shape is drawn in, tone on tone. */
-export const shapeColour = (shape: PatternShape) =>
-  shape.tone === 'light' ? `rgba(255,255,255,${shape.alpha})` : `rgba(0,0,0,${shape.alpha})`;
+export const shapeColour = (shape: PatternShape) => {
+  const a = Math.round(shape.alpha * STRENGTH * 1000) / 1000;
+  return shape.tone === 'light' ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a})`;
+};

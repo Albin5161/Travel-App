@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
@@ -11,6 +11,7 @@ import Animated, {
 import Svg, { Circle, Defs, G, Line, Path, Text as SvgText, TextPath } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { Quip } from '@/components/mascots/Quip';
 import { haptic } from '@/lib/haptics';
 import { sound } from '@/lib/sound';
 import { fonts } from '@/theme/tokens';
@@ -28,8 +29,11 @@ const INOUT = Easing.bezierFn(0.42, 0, 0.58, 1);
 const RING = Easing.bezierFn(0.1, 0.8, 0.3, 1);
 const TOTAL = 1100;
 const IMPACT = 350;
-// Long enough to see the stamp has landed; the ticket is fetched meanwhile, so no longer is needed.
-const HOLD = 400;
+// Long enough to see the stamp has landed and read the child's line under it; the ticket is fetched
+// meanwhile. Tap to skip.
+const HOLD = 900;
+// The child's joke once the trip is sealed, one of these at random.
+const QUIPS = ['Now ask Papa for permission!', 'Who’s telling Papa? Not me!', 'Don’t forget to ask Papa!'];
 // Headline orange: the stamp is large type, which passes 3:1 on the veil.
 const INK = skyAccent;
 
@@ -46,6 +50,7 @@ export function PassportStamp({ city, date, onDone: onDoneProp, size = 260 }: Pr
   };
   const t = useSharedValue(0);
   const veil = useSharedValue(0);
+  const [quip] = useState(() => QUIPS[Math.floor(Math.random() * QUIPS.length)]);
 
   useEffect(() => {
     veil.set(withTiming(1, { duration: 200 }));
@@ -53,7 +58,7 @@ export function PassportStamp({ city, date, onDone: onDoneProp, size = 260 }: Pr
     if (reduced) {
       t.set(TOTAL);
       void sound.play('saved');
-      const done = setTimeout(onDone, 900);
+      const done = setTimeout(onDone, 900 + HOLD);
       return () => clearTimeout(done);
     }
     // The sound lands with the stamp, on the thud.
@@ -101,7 +106,7 @@ export function PassportStamp({ city, date, onDone: onDoneProp, size = 260 }: Pr
   const label = stampDate(date);
 
   return (
-    <Pressable style={StyleSheet.absoluteFill} onPress={onDone} accessibilityLabel={`Day planned in ${city}`}>
+    <Pressable style={StyleSheet.absoluteFill} onPress={onDone} accessibilityLabel={`Day planned in ${city}. ${quip}`}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.veil, veilStyle]} />
       <View style={styles.center}>
         <View style={{ width: size, height: size }}>
@@ -111,6 +116,9 @@ export function PassportStamp({ city, date, onDone: onDoneProp, size = 260 }: Pr
           <Animated.View style={[StyleSheet.absoluteFill, stamp]}>
             <StampArt city={city.toUpperCase()} date={label} size={size} />
           </Animated.View>
+        </View>
+        <View style={styles.quip}>
+          <Quip text={quip} />
         </View>
       </View>
     </Pressable>
@@ -225,4 +233,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     pointerEvents: 'none',
   },
+  quip: { marginTop: 8, paddingHorizontal: 20 },
 });

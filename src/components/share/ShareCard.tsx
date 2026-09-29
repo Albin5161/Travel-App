@@ -222,14 +222,15 @@ function Tear({ s }: { s: number }) {
 export const QR_UNITS = 40;
 
 /**
- * Where the barcode was: a real QR code that opens xplore.expo.app, on a white tile so it reads on
- * any photo's frost. One path, so a picture of the card keeps it exactly.
+ * Where the barcode was, and printed the way it was: a real QR code that opens xplore.expo.app, in
+ * ink straight on the ticket's light frost (Albin, 29 Sep 2026: no white tile). The frost is light
+ * enough for a camera to read dark on it. One path, so a picture of the card keeps it exactly.
  */
 function QrTile({ s }: { s: number }) {
   const side = QR_UNITS * s;
   const span = QR_SIZE + QR_QUIET * 2;
   return (
-    <View style={[styles.qr, { width: side, height: side, borderRadius: 6 * s }]} accessibilityLabel="QR code: opens xplore.expo.app">
+    <View style={[styles.qr, { width: side, height: side }]} accessibilityLabel="QR code: opens xplore.expo.app">
       <Svg width={side} height={side} viewBox={`${-QR_QUIET} ${-QR_QUIET} ${span} ${span}`}>
         <Path d={QR_PATH} fill={light.ink} />
       </Svg>
@@ -316,7 +317,7 @@ const styles = StyleSheet.create({
   // The facts sit level with the middle of the QR tile.
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   facts: { fontFamily: fonts.sansMedium, color: light.ink },
-  qr: { backgroundColor: '#FFFFFF', overflow: 'hidden', flexShrink: 0 },
+  qr: { flexShrink: 0 },
   story: { width: 360, height: 640, overflow: 'hidden', alignItems: 'center' },
   storyHead: { alignSelf: 'stretch', paddingHorizontal: 40, paddingTop: 52, gap: 8 },
   storyKicker: { fontFamily: fonts.sansSemi, fontSize: 11, lineHeight: 14, letterSpacing: 2, color: 'rgba(255,255,255,0.85)' },

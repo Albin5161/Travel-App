@@ -150,7 +150,10 @@ export default function Home() {
           <View style={styles.header} onLayout={(e) => setStickAt(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
             <View style={styles.topRow} onLayout={measure('top')}>
               <Text style={styles.wordmark}>Xplore</Text>
-              <HereChip />
+              <View style={styles.topActions}>
+                {collections.length > 0 ? <SearchButton /> : null}
+                <HereChip />
+              </View>
             </View>
             {/* Hidden for the one frame before it's measured, so it appears already in place. */}
             <View onLayout={measure('hero')} style={{ marginTop: heroPad ?? MIN_PAD, opacity: heroPad === null ? 0 : 1 }}>
@@ -268,6 +271,20 @@ function creators(handles: string[]) {
   return unique.length > 1 ? `${unique[0]} +${unique.length - 1}` : (unique[0] ?? '');
 }
 
+/** Opens search over everything saved. Only there once something is. */
+function SearchButton() {
+  return (
+    <PressableScale
+      onPress={() => router.push('/search')}
+      style={styles.searchButton}
+      accessibilityRole="button"
+      accessibilityLabel="Search your saved places"
+    >
+      <Feather name="search" size={16} color={skyInk.strong} />
+    </PressableScale>
+  );
+}
+
 /**
  * Where you are, as a town, like a delivery app's header. Asks for location only when tapped; the
  * town is worked out on the phone and the position goes nowhere (state/where).
@@ -360,6 +377,18 @@ const styles = StyleSheet.create({
     backgroundColor: skyFill.raised,
   },
   hereText: { flexShrink: 1 },
+  topActions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
+  // The chip's glass, round: 44pt, the size of every tap.
+  searchButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
+    backgroundColor: skyFill.raised,
+  },
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
   // Two weights, one line box: a quiet Medium lead-in, then the ask in ExtraBold. The weight change
   // does the emphasis a decorative italic used to.

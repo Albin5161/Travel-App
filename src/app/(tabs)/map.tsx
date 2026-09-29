@@ -173,6 +173,19 @@ export default function SpotsMap() {
               value={kind}
               onChange={setKind}
               options={KINDS.map((k) => ({ key: k, label: KIND_LABEL[k] }))}
+              lead={
+                // Search leads the filters: another way of narrowing the same list.
+                <PressableScale
+                  onPress={() => router.push('/search')}
+                  style={styles.searchHit}
+                  accessibilityRole="button"
+                  accessibilityLabel="Search your saved places"
+                >
+                  <View style={styles.searchChip}>
+                    <Feather name="search" size={15} color={skyInk.strong} />
+                  </View>
+                </PressableScale>
+              }
             />
           </View>
 
@@ -417,6 +430,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  // A 44pt tap round a chip-sized circle, so it lines up with the filters beside it.
+  searchHit: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginHorizontal: -5 },
+  searchChip: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: skyFill.raised,
+    borderWidth: 1,
+    borderColor: skyInk.rim,
   },
   wherePill: {
     flexDirection: 'row',

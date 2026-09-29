@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { PressableScale } from '@/components/PressableScale';
@@ -12,10 +13,13 @@ export function Chips<T extends string | number | null>({
   options,
   value,
   onChange,
+  lead,
 }: {
   options: { key: T; label: string }[];
   value: T;
   onChange: (key: T) => void;
+  /** Something before the chips in the same row, such as a search button. */
+  lead?: ReactNode;
 }) {
   const sky = useTone() === 'sky';
   return (
@@ -25,6 +29,7 @@ export function Chips<T extends string | number | null>({
       contentContainerStyle={styles.chipRow}
       keyboardShouldPersistTaps="handled"
     >
+      {lead}
       {options.map((o) => {
         const active = o.key === value;
         return (
@@ -49,7 +54,7 @@ export function Chips<T extends string | number | null>({
 }
 
 const styles = StyleSheet.create({
-  chipRow: { gap: 8, paddingRight: 8 },
+  chipRow: { gap: 8, paddingRight: 8, alignItems: 'center' },
   chip: {
     height: 34,
     paddingHorizontal: 14,

@@ -1,7 +1,7 @@
 // Canned Plan-mode data. SAMPLE DATA for the demo: shaped like what Google Places (ratings, reviews)
 // and our own estimates (cost, safety facts) would return, so a real service can replace it.
 
-import type { Feather } from '@expo/vector-icons';
+import type Feather from '@expo/vector-icons/Feather';
 import type { ComponentProps } from 'react';
 
 import type { SafetyIconName } from '@/components/SafetyIcon';

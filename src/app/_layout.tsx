@@ -1,11 +1,3 @@
-import { Geist_400Regular, Geist_500Medium, Geist_600SemiBold } from '@expo-google-fonts/geist';
-import {
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_500Medium_Italic,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-} from '@expo-google-fonts/plus-jakarta-sans';
 import * as Font from 'expo-font';
 import { useFonts } from 'expo-font';
 import { DefaultTheme, router, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
@@ -27,6 +19,7 @@ import '@/lib/arrival';
 import { GroupScripts } from '@/state/group';
 import { TripsProvider } from '@/state/trips';
 import { SkyPhaseProvider } from '@/state/sky';
+import { firstFonts, laterFonts } from '@/theme/fontFiles';
 import { SKY, skyInk } from '@/theme/sky';
 import { space } from '@/theme/tokens';
 
@@ -43,15 +36,7 @@ const theme = {
 const SHEET_BG = SKY.night.stops[1];
 
 export default function RootLayout() {
-  const [loaded] = useFonts({
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
-    Geist_400Regular,
-    Geist_500Medium,
-    Geist_600SemiBold,
-  });
+  const [loaded] = useFonts(firstFonts);
   const reduced = useReducedMotion();
   const inBrowser = useInBrowser();
   // The opening animation plays once per launch, over home; skipped with Reduce Motion.
@@ -62,7 +47,7 @@ export default function RootLayout() {
     SplashScreen.hideAsync();
     // Only the maps' sea names use the italic, so it doesn't hold up the first screen: it loads
     // just after. A map drawn before it arrives shows those few words upright for a moment.
-    void Font.loadAsync({ PlusJakartaSans_500Medium_Italic }).catch(() => {});
+    void Font.loadAsync(laterFonts).catch(() => {});
   }, [loaded]);
 
   if (!loaded || !inBrowser) return null;

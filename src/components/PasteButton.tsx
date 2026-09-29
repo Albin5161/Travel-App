@@ -1,4 +1,4 @@
-import { Feather } from '@expo/vector-icons';
+import Feather from '@expo/vector-icons/Feather';
 import * as Clipboard from 'expo-clipboard';
 import { Platform, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 

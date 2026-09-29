@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
 
+import Ionicons from '@/components/Ionicons';
 import { getReel } from '@/data/api';
 import type { Place } from '@/data/types';
 import { formatDuration } from '@/lib/geo';

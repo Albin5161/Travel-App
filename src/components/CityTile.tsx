@@ -1,7 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRef } from 'react';
 import { StyleSheet, View, type ImageSourcePropType } from 'react-native';
 
+import Ionicons from '@/components/Ionicons';
 import { PhotoCard } from '@/components/PhotoCard';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';

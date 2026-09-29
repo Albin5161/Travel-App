@@ -1,8 +1,9 @@
-import { Feather, Ionicons } from '@expo/vector-icons';
+import Feather from '@expo/vector-icons/Feather';
 import { useRef, useState } from 'react';
 import { Keyboard, Platform, TextInput, View, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { css, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
+import Ionicons from '@/components/Ionicons';
 import { CIRCLE, PasteButton } from '@/components/PasteButton';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';

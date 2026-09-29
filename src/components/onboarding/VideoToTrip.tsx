@@ -1,4 +1,4 @@
-import { Feather, Ionicons } from '@expo/vector-icons';
+import Feather from '@expo/vector-icons/Feather';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo } from 'react';
@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedProps, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
+import Ionicons from '@/components/Ionicons';
 import { Text } from '@/components/Text';
 import { places, smallPhoto } from '@/data/catalog';
 import type { Place } from '@/data/types';

@@ -1,4 +1,4 @@
-import { Feather, Ionicons } from '@expo/vector-icons';
+import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
+import Ionicons from '@/components/Ionicons';
 import { ReadingScene, sceneHeight, type Topic } from '@/components/mascots/ReadingScene';
 import { ReelScanner } from '@/components/motion/ReelScanner';
 import { ReelTimeline, seconds } from '@/components/motion/ReelTimeline';

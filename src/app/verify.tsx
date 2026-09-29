@@ -1,4 +1,4 @@
-import { Feather, Ionicons } from '@expo/vector-icons';
+import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
+import Ionicons from '@/components/Ionicons';
 import { SavedTick } from '@/components/motion/SavedTick';
 import { SwipeCard, type CardHandle, type Dir } from '@/components/pick/SwipeCard';
 import { Glass } from '@/components/sky/Glass';

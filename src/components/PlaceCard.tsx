@@ -21,12 +21,16 @@ export function PlaceCard({ place, style, overlay }: Props) {
   return (
     <Tone value="dark">
       <PhotoCard source={place.photo} gradient="pick" style={style}>
-        <GlassPill onPhoto label={typeLine(place)} style={styles.topPill} />
-        {place.photoCredit ? (
-          <Text variant="micro" color="rgba(238,234,227,0.72)" numberOfLines={1} style={styles.credit}>
-            Photo: {place.photoCredit}
-          </Text>
-        ) : null}
+        {/* The credit sits under the pill, on its own line: beside it, a long "Experience · Nariman
+            Point" and a long author name ran into each other. */}
+        <View style={styles.top}>
+          <GlassPill onPhoto label={typeLine(place)} />
+          {place.photoCredit ? (
+            <Text variant="micro" color="rgba(238,234,227,0.72)" numberOfLines={1} style={styles.credit}>
+              Photo: {place.photoCredit}
+            </Text>
+          ) : null}
+        </View>
         <View style={styles.content}>
           <Text variant="displayXL" numberOfLines={2}>
             {place.name}
@@ -44,7 +48,7 @@ export function PlaceCard({ place, style, overlay }: Props) {
 }
 
 const styles = StyleSheet.create({
-  topPill: { position: 'absolute', top: 16, left: 16 },
-  credit: { position: 'absolute', top: 22, right: 16, maxWidth: '45%' },
+  top: { position: 'absolute', top: 16, left: 16, right: 16, alignItems: 'flex-start', gap: 8 },
+  credit: { marginLeft: 4, maxWidth: '100%' },
   content: { position: 'absolute', left: 20, right: 20, bottom: 20, gap: 12 },
 });

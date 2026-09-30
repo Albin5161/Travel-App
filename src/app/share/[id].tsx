@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,8 +25,8 @@ import { lookFor } from '@/lib/patterns';
 import { startGroup } from '@/state/group';
 import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
-import { SKY, skyFill, skyInk } from '@/theme/sky';
-import { fonts, space } from '@/theme/tokens';
+import { SKY, skyInk } from '@/theme/sky';
+import { space } from '@/theme/tokens';
 
 const HEAD_IN = fadeUp(0);
 const TITLE_IN = fadeUp(60);
@@ -54,7 +54,6 @@ export default function ShareScreen() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
-  const [name, setName] = useState(state.myName ?? '');
   // The room between the headline and the buttons, measured: a phone browser's own bars leave far
   // less than the window height suggests, so the card is fitted to this, not guessed.
   const [stageH, setStageH] = useState<number | null>(null);
@@ -69,10 +68,9 @@ export default function ShareScreen() {
   const stops = plan.days.reduce((sum, d) => sum + d.stops.length, 0);
   const party = partyOf(plan.prefs);
   const copy = PARTY_COPY[party];
-  // With the backend set up, sharing makes a real trip others can join. The first time, it needs a
-  // name, so the people you send it to know who's asking.
+  // With the backend set up, sharing makes a real trip others can join, under your name so the people
+  // you send it to know who's asking. The intro asks for the name, so it's there by now.
   const live = liveEnabled && party !== 'solo';
-  const needName = live && !state.myName;
 
   // The card is laid out at its natural size (so the shared image is always full size) and scaled
   // down as a whole when the stage is shorter than that.
@@ -112,13 +110,17 @@ export default function ShareScreen() {
 
   const share = async () => {
     if (busy) return;
-    if (needName && !name.trim()) return;
+    const me = state.myName;
+    // Only someone who opened this page straight from a link, never having seen the intro, can
+    // reach it without a name: they give it on the intro's name page and come back here.
+    if (live && !me) {
+      router.push({ pathname: '/onboarding', params: { step: 'name', then: 'back' } });
+      return;
+    }
     setBusy(true);
     try {
       let code: string | undefined;
-      if (live) {
-        const me = name.trim() || state.myName!;
-        if (needName) dispatch({ type: 'setMyName', name: me });
+      if (live && me) {
         const existing = state.remote[id];
         if (existing) code = existing.code;
         else {
@@ -185,25 +187,12 @@ export default function ShareScreen() {
             </Text>
           </Animated.View>
         ) : null}
-        {needName && !sent ? (
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Your name, so they know who's asking"
-            placeholderTextColor={skyInk.faint}
-            style={styles.name}
-            autoCapitalize="words"
-            returnKeyType="done"
-            maxLength={40}
-            accessibilityLabel="Your name"
-          />
-        ) : null}
         {sent && party !== 'solo' ? (
           <Button trailingArrow label={copy.see} onPress={() => router.push({ pathname: '/group/[id]', params: { id } })} />
         ) : sent ? (
           <Button label="Done" onPress={() => router.dismissTo('/trips')} />
         ) : (
-          <Button trailingArrow={!busy} label={busy ? 'Getting it ready…' : copy.share} onPress={share} disabled={busy || (needName && !name.trim())} />
+          <Button trailingArrow={!busy} label={busy ? 'Getting it ready…' : copy.share} onPress={share} disabled={busy} />
         )}
         {/* Pictures to post: the card as a post, and as a story; and the plan as a PDF. Said once
             above the row that they're saved, so the labels can stay one word each. */}
@@ -299,16 +288,4 @@ const styles = StyleSheet.create({
   save: { flex: 1 },
   // Far off to the left: laid out and drawn (so it can be pictured), never seen.
   offscreen: { position: 'absolute', left: -10000, top: 0, gap: 20 },
-  name: {
-    height: 52,
-    marginBottom: 10,
-    paddingHorizontal: 18,
-    borderRadius: 999,
-    backgroundColor: skyFill.raised,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: skyInk.rim,
-    fontFamily: fonts.sansMedium,
-    fontSize: 16,
-    color: skyInk.strong,
-  },
 });

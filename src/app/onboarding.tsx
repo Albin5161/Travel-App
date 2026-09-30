@@ -1,8 +1,8 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useFonts } from 'expo-font';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Keyboard, Platform, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -39,6 +39,12 @@ import { fonts, space } from '@/theme/tokens';
 
 const PAGES = 4;
 const GUTTER = space.screen;
+/** The words sit this far under their illustration. */
+const WORDS_GAP = 30;
+/** Clear air kept at the bottom of a page, so the dots (which reach up into it) never cover its words. */
+const DOTS_CLEAR = 24;
+/** An illustration never gets less room than this; past it, the picture is scaled down instead. */
+const MIN_ART = 140;
 
 /**
  * Four screens. The first says what Xplore does in one line and one picture: a reel becomes pins on
@@ -48,16 +54,26 @@ const GUTTER = space.screen;
  *
  * The screen sits on the sky as it is right now (state/sky), the same sky Home opens on; the
  * illustrations stay paper, cards lifted off it and tilted in depth. Copy is kept to a line or two.
+ *
+ * The name is required: it's how friends see you on a shared plan, so sharing never has to ask.
+ * Skip goes straight to it. `?step=name` opens on it (someone who skipped it before the name was
+ * required), and `&then=back` returns to where they came from instead of Home.
  */
 export default function Onboarding() {
   const { width: W, height: H } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useTrips();
-  const [page, setPage] = useState(0);
+  const { step, then } = useLocalSearchParams<{ step?: string; then?: string }>();
+  const first = step === 'name' ? PAGES - 1 : 0;
+  const [page, setPage] = useState(first);
   const [name, setName] = useState(state.myName ?? '');
+  const skipped = useRef(false);
+  // The height the pages have between the top bar and the dots, measured: a phone browser's own
+  // bars leave far less than the window height suggests, so each page is fitted to this.
+  const [slotH, setSlotH] = useState(0);
   // Position in pages, continuous. The finger writes it directly, so the pages track the drag
   // rather than snapping between states, and every derived animation reads this one value.
-  const p = useSharedValue(0);
+  const p = useSharedValue(first);
   const start = useSharedValue(0);
   const lift = useKeyboardLift();
   // The handwriting on page one: small, and not waited for (plain type stands in for a moment).
@@ -65,6 +81,7 @@ export default function Onboarding() {
   const phase = useHomeSky();
   useFocusEffect(lightStatusBar);
 
+  // The illustration's size when there's room for it; a page with more words gets less (see Page).
   const art = Math.round(Math.min(320, Math.max(236, H * 0.38)));
   const artW = W - GUTTER * 2;
   const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? 'home';
@@ -91,12 +108,20 @@ export default function Onboarding() {
       scheduleOnRN(setPage, next);
     });
 
+  const named = !!name.trim();
   const finish = () => {
+    if (!named) return;
     haptic.success();
-    if (name.trim()) dispatch({ type: 'setMyName', name });
+    dispatch({ type: 'setMyName', name });
     dispatch({ type: 'finishOnboarding' });
-    track('onboarding completed', { named: !!name.trim(), skipped: page < PAGES - 1 });
-    router.replace('/');
+    track('onboarding completed', { named: true, skipped: skipped.current });
+    if (then === 'back' && router.canGoBack()) router.back();
+    else router.replace('/');
+  };
+  // Skipping skips the reasons, not the name.
+  const skip = () => {
+    skipped.current = true;
+    go(PAGES - 1);
   };
 
   const last = page === PAGES - 1;
@@ -119,7 +144,7 @@ export default function Onboarding() {
           <Text style={styles.wordmark}>Xplore</Text>
         )}
         {last ? null : (
-          <PressableScale onPress={finish} style={styles.skip} accessibilityRole="button" accessibilityLabel="Skip the intro">
+          <PressableScale onPress={skip} style={styles.skip} accessibilityRole="button" accessibilityLabel="Skip to your name">
             <Text variant="label" color={skyInk.soft}>
               Skip
             </Text>
@@ -129,14 +154,15 @@ export default function Onboarding() {
 
       {/* Clipped: the row is four screens wide, and without this it stretches the whole layout
           to 4x the viewport — which silently moves every other control off the screen. */}
-      <View style={styles.viewport}>
+      <View style={styles.viewport} onLayout={(e) => setSlotH(e.nativeEvent.layout.height)}>
         <GestureDetector gesture={swipe}>
           <Row p={p} width={W} lift={lift}>
             <Page
               index={0}
               p={p}
+              slotH={slotH}
               artHeight={art}
-              art={<FromThisToThis active={page === 0} width={artW} height={art} />}
+              art={(h) => <FromThisToThis active={page === 0} width={artW} height={h} />}
             >
               <Copy
                 eyebrow="Turn inspiration into a plan"
@@ -147,7 +173,7 @@ export default function Onboarding() {
               />
             </Page>
 
-            <Page index={1} p={p} artHeight={art} art={<Tilted turn={-1}><GroupVote active={page === 1} width={artW} /></Tilted>}>
+            <Page index={1} p={p} slotH={slotH} artHeight={art} art={() => <Tilted turn={-1}><GroupVote active={page === 1} width={artW} /></Tilted>}>
               <Copy
                 eyebrow="Plan with friends"
                 lead={'Going with friends?\n'}
@@ -160,8 +186,9 @@ export default function Onboarding() {
             <Page
               index={2}
               p={p}
+              slotH={slotH}
               artHeight={art}
-              art={<Tilted turn={1}><WeekendRoute active={page === 2} width={artW} homeName={homeName} /></Tilted>}
+              art={() => <Tilted turn={1}><WeekendRoute active={page === 2} width={artW} homeName={homeName} /></Tilted>}
             >
               <Copy
                 eyebrow="Weekends near home"
@@ -184,7 +211,7 @@ export default function Onboarding() {
               </View>
             </Page>
 
-            <Page index={3} p={p} artHeight={art} art={<ProfilePreview active={page === 3} name={name} />}>
+            <Page index={3} p={p} slotH={slotH} artHeight={art} art={() => <ProfilePreview active={page === 3} name={name} />}>
               <Copy
                 eyebrow="Your profile"
                 lead={'Last thing.\n'}
@@ -204,9 +231,10 @@ export default function Onboarding() {
           trailingArrow
           label={last ? 'Find my first trip' : 'Next'}
           onPress={() => (last ? finish() : go(page + 1))}
-          accessibilityHint={last ? 'Opens the app, ready for your first video' : undefined}
+          disabled={last && !named}
+          accessibilityHint={last ? (named ? 'Opens the app, ready for your first video' : 'Add your first name first') : undefined}
         />
-        {/* On every page, since Skip leaves from any of them. The two links are taps of their own,
+        {/* On every page, wherever someone starts reading. The two links are taps of their own,
             44pt tall, rather than words inside the sentence. */}
         <View style={styles.consentBlock}>
           <Text variant="label" color={skyInk.faint} style={styles.consent}>
@@ -325,17 +353,27 @@ function Row({
 function Page({
   index,
   p,
+  slotH,
   art,
   artHeight,
   children,
 }: {
   index: number;
   p: SharedValue<number>;
-  art: ReactNode;
+  /** The page's measured height; 0 until it's known. */
+  slotH: number;
+  /** Draws the illustration for the height it's given. */
+  art: (height: number) => ReactNode;
+  /** The illustration's height when there's room for it. */
   artHeight: number;
   children: ReactNode;
 }) {
   const reduced = useReducedMotion();
+  // The words take what they need and the illustration gets what's left, so nothing is cut off on
+  // a short screen (a phone browser with its bars showing).
+  const [wordsH, setWordsH] = useState(0);
+  const room = slotH && wordsH ? slotH - wordsH - WORDS_GAP - DOTS_CLEAR : artHeight;
+  const height = Math.round(Math.max(MIN_ART, Math.min(artHeight, room)));
   const artStyle = useAnimatedStyle(() => {
     const d = p.get() - index;
     const a = Math.min(Math.abs(d), 1);
@@ -355,9 +393,27 @@ function Page({
     <View style={styles.pageSlot}>
       {/* The illustrations are paper cards: they keep the light palette on the sky. */}
       <Tone value="light">
-        <Animated.View style={[styles.art, { height: artHeight }, artStyle]}>{art}</Animated.View>
+        <Animated.View style={[styles.art, { height }, artStyle]}>
+          <Fit height={height}>{art(height)}</Fit>
+        </Animated.View>
       </Tone>
-      <Animated.View style={[styles.words, copyStyle]}>{children}</Animated.View>
+      <Animated.View style={[styles.words, copyStyle]} onLayout={(e) => setWordsH(e.nativeEvent.layout.height)}>
+        {children}
+      </Animated.View>
+    </View>
+  );
+}
+
+/**
+ * Scales an illustration down, as a whole, when it's taller than the room it has. A transform
+ * doesn't change layout, so measuring the natural size never feeds back into the scale.
+ */
+function Fit({ height, children }: { height: number; children: ReactNode }) {
+  const [natural, setNatural] = useState(0);
+  const scale = natural > height ? height / natural : 1;
+  return (
+    <View style={{ transform: [{ scale }] }} onLayout={(e) => setNatural(e.nativeEvent.layout.height)}>
+      {children}
     </View>
   );
 }
@@ -452,7 +508,7 @@ const styles = StyleSheet.create({
   row: { flex: 1, flexDirection: 'row' },
   pageSlot: { flex: 1, paddingHorizontal: GUTTER, justifyContent: 'center' },
   art: { alignItems: 'center', justifyContent: 'center' },
-  words: { marginTop: 30, gap: 22 },
+  words: { marginTop: WORDS_GAP, gap: 22 },
   nameInput: {
     height: 54,
     paddingHorizontal: 18,

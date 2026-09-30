@@ -51,7 +51,7 @@ export default function PlaceSheet() {
 
   return (
     <SkyScreen>
-    {/* On the web the card starts below the ✕, which would otherwise cover its photo credit. */}
+    {/* On the web the card starts below the ✕, which would otherwise sit on its photo. */}
     <Animated.ScrollView {...scrollProps} contentContainerStyle={[styles.content, { paddingTop: 24 + SHEET_CLOSE_ROOM }]} showsVerticalScrollIndicator={false}>
       <RevealProvider frame={frame}>
       <Animated.View style={cardStyle}>

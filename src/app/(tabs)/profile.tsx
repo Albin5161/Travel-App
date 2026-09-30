@@ -41,6 +41,11 @@ export default function Profile() {
   const spots = useSavedSpots();
   const [picking, setPicking] = useState(false);
   const [name, setName] = useState(state.myName ?? '');
+  // The name is required, so clearing the field puts the saved one back rather than removing it.
+  const saveName = () => {
+    if (name.trim()) dispatch({ type: 'setMyName', name });
+    else setName(state.myName ?? '');
+  };
 
   const home = allDistricts.find((d) => d.id === state.homeDistrictId);
   const trips = Object.values(state.savedTrips).filter(Boolean).length;
@@ -84,8 +89,8 @@ export default function Profile() {
             <TextInput
               value={name}
               onChangeText={setName}
-              onEndEditing={() => dispatch({ type: 'setMyName', name })}
-              onBlur={() => dispatch({ type: 'setMyName', name })}
+              onEndEditing={saveName}
+              onBlur={saveName}
               placeholder="Add your name"
               placeholderTextColor={skyInk.faint}
               autoCapitalize="words"

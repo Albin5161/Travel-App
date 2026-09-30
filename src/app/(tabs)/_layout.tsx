@@ -16,6 +16,8 @@ export default function TabsLayout() {
   // notification into a district, would otherwise walk straight past onboarding. Declarative, so
   // no tab paints before redirecting.
   if (!state.onboarded) return <Redirect href="/onboarding" />;
+  // The name became required after some people had skipped it: they're asked for it once, alone.
+  if (!state.myName) return <Redirect href={{ pathname: '/onboarding', params: { step: 'name' } }} />;
 
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>

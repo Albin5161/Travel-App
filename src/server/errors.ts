@@ -1,3 +1,5 @@
+import { writeLog, type RequestLog } from './log';
+
 // Every failure the API reports has a code the app can branch on and a sentence it can show as is.
 export type ErrorCode =
   | 'bad_request'
@@ -31,23 +33,33 @@ export async function upstreamError(service: string, res: Response): Promise<Api
   return new ApiError(502, 'upstream', 'Something went wrong on our side. Try again.');
 }
 
-/** Runs a route body and turns its result or its ApiError into a JSON response. */
-export async function respond(run: () => Promise<unknown>): Promise<Response> {
+/**
+ * Runs a route body and turns its result or its ApiError into a JSON response, writing one log line
+ * for the request either way (see log.ts).
+ */
+export async function respond(route: string, run: (log: RequestLog) => Promise<unknown>): Promise<Response> {
+  const startedAt = Date.now();
+  const log: RequestLog = {};
   try {
-    return Response.json(await run());
+    const result = await run(log);
+    writeLog(route, startedAt, 200, log, result);
+    return Response.json(result);
   } catch (e) {
     if (e instanceof ApiError) {
+      writeLog(route, startedAt, e.status, log, undefined, e.code);
       return Response.json({ error: { code: e.code, message: e.message } }, { status: e.status });
     }
     // A timeout from AbortSignal.timeout surfaces as a DOMException named TimeoutError.
     if (e instanceof Error && e.name === 'TimeoutError') {
       console.error('[timeout]', e.message);
+      writeLog(route, startedAt, 504, log, undefined, 'timeout');
       return Response.json(
         { error: { code: 'upstream', message: 'That took too long. Try again.' } },
         { status: 504 },
       );
     }
     console.error('[unexpected]', e);
+    writeLog(route, startedAt, 500, log, undefined, 'unexpected');
     return Response.json(
       { error: { code: 'upstream', message: 'Something went wrong on our side. Try again.' } },
       { status: 500 },

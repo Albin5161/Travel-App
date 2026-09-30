@@ -1,5 +1,6 @@
 import { env } from './env';
 import { ApiError } from './errors';
+import { shortUser, type RequestLog } from './log';
 import { db } from './supabase';
 
 export type Caller = { userId: string; ip: string };
@@ -13,7 +14,13 @@ let warned = false;
  *
  * Without Supabase configured, development runs open (one warning); production refuses to.
  */
-export async function caller(request: Request): Promise<Caller> {
+export async function caller(request: Request, log?: RequestLog): Promise<Caller> {
+  const who = await identify(request);
+  if (log) log.user = shortUser(who.userId);
+  return who;
+}
+
+async function identify(request: Request): Promise<Caller> {
   const ip = clientIp(request);
   const supabase = db();
   if (!supabase) {

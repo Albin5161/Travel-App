@@ -53,6 +53,8 @@ export async function getReel(
   start.searchParams.set('maxTotalChargeUsd', opts.transcript ? '0.12' : '0.01');
   start.searchParams.set('waitForFinish', String(WAIT_SECONDS));
   const call = <T>(path: string | URL, init?: RequestInit) => apify<T>(path, token, init);
+  // Logs name the reel by its ID (ig:shortcode), never by its link.
+  const id = `ig:${url.match(/\/reel\/([^/?]+)/)?.[1] ?? '?'}`;
 
   let run: ApifyRun | null = null;
   try {
@@ -65,16 +67,16 @@ export async function getReel(
     while ((run.status === 'READY' || run.status === 'RUNNING') && Date.now() < giveUpAt) {
       run = await call<ApifyRun>(`${API}/actor-runs/${run.id}?waitForFinish=${WAIT_SECONDS}`);
     }
-    if (run.status !== 'SUCCEEDED') throw new Error(`run ${run.id} ended ${run.status} for ${url}`);
+    if (run.status !== 'SUCCEEDED') throw new Error(`run ${run.id} ended ${run.status} for ${id}`);
     const items = await call<ApifyReel[]>(`${API}/datasets/${run.defaultDatasetId}/items?clean=true`);
     const item = Array.isArray(items) ? items.find((i) => i && !i.error) : undefined;
     if (!item) {
-      console.warn(`[apify] no reel for ${url}`);
+      console.warn(`[apify] ${id}: the run found no reel (private, deleted, or not a reel)`);
       return null;
     }
     return toReel(item);
   } catch (e) {
-    console.error('[apify]', e instanceof Error ? `${e.name}: ${e.message}` : e);
+    console.error(`[apify] ${id}:`, e instanceof Error ? `${e.name}: ${e.message}` : e);
     // Stop a run we've stopped waiting for, so it doesn't go on charging for a result nobody reads.
     if (run && (run.status === 'READY' || run.status === 'RUNNING')) {
       await call(`${API}/actor-runs/${run.id}/abort`, { method: 'POST' }).catch(() => {});

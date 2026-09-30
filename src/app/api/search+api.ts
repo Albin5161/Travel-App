@@ -5,8 +5,8 @@ import type { SearchRequest } from '@/server/types';
 
 /** POST {input, sessionToken, near}: places matching what someone is typing in "Missed one?". */
 export async function POST(request: Request) {
-  return respond(async () => {
-    const who = await caller(request);
+  return respond('search', async (log) => {
+    const who = await caller(request, log);
     return search(await readJson<Partial<SearchRequest>>(request), who);
   });
 }

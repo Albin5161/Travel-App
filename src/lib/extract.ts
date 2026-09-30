@@ -14,6 +14,7 @@ import type {
   MatchResult,
   MatchedPlace,
   SearchResult,
+  SightsResult,
 } from '@/server/types';
 
 // A pasted link, read by the API and turned into the app's own places, city and video, so every
@@ -23,10 +24,10 @@ import type {
 
 export type LinkOutcome =
   | { kind: 'done'; extraction: Extraction }
-  /** Read, but nothing in it could be placed on a map. */
-  | { kind: 'empty'; reel: Reel | null }
+  /** Read, but nothing in it could be placed on a map. `region` is the city it's about, if known. */
+  | { kind: 'empty'; reel: Reel | null; region: string | null }
   /** An Instagram reel we couldn't read for places; the person adds them by search instead. */
-  | { kind: 'assist'; reason: AssistReason; reel: Reel };
+  | { kind: 'assist'; reason: AssistReason; reel: Reel; region: string | null };
 
 /** Up to five places are matched at a time: fast, without a burst of requests from one phone. */
 const MATCH_AT_ONCE = 5;
@@ -57,7 +58,7 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
     const reel: Reel = res.video
       ? toReel({ platform: 'instagram', video: res.video }, key, '')
       : { id: key, platform: 'instagram', creator: 'Instagram reel', title: '', duration: '', thumbnail: 0, cityId: '', placeIds: [] };
-    return { kind: 'assist', reason: res.reason, reel };
+    return { kind: 'assist', reason: res.reason, reel, region: res.region ?? null };
   }
 
   const { city: where, state } = regionParts(res.region, res.places);
@@ -80,7 +81,7 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
   });
   // Every match failing is our side or today's limit, not the video: say so rather than "no places".
   if (pairs.length === 0 && failures.length > 0 && failures.length === res.places.length) throw failures[0];
-  if (pairs.length === 0) return { kind: 'empty', reel };
+  if (pairs.length === 0) return { kind: 'empty', reel, region: res.region };
 
   const places = toPlaces(pairs, reel, cityId);
   reel.placeIds = places.map((p) => p.id);
@@ -89,6 +90,28 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
   register({ places, city, reel });
   cache.write(key, extraction);
   return { kind: 'done', extraction };
+}
+
+// ── A city's best-known spots, for a video of it that named none ────────────────────────────────
+
+/**
+ * The best-known spots in `region` ("Mumbai, Maharashtra, India"), matched to real places and
+ * credited to `reel`, the video they're being added from. Places Google can't find are left out.
+ */
+export async function bestKnownSpots(region: string, reel: Reel): Promise<Place[]> {
+  const res = await post<SightsResult>('/api/sights', { region }, 30_000);
+  const matched = await eachAtOnce(res.places, MATCH_AT_ONCE, (p) =>
+    post<MatchResult>('/api/match', { name: p.name, area: p.area, region: res.region, confidence: p.confidence }, MATCH_MS).catch(
+      () => null,
+    ),
+  );
+  const pairs = res.places.flatMap((found, i) => {
+    const m = matched[i];
+    return m?.status === 'matched' ? [{ found, match: m.place }] : [];
+  });
+  const places = toPlaces(pairs, reel, townOf(region).id);
+  register({ places });
+  return places;
 }
 
 // ── "Missed one?": searching for a place and adding it ─────────────────────────────────────────

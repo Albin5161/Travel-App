@@ -1,14 +1,24 @@
 import type { Caller } from './auth';
 import { env } from './env';
 import { ApiError } from './errors';
-import { findPlaces } from './gemini';
+import { bestKnown, findPlaces } from './gemini';
 import { getReel, TRANSCRIPT_MAX_SECONDS, type ReelDetails } from './instagram';
 import { wikimediaPhoto } from './commons';
 import { allowCityNotes, allowExtract, allowFeedback, allowPhoto, allowPlaceInfo, allowReel, allowSearch, beginMatch } from './limits';
 import { parseLink, type ParsedLink } from './links';
 import { readCityNotes } from './citynotes';
 import { getDetails, getPhoto, getPhotoRefs, getPlaceInfo, searchPlaceId, searchPlaces, type PhotoRef } from './places';
-import { addFeedback, getCityNotes, getExtraction, putCityNotes, putExtraction, putMatch, type DoneExtraction } from './store';
+import {
+  addFeedback,
+  getCityNotes,
+  getExtraction,
+  getSights,
+  putCityNotes,
+  putExtraction,
+  putMatch,
+  putSights,
+  type DoneExtraction,
+} from './store';
 import type {
   AssistReason,
   CityNotes,
@@ -22,6 +32,7 @@ import type {
   ReelSignals,
   SearchRequest,
   SearchResult,
+  SightsResult,
   Timings,
 } from './types';
 import { getVideo } from './youtube';
@@ -103,12 +114,14 @@ async function extractReel(
   who: Caller,
   t: Timer,
 ): Promise<ExtractResult> {
-  const assist = (reason: AssistReason, video?: DoneExtraction['video']): ExtractResult => ({
+  const assist = (reason: AssistReason, video?: DoneExtraction['video'], region?: string | null): ExtractResult => ({
     status: 'assist',
     platform: 'instagram',
     url: link.url,
     reason,
     ...(video ? { video } : {}),
+    // The city a reel is about, even when it names no places in it: the app offers its best-known spots.
+    ...(region ? { region } : {}),
     timings: t.done(),
   });
   const token = env.apifyToken();
@@ -118,7 +131,7 @@ async function extractReel(
   // Stored under its own prefix: a shortcode and a YouTube ID can't be told apart otherwise.
   const key = `ig:${link.shortcode}`;
   const saved = await t.step('store', () => getExtraction(key));
-  if (saved) return saved.places.length ? { ...saved, cached: true, timings: t.done() } : assist('no_places', saved.video);
+  if (saved) return saved.places.length ? { ...saved, cached: true, timings: t.done() } : assist('no_places', saved.video, saved.region);
 
   if (!(await t.step('cap', () => allowReel('reel')))) return assist('daily_limit');
   let reel = await t.step('apify', () => getReel(link.url, token, { transcript: false }));
@@ -177,7 +190,7 @@ async function extractReel(
   const had = Object.entries(signals).filter(([, on]) => on).map(([name]) => name);
   console.log(`[instagram] ${link.shortcode}: ${result.places.length} places from ${had.join(', ') || 'no text'}`);
   if (result.places.length || settled) await t.step('save', () => putExtraction(key, result));
-  return result.places.length ? { ...result, timings: t.done() } : assist('no_places', result.video);
+  return result.places.length ? { ...result, timings: t.done() } : assist('no_places', result.video, result.region);
 }
 
 function hasText(r: ReelDetails): boolean {
@@ -314,6 +327,24 @@ export async function cityNotes(req: Partial<CityNotesRequest>, who: Caller): Pr
   // A town the sources don't cover is remembered too, so it isn't looked up on every visit.
   await putCityNotes(key, notes ?? { none: true }, notes ? env.geminiModel() : null);
   return { notes };
+}
+
+/**
+ * A city's best-known spots, for a video that showed the city but named no places: offered on the
+ * add-them-yourself screen, never saved as if the video named them. Kept 30 days per city, so each
+ * city costs one model call a month.
+ */
+export async function sights(req: { region?: unknown }, who: Caller): Promise<SightsResult> {
+  const region = clean(req.region, 120);
+  if (region.length < 2) throw new ApiError(400, 'bad_request', 'Send {"region": "City, State, Country"}.');
+  const key = `sights:${region.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-')}`;
+  const saved = await getSights(key);
+  if (saved) return { ...saved, cached: true };
+  await allowExtract(who);
+  const found = await bestKnown(region, env.geminiKey(), env.geminiModel(), env.geminiFallback());
+  const result: SightsResult = { region: found.region ?? region, terrain: found.terrain, places: found.places, cached: false };
+  if (found.places.length) await putSights(key, result, found.usage.model);
+  return result;
 }
 
 /** The Right / Wrong answers from the review screen: the accuracy measure, and what we learn from. */

@@ -13,12 +13,13 @@ import { PhotoCard } from '@/components/PhotoCard';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
+import { Tick } from '@/components/sky/Tick';
 import { PlaceSearchSheet } from '@/components/verify/PlaceSearchSheet';
 import { getReel } from '@/data/api';
 import { register } from '@/data/registry';
 import { allDistricts } from '@/data/regions';
 import type { Place } from '@/data/types';
-import { cityFromWhere, placeFromPick, sendVerdicts, townOf, type Suggestion } from '@/lib/extract';
+import { bestKnownSpots, cityFromWhere, placeFromPick, sendVerdicts, townOf, type Suggestion } from '@/lib/extract';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { fadeUp } from '@/lib/motion';
@@ -32,10 +33,11 @@ const ENTER = [0, 1, 2].map((i) => fadeUp(i * 60));
 /**
  * A reel we couldn't read for places, saved anyway: the person watches it on Instagram and searches
  * for each place they spot. Nothing is saved until they tap Save; the city is named after where the
- * first place is.
+ * first place is. A video about a city that named no places in it (`region`) also lists the city's
+ * best-known spots to tick, marked as suggestions rather than places from the video.
  */
 export default function AddPlaces() {
-  const { reel: reelId, url } = useLocalSearchParams<{ reel: string; url: string }>();
+  const { reel: reelId, url, region } = useLocalSearchParams<{ reel: string; url: string; region?: string }>();
   const reel = getReel(reelId);
   const { state, dispatch } = useTrips();
   // Until a place is added there's nothing to lean the search toward but home: most reels people
@@ -47,6 +49,21 @@ export default function AddPlaces() {
   const [searching, setSearching] = useState(false);
   // Where each picked place is ("Kottayam, Kerala, India"), for naming the city it's saved in.
   const whereOf = useRef(new Map<string, string>());
+  const city = region?.split(',')[0]?.trim() || null;
+  // The city's best-known spots: loading, the list, or none (couldn't be fetched, or no city).
+  const [spots, setSpots] = useState<Place[] | 'loading' | null>(region && reel ? 'loading' : null);
+  useEffect(() => {
+    if (!region || !reel) return;
+    let live = true;
+    bestKnownSpots(region, reel)
+      .then((found) => live && setSpots(found.length ? found : null))
+      .catch(() => live && setSpots(null));
+    return () => {
+      live = false;
+    };
+    // The reel is looked up by id; once is enough.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [region, reelId]);
 
   // A reload loses what we knew of the reel; start again from Home.
   useEffect(() => {
@@ -79,17 +96,31 @@ export default function AddPlaces() {
     setSearching(false);
   };
 
+  const toggleSpot = (place: Place) => {
+    haptic.selection();
+    setAdded((list) =>
+      list.some((a) => a.place.id === place.id)
+        ? list.filter((a) => a.place.id !== place.id)
+        : [...list, { place, where: region ?? '' }],
+    );
+  };
+
   const save = () => {
     if (added.length === 0) return;
     haptic.success();
-    const city = cityFromWhere(added[0].where, reel, places);
-    const saved = { ...reel, cityId: city.id, placeIds: places.map((p) => p.id) };
-    register({ city, reel: saved });
-    dispatch({ type: 'commitExtraction', extraction: { reel: saved, city, places } });
-    track('places saved', { count: places.length, wrong: 0, from: 'by hand' });
-    sendVerdicts(saved, places.map((place) => ({ place, verdict: 'added' as const })));
+    const saving = cityFromWhere(added[0].where, reel, places);
+    // Picked spots and searched places can be filed under slightly different town names; all of
+    // them go in the one city they're saved as.
+    const kept = places.map((p) => ({ ...p, cityId: saving.id }));
+    const saved = { ...reel, cityId: saving.id, placeIds: kept.map((p) => p.id) };
+    register({ city: saving, reel: saved, places: kept });
+    dispatch({ type: 'commitExtraction', extraction: { reel: saved, city: saving, places: kept } });
+    const picked = kept.filter((p) => Array.isArray(spots) && spots.some((s) => s.id === p.id)).length;
+    track('places saved', { count: kept.length, wrong: 0, from: picked ? 'city spots' : 'by hand', picked });
+    sendVerdicts(saved, kept.map((place) => ({ place, verdict: 'added' as const })));
     router.replace('/');
   };
+  const instagram = reel.platform === 'instagram';
 
   const cardW = W - space.screen * 2;
   return (
@@ -97,22 +128,24 @@ export default function AddPlaces() {
       <IconButton icon="x" onPress={close} accessibilityLabel="Close without saving" style={styles.close} />
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 140 }]}>
         <Animated.View entering={ENTER[0]} style={styles.titles}>
-          <Text variant="eyebrow">Instagram reel</Text>
+          <Text variant="eyebrow">{[instagram ? 'Instagram reel' : 'YouTube video', city].filter(Boolean).join(' · ')}</Text>
           <Text variant="display" accessibilityRole="header">
-            Add the places yourself
+            {city ? `Your ${city} spots` : 'Add the places yourself'}
           </Text>
           <Text variant="body">
-            Watch the reel, then search for each place you spot.
+            {city
+              ? `Tick ${city}’s best-known spots you want, or watch the ${instagram ? 'reel' : 'video'} and search for the places you spot.`
+              : 'Watch the reel, then search for each place you spot.'}
           </Text>
         </Animated.View>
 
         <Animated.View entering={ENTER[1]}>
-          <Pressable onPress={watch} accessibilityRole="link" accessibilityLabel="Watch the reel on Instagram">
+          <Pressable onPress={watch} accessibilityRole="link" accessibilityLabel={instagram ? 'Watch the reel on Instagram' : 'Watch the video on YouTube'}>
             <Tone value="dark">
               <PhotoCard source={reel.thumbnail} style={{ width: cardW, height: cardW * 0.56 }}>
                 <View style={styles.reelText}>
                   <View style={styles.sourceRow}>
-                    <Ionicons name="logo-instagram" size={14} color={colors.mist} />
+                    <Ionicons name={instagram ? 'logo-instagram' : 'logo-youtube'} size={14} color={colors.mist} />
                     <Text variant="micro" color={colors.mist} numberOfLines={1}>
                       {reel.creator}
                       {reel.duration ? ` · ${reel.duration}` : ''}
@@ -127,7 +160,7 @@ export default function AddPlaces() {
                 <View style={styles.watch}>
                   <Feather name="play" size={14} color={skyCta} />
                   <Text variant="label" color={skyCta}>
-                    Watch on Instagram
+                    {instagram ? 'Watch on Instagram' : 'Watch on YouTube'}
                   </Text>
                 </View>
               </PhotoCard>
@@ -135,8 +168,60 @@ export default function AddPlaces() {
           </Pressable>
         </Animated.View>
 
+        {spots ? (
+          <Animated.View entering={ENTER[2]} style={styles.list}>
+            <View style={styles.spotsHead}>
+              <Text variant="eyebrow" accessibilityRole="header">
+                Well known in {city}
+              </Text>
+              <Text variant="label" color={skyInk.soft}>
+                Suggested by Xplore’s AI, not seen in the {instagram ? 'reel' : 'video'}. It can make mistakes.
+              </Text>
+            </View>
+            {spots === 'loading' ? (
+              <Glass radius={radii.pane} style={styles.row}>
+                <Text variant="label" color={skyInk.soft}>
+                  Finding {city}’s best-known spots…
+                </Text>
+              </Glass>
+            ) : (
+              <Glass radius={radii.pane} style={styles.spots}>
+                {spots.map((place) => {
+                  const on = added.some((a) => a.place.id === place.id);
+                  return (
+                    <Pressable
+                      key={place.id}
+                      onPress={() => toggleSpot(place)}
+                      style={({ pressed }) => [styles.spot, pressed && styles.spotPressed]}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: on }}
+                      accessibilityLabel={[place.name, place.area].filter(Boolean).join(', ')}
+                    >
+                      <Image source={place.photo} style={[styles.thumb, !on && styles.thumbOff]} contentFit="cover" transition={0} />
+                      <View style={styles.rowText}>
+                        <Text variant="bodyStrong" numberOfLines={1}>
+                          {place.name}
+                        </Text>
+                        <Text variant="label" color={skyInk.soft} numberOfLines={2}>
+                          {place.why || place.area}
+                        </Text>
+                      </View>
+                      <Tick on={on} />
+                    </Pressable>
+                  );
+                })}
+              </Glass>
+            )}
+          </Animated.View>
+        ) : null}
+
         <Animated.View entering={ENTER[2]} style={styles.list}>
-          {added.map(({ place, where }) => (
+          {city && added.some((a) => !Array.isArray(spots) || !spots.some((s) => s.id === a.place.id)) ? (
+            <Text variant="eyebrow">Added by you</Text>
+          ) : null}
+          {added
+            .filter((a) => !Array.isArray(spots) || !spots.some((s) => s.id === a.place.id))
+            .map(({ place, where }) => (
             <Glass key={place.id} radius={radii.pane} style={styles.row}>
               <Image source={place.photo} style={styles.thumb} contentFit="cover" transition={0} />
               <View style={styles.rowText}>
@@ -205,6 +290,12 @@ const styles = StyleSheet.create({
   list: { gap: 12 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10 },
   thumb: { width: 48, height: 48, borderRadius: 12, backgroundColor: skyFill.pane },
+  thumbOff: { opacity: 0.55 },
+  spotsHead: { gap: 4 },
+  spots: { padding: 6, gap: 2 },
+  // A whole row is the tap, at least 44pt tall.
+  spot: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, minHeight: 64, borderRadius: radii.pane },
+  spotPressed: { backgroundColor: skyFill.pane },
   rowText: { flex: 1, gap: 2 },
   save: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },
 });

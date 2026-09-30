@@ -72,8 +72,18 @@ export type ExtractResult =
       reason: AssistReason;
       /** The reel's title and thumbnail, when it could be read at all. */
       video?: Extract<ExtractResult, { status: 'done' }>['video'];
+      /** The city it's about, when it was read but named no places ("Mumbai, Maharashtra, India"). */
+      region?: string | null;
       timings: Timings;
     };
+
+/** A city's best-known spots, offered when a video of it named none. Kept 30 days per city. */
+export type SightsResult = {
+  region: string;
+  terrain: 'flat' | 'hilly' | 'mountain' | null;
+  places: FoundPlace[];
+  cached: boolean;
+};
 
 export type MatchRequest = {
   name: string;

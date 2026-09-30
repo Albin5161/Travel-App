@@ -425,8 +425,8 @@ type Credit = { id: string; name: string; area: string; stamp?: string };
 
 type Failure =
   | { kind: 'error'; error: ApiFailure }
-  | { kind: 'empty' }
-  | { kind: 'assist'; reason: AssistReason; reel: Reel };
+  | { kind: 'empty'; reel: Reel | null; region: string | null }
+  | { kind: 'assist'; reason: AssistReason; reel: Reel; region: string | null };
 
 const creditOf = (p: Place, i: number): Credit => ({
   id: p.id || `n${i}`,
@@ -483,10 +483,10 @@ function useReading(url: string, away: RefObject<Away>) {
           if (outcome.kind === 'done') done(outcome.extraction);
           else if (outcome.kind === 'empty') {
             failed('empty');
-            setFailure({ kind: 'empty' });
+            setFailure({ kind: 'empty', reel: outcome.reel, region: outcome.region });
           } else {
             failed(outcome.reason);
-            setFailure({ kind: 'assist', reason: outcome.reason, reel: outcome.reel });
+            setFailure({ kind: 'assist', reason: outcome.reason, reel: outcome.reel, region: outcome.region });
           }
         })
         .catch((e: unknown) => {
@@ -554,12 +554,17 @@ function ReadFailed({
   const { dispatch } = useTrips();
   const copy = failureCopy(failure);
   const canRetry = failure.kind === 'error' && failure.error.retryable;
-  // A reel we couldn't read can still be saved: the person watches it and adds what they spot.
+  // A reel we couldn't read can still be saved: the person watches it and adds what they spot. A
+  // video about a city that names no places in it gets the city's best-known spots to pick from.
+  const reel = failure.kind === 'assist' || failure.kind === 'empty' ? failure.reel : null;
+  const region = failure.kind === 'assist' || failure.kind === 'empty' ? failure.region : null;
+  const city = cityOf(region);
+  const canAdd = failure.kind === 'assist' || (failure.kind === 'empty' && !!reel && !!city);
   const addYourself = () => {
-    if (failure.kind !== 'assist') return;
+    if (!reel) return;
     haptic.light();
-    register({ reel: failure.reel });
-    router.replace({ pathname: '/addplaces', params: { reel: failure.reel.id, url } });
+    register({ reel });
+    router.replace({ pathname: '/addplaces', params: { reel: reel.id, url, ...(city && region ? { region } : {}) } });
   };
   const another = () => {
     haptic.light();
@@ -581,10 +586,12 @@ function ReadFailed({
       </Animated.View>
       <View style={[styles.choice, styles.failedActions, { paddingBottom: insetBottom + 12 }]}>
         {canRetry ? <Button label="Try again" onPress={onRetry} /> : null}
-        {failure.kind === 'assist' ? <Button label="Add the places yourself" onPress={addYourself} /> : null}
+        {canAdd ? (
+          <Button label={city ? `See ${city}’s best-known spots` : 'Add the places yourself'} onPress={addYourself} />
+        ) : null}
         <Button
           label="Paste another link"
-          kind={canRetry || failure.kind === 'assist' ? 'secondary' : 'primary'}
+          kind={canRetry || canAdd ? 'secondary' : 'primary'}
           onPress={another}
         />
       </View>
@@ -592,7 +599,22 @@ function ReadFailed({
   );
 }
 
+/** "Mumbai" from "Mumbai, Maharashtra, India"; null when the video's city isn't known. */
+function cityOf(region: string | null): string | null {
+  const first = region?.split(',')[0]?.trim();
+  return first || null;
+}
+
 function failureCopy(f: Failure): { icon: keyof typeof Feather.glyphMap; title: string; body: string } {
+  const city = f.kind === 'assist' || f.kind === 'empty' ? cityOf(f.region) : null;
+  // Shown or said to be about a city, with no places named in it: say so, and offer the city.
+  if (city && (f.kind === 'empty' || (f.kind === 'assist' && f.reason === 'no_places'))) {
+    return {
+      icon: 'map-pin',
+      title: 'No places named',
+      body: `This ${f.kind === 'assist' ? 'reel' : 'video'} is about ${city}, but it doesn’t name any places. Pick from ${city}’s best-known spots, or add the ones you spot.`,
+    };
+  }
   if (f.kind === 'empty') {
     return {
       icon: 'map-pin',

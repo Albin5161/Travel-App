@@ -1,4 +1,4 @@
-import type { CityNotes, ExtractResult } from './types';
+import type { CityNotes, ExtractResult, SightsResult } from './types';
 import { db } from './supabase';
 
 // What the API remembers, in Supabase. Without Supabase it falls back to this process's memory,
@@ -69,6 +69,10 @@ async function putKept(key: string, result: unknown, model: string | null): Prom
   // Not saving only means the next person waits a few seconds longer; don't fail the request.
   if (error) console.error('[store] extraction write', error.message);
 }
+
+/** A city's best-known spots, kept like a video's places. */
+export const getSights = (key: string) => getKept<SightsResult>(key);
+export const putSights = (key: string, sights: SightsResult, model: string) => putKept(key, sights, model);
 
 /** A city's notes, kept like a video's places. */
 export const getCityNotes = (key: string) => getKept<CityNotes | { none: true }>(key);

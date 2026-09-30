@@ -1,6 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useFonts } from 'expo-font';
-import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -25,12 +24,14 @@ import { FromThisToThis } from '@/components/onboarding/FromThisToThis';
 import { WeekendRoute } from '@/components/onboarding/WeekendRoute';
 import { Button } from '@/components/Button';
 import { PressableScale } from '@/components/PressableScale';
+import { Sky } from '@/components/sky/Sky';
 import { Text } from '@/components/Text';
 import { Chips } from '@/components/spots/Chips';
 import { allDistricts } from '@/data/regions';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT, project, SPRING_DRAG } from '@/lib/motion';
+import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
 import { skyAccent, skyFill, skyInk } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
@@ -45,9 +46,8 @@ const GUTTER = space.screen;
  * the group decides together, and spots near home that become weekends (where it asks where home
  * is). Last, your name and photo, shown as the invite a friend would get.
  *
- * Each page stands on a real photo of a place, sharp sky at the top and blurred dark below the
- * words (assets/images/onboarding, made by scripts/onboarding-backdrops.py); the photos cross-fade
- * as the pages slide. Copy is kept to a line or two.
+ * The screen sits on the sky as it is right now (state/sky), the same sky Home opens on; the
+ * illustrations stay paper, cards lifted off it and tilted in depth. Copy is kept to a line or two.
  */
 export default function Onboarding() {
   const { width: W, height: H } = useWindowDimensions();
@@ -62,7 +62,8 @@ export default function Onboarding() {
   const lift = useKeyboardLift();
   // The handwriting on page one: small, and not waited for (plain type stands in for a moment).
   useFonts({ CaveatNotes: require('../../assets/fonts/CaveatNotes.ttf') });
-  useFocusEffect(darkStatusBar);
+  const phase = useHomeSky();
+  useFocusEffect(lightStatusBar);
 
   const art = Math.round(Math.min(320, Math.max(236, H * 0.38)));
   const artW = W - GUTTER * 2;
@@ -103,14 +104,14 @@ export default function Onboarding() {
   return (
     <Tone value="sky">
     <View style={styles.fill}>
-      <Backdrops p={p} />
+      <Sky phase={phase} shade={0.35} />
 
       <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
         {/* Past the first page, a way back that isn't a swipe (a mouse can't swipe the pages). */}
         {page > 0 ? (
           <PressableScale onPress={() => go(page - 1)} style={styles.back} accessibilityRole="button" accessibilityLabel="Back">
-            <Feather name="chevron-left" size={18} color={TOP_INK} />
-            <Text variant="label" color={TOP_INK}>
+            <Feather name="chevron-left" size={18} color={skyInk.soft} />
+            <Text variant="label" color={skyInk.soft}>
               Back
             </Text>
           </PressableScale>
@@ -119,7 +120,7 @@ export default function Onboarding() {
         )}
         {last ? null : (
           <PressableScale onPress={finish} style={styles.skip} accessibilityRole="button" accessibilityLabel="Skip the intro">
-            <Text variant="label" color={TOP_INK}>
+            <Text variant="label" color={skyInk.soft}>
               Skip
             </Text>
           </PressableScale>
@@ -199,11 +200,12 @@ export default function Onboarding() {
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 20 }]}>
         <Dots p={p} onPick={go} />
-        {last ? (
-          <Button trailingArrow label="Find my first trip" onPress={finish} accessibilityHint="Opens the app, ready for your first video" />
-        ) : (
-          <NextButton onPress={() => go(page + 1)} />
-        )}
+        <Button
+          trailingArrow
+          label={last ? 'Find my first trip' : 'Next'}
+          onPress={() => (last ? finish() : go(page + 1))}
+          accessibilityHint={last ? 'Opens the app, ready for your first video' : undefined}
+        />
         {/* On every page, since Skip leaves from any of them. The two links are taps of their own,
             44pt tall, rather than words inside the sentence. */}
         <View style={styles.consentBlock}>
@@ -229,40 +231,10 @@ export default function Onboarding() {
   );
 }
 
-/** Dark status bar over the photos' bright skies; light again for the sky screens after. */
-function darkStatusBar() {
-  setStatusBarStyle('dark');
-  return () => setStatusBarStyle('light');
-}
-
-/** The ink for the wordmark, Back and Skip: dark, over the bright sky at the top of every photo. */
-const TOP_INK = '#141A28';
-
-const BACKDROPS = [
-  require('../../assets/images/onboarding/video.jpg'),
-  require('../../assets/images/onboarding/friends.jpg'),
-  require('../../assets/images/onboarding/weekend.jpg'),
-  require('../../assets/images/onboarding/you.jpg'),
-];
-
-/** Each page's photo, cross-fading with the slide; only the pages next to the current one load. */
-function Backdrops({ p }: { p: SharedValue<number> }) {
-  return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {BACKDROPS.map((source, i) => (
-        <Backdrop key={i} index={i} p={p} source={source} />
-      ))}
-    </View>
-  );
-}
-
-function Backdrop({ index, p, source }: { index: number; p: SharedValue<number>; source: number }) {
-  const style = useAnimatedStyle(() => ({ opacity: interpolate(Math.abs(p.get() - index), [0, 1], [1, 0], Extrapolation.CLAMP) }));
-  return (
-    <Animated.View style={[StyleSheet.absoluteFill, style]}>
-      <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} priority={index === 0 ? 'high' : 'low'} />
-    </Animated.View>
-  );
+/** White status bar over the sky, dark again for the paper screens after. */
+function lightStatusBar() {
+  setStatusBarStyle('light');
+  return () => setStatusBarStyle('dark');
 }
 
 /** A page's card laid back in depth, like page one's pair: tipped away at the top, turned a little. */
@@ -274,17 +246,6 @@ function Tilted({ turn, children }: { turn: 1 | -1; children: ReactNode }) {
   );
 }
 
-/** Next, as a pane of glass with the ember arrow at its end, as in the design. */
-function NextButton({ onPress }: { onPress: () => void }) {
-  return (
-    <PressableScale onPress={onPress} style={styles.next} accessibilityRole="button" accessibilityLabel="Next">
-      <Text style={styles.nextLabel}>Next</Text>
-      <View style={styles.nextArrow}>
-        <Feather name="arrow-right" size={22} color="#FFFFFF" />
-      </View>
-    </PressableScale>
-  );
-}
 
 
 /**
@@ -484,31 +445,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: GUTTER,
     paddingBottom: 8,
   },
-  wordmark: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, letterSpacing: -1, color: TOP_INK },
-  next: {
-    height: 60,
-    borderRadius: 999,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(20,24,36,0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-    boxShadow: '0 12px 30px rgba(0,0,0,0.3)',
-    // Frosted on the web; phones show the tint alone.
-    backdropFilter: 'blur(18px)',
-  },
-  nextLabel: { fontFamily: fonts.sansSemi, fontSize: 17, color: '#FFFFFF' },
-  nextArrow: {
-    position: 'absolute',
-    right: 6,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF7A45',
-    boxShadow: '0 6px 16px rgba(255,122,69,0.45)',
-  },
+  wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
   // Real padding, not hitSlop: the web ignores hitSlop, and a tap target should be 44pt tall.
   skip: { minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' },
   viewport: { flex: 1, overflow: 'hidden' },

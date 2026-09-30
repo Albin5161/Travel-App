@@ -25,6 +25,8 @@ import { fonts } from '@/theme/tokens';
 
 const ROUTE = '#FF7A45';
 const INK = '#18202E';
+// The notes and their arrows sit on the sky, not on a card: light, like the rest of the sky's type.
+const NOTE_INK = 'rgba(255,255,255,0.92)';
 const NOTE_FONT = 'CaveatNotes';
 // The three stops on the map: a cliff, a beach, a bay, pinned by their photos.
 const STOPS = ['gok-om', 'gok-paradise', 'gok-halfmoon'].map((id) => places[id]).filter(Boolean);
@@ -71,15 +73,15 @@ export function FromThisToThis({ active, width, height }: { active: boolean; wid
       <View style={[styles.note, { left: 4, top: 0 }]} pointerEvents="none">
         <Text style={[styles.noteText, { transform: [{ rotate: '-6deg' }] }]}>From this…</Text>
         <Svg width={26} height={30} style={{ marginLeft: -2, marginTop: -2 }}>
-          <Path d="M20 2 C 6 6, 2 16, 7 27" stroke={INK} strokeWidth={1.6} fill="none" strokeLinecap="round" />
-          <Path d="M3 22 L 7 28 L 12 23" stroke={INK} strokeWidth={1.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M20 2 C 6 6, 2 16, 7 27" stroke={NOTE_INK} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+          <Path d="M3 22 L 7 28 L 12 23" stroke={NOTE_INK} strokeWidth={1.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
       </View>
       <View style={[styles.note, styles.noteRight, { right: 6, top: H * 0.02 }]} pointerEvents="none">
         <Text style={[styles.noteText, { transform: [{ rotate: '-5deg' }] }]}>…to this</Text>
         <Svg width={26} height={28} style={{ marginRight: 30, marginTop: -2 }}>
-          <Path d="M22 2 C 12 4, 8 12, 8 25" stroke={INK} strokeWidth={1.6} fill="none" strokeLinecap="round" />
-          <Path d="M3 20 L 8 26 L 13 20" stroke={INK} strokeWidth={1.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M22 2 C 12 4, 8 12, 8 25" stroke={NOTE_INK} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+          <Path d="M3 20 L 8 26 L 13 20" stroke={NOTE_INK} strokeWidth={1.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
       </View>
 
@@ -179,9 +181,9 @@ const styles = StyleSheet.create({
     fontFamily: NOTE_FONT,
     fontSize: 21,
     lineHeight: 24,
-    color: INK,
-    // A soft light halo keeps the handwriting readable over a busy photo.
-    textShadowColor: 'rgba(255,255,255,0.55)',
+    color: NOTE_INK,
+    // A soft dark halo keeps the handwriting clear on the brightest skies.
+    textShadowColor: 'rgba(4,10,30,0.35)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 6,
   },

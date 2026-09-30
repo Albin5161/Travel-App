@@ -12,10 +12,7 @@ Prototype photography, bundled in `assets/images/places/`.
 | gok-cafe.jpg | Strawberry Farms, Kudle Beach, Gokarna 01.jpg | Devender Goyal | CC BY-SA 4.0 |
 | gok-thali.jpg | Vegetarian thali Karnataka DSC0004.jpg | Maina Bosco | CC BY-SA 4.0 |
 
-Images were resized; no other changes, except the intro backgrounds in `assets/images/onboarding/`
-(made by `scripts/onboarding-backdrops.py`): gok-om, gok-halfmoon, gok-kudle and hero-dusk, cropped
-to a phone's shape with the lower part blurred and darkened under the text. The gok-halfmoon one
-(`friends.jpg`) is shared under CC BY-SA 4.0 like its source.
+Images were resized; no other changes.
 
 ## Fonts
 `assets/fonts/CaveatNotes.ttf` is Caveat SemiBold by Pablo Impallari (SIL Open Font License 1.1),

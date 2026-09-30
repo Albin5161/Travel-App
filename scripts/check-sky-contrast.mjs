@@ -2,7 +2,7 @@
 // stops, the glow at full strength, and the densest cloud, both bare and under the glass tint.
 // Run with Node 22: node --experimental-strip-types scripts/check-sky-contrast.mjs
 
-import { SKY, skyInk } from '../src/theme/sky.ts';
+import { SKY, skyInk, skySignal } from '../src/theme/sky.ts';
 
 const AA = 4.5;
 const WHITE = [255, 255, 255];
@@ -25,7 +25,15 @@ const ratio = (a, b) => {
   return (hi + 0.05) / (lo + 0.05);
 };
 
-const inks = { strong: 1, soft: rgba(skyInk.soft).a, faint: rgba(skyInk.faint).a };
+// White inks at their opacity, and the good/bad-news colours (solid).
+const inks = {
+  strong: { c: WHITE, a: 1 },
+  soft: { c: WHITE, a: rgba(skyInk.soft).a },
+  faint: { c: WHITE, a: rgba(skyInk.faint).a },
+  // Only ever drawn on deep glass (sheets, the city page's panel), so checked there.
+  'signal up': { c: hex(skySignal.up), a: 1, deepOnly: true },
+  'signal down': { c: hex(skySignal.down), a: 1, deepOnly: true },
+};
 let failed = 0;
 
 for (const [phase, look] of Object.entries(SKY)) {
@@ -42,15 +50,18 @@ for (const [phase, look] of Object.entries(SKY)) {
     cloud: mix(WHITE, look.clouds, stops[1]),
   };
   const worst = [];
-  for (const [ink, a] of Object.entries(inks)) {
+  for (const [ink, { c, a, deepOnly }] of Object.entries(inks)) {
     let min = Infinity;
     let where = '';
     for (const [spot, bg] of Object.entries(spots)) {
-      for (const [surface, back] of [
-        ['bare', bg],
-        ['glass', mix(glass.rgb, glass.a, bg)],
-      ]) {
-        const r = ratio(mix(WHITE, a, back), back);
+      const surfaces = deepOnly
+        ? [['deep glass', mix(stops[0], 0.8, bg)]]
+        : [
+            ['bare', bg],
+            ['glass', mix(glass.rgb, glass.a, bg)],
+          ];
+      for (const [surface, back] of surfaces) {
+        const r = ratio(mix(c, a, back), back);
         if (r < min) [min, where] = [r, `${surface} ${spot}`];
       }
     }

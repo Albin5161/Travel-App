@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
 import Ionicons from '@/components/Ionicons';
-import { ReadingScene, sceneHeight, type Topic } from '@/components/mascots/ReadingScene';
+import { MascotMoment, ReadingScene, sceneHeight, type Line, type Topic } from '@/components/mascots/ReadingScene';
 import { ReelScanner } from '@/components/motion/ReelScanner';
 import { ReelTimeline, seconds } from '@/components/motion/ReelTimeline';
 import { GlassRim, PhotoCard } from '@/components/PhotoCard';
@@ -551,6 +551,7 @@ function ReadFailed({
   insetBottom: number;
 }) {
   const { dispatch } = useTrips();
+  const { width: W } = useWindowDimensions();
   const copy = failureCopy(failure);
   const canRetry = failure.kind === 'error' && failure.error.retryable;
   // A reel we couldn't read can still be saved: the person watches it and adds what they spot. A
@@ -575,9 +576,10 @@ function ReadFailed({
     <SkyScreen style={{ paddingTop: insetTop + 8 }}>
       <IconButton icon="x" onPress={another} accessibilityLabel="Close" style={styles.close} />
       <Animated.View entering={fadeUp(0)} style={styles.failed}>
-        <View style={styles.failedIcon}>
-          <Feather name={copy.icon} size={22} color={skyInk.strong} />
-        </View>
+        {/* Amma and the child say what happened, the same two who kept the wait company. */}
+        <Glass style={styles.failedScene}>
+          <MascotMoment lines={failureLines(failure, city)} width={Math.min(W - space.screen * 2 - 28, 320)} worried about="Amma and the child look at the video." />
+        </Glass>
         <Text variant="headline" accessibilityRole="header">{copy.title}</Text>
         <Text variant="body">
           {copy.body}
@@ -596,6 +598,30 @@ function ReadFailed({
       </View>
     </SkyScreen>
   );
+}
+
+/** What Amma and the child say when a link doesn't turn into places: the child notices, Amma says what next. */
+function failureLines(f: Failure, city: string | null): Line[] {
+  const say = (kid: string, amma: string): Line[] => [
+    { who: 'kid', text: kid },
+    { who: 'amma', text: amma },
+  ];
+  if (f.kind === 'empty' || (f.kind === 'assist' && f.reason === 'no_places')) {
+    return city ? say(`It’s all ${city}, Amma!`, 'No names, though. Let’s pick spots.') : say('It doesn’t say where!', 'Then we’ll add them ourselves.');
+  }
+  if (f.kind === 'assist') {
+    if (f.reason === 'unreadable') return say('It won’t open, Amma.', 'Maybe it’s private. We’ll add them.');
+    if (f.reason === 'daily_limit') return say('Can we read one more?', 'Not today. We’ll add them ourselves.');
+    return say('Can we read this one?', 'Not yet. We’ll add them ourselves.');
+  }
+  const e = f.error;
+  if (e.code === 'offline') return say('No internet, Amma!', 'Let’s wait for it to come back.');
+  if (e.code === 'quota' || e.code === 'rate_limited') return say('Can we do another?', 'Let’s rest a little first.');
+  if (e.code === 'video_unavailable') return say('It won’t play, Amma.', 'Maybe it’s private. Try another link.');
+  if (e.code === 'unsupported_link' || e.code === 'bad_request') {
+    return say('That’s not a video, Amma!', 'Let’s paste a reel or YouTube link.');
+  }
+  return say('Uh-oh, it stopped!', 'Let’s try that again.');
 }
 
 /** "Mumbai" from "Mumbai, Maharashtra, India"; null when the video's city isn't known. */
@@ -764,6 +790,8 @@ const styles = StyleSheet.create({
   blankCard: { overflow: 'hidden', borderRadius: radii.card, backgroundColor: colors.basalt },
   blankMark: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', paddingBottom: 40, opacity: 0.35 },
   failed: { flex: 1, justifyContent: 'center', paddingHorizontal: space.screen, gap: 12, paddingBottom: 24 },
+  // The scene sits on the glass, its bottom edge cut by the card's, as on the reading screen.
+  failedScene: { alignItems: 'center', paddingTop: 12, overflow: 'hidden', marginBottom: 8 },
   failedIcon: {
     width: 48,
     height: 48,

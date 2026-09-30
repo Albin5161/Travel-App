@@ -93,8 +93,11 @@ export const skyAccentText = '#FFD6BE';
 export const skyAccentWash = 'rgba(255,168,119,0.16)';
 export const skyAccentRim = 'rgba(255,168,119,0.75)';
 
-/** Good and bad news in small type (safety signals), light enough for 4.5:1 on glass. */
-export const skySignal = { up: '#B2F2C9', down: '#FFD0C6' } as const;
+/**
+ * Good and bad news in small type (the safety scale, Remove), for deep glass: saturated as far as
+ * 4.5:1 allows there on every sky. Not for bare sky, where only paler colours pass.
+ */
+export const skySignal = { up: '#4ADE80', down: '#FFB09A' } as const;
 
 /** The main button: black, with a light rim so its edge holds on a night sky. */
 export const skyCta = '#0E0F12';

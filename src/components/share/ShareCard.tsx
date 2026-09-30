@@ -268,7 +268,7 @@ export function ShareStory({ city, plan, issued, look }: { city: City; plan: Tri
         <ShareCard city={city} plan={plan} width={280} issued={issued} />
       </View>
       <View style={styles.storyFoot}>
-        <RNText style={styles.storyLine}>Turned from a travel reel, stop by stop.</RNText>
+        <RNText style={styles.storyLine}>Turned from a travel video, stop by stop.</RNText>
         <RNText style={styles.storyBrand}>Xplore · xplore.expo.app</RNText>
       </View>
     </View>

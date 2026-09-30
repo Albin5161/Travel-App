@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Linking, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { Button } from '@/components/Button';
@@ -132,13 +132,55 @@ export function PlacesSection({ places, cityId, onLayout }: SectionProps & { pla
         onPress={() => router.push({ pathname: '/citymap/[id]', params: { id: cityId } })}
         style={styles.mapButton}
       />
-      <View style={styles.places}>
-        {places.map((p) => (
-          <PlaceRow key={p.id} place={p} />
-        ))}
-      </View>
+      {places.length > GROUP_FROM ? (
+        <View style={styles.groups}>
+          {byArea(places).map((g) => (
+            <AreaGroup key={g.area} area={g.area} places={g.places} />
+          ))}
+        </View>
+      ) : (
+        <View style={styles.places}>
+          {places.map((p) => (
+            <PlaceRow key={p.id} place={p} />
+          ))}
+        </View>
+      )}
       {places.some((p) => getPlaceRating(p.id)) ? <Note>Ratings and reviews from Google. Sample data for the demo.</Note> : null}
     </Section>
+  );
+}
+
+/** Past this many places, a city's list is grouped by area: twenty-odd from five videos is a lot to scroll. */
+const GROUP_FROM = 8;
+/** Each area shows this many until it's opened. */
+const AREA_SHOWN = 4;
+
+/** Places by the area they're in, biggest first; areas with a single place share one group at the end. */
+function byArea(places: Place[]): { area: string; places: Place[] }[] {
+  const groups = new Map<string, Place[]>();
+  for (const p of places) {
+    const area = p.area.trim() || 'Around the city';
+    groups.set(area, [...(groups.get(area) ?? []), p]);
+  }
+  const big = [...groups.entries()].filter(([, list]) => list.length > 1).sort((a, b) => b[1].length - a[1].length);
+  const rest = [...groups.values()].filter((list) => list.length === 1).flat();
+  return [...big.map(([area, list]) => ({ area, places: list })), ...(rest.length ? [{ area: big.length ? 'Elsewhere' : 'Around the city', places: rest }] : [])];
+}
+
+function AreaGroup({ area, places }: { area: string; places: Place[] }) {
+  const [open, setOpen] = useState(false);
+  const shown = open ? places : places.slice(0, AREA_SHOWN);
+  const more = places.length - shown.length;
+  return (
+    <View style={styles.places}>
+      <Text variant="micro" accessibilityRole="header">
+        {area} · {places.length}
+      </Text>
+      {shown.map((p) => (
+        <PlaceRow key={p.id} place={p} />
+      ))}
+      {more > 0 ? <Button kind="text" label={`Show ${more} more in ${area}`} onPress={() => setOpen(true)} /> : null}
+    </View>
   );
 }
 
@@ -404,6 +446,7 @@ const styles = StyleSheet.create({
 
   mapButton: { marginTop: 4, marginBottom: 6 },
   places: { gap: 8 },
+  groups: { gap: 18 },
   placeRow: {
     flexDirection: 'row',
     gap: 14,

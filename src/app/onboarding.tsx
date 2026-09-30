@@ -1,4 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
+import { useFonts } from 'expo-font';
+import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -19,18 +21,16 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GroupVote } from '@/components/onboarding/GroupVote';
 import { ProfilePreview } from '@/components/onboarding/ProfilePreview';
-import { VideoToTrip } from '@/components/onboarding/VideoToTrip';
+import { FromThisToThis } from '@/components/onboarding/FromThisToThis';
 import { WeekendRoute } from '@/components/onboarding/WeekendRoute';
 import { Button } from '@/components/Button';
 import { PressableScale } from '@/components/PressableScale';
-import { Sky } from '@/components/sky/Sky';
 import { Text } from '@/components/Text';
 import { Chips } from '@/components/spots/Chips';
 import { allDistricts } from '@/data/regions';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT, project, SPRING_DRAG } from '@/lib/motion';
-import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
 import { skyAccent, skyFill, skyInk } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
@@ -40,15 +40,14 @@ const PAGES = 4;
 const GUTTER = space.screen;
 
 /**
- * Four screens. The first says what Xplore does, in one sentence and one moving picture: any video
- * of a place (a beach, a café, a restaurant) becomes pins on a map and a planned day. Someone who has never heard of the app should be
- * able to explain it after that screen alone. Then the two reasons it's worth keeping: plans the
- * group decides together, and spots near home that become weekends (where it asks where home is).
- * Last, your name and photo, shown as the invite a friend would get, so the reason is visible.
+ * Four screens. The first says what Xplore does in one line and one picture: a reel becomes pins on
+ * a map and a planned day ("From this… …to this"). Then the two reasons it's worth keeping: plans
+ * the group decides together, and spots near home that become weekends (where it asks where home
+ * is). Last, your name and photo, shown as the invite a friend would get.
  *
- * Every illustration is a short loop that plays only while its page is on screen. The screen sits on
- * the sky as it is right now (state/sky), the same sky Home opens on; the illustrations stay paper,
- * cards lifted off it.
+ * Each page stands on a real photo of a place, sharp sky at the top and blurred dark below the
+ * words (assets/images/onboarding, made by scripts/onboarding-backdrops.py); the photos cross-fade
+ * as the pages slide. Copy is kept to a line or two.
  */
 export default function Onboarding() {
   const { width: W, height: H } = useWindowDimensions();
@@ -61,10 +60,11 @@ export default function Onboarding() {
   const p = useSharedValue(0);
   const start = useSharedValue(0);
   const lift = useKeyboardLift();
-  const phase = useHomeSky();
-  useFocusEffect(lightStatusBar);
+  // The handwriting on page one: small, and not waited for (plain type stands in for a moment).
+  useFonts({ CaveatNotes: require('../../assets/fonts/CaveatNotes.ttf') });
+  useFocusEffect(darkStatusBar);
 
-  const art = Math.round(Math.min(290, Math.max(224, H * 0.34)));
+  const art = Math.round(Math.min(320, Math.max(236, H * 0.38)));
   const artW = W - GUTTER * 2;
   const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? 'home';
 
@@ -103,14 +103,14 @@ export default function Onboarding() {
   return (
     <Tone value="sky">
     <View style={styles.fill}>
-      <Sky phase={phase} shade={0.35} />
+      <Backdrops p={p} />
 
       <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
         {/* Past the first page, a way back that isn't a swipe (a mouse can't swipe the pages). */}
         {page > 0 ? (
           <PressableScale onPress={() => go(page - 1)} style={styles.back} accessibilityRole="button" accessibilityLabel="Back">
-            <Feather name="chevron-left" size={18} color={skyInk.soft} />
-            <Text variant="label" color={skyInk.soft}>
+            <Feather name="chevron-left" size={18} color={TOP_INK} />
+            <Text variant="label" color={TOP_INK}>
               Back
             </Text>
           </PressableScale>
@@ -119,7 +119,7 @@ export default function Onboarding() {
         )}
         {last ? null : (
           <PressableScale onPress={finish} style={styles.skip} accessibilityRole="button" accessibilityLabel="Skip the intro">
-            <Text variant="label" color={skyInk.soft}>
+            <Text variant="label" color={TOP_INK}>
               Skip
             </Text>
           </PressableScale>
@@ -135,24 +135,24 @@ export default function Onboarding() {
               index={0}
               p={p}
               artHeight={art}
-              art={<VideoToTrip active={page === 0} width={artW} height={art} />}
+              art={<FromThisToThis active={page === 0} width={artW} height={art} />}
             >
               <Copy
                 eyebrow="Turn inspiration into a plan"
                 lead={'Saw it in a video?\n'}
                 accent="Go there"
                 title=" for real."
-                body="Paste an Instagram or YouTube link: a hidden beach, a new café, a street-food lane. Xplore finds the places it names, pins them on your map and plans the day around them."
+                body="Paste an Instagram or YouTube link. Xplore pins every place in it and plans your day."
               />
             </Page>
 
-            <Page index={1} p={p} artHeight={art} art={<GroupVote active={page === 1} width={artW} />}>
+            <Page index={1} p={p} artHeight={art} art={<Tilted turn={-1}><GroupVote active={page === 1} width={artW} /></Tilted>}>
               <Copy
                 eyebrow="Plan with friends"
                 lead={'Going with friends?\n'}
                 accent="Decide"
                 title=" together."
-                body="Share the plan and everyone votes on each stop: keep it, swap it or drop it. No more forty messages about lunch."
+                body="Share the plan. Everyone keeps, swaps or drops each stop. No more forty messages about lunch."
               />
             </Page>
 
@@ -160,14 +160,14 @@ export default function Onboarding() {
               index={2}
               p={p}
               artHeight={art}
-              art={<WeekendRoute active={page === 2} width={artW} homeName={homeName} />}
+              art={<Tilted turn={1}><WeekendRoute active={page === 2} width={artW} homeName={homeName} /></Tilted>}
             >
               <Copy
                 eyebrow="Weekends near home"
                 lead={'A spot near home?\n'}
                 accent="Weekend,"
                 title=" sorted."
-                body="Places close to home become ready-made day trips, with the drive and the cost worked out."
+                body="Places near home become ready-made day trips, drive and cost worked out."
               />
               <View style={styles.district}>
                 <Text variant="label" color={skyInk.soft}>
@@ -189,7 +189,7 @@ export default function Onboarding() {
                 lead={'Last thing.\n'}
                 accent="Who’s"
                 title=" planning?"
-                body="This is how you’ll appear when you share a plan. Tap the circle to add a photo."
+                body="How friends see you on a shared plan. Tap the circle for a photo."
               />
               <NameField value={name} onChange={setName} onDone={finish} />
             </Page>
@@ -199,12 +199,11 @@ export default function Onboarding() {
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 20 }]}>
         <Dots p={p} onPick={go} />
-        <Button
-          trailingArrow
-          label={last ? 'Find my first trip' : 'Next'}
-          onPress={() => (last ? finish() : go(page + 1))}
-          accessibilityHint={last ? 'Opens the app, ready for your first video' : undefined}
-        />
+        {last ? (
+          <Button trailingArrow label="Find my first trip" onPress={finish} accessibilityHint="Opens the app, ready for your first video" />
+        ) : (
+          <NextButton onPress={() => go(page + 1)} />
+        )}
         {/* On every page, since Skip leaves from any of them. The two links are taps of their own,
             44pt tall, rather than words inside the sentence. */}
         <View style={styles.consentBlock}>
@@ -230,10 +229,61 @@ export default function Onboarding() {
   );
 }
 
-/** White status bar over the sky, dark again for the paper screens after. */
-function lightStatusBar() {
-  setStatusBarStyle('light');
-  return () => setStatusBarStyle('dark');
+/** Dark status bar over the photos' bright skies; light again for the sky screens after. */
+function darkStatusBar() {
+  setStatusBarStyle('dark');
+  return () => setStatusBarStyle('light');
+}
+
+/** The ink for the wordmark, Back and Skip: dark, over the bright sky at the top of every photo. */
+const TOP_INK = '#141A28';
+
+const BACKDROPS = [
+  require('../../assets/images/onboarding/video.jpg'),
+  require('../../assets/images/onboarding/friends.jpg'),
+  require('../../assets/images/onboarding/weekend.jpg'),
+  require('../../assets/images/onboarding/you.jpg'),
+];
+
+/** Each page's photo, cross-fading with the slide; only the pages next to the current one load. */
+function Backdrops({ p }: { p: SharedValue<number> }) {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {BACKDROPS.map((source, i) => (
+        <Backdrop key={i} index={i} p={p} source={source} />
+      ))}
+    </View>
+  );
+}
+
+function Backdrop({ index, p, source }: { index: number; p: SharedValue<number>; source: number }) {
+  const style = useAnimatedStyle(() => ({ opacity: interpolate(Math.abs(p.get() - index), [0, 1], [1, 0], Extrapolation.CLAMP) }));
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, style]}>
+      <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} priority={index === 0 ? 'high' : 'low'} />
+    </Animated.View>
+  );
+}
+
+/** A page's card laid back in depth, like page one's pair: tipped away at the top, turned a little. */
+function Tilted({ turn, children }: { turn: 1 | -1; children: ReactNode }) {
+  return (
+    <View style={{ transform: [{ perspective: 800 }, { rotateX: '14deg' }, { rotateY: `${turn * 10}deg` }, { rotateZ: `${turn * -3}deg` }] }}>
+      {children}
+    </View>
+  );
+}
+
+/** Next, as a pane of glass with the ember arrow at its end, as in the design. */
+function NextButton({ onPress }: { onPress: () => void }) {
+  return (
+    <PressableScale onPress={onPress} style={styles.next} accessibilityRole="button" accessibilityLabel="Next">
+      <Text style={styles.nextLabel}>Next</Text>
+      <View style={styles.nextArrow}>
+        <Feather name="arrow-right" size={22} color="#FFFFFF" />
+      </View>
+    </PressableScale>
+  );
 }
 
 
@@ -434,7 +484,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: GUTTER,
     paddingBottom: 8,
   },
-  wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
+  wordmark: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, letterSpacing: -1, color: TOP_INK },
+  next: {
+    height: 60,
+    borderRadius: 999,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(20,24,36,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    boxShadow: '0 12px 30px rgba(0,0,0,0.3)',
+    // Frosted on the web; phones show the tint alone.
+    backdropFilter: 'blur(18px)',
+  },
+  nextLabel: { fontFamily: fonts.sansSemi, fontSize: 17, color: '#FFFFFF' },
+  nextArrow: {
+    position: 'absolute',
+    right: 6,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF7A45',
+    boxShadow: '0 6px 16px rgba(255,122,69,0.45)',
+  },
   // Real padding, not hitSlop: the web ignores hitSlop, and a tap target should be 44pt tall.
   skip: { minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' },
   viewport: { flex: 1, overflow: 'hidden' },
@@ -454,7 +528,8 @@ const styles = StyleSheet.create({
     color: skyInk.strong,
   },
   nameInputFocused: { backgroundColor: skyFill.pressed, borderColor: skyInk.outline },
-  district: { gap: 10 },
+  // Clear air above (from the paragraph) and below (from the page dots), and the question close to its tags.
+  district: { gap: 12, marginTop: 8, marginBottom: 24 },
   districtChips: { marginHorizontal: -GUTTER, paddingLeft: GUTTER },
   copy: { gap: 12 },
   eyebrow: { marginBottom: 2 },

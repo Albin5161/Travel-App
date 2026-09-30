@@ -59,7 +59,7 @@ export function SafetyScale({ cityName, score, signals, play }: Props) {
         <Animated.View style={[styles.fill, fill]}>
           {/* The gradient spans the whole track, so the colour at the fill's end matches the score. */}
           <LinearGradient
-            colors={['#E8A98C', '#D9C27A', '#9CD08E', UP]}
+            colors={['#FF8F70', '#F5C451', '#7EDB72', UP]}
             locations={[0, 0.35, 0.65, 1]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}

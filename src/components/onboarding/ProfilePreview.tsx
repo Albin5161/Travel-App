@@ -10,6 +10,15 @@ import { fonts, light, shadows } from '@/theme/tokens';
 
 const PHOTO = 96;
 const RING = PHOTO + 26;
+/** The row the photo sits in: wide enough for friends either side. */
+const FRIENDS_W = 300;
+// Placed around the photo, two on each side, at a few sizes so they read as a group, not a grid.
+const FRIENDS = [
+  { initial: 'M', x: 6, y: 18, size: 44, color: '#F4B183' },
+  { initial: 'R', x: 58, y: 84, size: 38, color: '#9FD3C7' },
+  { initial: 'S', x: FRIENDS_W - 50, y: 0, size: 42, color: '#B8B5F2' },
+  { initial: 'A', x: FRIENDS_W - 92, y: 80, size: 36, color: '#F7D774' },
+];
 
 /**
  * You, and what a friend sees from you: the photo circle with a slow orbit around it, over the
@@ -23,6 +32,30 @@ export function ProfilePreview({ active, name }: { active: boolean; name: string
 
   return (
     <View style={styles.wrap}>
+      {/* The friends you'd plan with, waiting around you: initials, not faces of real people. */}
+      <View style={styles.friends} pointerEvents="none">
+        {FRIENDS.map((f, i) => (
+          <Animated.View
+            key={f.initial}
+            style={[
+              styles.friend,
+              { left: f.x, top: f.y, width: f.size, height: f.size, borderRadius: f.size / 2, backgroundColor: f.color },
+              reduced
+                ? null
+                : {
+                    animationName: { from: { transform: [{ translateY: 0 }] }, to: { transform: [{ translateY: -5 }] } },
+                    animationDuration: `${2600 + i * 400}ms`,
+                    animationDirection: 'alternate',
+                    animationTimingFunction: 'ease-in-out',
+                    animationIterationCount: 'infinite',
+                    animationPlayState: active ? 'running' : 'paused',
+                  },
+            ]}
+          >
+            <Text style={[styles.friendInitial, { fontSize: f.size * 0.38 }]}>{f.initial}</Text>
+          </Animated.View>
+        ))}
+      </View>
       <View style={styles.photoWrap}>
         <Animated.View
           pointerEvents="none"
@@ -77,6 +110,9 @@ export function ProfilePreview({ active, name }: { active: boolean; name: string
 
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', gap: 22 },
+  friends: { position: 'absolute', top: 0, width: FRIENDS_W, height: RING, alignSelf: 'center' },
+  friend: { position: 'absolute', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFFFFF', boxShadow: '0 6px 14px rgba(8,12,26,0.25)' },
+  friendInitial: { fontFamily: fonts.displayBold, color: '#1B2230' },
   photoWrap: { width: RING, height: RING, alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute', width: RING, height: RING },
   orbiter: {

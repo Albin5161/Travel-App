@@ -16,7 +16,7 @@ import { ensureUser, liveEnabled } from '@/lib/live/client';
 import { FADE_IN, fadeUp } from '@/lib/motion';
 import { startGroup } from '@/state/group';
 import { useTrips } from '@/state/trips';
-import { skyFill, skyInk, skySignal } from '@/theme/sky';
+import { skyAccentText, skyFill, skyInk } from '@/theme/sky';
 import { fonts, radii, space } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(60 + i * 60));
@@ -139,7 +139,7 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
             </Animated.View>
             {error ? (
               <Animated.View entering={FADE_IN}>
-                <Text variant="label" color={skySignal.down} accessibilityLiveRegion="polite">
+                <Text variant="label" color={skyAccentText} accessibilityLiveRegion="polite">
                   {error}
                 </Text>
               </Animated.View>

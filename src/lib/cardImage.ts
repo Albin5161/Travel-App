@@ -315,7 +315,7 @@ function paintStory(ctx: CanvasRenderingContext2D, k: number, data: CardData, ph
   text(ctx, 'Xplore · xplore.expo.app', W / 2, H - 40 * k - 10.5 * k, { baseline: 'middle', align: 'center' });
   setFont(ctx, fonts.sansMedium, 14 * k);
   ctx.fillStyle = 'rgba(255,255,255,0.88)';
-  text(ctx, 'Turned from a travel reel, stop by stop.', W / 2, H - 40 * k - 21 * k - 6 * k - 9.5 * k, {
+  text(ctx, 'Turned from a travel video, stop by stop.', W / 2, H - 40 * k - 21 * k - 6 * k - 9.5 * k, {
     baseline: 'middle',
     align: 'center',
   });

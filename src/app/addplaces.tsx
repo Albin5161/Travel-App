@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
 import Ionicons from '@/components/Ionicons';
+import { MascotMoment } from '@/components/mascots/ReadingScene';
 import { PhotoCard } from '@/components/PhotoCard';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
@@ -179,10 +180,16 @@ export default function AddPlaces() {
               </Text>
             </View>
             {spots === 'loading' ? (
-              <Glass radius={radii.pane} style={styles.row}>
-                <Text variant="label" color={skyInk.soft}>
-                  Finding {city}’s best-known spots…
-                </Text>
+              // The wait gets Amma and the child, as every wait does.
+              <Glass radius={radii.pane} style={styles.spotsWait}>
+                <MascotMoment
+                  lines={[
+                    { who: 'kid', text: `What’s good in ${city}, Amma?` },
+                    { who: 'amma', text: 'Let me list the best bits.' },
+                  ]}
+                  width={Math.min(cardW - 28, 320)}
+                  about={`Amma and the child look up ${city}’s best-known spots.`}
+                />
               </Glass>
             ) : (
               <Glass radius={radii.pane} style={styles.spots}>
@@ -291,6 +298,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10 },
   thumb: { width: 48, height: 48, borderRadius: 12, backgroundColor: skyFill.pane },
   thumbOff: { opacity: 0.55 },
+  spotsWait: { alignItems: 'center', paddingTop: 10, overflow: 'hidden' },
   spotsHead: { gap: 4 },
   spots: { padding: 6, gap: 2 },
   // A whole row is the tap, at least 44pt tall.

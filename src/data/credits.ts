@@ -37,6 +37,7 @@ export const CREDITS: Credit[] = [
     author: 'Happyshopper',
     ...cc('CC BY 2.5'),
     sourceUrl: commons('Kudle beach gokarna.jpg'),
+    standIn: 'Also an intro background: cropped, with the lower part blurred and darkened',
   },
   {
     photo: require('@/assets/images/places/gok-halfmoon.jpg'),
@@ -44,6 +45,7 @@ export const CREDITS: Credit[] = [
     author: 'Sourabh.biswas003',
     ...cc('CC BY-SA 4.0'),
     sourceUrl: commons('PXL 20260103 091848995.MP Half Moon Beach Gokarna Karnatak 05.jpg'),
+    standIn: 'Also an intro background: cropped, with the lower part blurred and darkened',
   },
   {
     photo: require('@/assets/images/places/gok-paradise.jpg'),

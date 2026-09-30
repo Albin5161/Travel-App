@@ -118,6 +118,29 @@ export const PlanningScene = memo(function PlanningScene({
   return <Scene width={width} line={line} n={n} prev={prev} cheer={cheer} waiting={false} screen="map" about="Amma and a child plan the trip together." />;
 });
 
+/**
+ * Amma and the child saying a few lines about the moment on screen (a wait, or something that went
+ * wrong), then holding the last one. No cheer: nothing has been found. `worried` gives the child the
+ * waiting face, for bad news.
+ */
+export const MascotMoment = memo(function MascotMoment({
+  lines,
+  width,
+  worried = false,
+  about,
+}: {
+  lines: Line[];
+  width: number;
+  worried?: boolean;
+  about: string;
+}) {
+  const script = useMemo(() => lines.slice(0, -1), [lines]);
+  const last = lines[lines.length - 1];
+  // The last line is the script's finale; its cheer is left out, and the line simply stays up.
+  const { line, n, prev } = useScript(script, last, true);
+  return <Scene width={width} line={line} n={n} prev={prev} cheer={false} waiting={worried} screen="play" about={about} />;
+});
+
 /** The cheer holds CHEER_MS, then the scene steps aside. */
 function useCheer(cheer: boolean, onCheered: () => void) {
   useEffect(() => {

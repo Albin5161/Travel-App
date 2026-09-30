@@ -1,90 +1,97 @@
-# Xplore — prototype
+# Xplore
 
-*Formerly Raahi.*
+*Formerly Raahi.* Turn the travel videos you saved into a trip you'll actually take.
 
-*Turn the reels you saved into a trip you'll actually take — and the spots near home into your weekends.*
+Paste an Instagram reel or a YouTube link. Xplore finds every place in it, puts them on a map, and
+plans the days. Plan alone, or share the plan and let friends vote on each stop.
 
-A proof of concept for iOS and Android built with Expo. There's no backend: link extraction runs against canned data (Kottayam, Kochi, Gokarna, Meghalaya) behind a mock API in `src/data/api.ts`, shaped so a real service can replace it without touching the screens.
+One Expo codebase builds iOS, Android and the web. **The web build is what's live today, at
+[xplore.expo.app](https://xplore.expo.app).** No App Store or Play Store builds are set up yet.
 
-Design system, motion specs and microinteractions: [DESIGN.md](DESIGN.md).
+## How it works
 
-## Two halves
+```
+Phone / browser (Expo, React Native)          Server (Expo API routes on EAS Hosting)
+  screens, trips store, trip planner   ──►    /api/extract  → YouTube Data API or Apify → Gemini
+  saved trips in device storage               /api/match    → Google Places (+ Wikimedia photos)
+          │                                   caches, rate limits and daily caps in Supabase
+          └── shared group trips ──► Supabase (Postgres, anonymous auth, realtime)
+```
 
-**Collect and plan.** Paste an Instagram or YouTube link. Every place in it is pulled out, named, described and pinned. Keep the ones you want, and the day plans itself.
+- **Client:** every screen, the trips store (`src/state/trips.tsx`), and the **trip planner**
+  (`src/data/planner.ts`: plain rules, no AI, runs on the device and works offline). Saved places and
+  plans are kept in device storage: `localStorage` on the web, `expo-sqlite`'s localStorage on phones.
+- **Server:** API routes in `src/app/api/`, with the logic in `src/server/`. They hold every secret
+  key, check the caller's anonymous Supabase token, apply rate limits and daily caps set under the
+  providers' free allowances (`src/server/limits.ts`), and cache results for everyone.
+- **AI:** Google Gemini (`gemini-3.5-flash-lite`, falling back to `gemini-3.8-flash`) reads video
+  text into a list of places. It doesn't plan trips.
+- **Database:** Supabase. It holds the server's shared caches and counters (`supabase/api.sql`) and
+  shared group trips, members and votes (`supabase/schema.sql`). There are no user accounts: each
+  install signs in anonymously.
 
-**Home and weekends.** Spots you save near where you live don't become a pin graveyard. They're clustered by proximity into ready-made outings with the drive time worked out — and arriving in a district you've saved spots in gets you *one* notification naming them, not a ping for every café you pass.
+The full, code-traced documentation is in **[docs/](docs/TECHNICAL_ARCHITECTURE.md)**: data flow,
+database, API reference, AI, infrastructure, costs, scaling, security and a glossary.
 
-## Run it on your iPhone (free, no Apple Developer account)
+## Getting started
 
-1. Install **Expo Go** from the App Store.
-2. Start the dev server:
-   ```bash
-   npx expo start
-   ```
-3. Scan the QR code with the iPhone Camera app. Your phone and Mac must be on the same Wi-Fi. If they aren't, run `npx expo start --tunnel`.
+```bash
+npm install
+cp .env.example .env.local   # then fill in the keys
+npx expo start               # the app and the API routes, on localhost:8081
+```
 
-Android: install Expo Go from the Play Store and scan the QR code from inside Expo Go.
+**Keys** (see `.env.example`):
+- **For links to work:** `GEMINI_API_KEY`, plus a Google Cloud key with YouTube Data API v3 and
+  Places API (New) enabled (`GOOGLE_API_KEY`, or `YOUTUBE_API_KEY` + `PLACES_API_KEY`).
+- **Optional:**
+  - `APIFY_TOKEN` (Instagram; without it, reels fall back to adding places by search)
+  - `EXPO_PUBLIC_GOOGLE_MAPS_WEB_KEY` (the web map for real cities)
+  - `EXPO_PUBLIC_POSTHOG_KEY` (analytics)
+- **Rule:** names starting `EXPO_PUBLIC_` are built into the app and are public; everything else
+  stays on the server.
 
-Motion and haptics are only representative on a real phone, not in the web preview.
+**Supabase** (needed for rate limits, caching and group trips; production refuses to run without it):
+1. Create a project. `npx eas-cli@latest integrations:supabase:connect` writes
+   `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to `.env.local`. Add
+   `SUPABASE_SECRET_KEY` for the server.
+2. In the SQL Editor, run `supabase/schema.sql`, then `supabase/api.sql`. Both are safe to re-run.
+3. In **Authentication → Sign In / Providers**, turn on **Anonymous sign-ins**.
+
+Without `SUPABASE_SECRET_KEY`, the local API runs open (fine on your Mac only). Without the public
+Supabase keys, group votes play a scripted demo instead of going live.
+
+`GET /api/health` reports which keys the server has (yes or no, never the values).
+
+**On a phone:** install Expo Go and scan the QR code from `npx expo start` (use `--tunnel` if the
+phone and Mac aren't on the same Wi-Fi).
 
 ### What needs a development build
 
-Two things can't run in Expo Go, and both have a working stand-in:
-
 | Not in Expo Go | Stand-in |
 |---|---|
-| Background geofencing (real arrival detection) | **Simulate arrival** in Profile runs the identical path |
-| Lock-screen notifications | The same message appears as an in-app banner |
+| Background geofencing (arrival alerts) | Profile → **Try it** → "Arrive in …" runs the same path |
+| Lock-screen notifications | An in-app banner |
+| A Google map for real cities on phones | A placeholder; the native map isn't built yet (`src/components/GoogleMap.tsx`) |
 
-Everything else — the whole flow, the maps, the motion — works in Expo Go.
+The example links in `src/data/api.ts` (`EXAMPLE_LINKS`) play canned sample cities (Kochi,
+Kottayam, Gokarna, Meghalaya) without calling the API. Every other link goes to the real API.
 
-## Planning together, for real
-
-Out of the box the group vote is a scripted demo (Riya, Kabir, Meera). Connect the free Supabase backend and two phones can plan the same trip: one shares, the other joins with the link or a six-letter code, and every join, vote, note and added stop shows up on both, live.
-
-1. In this folder, run `npx eas-cli@latest integrations:supabase:connect`. It opens your browser to sign in to Supabase, creates the project, and writes `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to `.env.local` (git-ignored; both are public by design).
-2. In the Supabase dashboard, open **SQL Editor**, paste [`supabase/schema.sql`](supabase/schema.sql) and run it.
-3. In **Authentication → Sign In / Providers**, turn on **Anonymous sign-ins**. Nobody makes an account: each phone or browser is its own person.
-4. Restart `npx expo start` so the new keys are picked up.
-
-How it fits together: `src/lib/live/` talks to Supabase (the client, the calls, and the wire format that sends places as catalog ids, since photo asset ids differ between builds). `src/state/live.tsx` listens to a shared trip and turns what arrives into the same store actions the scripted demo dispatches, so every screen works either way. Trips are private to their members by row level security; the only way in is making the trip or knowing its code.
-
-## The happy flow
-
-1. **Onboarding** → four screens, each with a looping illustration: a video (a beach, a restaurant, a hidden spot) becoming pins on a map and a planned day, the group vote, weekends near home (with the district picker), and your name as friends will see it.
-2. **Home** → paste a link, or tap a sample city.
-3. **Analysing** → the reel is read and places roll in like film credits.
-4. **Save** the spots and keep collecting, or **Plan this trip** to go straight on.
-5. **Reveal** → the city map, with photo pins dropping in.
-6. **Review** → swipe right to keep, left to skip; the room behind the cards becomes the place you're looking at. Undo, or *Keep the rest*.
-7. **Plan** → the route draws itself, and scrolling the day moves the map. Add a local pick, then *Save this day*.
-   - **Share** → the stamp lands, then "Your Xplore plan is ready": the plan as a boarding pass that tilts with your phone. *Share to group* sends it as an image with a link.
-   - **Who's going** (the first planning question) → solo, partner, friends or family decides whether there's a vote and who's in it.
-   - **Group vote** → friends join and keep, swap or drop each stop; an overruled stop flips to its swap, and confetti when everyone agrees. *Vote as a friend* lets someone vote on your phone. *Lock it in* applies the result. The shared link opens the same vote on the web build.
-8. **Trips tab** → every saved plan, who's in, and the vote's status, updating live.
-9. **Map tab** → every spot you've saved, split into *Near home* and *Away*, with ready-made weekend outings for the near ones.
-10. **Profile** → home district, permissions, and **Simulate arrival** to see the notification flow.
-
-A link containing `kottayam`, `kochi`, `gokarna`, `meghalaya`, `shillong` or `dawki` loads that set. Any other link is hashed to one of the four.
-
-## Structure
+## Project structure
 
 ```
-src/app/          screens (Expo Router)
-                    (tabs)/  index (Collect) · map (saved spots) · profile
-                    onboarding, analysing, city/[id], citymap/[id],
-                    pick/[id], plan/[id], place/[id]
-src/components/   CityMap (stylised map + camera), CityTile, CityHero, TabBar,
-                    pick/AmbientBackdrop, plan/TabIcon, spots/*, PhotoCard, Button, …
-src/data/         catalog (canned cities/places/reels), regions (Kerala region map),
-                    cityInfo (Plan-panel data), api (mock), plan (day builder)
-src/state/        trips store, arrival (geofence wiring), where (location)
-src/lib/          spots (clusters, weekend routes, filters), arrival (geofencing +
-                    notifications), motion tokens, haptics, geo helpers
-src/theme/        colour, type and radius tokens
+src/app/          screens (Expo Router); (tabs)/ is Home · Trips · Map · Profile
+  api/            server endpoints: extract, match, sights, search, place, city, frames, feedback, health
+src/server/       server logic: pipeline, Gemini, YouTube, Apify, Places, Wikimedia, limits, auth, storage
+src/state/        trips store (device storage), group vote, live Supabase sync, arrival, location, sky
+src/data/         planner, "why" lines, sample catalog, registry of places from real links, types
+src/lib/          API client, link reading, Supabase client, sharing, PDF, analytics, geo helpers
+src/components/   UI: sky/glass, maps, mascots, plan, share, group, onboarding…
+src/theme/        colour, type and sky tokens
+supabase/         database schema (run by hand in Supabase)
+scripts/          test-api.mjs (runs real videos through the API), contrast check, asset tools
+docs/             architecture documentation
 ```
-
-The maps are hand-drawn SVG rather than a tile provider, so pins drop and the camera flies on the UI thread. That doesn't scale past demo cities — a real build would swap in MapLibre with a style matching the same palette.
 
 ## Checks
 
@@ -92,12 +99,29 @@ The maps are hand-drawn SVG rather than a tile provider, so pins drop and the ca
 npx tsc --noEmit    # types
 npx expo lint       # lint
 npx expo-doctor     # dependency and config health
+node scripts/test-api.mjs   # real videos through a running API (costs free-tier quota)
 ```
 
-## Caveats
+There's no CI: run these by hand.
 
-- **All state is in memory.** Saved spots and plans reset when the app restarts.
-- **Kottayam's photography is placeholder** — real places, borrowed images. See [CREDITS.md](CREDITS.md).
-- Sample data throughout: ratings, reviews, costs and safety signals are illustrative, not sourced.
+## Deploying (web and API)
 
-Photo credits: [CREDITS.md](CREDITS.md).
+The website and the API routes deploy together to EAS Hosting. Server keys live in the EAS project's
+environment variables. Preview first, then production:
+
+```bash
+npx expo export --platform web --clear
+npx eas-cli@latest deploy --environment production --alias preview   # xplore--preview.expo.app
+npx eas-cli@latest deploy --prod --environment production            # xplore.expo.app
+```
+
+## Good to know
+
+- **Trips live on one device.** There are no accounts: clearing the browser or reinstalling loses
+  saved places and plans, and only shared trips are in the database.
+- **Travel times are estimates.** Straight-line distance × a terrain detour factor ÷ a typical speed
+  (`src/lib/geo.ts`); no routing API is called.
+- **Sample data:** the sample cities' ratings, reviews, costs and safety signals are illustrative.
+  Kottayam's photos are placeholders; see [CREDITS.md](CREDITS.md).
+
+Design system and motion: [DESIGN.md](DESIGN.md).

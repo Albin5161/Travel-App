@@ -62,8 +62,8 @@ interface State {
   draft: Draft | null;
   /**
    * The district you live in. Everything near-home hangs off this: the weekend view, and which
-   * districts are worth an arrival notification. A real app asks once at onboarding; the demo
-   * starts in Kottayam and the Profile tab can change it.
+   * districts are worth an arrival notification. Null until the person picks one: it's asked on
+   * the intro, on Map and on Home's Near Home (HomePicker), and the Profile tab can change it.
    */
   homeDistrictId: string | null;
   /** Want to go, or already been. Absent means want. */

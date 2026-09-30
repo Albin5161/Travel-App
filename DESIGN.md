@@ -114,6 +114,32 @@ components:
 
 # Design System: Xplore
 
+## Status: what's changed since this file was written (checked against the code, 30 Sep 2026)
+
+Parts of this file describe earlier directions. **Where this list and anything below disagree, this
+list wins**, and the code is the final word.
+
+- **Look:** screens now sit on a **time-of-day sky with glass panels** (`SkyScreen`,
+  `src/components/sky/`; palettes and contrast rules in `src/theme/sky.ts`), not on the dusk "Night"
+  canvas or the light "paper" canvas described below. The token values below are historical; current
+  values are in `src/theme/sky.ts` and `src/theme/tokens.ts`.
+- **When places are saved:** after the **review screen** (`src/app/verify.tsx`: Right / Wrong swipe
+  cards, or a ticked list from 6 places), not at the end of analysing. There is no separate Pick
+  route; the swipe cards (`src/components/pick/SwipeCard.tsx`) live in the review screen. Its next
+  step is "Plan <city>" (planning questions) or "Done for now".
+- **Analysing:** the wait is kept company by Amma and the child (`src/components/mascots/`), with
+  place names still rolling in beside them. Every link failure also uses the mascots.
+- **Maps:** the custom stylised map (`CityMap`) is used for the **sample cities**. Cities from pasted
+  links use **Google Maps on the web** (`GoogleMap.web.tsx`); the phone apps show a placeholder for
+  them until the native map is built (`GoogleMap.tsx`).
+- **Home:** Near home / Cities tabs for your collections. There are no Sample tiles or "Try a sample
+  link".
+- **Onboarding page one:** tilted "From this… …to this" cards (`src/components/onboarding/FromThisToThis.tsx`),
+  not the video-to-map loop.
+- **Tabs:** Home · Trips · Map · Profile.
+
+Architecture (server, database, AI, planner): [docs/](docs/TECHNICAL_ARCHITECTURE.md).
+
 ## Direction update: Light (22 Sep 2026, in progress)
 
 Xplore (formerly Raahi) has moved from "a travel film at dusk" to a **light, airy direction modelled on the Atlys iOS app**, and every screen is now light. **Where this section and the dusk system below disagree, this section wins.** The dusk rules still describe what sits *on photos* (place cards, the reel preview): those wrap themselves in `<Tone value="dark">` (`src/theme/tone.tsx`) so their text stays light on the image.

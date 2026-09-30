@@ -205,12 +205,16 @@ export default function ShareScreen() {
         ) : (
           <Button trailingArrow={!busy} label={busy ? 'Getting it ready…' : copy.share} onPress={share} disabled={busy || (needName && !name.trim())} />
         )}
-        {/* Pictures to post: the card as a post, and as a story. */}
+        {/* Pictures to post: the card as a post, and as a story; and the plan as a PDF. Said once
+            above the row that they're saved, so the labels can stay one word each. */}
+        <Text variant="label" color={skyInk.soft} style={styles.savesHead}>
+          Save to your phone as
+        </Text>
         <View style={styles.saves}>
           <Button
             kind="secondary"
             compact
-            label={saving === 'card' ? 'Making…' : pdf.available ? 'Image' : 'Save image'}
+            label={saving === 'card' ? 'Making…' : 'Picture'}
             onPress={() => save('card')}
             style={styles.save}
             accessibilityHint="Saves the card as a picture you can post"
@@ -218,7 +222,7 @@ export default function ShareScreen() {
           <Button
             kind="secondary"
             compact
-            label={saving === 'story' ? 'Making…' : pdf.available ? 'Story' : 'Story size'}
+            label={saving === 'story' ? 'Making…' : 'Story'}
             onPress={() => save('story')}
             style={styles.save}
             accessibilityHint="Saves a tall version for Instagram or WhatsApp stories"
@@ -290,7 +294,8 @@ const styles = StyleSheet.create({
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   actions: { paddingHorizontal: space.screen, gap: 4 },
   note: { textAlign: 'center', marginBottom: 8 },
-  saves: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  savesHead: { textAlign: 'center', marginTop: 12 },
+  saves: { flexDirection: 'row', gap: 10, marginTop: 6 },
   save: { flex: 1 },
   // Far off to the left: laid out and drawn (so it can be pictured), never seen.
   offscreen: { position: 'absolute', left: -10000, top: 0, gap: 20 },

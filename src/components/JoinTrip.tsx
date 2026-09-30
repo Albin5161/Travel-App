@@ -109,13 +109,18 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
               <TextInput
                 value={code}
                 onChangeText={(t) => setCode(t.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 6))}
-                placeholder="ABC123"
+                // Words, not a sample code: "ABC123" in the box read as a code already filled in.
+                placeholder="6 letters and numbers"
                 placeholderTextColor={skyInk.faint}
                 autoCapitalize="characters"
                 autoCorrect={false}
-                style={[styles.input, styles.code]}
+                style={[styles.input, styles.code, !code && styles.codeEmpty]}
                 accessibilityLabel="Trip code"
+                accessibilityHint="It’s in the message that shared the trip"
               />
+              <Text variant="label" color={skyInk.soft}>
+                It’s in the message that shared the trip, after “Join code”.
+              </Text>
             </Animated.View>
             <Animated.View entering={ENTER[2]} style={styles.field}>
               <Text variant="micro">Your name</Text>
@@ -174,6 +179,8 @@ const styles = StyleSheet.create({
     color: skyInk.strong,
   },
   code: { fontFamily: fonts.displayBold, fontSize: 24, letterSpacing: 6 },
+  // Until a code is typed, the words in the box are ordinary type, not spaced like a code.
+  codeEmpty: { fontFamily: fonts.sans, fontSize: 16, letterSpacing: 0 },
   offline: {
     flexDirection: 'row',
     gap: 10,

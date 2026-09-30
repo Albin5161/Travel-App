@@ -12,7 +12,8 @@ import type { LatLng } from '@/lib/geo';
 import { useTrips } from './trips';
 
 export interface Where {
-  at: LatLng;
+  /** Null when there's neither a position nor a home to measure from: then no distances are shown. */
+  at: LatLng | null;
   /** Whether `at` is the device's position or a stand-in. Shown in the UI, never hidden. */
   source: 'device' | 'home';
   label: string;
@@ -42,8 +43,8 @@ export function useWhereIAm(): Where {
   }, [state.homeDistrictId]);
 
   if (device) return { at: device, source: 'device', label: 'from where you are' };
-  const fallback = home?.centre ?? { lat: 9.62, lng: 76.55 };
-  return { at: fallback, source: 'home', label: `from ${home?.name ?? 'home'}` };
+  if (!home) return { at: null, source: 'home', label: 'Set your home' };
+  return { at: home.centre, source: 'home', label: `from ${home.name}` };
 }
 
 export type Here =

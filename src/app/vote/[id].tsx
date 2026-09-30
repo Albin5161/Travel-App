@@ -10,6 +10,7 @@ import { Avatar } from '@/components/group/Avatar';
 import { PressableScale } from '@/components/PressableScale';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
+import { SheetClose } from '@/components/SheetClose';
 import { getPlace } from '@/data/api';
 import { QUICK_NOTES, member, type VoteKind } from '@/data/group';
 import { formatClock } from '@/lib/geo';
@@ -36,6 +37,7 @@ export default function VoteSheet() {
   return (
     <SkyScreen>
       <Vote />
+      <SheetClose />
     </SkyScreen>
   );
 }

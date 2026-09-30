@@ -27,8 +27,11 @@ const SKY_HEIGHT = 58;
 const GAP = 10;
 /** Width the paste button and its gap take from the row: the field is the rest. */
 export const FIELD_TRAILING = CIRCLE + GAP;
-const ERROR = "That's not an Instagram or YouTube link.";
+// Says what a good link looks like, since "not a link" alone leaves you guessing.
+const ERROR = 'That’s not an Instagram or YouTube link. They look like instagram.com/reel/… or youtu.be/…';
 const UNREADABLE = 'Tap and hold the box, then Paste.';
+/** The first Instagram or YouTube link in a piece of text, with or without https:// and www. */
+const LINK_IN_TEXT = /(?:https?:\/\/)?(?:www\.|m\.)?(?:instagram\.com|instagr\.am|youtube\.com|youtu\.be)\/[^\s<>"]+/i;
 
 // The home screen's link field: type or paste a video link, or tap the system Paste button beside it.
 export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
@@ -60,10 +63,13 @@ export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
   };
 
   const submit = (text: string) => {
-    const url = text.trim();
-    if (!url) return;
+    const raw = text.trim();
+    if (!raw) return;
+    // A forwarded message ("Check this reel https://www.instagram.com/reel/…") carries words around
+    // the link: only the link is read.
+    const url = raw.match(LINK_IN_TEXT)?.[0] ?? raw;
     if (!detectPlatform(url)) {
-      setValue(url);
+      setValue(raw);
       reject();
       return;
     }

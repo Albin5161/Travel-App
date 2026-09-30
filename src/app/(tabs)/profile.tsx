@@ -175,7 +175,9 @@ export default function Profile() {
           footer={
             away.length
               ? 'Plays exactly what a real arrival would: the alert, then the map on that district.'
-              : `Every spot you've saved is in ${home?.name ?? 'your district'}. Save one somewhere else to try this.`
+              : spots.length === 0
+                ? 'Save a spot in Kerala, away from home, to try this.'
+                : `Alerts cover Kerala’s districts for now, and none of your spots is in one${home ? ` away from ${home.name}` : ''}.`
           }
         >
           {away.map((t) => (

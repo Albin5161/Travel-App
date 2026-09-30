@@ -101,6 +101,8 @@ export default function PlanScreen() {
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<Set<string>>(new Set());
   const [note, setNote] = useState<string | null>(null);
+  // A removed stop can be put back for a few seconds: the plan as it was, and what to say.
+  const [undo, setUndo] = useState<{ plan: TripPlan; label: string } | null>(null);
   const pdf = usePlanPdf(city, plan);
   const [stamping, setStamping] = useState(false);
 
@@ -205,6 +207,11 @@ export default function PlanScreen() {
     const t = setTimeout(() => setNote(null), 3600);
     return () => clearTimeout(t);
   }, [note]);
+  useEffect(() => {
+    if (!undo) return;
+    const t = setTimeout(() => setUndo(null), 5000);
+    return () => clearTimeout(t);
+  }, [undo]);
 
   if (!city || !plan || !today) return null;
 
@@ -590,6 +597,27 @@ export default function PlanScreen() {
           style={[styles.bottomFade, { height: insets.bottom + 110 }]}
         />
         <View style={[styles.floating, { paddingBottom: insets.bottom + 16 }]}>
+          {undo ? (
+            <Animated.View entering={FADE_IN} exiting={FADE_OUT} style={styles.undo}>
+              <Text variant="label" color={skyInk.strong} numberOfLines={1} style={styles.undoText}>
+                {undo.label}
+              </Text>
+              <PressableScale
+                onPress={() => {
+                  haptic.selection();
+                  update(undo.plan);
+                  setUndo(null);
+                }}
+                containerStyle={styles.undoTap}
+                accessibilityRole="button"
+                accessibilityLabel={`Undo: ${undo.label}`}
+              >
+                <Text variant="label" color={skyInk.strong} style={styles.undoAction}>
+                  Undo
+                </Text>
+              </PressableScale>
+            </Animated.View>
+          ) : null}
           <Button
             trailingArrow
             label={n === 1 ? 'Save this day' : `Save this ${n}-day plan`}
@@ -626,6 +654,7 @@ export default function PlanScreen() {
         onRemove={() => {
           if (!sheet) return;
           haptic.light();
+          setUndo({ plan, label: `Removed ${sheet.place.name}` });
           update(removeStop(plan, dayIndex, sheet.place.id));
           setSheet(null);
         }}
@@ -953,6 +982,23 @@ const styles = StyleSheet.create({
   },
   toolOn: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
   note: { marginTop: 10 },
+  undo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 8,
+    maxWidth: '100%',
+    marginBottom: 10,
+    paddingLeft: 16,
+    paddingRight: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(4,10,30,0.72)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: skyInk.rim,
+  },
+  undoText: { flexShrink: 1 },
+  undoTap: { minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: 10 },
+  undoAction: { textDecorationLine: 'underline' },
   thin: {
     flexDirection: 'row',
     gap: 8,

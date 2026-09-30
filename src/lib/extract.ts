@@ -181,13 +181,17 @@ export async function findStay(town: string, near: LatLng | null): Promise<Stay 
   try {
     const session = newSearchSession();
     const [first] = await searchPlaces(town, session, near);
-    if (!first) return null;
-    const res = await post<MatchResult>('/api/match', { name: first.name, area: first.where, placeId: first.placeId, sessionToken: session }, MATCH_MS);
-    if (res.status !== 'matched') return null;
-    return { name: first.name, coords: res.place.location, at: Date.now() };
+    return first ? await stayFromPick(first, session) : null;
   } catch {
     return null;
   }
+}
+
+/** A hotel or area picked from search, as where each day starts and ends. Null when Google can't place it. */
+export async function stayFromPick(s: Suggestion, session: string): Promise<Stay | null> {
+  const res = await post<MatchResult>('/api/match', { name: s.name, area: s.where, placeId: s.placeId, sessionToken: session }, MATCH_MS);
+  if (res.status !== 'matched') return null;
+  return { name: s.name, coords: res.place.location, at: Date.now() };
 }
 
 /**

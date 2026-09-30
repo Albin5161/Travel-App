@@ -1,3 +1,4 @@
+import Feather from '@expo/vector-icons/Feather';
 import { router, useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -105,7 +106,17 @@ export default function Onboarding() {
       <Sky phase={phase} shade={0.35} />
 
       <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.wordmark}>Xplore</Text>
+        {/* Past the first page, a way back that isn't a swipe (a mouse can't swipe the pages). */}
+        {page > 0 ? (
+          <PressableScale onPress={() => go(page - 1)} style={styles.back} accessibilityRole="button" accessibilityLabel="Back">
+            <Feather name="chevron-left" size={18} color={skyInk.soft} />
+            <Text variant="label" color={skyInk.soft}>
+              Back
+            </Text>
+          </PressableScale>
+        ) : (
+          <Text style={styles.wordmark}>Xplore</Text>
+        )}
         {last ? null : (
           <PressableScale onPress={finish} style={styles.skip} accessibilityRole="button" accessibilityLabel="Skip the intro">
             <Text variant="label" color={skyInk.soft}>
@@ -187,25 +198,32 @@ export default function Onboarding() {
       </View>
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 20 }]}>
-        <Dots p={p} />
+        <Dots p={p} onPick={go} />
         <Button
           trailingArrow
           label={last ? 'Find my first trip' : 'Next'}
           onPress={() => (last ? finish() : go(page + 1))}
           accessibilityHint={last ? 'Opens the app, ready for your first video' : undefined}
         />
-        {/* On every page, since Skip leaves from any of them. */}
-        <Text variant="label" color={skyInk.faint} style={styles.consent}>
-          By using Xplore you agree to the{' '}
-          <Text variant="label" style={styles.consentLink} onPress={() => router.push('/terms')} accessibilityRole="link">
-            terms
-          </Text>{' '}
-          and{' '}
-          <Text variant="label" style={styles.consentLink} onPress={() => router.push('/privacy')} accessibilityRole="link">
-            privacy policy
+        {/* On every page, since Skip leaves from any of them. The two links are taps of their own,
+            44pt tall, rather than words inside the sentence. */}
+        <View style={styles.consentBlock}>
+          <Text variant="label" color={skyInk.faint} style={styles.consent}>
+            By using Xplore you agree to its terms and privacy policy, and that you’re 18 or over.
           </Text>
-          , and that you’re 18 or over.
-        </Text>
+          <View style={styles.consentLinks}>
+            <PressableScale onPress={() => router.push('/terms')} style={styles.consentTap} accessibilityRole="link" accessibilityLabel="Terms of use">
+              <Text variant="label" style={styles.consentLink}>
+                Terms
+              </Text>
+            </PressableScale>
+            <PressableScale onPress={() => router.push('/privacy')} style={styles.consentTap} accessibilityRole="link" accessibilityLabel="Privacy policy">
+              <Text variant="label" style={styles.consentLink}>
+                Privacy
+              </Text>
+            </PressableScale>
+          </View>
+        </View>
       </View>
     </View>
     </Tone>
@@ -367,11 +385,21 @@ function Copy({
   );
 }
 
-function Dots({ p }: { p: SharedValue<number> }) {
+/** The page dots, each a 44pt tap to its page. */
+function Dots({ p, onPick }: { p: SharedValue<number>; onPick: (page: number) => void }) {
   return (
     <View style={styles.dots}>
       {Array.from({ length: PAGES }, (_, i) => (
-        <Dot key={i} index={i} p={p} />
+        <PressableScale
+          key={i}
+          onPress={() => onPick(i)}
+          containerStyle={styles.dotTap}
+          style={styles.dotSlot}
+          accessibilityRole="button"
+          accessibilityLabel={`Page ${i + 1} of ${PAGES}`}
+        >
+          <Dot index={i} p={p} />
+        </PressableScale>
       ))}
     </View>
   );
@@ -392,8 +420,12 @@ function Dot({ index, p }: { index: number; p: SharedValue<number> }) {
 }
 
 const styles = StyleSheet.create({
-  consent: { textAlign: 'center', marginTop: 12 },
+  consentBlock: { marginTop: 4 },
+  consent: { textAlign: 'center' },
+  consentLinks: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: -8, marginBottom: -14 },
+  consentTap: { minHeight: 44, minWidth: 44, paddingHorizontal: 8, justifyContent: 'center' },
   consentLink: { color: skyInk.soft, textDecorationLine: 'underline' },
+  back: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44, paddingRight: 8, marginLeft: -4 },
   fill: { flex: 1 },
   top: {
     flexDirection: 'row',
@@ -431,7 +463,10 @@ const styles = StyleSheet.create({
   // Warmer and lighter than the button's ember, so it holds up as type on a dark sky.
   accent: { color: skyAccent },
   body: { paddingRight: 8 },
-  bottom: { paddingHorizontal: GUTTER, gap: 22 },
-  dots: { flexDirection: 'row', alignSelf: 'center', gap: 6, height: 6, alignItems: 'center' },
+  bottom: { paddingHorizontal: GUTTER, gap: 16 },
+  // 44pt tall to tap, drawn 6pt tall: the negative margins keep the layout as it was.
+  dots: { flexDirection: 'row', alignSelf: 'center', height: 44, marginVertical: -19, alignItems: 'center' },
+  dotTap: { height: 44, justifyContent: 'center' },
+  dotSlot: { height: 44, paddingHorizontal: 3, justifyContent: 'center' },
   dot: { height: 6, borderRadius: 3, backgroundColor: skyInk.strong },
 });

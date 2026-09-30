@@ -142,7 +142,7 @@ export default function AddPlaces() {
         <Animated.View entering={ENTER[1]}>
           <Pressable onPress={watch} accessibilityRole="link" accessibilityLabel={instagram ? 'Watch the reel on Instagram' : 'Watch the video on YouTube'}>
             <Tone value="dark">
-              <PhotoCard source={reel.thumbnail} style={{ width: cardW, height: cardW * 0.56 }}>
+              <PhotoCard source={reel.thumbnail} gradient="pick" style={{ width: cardW, height: cardW * 0.56 }}>
                 <View style={styles.reelText}>
                   <View style={styles.sourceRow}>
                     <Ionicons name={instagram ? 'logo-instagram' : 'logo-youtube'} size={14} color={colors.mist} />

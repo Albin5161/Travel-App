@@ -10,7 +10,7 @@ import { betterPhoto, framePhoto, refreshPlace } from '@/lib/extract';
 import { distanceKm } from '@/lib/geo';
 import { deviceStorage } from '@/lib/live/storage';
 import { fromWire, toWire, type WirePlan } from '@/lib/live/wire';
-import { clusterSpots, districtOf } from '@/lib/spots';
+import { clusterSpots, districtAt, districtOf } from '@/lib/spots';
 
 export interface CityCollection {
   cityId: string;
@@ -149,7 +149,8 @@ type Action =
 const initial: State = {
   pendingLink: null,
   draft: null,
-  homeDistrictId: 'kottayam',
+  // Unset until chosen: asked on the intro, on Map and on Home's Near Home, never assumed.
+  homeDistrictId: null,
   spotStatus: {},
   recapped: {},
   notifyOnArrival: true,
@@ -792,27 +793,37 @@ export function useSpotsByDistrict(): DistrictSpots[] {
  */
 export function useArrivalTargets() {
   const groups = useSpotsByDistrict();
-  return useMemo(
-    () =>
-      groups.flatMap((g) => {
-        const district = allDistricts.find((d) => d.id === g.districtId);
-        if (!district) return [];
-        const biggest = clusterSpots(g.spots)[0];
-        return [
-          {
-            districtId: district.id,
-            name: district.name,
-            centre: district.centre,
-            radiusKm: district.radiusKm,
-            spots: g.spots.length,
-            topArea: biggest?.label || null,
-            topAreaSpots: biggest?.spots.length ?? 0,
-          },
-        ];
-      }),
-    [groups],
-  );
+  return useMemo(() => {
+    // A city from a pasted link (Kochi) isn't one of our districts by name, so it's placed by where
+    // its spots are (Kochi is in Ernakulam). Groups that land in the same district are one target.
+    const byDistrict = new Map<string, { district: (typeof allDistricts)[number]; spots: Place[] }>();
+    for (const g of groups) {
+      const district =
+        allDistricts.find((d) => d.id === g.districtId) ?? districtAt(centreOf(g.spots.map((p) => p.coords)));
+      if (!district) continue;
+      const seen = byDistrict.get(district.id);
+      if (seen) seen.spots.push(...g.spots);
+      else byDistrict.set(district.id, { district, spots: [...g.spots] });
+    }
+    return [...byDistrict.values()].map(({ district, spots }) => {
+      const biggest = clusterSpots(spots)[0];
+      return {
+        districtId: district.id,
+        name: district.name,
+        centre: district.centre,
+        radiusKm: district.radiusKm,
+        spots: spots.length,
+        topArea: biggest?.label || null,
+        topAreaSpots: biggest?.spots.length ?? 0,
+      };
+    });
+  }, [groups]);
 }
+
+const centreOf = (points: { lat: number; lng: number }[]) => ({
+  lat: points.reduce((sum, p) => sum + p.lat, 0) / Math.max(1, points.length),
+  lng: points.reduce((sum, p) => sum + p.lng, 0) / Math.max(1, points.length),
+});
 
 /**
  * The first saved trip whose dates are over and whose "did you make it?" hasn't been answered, by

@@ -172,7 +172,9 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   const reading = stillGoing
     ? { text: script.still[Math.floor(overdue / STILL_EVERY_MS) % script.still.length], glyph: last.glyph }
     : script.stages[stage];
-  const status = phase === 'reading' ? reading.text : STATUS[phase];
+  // Done, the status line is the count itself: "Found 9 places in Kochi", once, with its tick.
+  const foundLine = result ? `Found ${result.places.length} ${result.places.length === 1 ? 'place' : 'places'} in ${result.city.name}` : null;
+  const status = phase === 'reading' ? reading.text : phase === 'done' && foundLine ? foundLine : STATUS[phase];
 
   // Amma and the child keep the wait company, talking through each step, and cheer the finds
   // before stepping aside for them.
@@ -230,12 +232,12 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
       <IconButton
         icon="x"
         onPress={() => {
-          // Stopping on purpose isn't an interruption: nothing to continue later.
-          away.current = 'stopped';
-          dispatch({ type: 'setDraft', draft: null });
+          // ✕ leaves the way Back does, so the two never differ: a read in progress carries on and
+          // waits on Home, and places already found stay there as "Continue planning".
+          if (phase !== 'done') away.current = 'left';
           router.back();
         }}
-        accessibilityLabel={phase === 'done' ? 'Close' : 'Cancel'}
+        accessibilityLabel={phase === 'done' ? 'Close. The places wait on Home.' : 'Close. Reading carries on, and the places will wait on Home.'}
         style={styles.close}
       />
 
@@ -294,12 +296,8 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
             </Text>
           </Animated.View>
           {/* The count starts with the first name in the list, not while the scene still cheers. */}
-          {shown > 0 ? (
-            <Text variant="data">
-              {phase === 'done' && result
-                ? `Found ${result.places.length} ${result.places.length === 1 ? 'place' : 'places'} in ${result.city.name}`
-                : `Found ${shown} ${shown === 1 ? 'place' : 'places'}`}
-            </Text>
+          {phase === 'done' ? null : shown > 0 ? (
+            <Text variant="data">{`Found ${shown} ${shown === 1 ? 'place' : 'places'}`}</Text>
           ) : script.expect ? (
             // A running clock: a wait that visibly moves reads as work, not as stuck.
             <Text variant="data" color={skyInk.soft} accessibilityLabel={`${Math.floor(elapsed / 1000)} seconds so far`}>
@@ -359,8 +357,8 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
           <Animated.View entering={CHOICE_ENTER[0]}>
             <Text variant="label" color={skyInk.soft} style={styles.center}>
               {result.places.length >= CHECK_AS_LIST_FROM
-                ? 'Untick any we got wrong, then save.'
-                : 'Swipe through them. Right if we got it right.'}
+                ? 'Next, untick any we got wrong.'
+                : 'Next, swipe through them: right if we got it right.'}
             </Text>
           </Animated.View>
           <Animated.View entering={CHOICE_ENTER[1]}>
@@ -404,7 +402,8 @@ function clock(ms: number) {
 function ReelCard({ reel, width, height, children }: { reel: Reel; width: number; height: number; children: ReactNode }) {
   if (reel.thumbnail) {
     return (
-      <PhotoCard source={reel.thumbnail} style={{ width, height }}>
+      // The deeper shade: the creator and title sit higher than a city card's name does.
+      <PhotoCard source={reel.thumbnail} gradient="pick" style={{ width, height }}>
         {children}
       </PhotoCard>
     );

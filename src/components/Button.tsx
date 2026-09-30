@@ -122,6 +122,7 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.4, boxShadow: 'none' },
   label: { fontFamily: fonts.sansSemi, fontSize: 16, letterSpacing: 0.1 },
   textWrap: { alignItems: 'center' },
-  textButton: { paddingVertical: 10, paddingHorizontal: 4 },
+  // 44pt tall: the web ignores hitSlop, so the tap has to be the button itself.
+  textButton: { minHeight: 44, justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 4 },
   textLabel: { fontFamily: fonts.sansMedium, fontSize: 14, color: colors.ash },
 });

@@ -222,13 +222,15 @@ function Journey({
     const xs = pts.map((p) => p.x);
     const ys = pts.map((p) => p.y);
     // The zoom that fits the whole day in the uncovered part; one stop alone gets a street's view.
+    // Stops close together get closer in (up to 17), so their photo pins don't sit on each other:
+    // capped at 15, four stops 300 m apart were one heap.
     const fitZoom = clamp(
       Math.min(
         Math.log2(availW / (Math.max(Math.max(...xs) - Math.min(...xs), 1e-7) * TILE)),
         Math.log2(availH / (Math.max(Math.max(...ys) - Math.min(...ys), 1e-7) * TILE)),
       ),
       3,
-      15,
+      pins.length > 1 ? 17 : 15,
     );
     const scale = (z: number) => TILE * 2 ** z;
 
@@ -239,7 +241,7 @@ function Journey({
       const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
       target = { x: cx - offX / scale(fitZoom), y: cy - offY / scale(fitZoom), zoom: fitZoom, tilt: 0 };
     } else {
-      const zoom = clamp(fitZoom + 2.5, 13.5, 16);
+      const zoom = clamp(fitZoom + 2.5, 13.5, 17.5);
       // Tilted, ground near the centre is stretched about 1/cos(tilt) up the screen.
       const lift = offY / Math.cos((JOURNEY_TILT * Math.PI) / 180);
       target = { x: pts[i].x - offX / scale(zoom), y: pts[i].y - lift / scale(zoom), zoom, tilt: JOURNEY_TILT };

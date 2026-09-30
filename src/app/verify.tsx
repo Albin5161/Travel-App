@@ -184,11 +184,10 @@ export default function Verify() {
         <IconButton
           icon="x"
           onPress={() => {
-            // Stopping mid-check on purpose leaves nothing to continue.
-            if (!done) dispatch({ type: 'setDraft', draft: null });
+            // Leaving mid-check keeps the places: they wait on Home as "Continue planning".
             router.back();
           }}
-          accessibilityLabel={done ? 'Close' : 'Stop checking. Nothing is saved.'}
+          accessibilityLabel={done ? 'Close' : 'Close. The places wait on Home.'}
         />
         {!done && !listMode ? (
           <View style={styles.headerRight}>
@@ -210,6 +209,7 @@ export default function Verify() {
         <Done
           count={fresh.length}
           city={city.name}
+          cityId={city.id}
           near={isNearHome(state.collections[city.id]?.placeIds ?? fresh.map((p) => p.id), state.homeDistrictId)}
           already={already}
           left={wrong}
@@ -290,6 +290,7 @@ export default function Verify() {
                     setSheet({ wrong: offer });
                   }}
                   hitSlop={10}
+                  style={styles.linkTap}
                   accessibilityRole="button"
                   accessibilityLabel={`Fix ${offer.name}`}
                 >
@@ -380,7 +381,10 @@ function CheckList({
                 accessibilityState={{ checked: on, disabled: added }}
                 accessibilityLabel={`${p.name}, ${p.area || city}`}
               >
-                <Image source={p.photo} style={[styles.thumb, !on && styles.thumbOff]} contentFit="cover" transition={0} />
+                <View style={[styles.thumb, !on && styles.thumbOff]}>
+                  <Feather name={TYPE_ICON[p.type]} size={20} color={skyInk.soft} />
+                  <Image source={p.photo} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+                </View>
                 <View style={styles.rowText}>
                   <Text variant="bodyStrong" numberOfLines={1} color={on ? skyInk.strong : skyInk.faint}>
                     {p.name}
@@ -409,6 +413,12 @@ function CheckList({
 }
 
 const TYPE: Record<Place['type'], string> = { food: 'Food', stay: 'Stay', sight: 'Sight', experience: 'Experience' };
+const TYPE_ICON: Record<Place['type'], React.ComponentProps<typeof Feather>['name']> = {
+  food: 'coffee',
+  stay: 'home',
+  sight: 'eye',
+  experience: 'compass',
+};
 
 /** The middle of a set of places, to lean a search toward; null when there are none. */
 function centreOf(list: Place[]) {
@@ -426,6 +436,7 @@ function uniq(list: Place[]) {
 function Done({
   count,
   city,
+  cityId,
   near,
   left,
   fixes,
@@ -436,6 +447,7 @@ function Done({
 }: {
   count: number;
   city: string;
+  cityId: string;
   near: boolean;
   left: Place[];
   fixes: Record<string, Place | null>;
@@ -495,7 +507,7 @@ function Done({
                   ) : null}
                 </View>
                 {fix === undefined ? (
-                  <Pressable onPress={() => onFix(p)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Fix ${p.name}`}>
+                  <Pressable onPress={() => onFix(p)} hitSlop={10} style={styles.linkTap} accessibilityRole="button" accessibilityLabel={`Fix ${p.name}`}>
                     <Text variant="label" style={styles.link}>
                       Fix
                     </Text>
@@ -513,7 +525,19 @@ function Done({
       <View style={{ flex: 1 }} />
       <Animated.View entering={DONE_ENTER[3]} style={styles.doneActions}>
         <Button kind="text" label="Missed one? Add a place" onPress={onAdd} />
-        <Button trailingArrow label={count === 0 ? 'Back home' : 'Done'} onPress={() => router.back()} />
+        {count === 0 ? (
+          <Button trailingArrow label="Back home" onPress={() => router.back()} />
+        ) : (
+          <>
+            {/* Saved, the next thing to do with a city is plan it. */}
+            <Button
+              trailingArrow
+              label={`Plan ${city}`}
+              onPress={() => router.replace({ pathname: '/trip/[id]', params: { id: cityId } })}
+            />
+            <Button kind="text" label="Done for now" onPress={() => router.back()} />
+          </>
+        )}
       </Animated.View>
     </View>
   );
@@ -554,12 +578,14 @@ const styles = StyleSheet.create({
   leftText: { flex: 1, gap: 2 },
   struck: { textDecorationLine: 'line-through', color: skyInk.faint },
   link: { textDecorationLine: 'underline' },
+  // The web ignores hitSlop: a text link gets a real 44pt tap.
+  linkTap: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center', marginVertical: -12 },
   doneActions: { gap: 4 },
   list: { flex: 1 },
   rows: { marginTop: 20, marginBottom: 8, marginHorizontal: space.screen, padding: 8, gap: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 8, paddingHorizontal: 8, borderRadius: radii.pane },
   rowPressed: { backgroundColor: skyFill.pane },
-  thumb: { width: 56, height: 56, borderRadius: 14, backgroundColor: skyFill.pane },
+  thumb: { width: 56, height: 56, borderRadius: 14, backgroundColor: skyFill.pane, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   thumbOff: { opacity: 0.35 },
   rowText: { flex: 1, gap: 2 },
 });

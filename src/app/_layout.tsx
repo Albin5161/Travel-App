@@ -1,6 +1,6 @@
 import * as Font from 'expo-font';
 import { useFonts } from 'expo-font';
-import { DefaultTheme, router, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
+import { DefaultTheme, router, Stack, ThemeProvider, usePathname, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState, useSyncExternalStore } from 'react';
@@ -39,8 +39,10 @@ export default function RootLayout() {
   const [loaded] = useFonts(firstFonts);
   const reduced = useReducedMotion();
   const inBrowser = useInBrowser();
-  // The opening animation plays once per launch, over home; skipped with Reduce Motion.
-  const [intro, setIntro] = useState(true);
+  // The opening animation plays once per launch, over home; skipped with Reduce Motion, and when
+  // the app opens on something else (a shared trip or city link), which shouldn't wait behind it.
+  const pathname = usePathname();
+  const [intro, setIntro] = useState(() => pathname === '/' || pathname === '/onboarding');
 
   useEffect(() => {
     if (!loaded) return;

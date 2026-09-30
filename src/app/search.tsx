@@ -163,7 +163,10 @@ function Section({
               key={hit.place.id}
               photo={hit.place.photo}
               title={hit.place.name}
-              detail={[KIND[hit.place.type], hit.place.area || null, hit.city].filter(Boolean).join(' · ')}
+              // The area once: "Food · Kochi", not "Food · Kochi · Kochi" when the area is the city.
+              detail={[KIND[hit.place.type], hit.place.area || null, hit.city]
+                .filter((part, i, all) => !!part && all.findIndex((x) => x?.toLowerCase() === part.toLowerCase()) === i)
+                .join(' · ')}
               onPress={() => {
                 haptic.selection();
                 router.push({ pathname: '/place/[id]', params: { id: hit.place.id } });

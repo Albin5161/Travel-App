@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { Chips } from '@/components/spots/Chips';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
+import { SheetClose } from '@/components/SheetClose';
 import { customPlace, hasPin } from '@/data/custom';
 import { addCustomStop, formatDay } from '@/data/planner';
 import type { DayPart } from '@/data/types';
@@ -39,6 +40,7 @@ export default function AddStop() {
   return (
     <SkyScreen>
       <AddStopForm />
+      <SheetClose />
     </SkyScreen>
   );
 }

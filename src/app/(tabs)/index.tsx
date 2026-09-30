@@ -22,7 +22,10 @@ import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { EXAMPLE_LINKS, getCity, getReel } from '@/data/api';
 import { places, smallPhoto } from '@/data/catalog';
+import { Button } from '@/components/Button';
 import { ContinueCard } from '@/components/home/ContinueCard';
+import { HomePicker } from '@/components/HomePicker';
+import { GlassSheet } from '@/components/sky/GlassSheet';
 import { RecapCard } from '@/components/home/RecapCard';
 import { PhotoStrip } from '@/components/home/PhotoStrip';
 import { allDistricts } from '@/data/regions';
@@ -98,7 +101,8 @@ export default function Home() {
   const away = collections.filter((c) => !near.includes(c));
   const tab = state.homeTab;
   const shown = tab === 'near' ? near : away;
-  const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? 'home';
+  const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? null;
+  const [pickingHome, setPickingHome] = useState(false);
   // First name only: the greeting is a hello, not a form letter. A name typed in capitals ("ALBIN")
   // is softened to "Albin" so the hello doesn't shout; any other spelling is kept as typed.
   const typedFirst = state.myName?.split(/\s+/)[0];
@@ -214,7 +218,7 @@ export default function Home() {
               />
               <Animated.View key={tab} entering={FADE_IN} style={styles.grid}>
                 {shown.length === 0 ? (
-                  <Empty tab={tab} homeName={homeName} />
+                  <Empty tab={tab} homeName={homeName} onSetHome={() => setPickingHome(true)} />
                 ) : (
                   shown.map((c) => {
                     const city = getCity(c.cityId);
@@ -254,6 +258,7 @@ export default function Home() {
           )}
         </Animated.ScrollView>
       </View>
+      <HomePicker visible={pickingHome} onClose={() => setPickingHome(false)} />
       <CityOpenOverlay
         card={cityOpen.card}
         progress={cityOpen.progress}
@@ -296,6 +301,8 @@ function SearchButton() {
  */
 function HereChip({ maxWidth }: { maxWidth: number }) {
   const { here, find } = useHere();
+  // The first tap says what location is for before the browser or phone asks for it.
+  const [asking, setAsking] = useState(false);
   const label =
     here.status === 'found'
       ? (here.town ?? 'Location on')
@@ -306,8 +313,9 @@ function HereChip({ maxWidth }: { maxWidth: number }) {
           : 'Use my location';
   const quiet = here.status === 'off' || here.status === 'finding';
   return (
+    <>
     <PressableScale
-      onPress={find}
+      onPress={() => (here.status === 'unknown' ? setAsking(true) : find())}
       disabled={here.status === 'finding'}
       style={[styles.hereTap, { maxWidth }]}
       accessibilityRole="button"
@@ -321,10 +329,40 @@ function HereChip({ maxWidth }: { maxWidth: number }) {
         </Text>
       </View>
     </PressableScale>
+    <GlassSheet visible={asking} onClose={() => setAsking(false)}>
+      <View style={styles.askBody}>
+        <Text variant="headline" accessibilityRole="header">
+          Use your location?
+        </Text>
+        <Text variant="body">
+          Your map then measures how far each place is from where you are, not from home. Your position stays on this phone.
+        </Text>
+        <Button
+          label="Use my location"
+          onPress={() => {
+            setAsking(false);
+            find();
+          }}
+        />
+        <Button kind="text" label="Not now" onPress={() => setAsking(false)} />
+      </View>
+    </GlassSheet>
+    </>
   );
 }
 
-function Empty({ tab, homeName }: { tab: HomeTab; homeName: string }) {
+function Empty({ tab, homeName, onSetHome }: { tab: HomeTab; homeName: string | null; onSetHome: () => void }) {
+  if (tab === 'near' && !homeName) {
+    return (
+      <View style={styles.empty}>
+        <Text variant="headline" accessibilityRole="header">Where’s home?</Text>
+        <Text variant="body">
+          Tell us, and places within reach of it land here, ready for a free Saturday.
+        </Text>
+        <Button kind="secondary" label="Set your home" onPress={onSetHome} style={styles.setHome} />
+      </View>
+    );
+  }
   return (
     <View style={styles.empty}>
       <Text variant="headline" accessibilityRole="header">{tab === 'near' ? 'Nothing near home yet' : 'No cities yet'}</Text>
@@ -423,5 +461,7 @@ const styles = StyleSheet.create({
   // Straight on the sky, no card: the caption, the switch and the tiles, like a weather app's list.
   panelWrap: { marginTop: 16, paddingHorizontal: GUTTER, gap: 14 },
   empty: { width: '100%', gap: 8, paddingHorizontal: 4, paddingTop: 4, paddingBottom: 8 },
+  setHome: { alignSelf: 'flex-start', marginTop: 4 },
+  askBody: { gap: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: GAP, rowGap: 18 },
 });

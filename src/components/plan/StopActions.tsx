@@ -56,7 +56,7 @@ export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap
             <ScrollView style={styles.swapList} contentContainerStyle={styles.swapContent}>
               <View style={styles.swapHead}>
                 <Text variant="micro">Swap for</Text>
-                <Pressable onPress={() => setSwapping(false)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back to actions">
+                <Pressable onPress={() => setSwapping(false)} hitSlop={10} style={styles.backTap} accessibilityRole="button" accessibilityLabel="Back to actions">
                   <Text variant="label" style={styles.back}>
                     Back
                   </Text>
@@ -103,8 +103,9 @@ export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap
               {days.map((label, i) =>
                 i === day ? null : <Action key={label} icon="corner-down-right" label={`Move to ${label}`} onPress={() => onMove(i)} />,
               )}
-              <Action icon="repeat" label="Swap for something else" onPress={() => setSwapping(true)} />
+              {/* Remove sits above the last row, away from where the plan's Save button is. */}
               <Action icon="x" label="Remove from plan" detail={stop.suggested ? undefined : 'It stays saved'} onPress={onRemove} danger />
+              <Action icon="repeat" label="Swap for something else" onPress={() => setSwapping(true)} />
             </View>
           )}
         </>
@@ -164,6 +165,7 @@ const styles = StyleSheet.create({
   swapContent: { paddingTop: 14, gap: 6 },
   swapHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   back: { textDecorationLine: 'underline' },
+  backTap: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'flex-end' },
   candidate: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 6, borderRadius: 14 },
   candidateThumb: { width: 44, height: 44, borderRadius: 11, backgroundColor: skyFill.raised },
 });

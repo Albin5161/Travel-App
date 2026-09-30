@@ -39,6 +39,11 @@ const GENERIC = new Set(
 );
 const NOT_A_PHOTO = /\b(map|locator|location|logo|flag|seal|emblem|coat[ _]of[ _]arms|diagram|floor[ _]?plan|plan of|chart|graph|signature|icon|satellite|landsat|sentinel|iss\d|sts-?\d|nasa|relief|topographic|svg)\b/i;
 
+// A cover for a trip shouldn't be a grave: "Fort Kochi" came back as the Dutch Cemetery, which
+// then became Kochi's cover on the city page, the trip card and the share ticket. Such photos are
+// passed over unless the place itself is one ("Dutch Cemetery").
+const SOMBRE = /\b(cemetery|cemeteries|graveyard|graves?|tombs?|tombstones?|burial|crematorium|funeral|mausoleum|memorial stones?)\b/i;
+
 const NOT_A_PHOTO_CATEGORY =
   /(^|\|)\s*(maps? of|locator maps|location maps|satellite (images|pictures|photographs)|images from space|iss expedition|logos|flags of|coats of arms|diagrams|floor plans|drawings)/i;
 
@@ -163,7 +168,7 @@ const plain = (html: string | undefined) =>
     .trim();
 
 /** The first of these files that's a real photo, big enough, with a free licence, as the app's photo. */
-async function pick(files: string[]): Promise<PlacePhoto | null> {
+async function pick(files: string[], sombreOk: boolean): Promise<PlacePhoto | null> {
   const unique = [...new Set(files)].slice(0, 12);
   if (unique.length === 0) return null;
   const res = await get<{ query?: { pages?: ImageInfo[] } }>(COMMONS, {
@@ -183,6 +188,7 @@ async function pick(files: string[]): Promise<PlacePhoto | null> {
     // Categories say what the file is when its name doesn't ("Maps of Kochi", "Satellite pictures"),
     // among tracking ones that mean nothing here ("Files with coordinates missing SDC location").
     if (NOT_A_PHOTO_CATEGORY.test(plain(info.extmetadata?.Categories?.value))) continue;
+    if (!sombreOk && (SOMBRE.test(title) || SOMBRE.test(plain(info.extmetadata?.Categories?.value)))) continue;
     const artist = plain(info.extmetadata?.Artist?.value) || 'Unknown author';
     return {
       uri: info.thumburl,
@@ -198,8 +204,9 @@ export async function wikimediaPhoto(name: string, at: LatLng): Promise<PlacePho
   const keys = keywords(name);
   // A name that's all generic words ("The Beach Cafe") can't be matched safely.
   if (keys.length === 0) return null;
+  const sombreOk = SOMBRE.test(name);
   const article = await fromWikipedia(name, at, keys);
-  const fromArticle = article ? await pick([article]) : null;
+  const fromArticle = article ? await pick([article], sombreOk) : null;
   if (fromArticle) return fromArticle;
-  return pick(await fromCommons(name, at, keys));
+  return pick(await fromCommons(name, at, keys), sombreOk);
 }

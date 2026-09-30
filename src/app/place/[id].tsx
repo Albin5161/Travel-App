@@ -10,6 +10,7 @@ import { Glass } from '@/components/sky/Glass';
 import { Tick } from '@/components/sky/Tick';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
+import { SHEET_CLOSE_ROOM, SheetClose } from '@/components/SheetClose';
 import { getPlace } from '@/data/api';
 import { usePlaceInfo } from '@/lib/details';
 import { haptic } from '@/lib/haptics';
@@ -50,7 +51,8 @@ export default function PlaceSheet() {
 
   return (
     <SkyScreen>
-    <Animated.ScrollView {...scrollProps} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    {/* On the web the card starts below the ✕, which would otherwise cover its photo credit. */}
+    <Animated.ScrollView {...scrollProps} contentContainerStyle={[styles.content, { paddingTop: 24 + SHEET_CLOSE_ROOM }]} showsVerticalScrollIndicator={false}>
       <RevealProvider frame={frame}>
       <Animated.View style={cardStyle}>
         <PlaceCard place={place} style={{ height: Math.min(H * 0.56, 480) }} />
@@ -95,6 +97,7 @@ export default function PlaceSheet() {
       ) : null}
       </RevealProvider>
     </Animated.ScrollView>
+    <SheetClose />
     </SkyScreen>
   );
 }

@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -29,17 +29,18 @@ import {
   weekend,
   type Pace,
   type Party,
+  type Stay,
   type TripPlan,
   type TripPrefs,
   type When,
 } from '@/data/planner';
 import { haptic } from '@/lib/haptics';
-import { findStay } from '@/lib/extract';
+import { findStay, newSearchSession, searchPlaces, stayFromPick, type Suggestion } from '@/lib/extract';
 import { terrainOf, type Getting, type LatLng } from '@/lib/geo';
 import { FADE_IN, FADE_OUT, fadeUp, SPRING_SETTLE } from '@/lib/motion';
 import { isNearHome, useCityPlaces, useTrips } from '@/state/trips';
 import { skyAccent, skyAccentRim, skyAccentText, skyAccentWash, skyCta, skyFill, skyInk } from '@/theme/sky';
-import { radii, space } from '@/theme/tokens';
+import { fonts, radii, space } from '@/theme/tokens';
 
 type Step = 'who' | 'when' | 'dates' | 'days' | 'pace' | 'getting' | 'stay' | 'build';
 const STEPS: Step[] = ['who', 'when', 'dates', 'days', 'pace', 'getting', 'stay'];
@@ -91,6 +92,9 @@ export default function TripSetup() {
   // "In town" is looked up when the plan is built; a stay found before is kept while it's fresh.
   // Near home there's no stay to keep, even one chosen before this counted as near home.
   const [stayInTown, setStayInTown] = useState(!nearHome && (!!previous?.stay || !!saved?.stayInTown));
+  // Where exactly, when it was searched for ("Somewhere specific"); else the town is looked up.
+  const [pickedStay, setPickedStay] = useState<Stay | null>(null);
+  const [searchingStay, setSearchingStay] = useState(false);
   // Never resumed onto the build step itself: that one runs when the last answer is given.
   const [history, setHistory] = useState<Step[]>(() => {
     if (single) return ['build'];
@@ -192,7 +196,7 @@ export default function TripSetup() {
             const custom = customStops(state.tripPlans[id]);
             const points = collected.map((p) => p.coords);
             const kept = freshStay(previous?.stay);
-            const stay = stayInTown ? (kept ?? (await findStay(`${city.name}, ${city.state}`, centre(points)))) : null;
+            const stay = pickedStay ?? (stayInTown ? (kept ?? (await findStay(`${city.name}, ${city.state}`, centre(points)))) : null);
             const plan = await rulePlanner.plan({
               cityId: id,
               saved: [...collected, ...custom.map((c) => c.place)],
@@ -302,17 +306,40 @@ export default function TripSetup() {
               />
             ) : null}
             {step === 'stay' ? (
-              <Options
-                selected={answered.stay ? (stayInTown ? 'town' : 'none') : null}
-                onPick={(k) => {
-                  setStayInTown(k === 'town');
-                  answer({}, 'stay', 'build');
-                }}
-                options={[
-                  { key: 'town', title: `In ${city.name}`, detail: 'Each day starts and ends there, drive out and back included' },
-                  { key: 'none', title: 'Not sure yet', detail: 'Each day starts at its first place' },
-                ]}
-              />
+              <>
+                <Options
+                  selected={searchingStay ? 'place' : answered.stay ? (pickedStay ? 'place' : stayInTown ? 'town' : 'none') : null}
+                  onPick={(k) => {
+                    if (k === 'place') {
+                      // Asked by name; the answer (and the next question) comes when a place is picked.
+                      haptic.selection();
+                      setSearchingStay(true);
+                      return;
+                    }
+                    setSearchingStay(false);
+                    setPickedStay(null);
+                    setStayInTown(k === 'town');
+                    answer({}, 'stay', 'build');
+                  }}
+                  options={[
+                    { key: 'town', title: `In ${city.name}`, detail: 'Each day starts and ends in town, drive out and back included' },
+                    { key: 'place', title: 'Somewhere specific', detail: pickedStay ? pickedStay.name : 'Search for your hotel, homestay or area' },
+                    { key: 'none', title: 'Not sure yet', detail: 'Each day starts at its first place' },
+                  ]}
+                />
+                {searchingStay ? (
+                  <StaySearch
+                    cityName={city.name}
+                    near={collected[0]?.coords ?? null}
+                    onPick={(stay) => {
+                      setPickedStay(stay);
+                      setSearchingStay(false);
+                      setStayInTown(true);
+                      answer({}, 'stay', 'build');
+                    }}
+                  />
+                ) : null}
+              </>
             ) : null}
           </ScrollView>
 
@@ -383,6 +410,96 @@ function Segment({ on }: { on: boolean }) {
 }
 
 type Option = { key: string; title: string; detail: string };
+
+/**
+ * "Somewhere specific": the hotel, homestay or area someone's staying at, searched on Google the way
+ * "Missed one?" is, leaning toward the trip's places. Picking one answers the question.
+ */
+function StaySearch({ cityName, near, onPick }: { cityName: string; near: LatLng | null; onPick: (stay: Stay) => void }) {
+  const [query, setQuery] = useState('');
+  const [hits, setHits] = useState<Suggestion[]>([]);
+  const [state, setState] = useState<'idle' | 'searching' | 'picking' | 'none' | 'failed'>('idle');
+  const session = useRef(newSearchSession());
+  const q = query.trim();
+  // Under three letters there's nothing to search: nothing is shown, whatever came back before.
+  const short = q.length < 3;
+  useEffect(() => {
+    if (short) return;
+    let live = true;
+    const t = setTimeout(() => {
+      setState('searching');
+      searchPlaces(q, session.current, near)
+        .then((found) => {
+          if (!live) return;
+          setHits(found);
+          setState(found.length ? 'idle' : 'none');
+        })
+        .catch(() => live && setState('failed'));
+    }, 350);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [q, short, near]);
+  const shown = short ? [] : hits;
+  const status = short ? 'idle' : state;
+
+  const pick = async (s: Suggestion) => {
+    haptic.light();
+    setState('picking');
+    const stay = await stayFromPick(s, session.current).catch(() => null);
+    if (stay) onPick(stay);
+    else setState('failed');
+  };
+
+  return (
+    <Glass style={styles.staySearch}>
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder={`Hotel or area in ${cityName}`}
+        placeholderTextColor={skyInk.faint}
+        autoFocus
+        autoCorrect={false}
+        style={styles.stayInput}
+        accessibilityLabel="Where you're staying"
+      />
+      {shown.map((s) => (
+        <Pressable
+          key={s.placeId}
+          onPress={() => pick(s)}
+          disabled={status === 'picking'}
+          style={({ pressed }) => [styles.stayHit, pressed && styles.optionPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`${s.name}, ${s.where}`}
+        >
+          <Feather name="map-pin" size={15} color={skyInk.soft} />
+          <View style={styles.optionText}>
+            <Text variant="bodyStrong" numberOfLines={1}>
+              {s.name}
+            </Text>
+            <Text variant="label" color={skyInk.soft} numberOfLines={1}>
+              {s.where}
+            </Text>
+          </View>
+        </Pressable>
+      ))}
+      {status === 'searching' || status === 'picking' ? (
+        <Text variant="label" color={skyInk.soft}>
+          {status === 'picking' ? 'Finding it on the map…' : 'Searching…'}
+        </Text>
+      ) : status === 'none' ? (
+        <Text variant="label" color={skyInk.soft}>
+          Nothing by that name. Try the area instead.
+        </Text>
+      ) : status === 'failed' ? (
+        <Text variant="label" color={skyInk.soft}>
+          Couldn’t search just now. Try again, or pick “In {cityName}”.
+        </Text>
+      ) : null}
+    </Glass>
+  );
+}
 
 function Options({ options, selected, onPick }: { options: Option[]; selected: string | null; onPick: (key: string) => void }) {
   return (
@@ -671,6 +788,17 @@ const styles = StyleSheet.create({
   optionOn: { borderColor: skyAccentRim, backgroundColor: skyAccentWash },
   optionPressed: { transform: [{ scale: 0.985 }] },
   optionText: { flex: 1, gap: 2 },
+  staySearch: { marginTop: 12, padding: 12, gap: 6 },
+  stayInput: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderRadius: radii.pane,
+    backgroundColor: skyFill.pane,
+    color: skyInk.strong,
+    fontFamily: fonts.sans,
+    fontSize: 16,
+  },
+  stayHit: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingHorizontal: 6, borderRadius: radii.pane },
   ring: { width: TICK, height: TICK, borderRadius: TICK / 2, borderWidth: 1.5, borderColor: skyInk.outline },
   tick: {
     position: 'absolute',

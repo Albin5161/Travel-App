@@ -203,7 +203,9 @@ export default function CityScreen() {
           <PanelTabs active={active} onTab={goToTab} />
         </View>
 
-        <View style={[styles.panelBody, { paddingBottom: insets.bottom + 120, minHeight: H - top }]}>
+        {/* Deep glass behind the reading: at rest the panel sits over the photo, and white body
+            text straight on a sharp photo failed contrast wherever the photo was light. */}
+        <View style={[styles.panelBody, { paddingBottom: insets.bottom + 120, minHeight: H - top, backgroundColor: deepGlass(look, 0.82) }]}>
           <OverviewSection
             cityName={city.name}
             info={info}

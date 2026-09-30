@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { CityMap, fitCameraToRect, flyTo, useCamera, type MapPin } from '@/components/CityMap';
 import { GoogleMap } from '@/components/GoogleMap';
+import { HomePicker } from '@/components/HomePicker';
 import { PressableScale } from '@/components/PressableScale';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen, useScreenSky } from '@/components/sky/SkyScreen';
@@ -49,6 +50,7 @@ export default function SpotsMap() {
   // One filter, what kind of place. Near home and away are both listed, near home first, and every
   // row says how far it is: no separate switches for scope or distance.
   const [kind, setKind] = useState<SpotKind>('all');
+  const [pickingHome, setPickingHome] = useState(false);
 
   const homeGroups = groups.filter((g) => g.isHome);
   const awayGroups = groups.filter((g) => !g.isHome);
@@ -127,24 +129,38 @@ export default function SpotsMap() {
 
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(4,10,30,0.55)', 'rgba(4,10,30,0)']}
-        style={[styles.topFade, { height: insets.top + 80 }]}
+        colors={['rgba(4,10,30,0.8)', 'rgba(4,10,30,0.55)', 'rgba(4,10,30,0)']}
+        locations={[0, 0.55, 1]}
+        style={[styles.topFade, { height: insets.top + 120 }]}
       />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <Text variant="display" accessibilityRole="header">
           Your map
         </Text>
-        <View style={styles.wherePill}>
-          <Feather
-            name={where.source === 'device' ? 'navigation' : 'home'}
-            size={12}
-            color={skyInk.soft}
-          />
-          <Text variant="data" numberOfLines={1}>
-            {where.label}
-          </Text>
-        </View>
+        {where.at ? (
+          <View style={styles.wherePill}>
+            <Feather
+              name={where.source === 'device' ? 'navigation' : 'home'}
+              size={12}
+              color={skyInk.soft}
+            />
+            <Text variant="data" numberOfLines={1}>
+              {where.label}
+            </Text>
+          </View>
+        ) : (
+          // No home and no position: nothing to measure from, so ask rather than guess.
+          <PressableScale onPress={() => setPickingHome(true)} style={styles.setHome} accessibilityRole="button" accessibilityLabel="Set your home">
+            <View style={styles.wherePill}>
+              <Feather name="home" size={12} color={skyInk.strong} />
+              <Text variant="data" color={skyInk.strong} numberOfLines={1}>
+                {where.label}
+              </Text>
+            </View>
+          </PressableScale>
+        )}
       </View>
+      <HomePicker visible={pickingHome} onClose={() => setPickingHome(false)} />
 
       {/* The paper map is light, so the panel over it is deep glass: white type stays readable. */}
       <DeepPanel style={[styles.panel, { height: panelH }]}>
@@ -194,7 +210,7 @@ export default function SpotsMap() {
               <Text variant="body">None of your saved spots are this kind yet.</Text>
             </View>
           ) : null}
-          {homeSpots.length > 0 ? (
+          {homeSpots.length > 0 && where.at ? (
             <HomeScope
               spots={homeSpots.filter((p) => matchesKind(p, kind))}
               where={where.at}
@@ -319,7 +335,8 @@ function AwayScope({
 }: {
   groups: { districtId: string | null; name: string; state: string; spots: Place[] }[];
   kind: SpotKind;
-  from: { lat: number; lng: number };
+  /** Null with no home and no position: then no times or distances are shown. */
+  from: { lat: number; lng: number } | null;
   statusOf: (id: string) => 'want' | 'been';
   focus: string | null;
   /** With spots near home above, a heading says where "away" starts. */
@@ -342,7 +359,7 @@ function AwayScope({
       {shown.map((g) => {
         const cityId = g.spots[0].cityId;
         const watched = !!getDistrict(g.districtId ?? undefined);
-        const far = Math.min(...g.spots.map((s) => driveMinutes(from, s))) > DAY_TRIP_MINUTES;
+        const far = !from || Math.min(...g.spots.map((s) => driveMinutes(from, s))) > DAY_TRIP_MINUTES;
         const clusters = clusterSpots(g.spots);
         const creators = new Set(g.spots.map((s) => (s.source.kind === 'reel' ? getReel(s.source.reelId)?.creator : null)));
         return (
@@ -353,7 +370,7 @@ function AwayScope({
                 <Text variant="data">
                   {g.spots.length} {g.spots.length === 1 ? 'spot' : 'spots'}
                   {g.state && g.state !== g.name ? ` · ${g.state}` : ''}
-                  {far ? ` · ${kmAway(from, g.spots)} away` : ''}
+                  {far && from ? ` · ${kmAway(from, g.spots)} away` : ''}
                   {watched ? ' · we’ll tell you when you arrive' : ''}
                 </Text>
               </View>
@@ -373,7 +390,7 @@ function AwayScope({
                   <SpotRow
                     key={s.id}
                     spot={s}
-                    minutes={far ? null : driveMinutes(from, s)}
+                    minutes={far || !from ? null : driveMinutes(from, s)}
                     showCreator={creators.size > 1}
                     status={statusOf(s.id)}
                           onPress={() => router.push({ pathname: '/place/[id]', params: { id: s.id } })}
@@ -435,6 +452,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: skyInk.rim,
   },
+  // A 44pt tap around the 32pt pill.
+  setHome: { minHeight: 44, justifyContent: 'center', maxWidth: '55%' },
   wherePill: {
     flexDirection: 'row',
     alignItems: 'center',

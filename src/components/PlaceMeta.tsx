@@ -47,7 +47,9 @@ export function SourceLine({ place }: { place: Place }) {
     <View style={styles.source}>
       <Ionicons name={reel.platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'} size={14} color={colors.ash} />
       <Text variant="data">
-        From {reel.creator} · {place.source.timestamp} in the {reel.platform === 'youtube' ? 'video' : 'reel'}
+        {/* The moment in the video only when the description gave one: "From X · in the video" said nothing. */}
+        From {reel.creator}
+        {place.source.timestamp ? ` · ${place.source.timestamp} in the ${reel.platform === 'youtube' ? 'video' : 'reel'}` : ''}
       </Text>
     </View>
   );

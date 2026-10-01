@@ -165,8 +165,16 @@ export default function Home() {
                 <HereChip maxWidth={W - GUTTER * 2 - TOP_SIDE * 2} />
               </View>
             </View>
-            {/* Hidden for the one frame before it's measured, so it appears already in place. */}
-            <View onLayout={measure('hero')} style={{ marginTop: heroPad ?? MIN_PAD, opacity: heroPad === null ? 0 : 1 }}>
+            {/* Hidden for the one frame before it's measured, so it appears already in place. Kept as
+                a real view on phones (not collapsable): one that's only spacing is folded away once
+                it's no longer see-through, and if that lands while the greeting below is still
+                fading in (a slower phone), the greeting is redrawn at the screen's top-left corner,
+                over the wordmark. */}
+            <View
+              collapsable={false}
+              onLayout={measure('hero')}
+              style={{ marginTop: heroPad ?? MIN_PAD, opacity: heroPad === null ? 0 : 1 }}
+            >
             <Animated.View entering={ENTER[0]}>
               <Text variant="eyebrow">
                 Turn videos into trips

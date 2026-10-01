@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 
-import { getPlace, getCity, isSampleLink } from '@/data/api';
+import { getPlace, getCity, isLiveCity, isSampleLink } from '@/data/api';
 import { live, refreshed, register, restore, snapshot, type LiveSnapshot } from '@/data/registry';
 import { allDistricts, getDistrict } from '@/data/regions';
 import type { Group, GroupState, Member, Vote } from '@/data/group';
 import { isoDay, type TripPlan, type TripPrefs } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
-import { betterPhoto, framePhoto, refreshPlace } from '@/lib/extract';
+import { cityName } from '@/data/cityNames';
+import { betterPhoto, framePhoto, refreshPlace, sameCity } from '@/lib/extract';
 import { distanceKm } from '@/lib/geo';
 import { deviceStorage } from '@/lib/live/storage';
 import { fromWire, toWire, type WirePlan } from '@/lib/live/wire';
@@ -458,6 +459,7 @@ function loadTrips(): Partial<State> {
       }, []),
     );
     if (!s.pricesHonest) unguess(s.live.places);
+    attempt(() => oneCityOnce(s), undefined);
     // Real places first: the plans below are rebuilt from their ids.
     restore(s.live);
     const collections = onePerPlace(s.collections, Object.fromEntries(wires));
@@ -520,6 +522,59 @@ function onePerPlace(collections: State['collections'], plans: Record<string, un
     })
     .filter((c) => c.placeIds.length > 0 || !!plans[c.cityId]);
   return Object.fromEntries(kept.map((c) => [c.cityId, c]));
+}
+
+/**
+ * Copies saved before a city had one name can hold it twice ("Delhi" and "New Delhi", each from its
+ * own video). The later collection moves into the earlier one, under the shorter name. A plan, a
+ * shared trip and a recap are stored under their city's id, so a city that has any of them is the
+ * one kept, and two cities that both do are left as they are.
+ */
+function oneCityOnce(s: SavedTrips) {
+  const real = s.live.cities.filter((c) => isLiveCity(c.id));
+  real.forEach((c) => {
+    const name = cityName(c.name);
+    if (c.district === c.name) c.district = name;
+    c.name = name;
+  });
+  const placesIn = (cityId: string) => {
+    const ids = new Set(s.collections[cityId]?.placeIds ?? []);
+    return s.live.places.filter((p) => ids.has(p.id));
+  };
+  const tied = (cityId: string) =>
+    !!(s.tripPlans?.[cityId] || s.savedTrips?.[cityId] || s.groups?.[cityId] || s.remote?.[cityId] || s.recapped?.[cityId]) ||
+    (!!s.draft && 'cityId' in s.draft && s.draft.cityId === cityId);
+
+  const saved = real.filter((c) => s.collections[c.id]).sort((a, b) => s.collections[a.id].addedAt - s.collections[b.id].addedAt);
+  const gone = new Set<string>();
+  saved.forEach((first, i) => {
+    if (gone.has(first.id)) return;
+    for (const later of saved.slice(i + 1)) {
+      if (gone.has(later.id) || gone.has(first.id)) continue;
+      if (!sameCity({ name: first.name, places: placesIn(first.id) }, { name: later.name, places: placesIn(later.id) })) continue;
+      if (tied(first.id) && tied(later.id)) continue;
+      const [keep, drop] = tied(later.id) ? [later, first] : [first, later];
+      const [into, from] = [s.collections[keep.id], s.collections[drop.id]];
+      s.collections[keep.id] = {
+        cityId: keep.id,
+        placeIds: [...new Set([...into.placeIds, ...from.placeIds])],
+        reelIds: [...new Set([...into.reelIds, ...from.reelIds])],
+        addedAt: Math.min(into.addedAt, from.addedAt),
+      };
+      delete s.collections[drop.id];
+      const locals = [...new Set([...(s.addedLocals[keep.id] ?? []), ...(s.addedLocals[drop.id] ?? [])])];
+      if (locals.length) s.addedLocals[keep.id] = locals;
+      delete s.addedLocals[drop.id];
+      s.live.places.forEach((p) => p.cityId === drop.id && (p.cityId = keep.id));
+      s.live.reels.forEach((r) => r.cityId === drop.id && (r.cityId = keep.id));
+      if (drop.name.length < keep.name.length) {
+        if (keep.district === keep.name) keep.district = drop.name;
+        keep.name = drop.name;
+      }
+      gone.add(drop.id);
+    }
+  });
+  s.live.cities = s.live.cities.filter((c) => !gone.has(c.id));
 }
 
 /** A draft back from storage: its real places re-registered, and dropped if what it points at is gone. */

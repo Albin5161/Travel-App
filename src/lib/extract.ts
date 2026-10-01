@@ -1,10 +1,11 @@
 import type { ImageSourcePropType } from 'react-native';
 
+import { cityName, sameCityName } from '@/data/cityNames';
 import type { Stay } from '@/data/planner';
 import { live, register } from '@/data/registry';
 import type { City, DayPart, Extraction, Place, PlaceType, Reel } from '@/data/types';
 import { ApiFailure, post } from '@/lib/api';
-import type { LatLng, Terrain } from '@/lib/geo';
+import { distanceKm, type LatLng, type Terrain } from '@/lib/geo';
 import { deviceStorage } from '@/lib/live/storage';
 import { parseLink } from '@/server/links';
 import type {
@@ -46,9 +47,10 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
 
   const saved = cache.read(key);
   if (saved) {
+    const extraction = inKnownCity(saved.extraction);
     // The places' coordinates are as old as the saved result, not as old as this paste.
-    register(saved.extraction, saved.at);
-    return { kind: 'done', extraction: saved.extraction };
+    register(extraction, saved.at);
+    return { kind: 'done', extraction };
   }
 
   const res = await post<ExtractResult>('/api/extract', { url }, EXTRACT_MS);
@@ -86,10 +88,54 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
   const places = toPlaces(pairs, reel, cityId);
   reel.placeIds = places.map((p) => p.id);
   const city = toCity(cityId, where, state, places, reel, res.terrain ?? undefined);
-  const extraction: Extraction = { reel, city, places };
-  register({ places, city, reel });
+  const extraction = inKnownCity({ reel, city, places });
+  register(extraction);
   cache.write(key, extraction);
   return { kind: 'done', extraction };
+}
+
+// ── One city, one collection ────────────────────────────────────────────────────────────────────
+// A city's id is made from its name, and names vary from video to video ("Delhi, India", "New Delhi,
+// Delhi, India"). So before a video's places are filed, the cities already on the phone are checked
+// for the same one under another name or state.
+
+/** Places further apart than this aren't one city, whatever they're called. */
+const SAME_CITY_KM = 60;
+
+const middle = (places: Place[]): LatLng | null =>
+  places.length
+    ? {
+        lat: places.reduce((sum, p) => sum + p.coords.lat, 0) / places.length,
+        lng: places.reduce((sum, p) => sum + p.coords.lng, 0) / places.length,
+      }
+    : null;
+
+/** Whether two cities are one: names that match, and places in the same part of the map. */
+export function sameCity(a: { name: string; places: Place[] }, b: { name: string; places: Place[] }): boolean {
+  if (!sameCityName(a.name, b.name)) return false;
+  const [here, there] = [middle(a.places), middle(b.places)];
+  return !!here && !!there && distanceKm(here, there) <= SAME_CITY_KM;
+}
+
+/** The city already on the phone that this name and these places belong to, if there is one. */
+function knownCity(name: string, places: Place[]): City | null {
+  const all = Object.values(live.places);
+  return (
+    Object.values(live.cities).find((c) => sameCity({ name, places }, { name: c.name, places: all.filter((p) => p.cityId === c.id) })) ??
+    null
+  );
+}
+
+/** A video's places, filed under the city they're already saved as when it went by another name. */
+function inKnownCity(e: Extraction): Extraction {
+  if (live.cities[e.city.id]) return e;
+  const known = knownCity(e.city.name, e.places);
+  if (!known) return e;
+  return {
+    city: known,
+    reel: { ...e.reel, cityId: known.id },
+    places: e.places.map((p) => ({ ...p, cityId: known.id })),
+  };
 }
 
 // ── A city's best-known spots, for a video of it that named none ────────────────────────────────
@@ -247,7 +293,7 @@ export async function betterPhoto(place: Place, reel: Reel | undefined, turn: nu
  */
 export function townOf(where: string): { id: string; name: string; state: string } {
   const parts = where.split(',').map((p) => p.trim()).filter(Boolean);
-  const name = parts.length >= 3 ? parts[parts.length - 3] : (parts[0] ?? 'Somewhere new');
+  const name = cityName(parts.length >= 3 ? parts[parts.length - 3] : (parts[0] ?? 'Somewhere new'));
   const state = parts.length >= 2 ? parts[parts.length - 2] : '';
   return { id: `live:${slug(`${name} ${state}`)}`, name, state };
 }
@@ -255,7 +301,8 @@ export function townOf(where: string): { id: string; name: string; state: string
 /** The city for places someone added by hand, named after where the first one is. */
 export function cityFromWhere(where: string, reel: Reel, places: Place[]): City {
   const town = townOf(where);
-  return toCity(town.id, town.name, town.state, places, reel);
+  const known = live.cities[town.id] ? null : knownCity(town.name, places);
+  return known ?? toCity(town.id, town.name, town.state, places, reel);
 }
 
 /**
@@ -406,7 +453,7 @@ function toCity(id: string, name: string, state: string, places: Place[], reel: 
 /** "Munsiyari, Uttarakhand, India" → Munsiyari, Uttarakhand. Without a region, the commonest area. */
 function regionParts(region: string | null, places: FoundPlace[]): { city: string; state: string } {
   const parts = (region ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-  if (parts.length > 0) return { city: parts[0], state: parts[1] ?? '' };
+  if (parts.length > 0) return { city: cityName(parts[0]), state: parts[1] ?? '' };
   const counts = new Map<string, number>();
   places.forEach((p) => p.area && counts.set(p.area, (counts.get(p.area) ?? 0) + 1));
   const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];

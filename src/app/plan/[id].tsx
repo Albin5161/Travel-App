@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   useAnimatedProps,
   useAnimatedReaction,
@@ -265,7 +265,9 @@ export default function PlanScreen() {
   // share screen's code (the web loads each screen on first use), the city's photo and its blur.
   const save = () => {
     setStamping(true);
-    void import('../share/[id]').catch(() => {});
+    // Only the web has anything to fetch: a phone app already holds every screen, and asking its
+    // dev server for one as a separate piece is work at the worst moment, mid-animation.
+    if (Platform.OS === 'web') void import('../share/[id]').catch(() => {});
     if (!city) return;
     prebake(city.hero);
     const photo = uriOf(city.hero);

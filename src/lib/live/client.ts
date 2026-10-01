@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { loadSupabase } from './library';
 import { sessionStorage } from './storage';
 
 // The shared backend. Both values are public by design (row level security keeps trips private to
@@ -10,14 +11,14 @@ const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 export const liveEnabled = !!(url && key);
 
-// The client library is a fifth of the app's code, and nothing on the first screen needs it: it's
-// fetched the first time something does (reading a link, sharing, joining), then kept.
+// The client is made the first time something needs it (reading a link, sharing, joining), then
+// kept. On the web that's also when its library is fetched (see library.ts).
 let client: Promise<SupabaseClient | null> | null = null;
 
 export function getSupabase(): Promise<SupabaseClient | null> {
   client ??=
     url && key
-      ? import('@supabase/supabase-js').then(({ createClient }) =>
+      ? loadSupabase().then(({ createClient }) =>
           createClient(url, key, {
             auth: { storage: sessionStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
           }),

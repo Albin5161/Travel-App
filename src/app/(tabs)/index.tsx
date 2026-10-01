@@ -151,6 +151,8 @@ export default function Home() {
           stickyHeaderIndices={[1]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          // iPhone: the page makes room for the keyboard and brings the link box above it.
+          automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1, paddingTop: 12, paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }}
         >

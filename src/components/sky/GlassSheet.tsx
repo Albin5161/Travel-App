@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, View, type DimensionValue } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Keyboard, Modal, Platform, Pressable, StyleSheet, View, type DimensionValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { deepGlass, skyInk } from '@/theme/sky';
@@ -25,6 +25,7 @@ type Props = {
 export function GlassSheet({ visible, onClose, maxHeight = '80%', children }: Props) {
   const insets = useSafeAreaInsets();
   const look = useScreenSky();
+  const keyboard = useKeyboardHeight();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" />
@@ -33,7 +34,8 @@ export function GlassSheet({ visible, onClose, maxHeight = '80%', children }: Pr
           blur
           tint={deepGlass(look, 0.8)}
           radius={radii.sheet}
-          style={[styles.sheet, { maxHeight, paddingBottom: insets.bottom + 12 }]}
+          // With the keyboard up the sheet sits on top of it, so a field in it is never typed blind.
+          style={[styles.sheet, { maxHeight, bottom: keyboard, paddingBottom: keyboard ? 12 : insets.bottom + 12 }]}
         >
           <View style={styles.grabber} />
           {children}
@@ -41,6 +43,22 @@ export function GlassSheet({ visible, onClose, maxHeight = '80%', children }: Pr
       </Tone>
     </Modal>
   );
+}
+
+/** How much of the screen the keyboard covers, on a phone. A browser moves the page itself. */
+function useKeyboardHeight() {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const ios = Platform.OS === 'ios';
+    const show = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (e) => setHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => setHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return height;
 }
 
 const styles = StyleSheet.create({

@@ -193,6 +193,10 @@ export function TiltCard({ width, height, radius = 28, delay = 0, faceRef, child
           pointerEvents="none"
           style={[StyleSheet.absoluteFill, styles.shadow, { borderRadius: radius }, shadow]}
         />
+        {/* A layer of its own for the turning card. On a phone a turned layer is placed in depth
+            among its siblings, so the half tipped away went behind the shadow's sheet and that
+            sheet showed through as a white wedge. In here it has no sibling to go behind. */}
+        <View style={StyleSheet.absoluteFill}>
         <GestureDetector gesture={pan}>
           <Animated.View style={[StyleSheet.absoluteFill, body]}>
             <View
@@ -230,6 +234,7 @@ export function TiltCard({ width, height, radius = 28, delay = 0, faceRef, child
             </View>
           </Animated.View>
         </GestureDetector>
+        </View>
       </View>
     </TiltContext.Provider>
   );
@@ -264,7 +269,8 @@ function useNoGravity() {
 const useGravity = Platform.OS === 'web' ? useNoGravity : useNativeGravity;
 
 const styles = StyleSheet.create({
-  shadow: { backgroundColor: '#FFFFFF', boxShadow: '0 22px 40px rgba(17,17,17,0.22)' },
+  // Only the shadow is wanted, not a sheet: nothing is filled in.
+  shadow: { boxShadow: '0 22px 40px rgba(17,17,17,0.22)' },
   face: { overflow: 'hidden', backgroundColor: '#FFFFFF' },
   clip: { overflow: 'hidden' },
   glare: { position: 'absolute' },

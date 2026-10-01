@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
 import type { RefObject } from 'react';
-import { Platform, Share, type View } from 'react-native';
+import { PixelRatio, Platform, Share, type View } from 'react-native';
 import { captureRef } from '@/lib/capture';
 
 import type { Party } from '@/data/planner';
@@ -44,6 +44,20 @@ export const IMAGE_SIZE: Record<ImageKind, { width: number; height: number }> = 
   story: { width: 1080, height: 1920 },
 };
 
+/**
+ * How a phone pictures the card: a JPEG at the sizes above, like the web's. The capture takes its
+ * size in points and saves at the screen's density, so on a 3× iPhone "1080 wide" came out 3240
+ * wide, and as a PNG that was 15 MB. Dividing by the density gives the 1080 meant.
+ */
+const phoneShot = (kind: ImageKind) =>
+  ({
+    format: 'jpg',
+    quality: 0.92,
+    result: 'tmpfile',
+    width: IMAGE_SIZE[kind].width / PixelRatio.get(),
+    height: IMAGE_SIZE[kind].height / PixelRatio.get(),
+  }) as const;
+
 type WebNav = Navigator & { canShare?: (data: ShareData) => boolean };
 
 /**
@@ -54,7 +68,7 @@ export const webImageFile = drawCardImage;
 
 /**
  * Saves the picture: into the share sheet where there is one (iPhone: Save Image, Instagram,
- * WhatsApp), else as a download. On a phone app, the system share sheet with the PNG.
+ * WhatsApp), else as a download. On a phone app, the system share sheet with the picture.
  */
 export async function saveImage(
   view: RefObject<View | null>,
@@ -64,8 +78,8 @@ export async function saveImage(
   ready?: File | null,
 ): Promise<SaveResult> {
   if (Platform.OS === 'web') return deliver(ready ?? (await webImageFile(kind, data, name)));
-  const uri = await captureRef(view, { format: 'png', result: 'tmpfile', ...IMAGE_SIZE[kind] });
-  await Sharing.shareAsync(uri, { mimeType: 'image/png', UTI: 'public.png', dialogTitle: 'Save or share your plan' });
+  const uri = await captureRef(view, phoneShot(kind));
+  await Sharing.shareAsync(uri, { mimeType: 'image/jpeg', UTI: 'public.jpeg', dialogTitle: 'Save or share your plan' });
   return 'shared';
 }
 
@@ -103,12 +117,12 @@ export async function sharePlanCard(card: RefObject<View | null>, message: strin
     }
   }
 
-  const uri = await captureRef(card, { format: 'png', quality: 1, result: 'tmpfile', ...IMAGE_SIZE.card });
+  const uri = await captureRef(card, phoneShot('card'));
   if (Platform.OS === 'ios') {
     const res = await Share.share({ url: uri, message });
     return res.action === Share.dismissedAction ? 'dismissed' : 'shared';
   }
-  await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your plan' });
+  await Sharing.shareAsync(uri, { mimeType: 'image/jpeg', dialogTitle: 'Share your plan' });
   return 'shared';
 }
 

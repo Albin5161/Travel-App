@@ -30,7 +30,8 @@ import { colors, light, radii, shadows, space } from '@/theme/tokens';
 
 const DONE_ENTER = [0, 1, 2, 3].map((i) => fadeUp(i * 60));
 /** Said where people judge what the AI found, the one moment it matters. */
-const AI_NOTE = 'Xplore’s AI read the video, and it can make mistakes.';
+// Said the same for a video and a photo post.
+const AI_NOTE = 'Xplore’s AI picked these out, and it can make mistakes.';
 const OFFER_IN = fadeUp(0);
 // Long enough to read "Removed X · Fix it" and reach for it; short enough not to nag.
 const OFFER_MS = 3500;

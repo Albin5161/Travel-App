@@ -20,7 +20,7 @@ import { getReel } from '@/data/api';
 import { register } from '@/data/registry';
 import { allDistricts } from '@/data/regions';
 import type { Place } from '@/data/types';
-import { bestKnownSpots, cityFromWhere, placeFromPick, sendVerdicts, townOf, type Suggestion } from '@/lib/extract';
+import { bestKnownSpots, cityFromWhere, lengthLabel, placeFromPick, sendVerdicts, townOf, type Suggestion } from '@/lib/extract';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { fadeUp } from '@/lib/motion';
@@ -149,7 +149,7 @@ export default function AddPlaces() {
                     <Ionicons name={instagram ? 'logo-instagram' : 'logo-youtube'} size={14} color={colors.mist} />
                     <Text variant="micro" color={colors.mist} numberOfLines={1}>
                       {reel.creator}
-                      {reel.duration ? ` · ${reel.duration}` : ''}
+                      {lengthLabel(reel) ? ` · ${lengthLabel(reel)}` : ''}
                     </Text>
                   </View>
                   {reel.title ? (

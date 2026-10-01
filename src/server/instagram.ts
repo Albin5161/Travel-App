@@ -1,5 +1,6 @@
 // Instagram has no API for reading other people's reels, so this goes through Apify's Instagram Reel
-// Scraper (apify/instagram-reel-scraper), which fetches public reels from Apify's own servers. It
+// Scraper (apify/instagram-reel-scraper), which fetches public reels from Apify's own servers. Given
+// a photo post's link it returns the post all the same, with its pictures, for the same price. It
 // breaks now and then when Instagram changes, so every failure here means "couldn't read it", and
 // the app falls back to adding places by search. Priced per event (Free plan, Sept 2026): about
 // $0.0036 a reel including the run start, plus $0.048 per started minute when the transcript is on.
@@ -16,6 +17,12 @@ const WAIT_SECONDS = 20;
 
 /** Only short reels get a transcript: two started minutes at most, about $0.10. */
 export const TRANSCRIPT_MAX_SECONDS = 120;
+
+/** A photo post holds up to 20 pictures. Each is about 300 KB; one far larger isn't a slide worth reading. */
+const SLIDES_MAX = 20;
+const SLIDE_MAX_BYTES = 2_000_000;
+/** Pictures are only ever fetched from Instagram's own image servers, whatever link the scraper hands back. */
+const SLIDE_HOST = /(^|\.)(cdninstagram\.com|fbcdn\.net)$/;
 
 export type ReelDetails = {
   shortcode: string;
@@ -34,7 +41,16 @@ export type ReelDetails = {
   /** An Instagram CDN link. It expires within days, so the app needs its fallback card for it. */
   thumbnail: string | null;
   transcript: string | null;
+  /**
+   * A photo post's pictures, in order: one for a single photo, up to 20 for a carousel, none for a
+   * video. Itineraries are often written on them and nowhere else. Instagram CDN links, like the
+   * thumbnail.
+   */
+  slides: string[];
 };
+
+/** One slide, ready to hand to the model. */
+export type Picture = { mimeType: string; data: string };
 
 /**
  * One public reel, or null when it can't be read: private or deleted, not a reel, Apify's monthly
@@ -85,6 +101,38 @@ export async function getReel(
   }
 }
 
+/**
+ * A post's slides, fetched and encoded for the model. One that can't be fetched (an expired link, a
+ * server other than Instagram's, something too large) is left out; the rest are still read.
+ */
+export async function getSlides(urls: string[]): Promise<Picture[]> {
+  const got = await Promise.all(
+    urls.slice(0, SLIDES_MAX).map(async (link): Promise<Picture | null> => {
+      try {
+        const url = new URL(link);
+        if (url.protocol !== 'https:' || !SLIDE_HOST.test(url.hostname)) return null;
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        const mimeType = (res.headers.get('content-type') ?? '').split(';')[0];
+        if (!res.ok || !/^image\/(jpeg|png|webp)$/.test(mimeType)) return null;
+        const bytes = await res.arrayBuffer();
+        if (bytes.byteLength > SLIDE_MAX_BYTES) return null;
+        return { mimeType, data: base64(bytes) };
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return got.filter((p): p is Picture => !!p);
+}
+
+/** Bytes as base64, with the web's own `btoa`, in pieces small enough to spread into one call. */
+function base64(bytes: ArrayBuffer): string {
+  const view = new Uint8Array(bytes);
+  let binary = '';
+  for (let i = 0; i < view.length; i += 0x8000) binary += String.fromCharCode(...view.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
+
 /** One Apify API call. Run objects come wrapped in `data`; dataset items come as a bare array. */
 async function apify<T>(path: string | URL, token: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -106,6 +154,9 @@ type ApifyRun = {
 function toReel(r: ApifyReel): ReelDetails {
   const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
   const list = (v: unknown) => (Array.isArray(v) ? v.map(text).filter(Boolean) : []);
+  // "Sidecar" is a carousel and "Image" a single photo; a video's own cover isn't a slide.
+  const isVideo = text(r.type) === 'Video' || typeof r.videoDuration === 'number';
+  const pictures = list(r.images);
   return {
     shortcode: text(r.shortCode),
     caption: text(r.caption),
@@ -121,6 +172,7 @@ function toReel(r: ApifyReel): ReelDetails {
     durationSeconds: typeof r.videoDuration === 'number' ? Math.round(r.videoDuration) : null,
     thumbnail: text(r.displayUrl) || null,
     transcript: text(r.transcript) || null,
+    slides: isVideo ? [] : pictures.length ? pictures : list([r.displayUrl]),
   };
 }
 
@@ -128,6 +180,8 @@ function toReel(r: ApifyReel): ReelDetails {
 // and checked before use.
 type ApifyReel = {
   error?: unknown;
+  type?: unknown;
+  images?: unknown;
   shortCode?: unknown;
   caption?: unknown;
   hashtags?: unknown;

@@ -31,7 +31,7 @@ import { SAMPLE_LINK } from '@/data/catalog';
 import type { Extraction, Place, Reel } from '@/data/types';
 import { ApiFailure } from '@/lib/api';
 import { platformOfLink, track } from '@/lib/analytics';
-import { CHECK_AS_LIST_FROM, readLink } from '@/lib/extract';
+import { CHECK_AS_LIST_FROM, lengthLabel, readLink } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
 import { sound } from '@/lib/sound';
 import { CARD_IN, CREDIT_IN, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
@@ -86,12 +86,13 @@ const YOUTUBE: Script = {
   late: { after: 15_000, text: 'Taking longer than usual. Hang on a little.' },
   still: ['Still reading. Long descriptions take a little longer.', 'Still on it. Nearly every video gets there.'],
 };
-// Instagram: the reel is opened through Apify (up to 45 s), its caption and comments read, and if
-// they name nothing, its audio is listened to as well (up to 100 s more).
+// Instagram: the reel or photo post is opened through Apify (up to 45 s), its caption and comments
+// read (and a post's pictures, about 10 s more), and if a reel's text names nothing, its audio is
+// listened to as well (up to 100 s more). Which of the two it is isn't known until it's opened.
 const INSTAGRAM: Script = {
   stages: [
-    { at: 0, text: 'Opening the reel on Instagram…', glyph: 'play' },
-    { at: 8000, text: 'Reading the caption and comments…', glyph: 'caption' },
+    { at: 0, text: 'Opening it on Instagram…', glyph: 'play' },
+    { at: 8000, text: 'Reading the caption, and the photos if it’s a post…', glyph: 'caption' },
     { at: 18_000, text: 'Picking out the places…', glyph: 'pin' },
     { at: 40_000, text: 'Listening to the reel, in case the places are only said out loud…', glyph: 'listen' },
   ],
@@ -255,7 +256,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
                         color={colors.mist}
                       />
                       <Text variant="micro" color={colors.mist}>
-                        {[card.creator, card.duration].filter(Boolean).join(' · ')}
+                        {[card.creator, lengthLabel(card)].filter(Boolean).join(' · ')}
                       </Text>
                     </View>
                     {card.title ? (

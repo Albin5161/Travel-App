@@ -156,7 +156,7 @@ export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
             returnKeyType="go"
             selectionColor={ink.strong}
             style={[styles.input, { color: ink.strong }, NO_FOCUS_RING]}
-            accessibilityLabel="Link to an Instagram reel or YouTube video"
+            accessibilityLabel="Link to an Instagram reel or post, or a YouTube video"
           />
           {sky ? action : null}
         </Animated.View>

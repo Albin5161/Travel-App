@@ -32,6 +32,8 @@ export type ReelSignals = {
   comments: boolean;
   /** The spoken words were fetched: a second, pricier try when the text alone named nothing. */
   transcript: boolean;
+  /** A photo post's pictures were read. Absent on results stored before they were looked at. */
+  slides?: boolean;
 };
 
 /**
@@ -54,6 +56,8 @@ export type ExtractResult =
         thumbnail: string | null;
         /** Frames from the video itself, for places without a photo. YouTube only. */
         frames?: string[];
+        /** How many pictures an Instagram photo post has; 0 for a reel. Absent on YouTube and older results. */
+        slides?: number;
       };
       region: string | null;
       /** The lie of the land in the region, for travel times. Absent on results read before it was asked. */

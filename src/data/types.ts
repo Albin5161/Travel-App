@@ -58,6 +58,8 @@ export interface Reel {
    * without a photo of its own shows one of these, never the thumbnail with its title text.
    */
   frames?: string[];
+  /** How many pictures an Instagram photo post has; 0 for a reel. Absent on YouTube and on anything read before posts' pictures were. */
+  slides?: number;
   cityId: string;
   placeIds: string[];
 }

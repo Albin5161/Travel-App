@@ -2,7 +2,7 @@ import type { Caller } from './auth';
 import { env } from './env';
 import { ApiError } from './errors';
 import { bestKnown, findPlaces } from './gemini';
-import { getReel, TRANSCRIPT_MAX_SECONDS, type ReelDetails } from './instagram';
+import { getReel, getSlides, TRANSCRIPT_MAX_SECONDS, type Picture, type ReelDetails } from './instagram';
 import { wikimediaPhoto } from './commons';
 import { allowCityNotes, allowExtract, allowFeedback, allowPhoto, allowPlaceInfo, allowReel, allowSearch, beginMatch } from './limits';
 import { parseLink, type ParsedLink } from './links';
@@ -105,9 +105,10 @@ export async function extract(input: unknown, who: Caller): Promise<ExtractResul
 }
 
 /**
- * An Instagram reel, read through Apify: first its text (caption, location tag, tagged accounts,
- * comments), then, only when that names nothing and the reel is short, what's said in it. Whatever
- * doesn't work out falls back to the user adding places by search, with the reason.
+ * An Instagram reel or photo post, read through Apify: first its text (caption, location tag,
+ * tagged accounts, comments) together with a post's pictures, where plans are often written; then,
+ * only when that names nothing and it's a short reel, what's said in it. Whatever doesn't work out
+ * falls back to the user adding places by search, with the reason.
  */
 async function extractReel(
   link: Extract<ParsedLink, { platform: 'instagram' }>,
@@ -130,17 +131,21 @@ async function extractReel(
   await t.step('limits', () => allowExtract(who));
   // Stored under its own prefix: a shortcode and a YouTube ID can't be told apart otherwise.
   const key = `ig:${link.shortcode}`;
-  const saved = await t.step('store', () => getExtraction(key));
+  const kept = await t.step('store', () => getExtraction(key));
+  // A photo post stored before its pictures were looked at was read from its caption alone: read it again.
+  const saved = kept && kept.video.durationSeconds === null && kept.signals?.slides === undefined ? null : kept;
   if (saved) return saved.places.length ? { ...saved, cached: true, timings: t.done() } : assist('no_places', saved.video, saved.region);
 
   if (!(await t.step('cap', () => allowReel('reel')))) return assist('daily_limit');
   let reel = await t.step('apify', () => getReel(link.url, token, { transcript: false }));
   if (!reel) return assist('unreadable');
-  const read = (r: ReelDetails, step: string) =>
+  const read = (r: ReelDetails, step: string, pictures?: Picture[]) =>
     t.step(step, () =>
-      findPlaces({ kind: 'instagram', reel: r }, env.geminiKey(), env.geminiModel(), env.geminiFallback()),
+      findPlaces({ kind: 'instagram', reel: r, pictures }, env.geminiKey(), env.geminiModel(), env.geminiFallback()),
     );
-  let found = hasText(reel) ? await read(reel, 'model') : null;
+  const slides = reel.slides;
+  const pictures = slides.length ? await t.step('slides', () => getSlides(slides)) : [];
+  let found = hasText(reel) || pictures.length ? await read(reel, 'model', pictures) : null;
 
   // Nothing in the text: try what's said in the reel. A miss is only remembered once that's been
   // tried (or can't be), so a reel turned away by today's cap gets another chance tomorrow.
@@ -168,6 +173,7 @@ async function extractReel(
     taggedAccounts: reel.tagged.length > 0 || reel.mentions.length > 0,
     comments: reel.comments.length > 0,
     transcript: !!reel.transcript,
+    slides: pictures.length > 0,
   };
   const result: DoneExtraction = {
     status: 'done',
@@ -179,6 +185,7 @@ async function extractReel(
       channel: `@${reel.owner}`,
       durationSeconds: reel.durationSeconds,
       thumbnail: reel.thumbnail,
+      slides: reel.slides.length,
     },
     region: found?.region ?? null,
     terrain: found?.terrain ?? null,

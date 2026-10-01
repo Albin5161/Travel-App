@@ -375,10 +375,18 @@ function toReel(res: Pick<Extract<ExtractResult, { status: 'done' }>, 'platform'
     duration: v.durationSeconds ? clock(v.durationSeconds) : '',
     thumbnail: v.thumbnail ? { uri: v.thumbnail } : 0,
     ...(v.frames?.length ? { frames: v.frames } : {}),
+    ...(v.slides !== undefined ? { slides: v.slides } : {}),
     cityId,
     placeIds: [],
   };
 }
+
+/** A photo post, not a video: an Instagram link whose pictures were what got read. */
+export const isPhotoPost = (reel: Reel) => !!reel.slides;
+
+/** How long a video is, or how many photos a post has: the small print beside who made it. */
+export const lengthLabel = (reel: Reel) =>
+  reel.slides ? `${reel.slides} ${reel.slides === 1 ? 'photo' : 'photos'}` : reel.duration;
 
 /**
  * The picture for a place with no photo of its own: the video frame nearest the place's moment in
@@ -514,6 +522,9 @@ const cache = {
       const raw = deviceStorage?.getItem(`${CACHE_PREFIX}${key}`);
       if (!raw) return null;
       const kept = JSON.parse(raw) as { at: number; extraction: Extraction };
+      // A photo post kept before its pictures were read (no length, no count) has only its caption's places.
+      const r = kept.extraction.reel;
+      if (r.platform === 'instagram' && !r.duration && r.slides === undefined) return null;
       return Date.now() - kept.at < CACHE_DAYS * 86400_000 ? kept : null;
     } catch {
       return null;

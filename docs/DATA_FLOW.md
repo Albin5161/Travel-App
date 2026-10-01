@@ -234,8 +234,13 @@ where it's stored, what happens on failure, and which screen gets the result.
    `apify~instagram-reel-scraper` with `{ username: [url], resultsLimit: 1, includeTranscript: false }`,
    waits up to 45 s (checked every 20 s), with a cost cap of `maxTotalChargeUsd` $0.01. It reads:
    caption, hashtags, mentions, tagged accounts, location tag, latest comments, owner, duration,
-   thumbnail. Failure → `assist: unreadable`. A run it stops waiting for is aborted.
-6. If the reel has any text, Gemini is called with the `INSTAGRAM_INTRO + RULES + INSTAGRAM_RULES`
+   thumbnail, and for a photo post (a `/p/` link that isn't a video) its pictures. Failure →
+   `assist: unreadable`. A run it stops waiting for is aborted.
+   - **Photo posts:** the pictures (up to 20, Instagram's image servers only, 2 MB each at most) are
+     fetched by `getSlides()` and sent to Gemini with the text, so a plan written on the slides is
+     read. No extra Apify cost; about 1,100 input tokens a slide. A post stored before this
+     (no duration, no `signals.slides`) is read again once.
+6. If the reel has any text or pictures, Gemini is called with the `INSTAGRAM_INTRO + RULES + INSTAGRAM_RULES`
    prompt and `sourceText()` (poster, location tag, caption up to 4,000 characters, hashtags, tagged
    and mentioned accounts, transcript up to 6,000, comments up to 300 characters each).
 7. **No places and the reel is ≤120 s long:** if the daily transcript cap allows (**1 a day**), Apify

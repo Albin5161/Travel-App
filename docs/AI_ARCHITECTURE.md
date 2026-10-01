@@ -92,6 +92,8 @@ the repo. If they're not set, the defaults above apply.
 - Use a comment only when it names a place shown (the creator answering "where is this?"), never
   viewers' recommendations.
 - Lower the confidence of names only heard in the machine transcript.
+- Read the words written on a photo post's slides like the caption; never name a place only from
+  what a picture shows. At most 25 places, in the post's order.
 
 **How the answer is used later:** `confidence` feeds `doubtful()` on the server (below 0.6 → a
 `needsCheck` flag). `visitMinutes` and `bestTime` feed the planner; when null, the app uses defaults

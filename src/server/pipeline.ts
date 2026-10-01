@@ -222,10 +222,19 @@ export async function match(req: Partial<MatchRequest>, who: Caller): Promise<Ma
   const begin = await t.step('begin', () => beginMatch(who, key, false));
   const saved = begin.stored;
   // Wikimedia's photo of the place when it has one it can vouch for; else one from Google's daily
-  // free cap; else none, and the app shows a frame of the video instead.
-  const photoOf = async (placeId: string, at: { lat: number; lng: number }, refs?: Parameters<typeof photoFor>[1]) =>
-    (await wikimediaPhoto(name, at)) ??
-    (env.placesPhotos() && (await allowPhoto()) ? await photoFor(placeId, refs, placesKey) : null);
+  // free cap; else none, and the app shows a frame of the video instead. A photo is never worth
+  // losing the place for: whatever goes wrong here (the cap's counter, Google) means "no photo".
+  const photoOf = async (placeId: string, at: { lat: number; lng: number }, refs?: Parameters<typeof photoFor>[1]) => {
+    try {
+      return (
+        (await wikimediaPhoto(name, at)) ??
+        (env.placesPhotos() && (await allowPhoto()) ? await photoFor(placeId, refs, placesKey) : null)
+      );
+    } catch (e) {
+      console.error('[match] photo skipped:', e instanceof Error ? `${e.name}: ${e.message}` : e);
+      return null;
+    }
+  };
 
   if (saved && !saved.placeId) {
     return { status: 'unmatched', needsCheck: true, cached: true, timings: t.done() };

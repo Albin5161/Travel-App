@@ -70,12 +70,10 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
 
   const failures: ApiFailure[] = [];
   const matched = await eachAtOnce(res.places, MATCH_AT_ONCE, (p) =>
-    post<MatchResult>('/api/match', { name: p.name, area: p.area, region: res.region, confidence: p.confidence }, MATCH_MS).catch(
-      (e: unknown) => {
-        failures.push(e instanceof ApiFailure ? e : new ApiFailure('upstream', 'Something went wrong on our side. Try again.', true));
-        return null;
-      },
-    ),
+    matchFound(p, res.region).catch((e: unknown) => {
+      failures.push(e instanceof ApiFailure ? e : new ApiFailure('upstream', 'Something went wrong on our side. Try again.', true));
+      return null;
+    }),
   );
   const pairs = res.places.flatMap((found, i) => {
     const m = matched[i];
@@ -138,6 +136,21 @@ function inKnownCity(e: Extraction): Extraction {
   };
 }
 
+/**
+ * One named place, looked up on the map. A failure on our side (not "no such place", not a limit)
+ * gets a second try before the place is given up on: the server keeps what it found the first
+ * time, so the second is quick, and a place that exists shouldn't be shown as not found.
+ */
+async function matchFound(p: FoundPlace, region: string | null): Promise<MatchResult> {
+  const ask = () => post<MatchResult>('/api/match', { name: p.name, area: p.area, region, confidence: p.confidence }, MATCH_MS);
+  try {
+    return await ask();
+  } catch (e) {
+    if (e instanceof ApiFailure && !e.retryable) throw e;
+    return ask();
+  }
+}
+
 // ── A city's best-known spots, for a video of it that named none ────────────────────────────────
 
 /**
@@ -146,11 +159,7 @@ function inKnownCity(e: Extraction): Extraction {
  */
 export async function bestKnownSpots(region: string, reel: Reel): Promise<Place[]> {
   const res = await post<SightsResult>('/api/sights', { region }, 30_000);
-  const matched = await eachAtOnce(res.places, MATCH_AT_ONCE, (p) =>
-    post<MatchResult>('/api/match', { name: p.name, area: p.area, region: res.region, confidence: p.confidence }, MATCH_MS).catch(
-      () => null,
-    ),
-  );
+  const matched = await eachAtOnce(res.places, MATCH_AT_ONCE, (p) => matchFound(p, res.region).catch(() => null));
   const pairs = res.places.flatMap((found, i) => {
     const m = matched[i];
     return m?.status === 'matched' ? [{ found, match: m.place }] : [];

@@ -80,7 +80,11 @@ async function get<T>(base: string, params: Record<string, string>): Promise<T |
   for (const [k, v] of Object.entries({ format: 'json', formatversion: '2', ...params })) url.searchParams.set(k, v);
   try {
     const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(TIMEOUT_MS) });
-    return res.ok ? ((await res.json()) as T) : null;
+    if (res.ok) return (await res.json()) as T;
+    // An answer left unread keeps its connection open, and the hosting runtime allows only a few at
+    // once: the calls after it (the photo cap's counter, Google) would be the ones to fail.
+    await res.body?.cancel();
+    return null;
   } catch {
     return null;
   }

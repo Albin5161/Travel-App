@@ -1,8 +1,9 @@
 import type { Caller } from './auth';
+import { callsForRequest, hostCalls, take } from './calls';
 import { env } from './env';
 import { ApiError } from './errors';
 import { bestKnown, findPlaces } from './gemini';
-import { getReel, getSlides, TRANSCRIPT_MAX_SECONDS, type Picture, type ReelDetails } from './instagram';
+import { getReel, slidePictures, TRANSCRIPT_MAX_SECONDS, type Picture, type ReelDetails } from './instagram';
 import { wikimediaPhoto } from './commons';
 import { allowCityNotes, allowExtract, allowFeedback, allowPhoto, allowPlaceInfo, allowReel, allowSearch, beginMatch } from './limits';
 import { parseLink, type ParsedLink } from './links';
@@ -143,15 +144,20 @@ async function extractReel(
     t.step(step, () =>
       findPlaces({ kind: 'instagram', reel: r, pictures }, env.geminiKey(), env.geminiModel(), env.geminiFallback()),
     );
-  const slides = reel.slides;
-  const pictures = slides.length ? await t.step('slides', () => getSlides(slides)) : [];
+  const pictures = slidePictures(reel.slides);
   let found = hasText(reel) || pictures.length ? await read(reel, 'model', pictures) : null;
 
   // Nothing in the text: try what's said in the reel. A miss is only remembered once that's been
   // tried (or can't be), so a reel turned away by today's cap gets another chance tomorrow.
   let settled = true;
+  // Listening is a second Apify run and a second read: about six more calls than the first pass's
+  // eight, which only a host that allows that many can finish (see calls.ts). Where it can't, the
+  // step is skipped rather than started and left running, paid for and unread.
   const canHear =
-    env.instagramTranscripts() && reel.durationSeconds !== null && reel.durationSeconds <= TRANSCRIPT_MAX_SECONDS;
+    env.instagramTranscripts() &&
+    hostCalls() >= CALLS_TO_HEAR &&
+    reel.durationSeconds !== null &&
+    reel.durationSeconds <= TRANSCRIPT_MAX_SECONDS;
   if (!found?.places.length && canHear) {
     if (await t.step('cap-transcript', () => allowReel('transcript'))) {
       const heard = await t.step('apify-transcript', () => getReel(link.url, token, { transcript: true }));
@@ -200,6 +206,9 @@ async function extractReel(
   return result.places.length ? { ...result, timings: t.done() } : assist('no_places', result.video, result.region);
 }
 
+/** A reel read and then listened to: both passes' calls, with room for a retry and a slow run. */
+const CALLS_TO_HEAR = 20;
+
 function hasText(r: ReelDetails): boolean {
   return !!(r.caption || r.location || r.tagged.length || r.mentions.length || r.comments.length || r.transcript);
 }
@@ -218,6 +227,11 @@ export async function match(req: Partial<MatchRequest>, who: Caller): Promise<Ma
   const key = pickedId ? `id:${pickedId}` : query.toLowerCase();
 
   const placesKey = env.placesKey();
+  // What this request may still spend on outgoing calls (see calls.ts). Finding and saving the place
+  // comes first (up to four calls); the photo gets what's left, which is enough for Wikimedia's two
+  // and Google's two or three.
+  const calls = callsForRequest();
+  take(calls);
   // Photos aren't counted here: a free one is looked for first, and Google's only when there's none.
   const begin = await t.step('begin', () => beginMatch(who, key, false));
   const saved = begin.stored;
@@ -226,10 +240,11 @@ export async function match(req: Partial<MatchRequest>, who: Caller): Promise<Ma
   // losing the place for: whatever goes wrong here (the cap's counter, Google) means "no photo".
   const photoOf = async (placeId: string, at: { lat: number; lng: number }, refs?: Parameters<typeof photoFor>[1]) => {
     try {
-      return (
-        (await wikimediaPhoto(name, at)) ??
-        (env.placesPhotos() && (await allowPhoto()) ? await photoFor(placeId, refs, placesKey) : null)
-      );
+      const free = await wikimediaPhoto(name, at, calls);
+      if (free || !env.placesPhotos()) return free;
+      // The cap's counter, the photo itself, and its reference when Google hasn't just given one.
+      if (!take(calls, refs ? 2 : 3)) return null;
+      return (await allowPhoto()) ? await photoFor(placeId, refs, placesKey) : null;
     } catch (e) {
       console.error('[match] photo skipped:', e instanceof Error ? `${e.name}: ${e.message}` : e);
       return null;
@@ -254,6 +269,8 @@ export async function match(req: Partial<MatchRequest>, who: Caller): Promise<Ma
   }
 
   // New, or its coordinates are past 30 days. The place ID is kept forever, so no new search then.
+  // The lookup and the save, and the search when the place isn't already known by its ID.
+  take(calls, pickedId || saved?.placeId ? 2 : 3);
   const placeId = pickedId ?? saved?.placeId ?? (await t.step('search', () => searchPlaceId(query, placesKey)));
   if (!placeId) {
     await putMatch(key, { placeId: null, location: null, needsCheck: true });

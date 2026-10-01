@@ -35,6 +35,16 @@ The app has two very different halves:
 Per person: 20 link reads an hour, 300 matches an hour, 150 searches an hour. Per network (IP): 60
 link reads and 900 matches an hour.
 
+**The host's own limit, found 1 Oct 2026.** EAS Hosting's free plan allows each request **10
+outgoing calls** ("subrequests": Google, Wikimedia, Gemini, Apify, each database call) and **10 ms
+of processing**; the 11th call fails with "Too many subrequests by single Worker invocation" (seen
+in the deployment's Logs as `[limits] consume: …`). The Starter plan ($19 a month) allows 10,000
+calls and 30 s. The code plans for the free plan (`src/server/calls.ts`): a place lookup uses at
+most 10 (sign-in keys 1, counters and stored match 1, search 1, details 1, save 1, Wikimedia 2,
+Google photo up to 3); reading a reel or photo post uses 8, leaving 2 for a slow Apify run or a
+Gemini retry; a post's pictures go to Gemini as links, never through our server; and listening to a
+reel (about 14 calls) is skipped unless `HOST_CALLS_PER_REQUEST` is set to 20 or more.
+
 **The first real bottleneck is the 300 new place lookups a day.** A new video has up to 100 places
 (typically far fewer; a photo post with a multi-day plan can name 60–70, a fifth of the day's allowance). At ~8 new places per video, about **35–40 genuinely new videos a day** use the
 whole allowance. After that, new place names fail with `503 quota`. If *every* place in a video

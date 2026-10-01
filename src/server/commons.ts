@@ -1,24 +1,31 @@
+import { take, type Calls } from './calls';
 import type { PlacePhoto } from './types';
 
-// A free photo of a place from Wikimedia, tried before Google's (capped) photos. Famous places
-// nearly always have one: the photo on the place's Wikipedia article, or a photo on Wikimedia
-// Commons taken there. Freely licensed, so each carries its author and licence as a credit.
+// A free photo of a place from Wikimedia Commons, tried before Google's (capped) photos. Famous
+// places nearly always have one: a photo taken there, or found by the place's name and taken near
+// it. Freely licensed, so each carries its author and licence as a credit.
+//
+// The photo on the place's Wikipedia article used to be tried first, but it never came through: the
+// article names its image with underscores, Commons answers with spaces, and the two were compared
+// as written. Three calls for nothing, so that stage is gone. Done properly it would change the
+// photo of most landmarks, which is a choice to make on purpose, not a side effect.
 //
 // What can go wrong, and what stops it:
-// - A namesake elsewhere ("Jew Town" in another country): every article or file must be near the
-//   place's own coordinates.
+// - A namesake elsewhere ("Jew Town" in another country): every file must be near the place's own
+//   coordinates.
 // - A photo that isn't of the place (a street sign, a shop, a floor plan near a café): a photo only
 //   counts when its title names the place, by a word that isn't generic like "beach" or "cafe".
-// - An article image that isn't a photo (Pangong Tso's is taken from space, others are maps,
-//   logos or seals): such file names are refused, and so are drawings (SVG) and small images.
+// - A file that isn't a photo (taken from space, a map, a logo, a seal): such file names and
+//   categories are refused, and so are drawings (SVG) and small images.
 // - Wikimedia slow or down: every call gives up after a few seconds, and the place simply goes on
 //   to Google's photo or the video's own frame.
+// - The host's limit on outgoing calls: two are made here, each bringing the files' details with
+//   it, and only while the request has them to spend.
 
 const HEADERS = { 'User-Agent': 'Xplore/0.1 (travel planner; 5161.albin@gmail.com)', Accept: 'application/json' };
-const WIKIPEDIA = 'https://en.wikipedia.org/w/api.php';
 const COMMONS = 'https://commons.wikimedia.org/w/api.php';
 const TIMEOUT_MS = 4000;
-/** An article about the place sits within this of Google's point for it (lakes and valleys are big). */
+/** A photo found by the place's name was taken within this of Google's point for it (lakes and valleys are big). */
 const ARTICLE_KM = 20;
 /** A photo taken at the place: close to Google's point. */
 const NEARBY_M = 400;
@@ -90,69 +97,52 @@ async function get<T>(base: string, params: Record<string, string>): Promise<T |
   }
 }
 
-type Page = { title: string; pageimage?: string; coordinates?: { lat: number; lon: number }[]; missing?: boolean };
+// What's asked about every file, so choosing one needs no further call.
+const FILE_INFO = {
+  prop: 'imageinfo|coordinates',
+  // Every file's position, not the first ten's: the default would leave the rest looking placeless.
+  colimit: 'max',
+  iiprop: 'url|size|mime|extmetadata',
+  iiurlwidth: String(WIDTH),
+  iiextmetadatafilter: 'Artist|LicenseShortName|Categories',
+};
 
-/** The photo on the place's Wikipedia article: found by position, or by name if the article is near. */
-async function fromWikipedia(name: string, at: LatLng, keys: string[]): Promise<string | null> {
-  const props = { prop: 'pageimages|coordinates', piprop: 'name', coprimary: 'primary' };
+/** A photo on Commons taken at the place, or found by the place's name and taken near it. */
+async function fromCommons(name: string, at: LatLng, keys: string[], sombreOk: boolean): Promise<PlacePhoto | null> {
   const [nearby, byName] = await Promise.all([
-    get<{ query?: { pages?: Page[] } }>(WIKIPEDIA, {
+    get<{ query?: { pages?: ImageInfo[] } }>(COMMONS, {
       action: 'query',
       generator: 'geosearch',
       ggscoord: `${at.lat}|${at.lng}`,
-      ggsradius: '1500',
-      ggslimit: '15',
-      ...props,
+      ggsradius: String(NEARBY_M),
+      ggsnamespace: '6',
+      ggslimit: '30',
+      codistancefrompoint: `${at.lat}|${at.lng}`,
+      ...FILE_INFO,
     }),
-    get<{ query?: { pages?: Page[] } }>(WIKIPEDIA, { action: 'query', titles: name, redirects: '1', ...props }),
-  ]);
-  const near = (p: Page) => {
-    const c = p.coordinates?.[0];
-    return !!c && km(at, { lat: c.lat, lng: c.lon }) <= ARTICLE_KM;
-  };
-  const candidates = [
-    ...(byName?.query?.pages ?? []).filter((p) => !p.missing && near(p)),
-    ...(nearby?.query?.pages ?? []).filter((p) => names(p.title, keys)),
-  ];
-  const good = candidates.find((p) => p.pageimage && !NOT_A_PHOTO.test(p.pageimage));
-  return good?.pageimage ? `File:${good.pageimage}` : null;
-}
-
-type GeoHit = { title: string };
-type FilePage = { title: string; coordinates?: { lat: number; lon: number }[] };
-
-/** A photo on Commons taken at the place, or found by the place's name and taken near it. */
-async function fromCommons(name: string, at: LatLng, keys: string[]): Promise<string[]> {
-  const [nearby, byName] = await Promise.all([
-    get<{ query?: { geosearch?: GeoHit[] } }>(COMMONS, {
-      action: 'query',
-      list: 'geosearch',
-      gscoord: `${at.lat}|${at.lng}`,
-      gsradius: String(NEARBY_M),
-      gsnamespace: '6',
-      gslimit: '30',
-    }),
-    get<{ query?: { pages?: FilePage[] } }>(COMMONS, {
+    get<{ query?: { pages?: ImageInfo[] } }>(COMMONS, {
       action: 'query',
       generator: 'search',
       gsrsearch: `${name} filetype:bitmap`,
       gsrnamespace: '6',
       gsrlimit: '15',
-      prop: 'coordinates',
+      ...FILE_INFO,
     }),
   ]);
-  const close = (nearby?.query?.geosearch ?? []).map((g) => g.title).filter((t) => names(t, keys));
-  const named = (byName?.query?.pages ?? [])
-    .filter((p) => {
-      const c = p.coordinates?.[0];
-      return names(p.title, keys) && !!c && km(at, { lat: c.lat, lng: c.lon }) <= ARTICLE_KM;
-    })
-    .map((p) => p.title);
-  return [...close, ...named].filter((t) => !NOT_A_PHOTO.test(t));
+  const far = (p: ImageInfo) => {
+    const c = p.coordinates?.[0];
+    return c ? km(at, { lat: c.lat, lng: c.lon }) : Infinity;
+  };
+  // Metres from the place, as Commons measures it: the nearest file first, as its own list gives them.
+  const metres = (p: ImageInfo) => p.coordinates?.[0]?.dist ?? far(p) * 1000;
+  const close = (nearby?.query?.pages ?? []).filter((p) => names(p.title, keys)).sort((a, b) => metres(a) - metres(b));
+  const named = (byName?.query?.pages ?? []).filter((p) => names(p.title, keys) && far(p) <= ARTICLE_KM);
+  return choose([...close, ...named].filter((p) => !NOT_A_PHOTO.test(p.title)), sombreOk);
 }
 
 type ImageInfo = {
   title: string;
+  coordinates?: { lat: number; lon: number; dist?: number }[];
   imageinfo?: {
     thumburl?: string;
     width?: number;
@@ -172,20 +162,13 @@ const plain = (html: string | undefined) =>
     .trim();
 
 /** The first of these files that's a real photo, big enough, with a free licence, as the app's photo. */
-async function pick(files: string[], sombreOk: boolean): Promise<PlacePhoto | null> {
-  const unique = [...new Set(files)].slice(0, 12);
-  if (unique.length === 0) return null;
-  const res = await get<{ query?: { pages?: ImageInfo[] } }>(COMMONS, {
-    action: 'query',
-    titles: unique.join('|'),
-    prop: 'imageinfo',
-    iiprop: 'url|size|mime|extmetadata',
-    iiurlwidth: String(WIDTH),
-    iiextmetadatafilter: 'Artist|LicenseShortName|Categories',
-  });
-  const pages = new Map((res?.query?.pages ?? []).map((p) => [p.title, p]));
-  for (const title of unique) {
-    const info = pages.get(title)?.imageinfo?.[0];
+function choose(files: ImageInfo[], sombreOk: boolean): PlacePhoto | null {
+  const seen = new Set<string>();
+  for (const { title, imageinfo } of files) {
+    if (seen.has(title)) continue;
+    if (seen.size >= 12) break;
+    seen.add(title);
+    const info = imageinfo?.[0];
     if (!info?.thumburl || !/^image\/(jpeg|png|webp)$/.test(info.mime ?? '') || (info.width ?? 0) < MIN_WIDTH) continue;
     const license = plain(info.extmetadata?.LicenseShortName?.value);
     if (!license) continue;
@@ -203,14 +186,13 @@ async function pick(files: string[], sombreOk: boolean): Promise<PlacePhoto | nu
   return null;
 }
 
-/** A free, credited photo of the place, or null when Wikimedia has none it can vouch for. */
-export async function wikimediaPhoto(name: string, at: LatLng): Promise<PlacePhoto | null> {
+/**
+ * A free, credited photo of the place, or null when Wikimedia has none it can vouch for. Two calls,
+ * made only if the request has them to spend (`calls`).
+ */
+export async function wikimediaPhoto(name: string, at: LatLng, calls: Calls): Promise<PlacePhoto | null> {
   const keys = keywords(name);
   // A name that's all generic words ("The Beach Cafe") can't be matched safely.
   if (keys.length === 0) return null;
-  const sombreOk = SOMBRE.test(name);
-  const article = await fromWikipedia(name, at, keys);
-  const fromArticle = article ? await pick([article], sombreOk) : null;
-  if (fromArticle) return fromArticle;
-  return pick(await fromCommons(name, at, keys), sombreOk);
+  return take(calls, 2) ? fromCommons(name, at, keys, SOMBRE.test(name)) : null;
 }

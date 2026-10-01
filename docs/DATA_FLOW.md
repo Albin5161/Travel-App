@@ -236,10 +236,11 @@ where it's stored, what happens on failure, and which screen gets the result.
    caption, hashtags, mentions, tagged accounts, location tag, latest comments, owner, duration,
    thumbnail, and for a photo post (a `/p/` link that isn't a video) its pictures. Failure →
    `assist: unreadable`. A run it stops waiting for is aborted.
-   - **Photo posts:** the pictures (up to 20, Instagram's image servers only, 2 MB each at most) are
-     fetched by `getSlides()` and sent to Gemini with the text, so a plan written on the slides is
-     read. No extra Apify cost; about 1,100 input tokens a slide. A post stored before this
-     (no duration, no `signals.slides`) is read again once.
+   - **Photo posts:** the pictures' links (up to 20, Instagram's image servers only) are passed to
+     Gemini with the text (`slidePictures()`), and Gemini fetches them itself, so a plan written on
+     the slides is read. No extra Apify cost and no downloading on our server (the host allows a
+     request 10 outgoing calls); about 1,100 input tokens a slide. A post stored before this (no
+     duration, no `signals.slides`) is read again once.
 6. If the reel has any text or pictures, Gemini is called with the `INSTAGRAM_INTRO + RULES + INSTAGRAM_RULES`
    prompt and `sourceText()` (poster, location tag, caption up to 4,000 characters, hashtags, tagged
    and mentioned accounts, transcript up to 6,000, comments up to 300 characters each).

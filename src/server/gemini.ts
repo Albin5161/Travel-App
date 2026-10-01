@@ -93,7 +93,7 @@ const RETRYABLE = new Set([429, 500, 503]);
 
 export type Source =
   | { kind: 'youtube'; video: VideoDetails }
-  /** `pictures` are a photo post's slides, already fetched. */
+  /** `pictures` are links to a photo post's slides. */
   | { kind: 'instagram'; reel: ReelDetails; pictures?: Picture[] };
 
 function sourceText(s: Source): string {
@@ -164,7 +164,7 @@ export async function bestKnown(region: string, key: string, model: string, fall
  * One JSON answer from Gemini: a fixed instruction, the text as data, and the schema the answer must
  * follow. Free-tier calls are the first turned away when a model is busy (503) or a per-model limit
  * is hit (429), so the chosen model is tried twice, then the lighter fallback, before giving up.
- * `pictures` go in after the text, for the model to read the words on them.
+ * `pictures` go in after the text, as links Gemini fetches itself, for it to read the words on them.
  */
 export async function generate(
   system: string,
@@ -177,7 +177,7 @@ export async function generate(
 ): Promise<{ parsed: Record<string, unknown> | null; usage: ModelResult['usage'] }> {
   const request = JSON.stringify({
     systemInstruction: { parts: [{ text: system }] },
-    contents: [{ role: 'user', parts: [{ text }, ...pictures.map((p) => ({ inlineData: p }))] }],
+    contents: [{ role: 'user', parts: [{ text }, ...pictures.map((p) => ({ fileData: p }))] }],
     generationConfig: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.2 },
   });
   const attempts = [model, model, ...(fallback && fallback !== model ? [fallback] : [])];

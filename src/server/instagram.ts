@@ -18,10 +18,9 @@ const WAIT_SECONDS = 20;
 /** Only short reels get a transcript: two started minutes at most, about $0.10. */
 export const TRANSCRIPT_MAX_SECONDS = 120;
 
-/** A photo post holds up to 20 pictures. Each is about 300 KB; one far larger isn't a slide worth reading. */
+/** A photo post holds up to 20 pictures. */
 const SLIDES_MAX = 20;
-const SLIDE_MAX_BYTES = 2_000_000;
-/** Pictures are only ever fetched from Instagram's own image servers, whatever link the scraper hands back. */
+/** Only links to Instagram's own image servers are passed on, whatever the scraper hands back. */
 const SLIDE_HOST = /(^|\.)(cdninstagram\.com|fbcdn\.net)$/;
 
 export type ReelDetails = {
@@ -49,8 +48,8 @@ export type ReelDetails = {
   slides: string[];
 };
 
-/** One slide, ready to hand to the model. */
-export type Picture = { mimeType: string; data: string };
+/** One slide, as the model takes it: a link it fetches itself, and what kind of image it is. */
+export type Picture = { mimeType: string; fileUri: string };
 
 /**
  * One public reel, or null when it can't be read: private or deleted, not a reel, Apify's monthly
@@ -102,35 +101,20 @@ export async function getReel(
 }
 
 /**
- * A post's slides, fetched and encoded for the model. One that can't be fetched (an expired link, a
- * server other than Instagram's, something too large) is left out; the rest are still read.
+ * A post's slides as links for the model to fetch. Our server never downloads them: the host allows
+ * a request ten outgoing calls and 10 ms of processing, and ten pictures would spend both.
  */
-export async function getSlides(urls: string[]): Promise<Picture[]> {
-  const got = await Promise.all(
-    urls.slice(0, SLIDES_MAX).map(async (link): Promise<Picture | null> => {
-      try {
-        const url = new URL(link);
-        if (url.protocol !== 'https:' || !SLIDE_HOST.test(url.hostname)) return null;
-        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-        const mimeType = (res.headers.get('content-type') ?? '').split(';')[0];
-        if (!res.ok || !/^image\/(jpeg|png|webp)$/.test(mimeType)) return null;
-        const bytes = await res.arrayBuffer();
-        if (bytes.byteLength > SLIDE_MAX_BYTES) return null;
-        return { mimeType, data: base64(bytes) };
-      } catch {
-        return null;
-      }
-    }),
-  );
-  return got.filter((p): p is Picture => !!p);
-}
-
-/** Bytes as base64, with the web's own `btoa`, in pieces small enough to spread into one call. */
-function base64(bytes: ArrayBuffer): string {
-  const view = new Uint8Array(bytes);
-  let binary = '';
-  for (let i = 0; i < view.length; i += 0x8000) binary += String.fromCharCode(...view.subarray(i, i + 0x8000));
-  return btoa(binary);
+export function slidePictures(urls: string[]): Picture[] {
+  return urls.slice(0, SLIDES_MAX).flatMap((link) => {
+    try {
+      const url = new URL(link);
+      if (url.protocol !== 'https:' || !SLIDE_HOST.test(url.hostname)) return [];
+      const kind = url.pathname.match(/\.(png|webp)$/i)?.[1].toLowerCase() ?? 'jpeg';
+      return [{ mimeType: `image/${kind}`, fileUri: url.href }];
+    } catch {
+      return [];
+    }
+  });
 }
 
 /** One Apify API call. Run objects come wrapped in `data`; dataset items come as a bare array. */

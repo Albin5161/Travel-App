@@ -66,7 +66,7 @@ the repo. If they're not set, the defaults above apply.
 | Prompt location | `src/server/gemini.ts`: `YOUTUBE_INTRO` / `INSTAGRAM_INTRO`, `RULES`, `INSTAGRAM_RULES`, combined in `SYSTEM` |
 | Input (user turn) | `sourceText()`. **YouTube:** Title, Channel, Tags, Description (first 6,000 characters). **Instagram:** Posted by, Location tag, Caption (4,000), Hashtags, Tagged accounts, Mentioned accounts, Transcript (6,000), Comments (300 each). |
 | Output schema (`SCHEMA`) | `{ region: string\|null, terrain: 'flat'\|'hilly'\|'mountain'\|null, places: [{ name, type: 'food'\|'stay'\|'sight'\|'experience', area\|null, why, timestamp\|null, confidence: number, visitMinutes: int\|null, bestTime: 'morning'\|'afternoon'\|'evening'\|null, price: int\|null }] }`, all fields required |
-| Validation after | `cleanPlaces()` (see [DATA_FLOW.md](DATA_FLOW.md), Part 3, row 10): at most 25 places, deduplicated by name, and out-of-range values become "unknown" rather than being squeezed into range |
+| Validation after | `cleanPlaces()` (see [DATA_FLOW.md](DATA_FLOW.md), Part 3, row 10): at most 100 places (a ceiling, not a target), deduplicated by name, and out-of-range values become "unknown" rather than being squeezed into range |
 | Where the answer goes | `api_extractions` (30 days), then the phone matches each place on Google |
 
 **What the rules tell the model** (a summary of `RULES`; the full text is in the file):
@@ -93,7 +93,7 @@ the repo. If they're not set, the defaults above apply.
   viewers' recommendations.
 - Lower the confidence of names only heard in the machine transcript.
 - Read the words written on a photo post's slides like the caption; never name a place only from
-  what a picture shows. At most 25 places, in the post's order.
+  what a picture shows. Every place the post names, in its order, up to a ceiling of 100.
 
 **How the answer is used later:** `confidence` feeds `doubtful()` on the server (below 0.6 → a
 `needsCheck` flag). `visitMinutes` and `bestTime` feed the planner; when null, the app uses defaults

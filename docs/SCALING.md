@@ -35,8 +35,8 @@ The app has two very different halves:
 Per person: 20 link reads an hour, 300 matches an hour, 150 searches an hour. Per network (IP): 60
 link reads and 900 matches an hour.
 
-**The first real bottleneck is the 300 new place lookups a day.** A new video has up to 25 places
-(typically fewer). At ~8 new places per video, about **35–40 genuinely new videos a day** use the
+**The first real bottleneck is the 300 new place lookups a day.** A new video has up to 100 places
+(typically far fewer; a photo post with a multi-day plan can name 60–70, a fifth of the day's allowance). At ~8 new places per video, about **35–40 genuinely new videos a day** use the
 whole allowance. After that, new place names fail with `503 quota`. If *every* place in a video
 fails, the person sees "We've reached today's limit"; if some were already stored, they get a partial
 list. The second bottleneck is **Instagram: 20 new reels a day**, after which reels fall back to "add

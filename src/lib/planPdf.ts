@@ -11,8 +11,6 @@ import { isCustom } from '@/data/custom';
 import { fromIso, partOf, type Party, type TripPlan } from '@/data/planner';
 import type { City } from '@/data/types';
 import { whyDay, whyStop } from '@/data/why';
-import { uriOf } from '@/lib/blur';
-import { loadImage } from '@/lib/cardImage';
 import { formatClock, formatDuration, type Getting } from '@/lib/geo';
 import { lookFor } from '@/lib/patterns';
 import { QR_LINK, QR_QUIET, QR_RUNS, QR_SIZE } from '@/lib/qr';
@@ -21,13 +19,25 @@ import { colors, light } from '@/theme/tokens';
 // The plan as a PDF to keep: a cover with the city's photo, what the plan is and how it was made,
 // then each day with the planner's reasons and a timeline of its stops, and what didn't fit. Drawn
 // on A4 in the app's own type (Plus Jakarta Sans headings, Geist text) and inks, light, so it
-// prints. Web only: jsPDF is loaded when someone asks for a PDF, never with the app.
+// prints. This file only draws: the website and the phone apps each bring jsPDF, the font files and
+// the cover photo their own way, and take the finished file from there (planPdfSave).
 
 export type PdfInput = { city: City; plan: TripPlan; issued: Date; creators: string[] };
+/** A font as jsPDF embeds it: the TTF's bytes in base64. */
+export type PdfFont = { family: string; file: string; data: string };
+/**
+ * The cover's photo: a JPEG already cut to the band's shape. The website shades it as it cuts it;
+ * a phone can only cut, so the shade is laid over it here.
+ */
+export type PdfPhoto = { jpeg: string; shaded: boolean };
 
 const W = 595.28;
 const H = 841.89;
 const M = 44;
+/** The cover's photo band. */
+const BAND = 318;
+/** The size the cover photo is cut to: the band, at twice its points. */
+export const COVER_PHOTO = { width: Math.round(W * 2), height: BAND * 2 };
 /** Content stops here; the footer is below. */
 const BOTTOM = H - 64;
 const INK = light.ink;
@@ -44,9 +54,13 @@ const PART_TITLE = { morning: 'MORNING', afternoon: 'AFTERNOON', evening: 'EVENI
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-/** The plan as a PDF file, ready for the share sheet or a download. */
-export async function planPdfFile({ city, plan, issued, creators }: PdfInput): Promise<File> {
-  const [{ jsPDF }, fonts, photo] = await Promise.all([import('jspdf/dist/jspdf.es.min.js'), loadFontFiles(), photoFor(city)]);
+/** Draws the whole plan into a new jsPDF document. */
+export function drawPlanPdf(
+  jsPDF: typeof JsPDF,
+  fonts: PdfFont[],
+  photo: PdfPhoto | null,
+  { city, plan, issued, creators }: PdfInput,
+): JsPDF {
   const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   for (const f of fonts) {
     doc.addFileToVFS(f.file, f.data);
@@ -60,21 +74,30 @@ export async function planPdfFile({ city, plan, issued, creators }: PdfInput): P
   leftOut(pdf, plan);
   closing(pdf);
   footers(pdf, city, issued);
-
-  const blob = doc.output('blob');
-  const safe = `xplore-${city.name}-plan`.toLowerCase().replace(/[^a-z0-9-]+/g, '-');
-  return new File([blob], `${safe}.pdf`, { type: 'application/pdf' });
+  return doc;
 }
+
+/** "xplore-delhi-plan.pdf" */
+export const pdfName = (city: City) => `${`xplore-${city.name}-plan`.toLowerCase().replace(/[^a-z0-9-]+/g, '-')}.pdf`;
 
 // ── The pages ─────────────────────────────────────────────────────────────────────────────────
 
-const BAND = 318;
+/**
+ * The cover photo's shade, for a photo that arrives without it: black, darker at the top (the
+ * wordmark) and from the middle down (the title), so white type reads on any photo. A see-through
+ * PNG one pixel wide and 128 tall, stretched over the band, with the same four stops the website
+ * paints into its photo (0.32 at the top, 0.04 at 22%, 0.08 at 45%, 0.62 at the foot).
+ */
+const SHADE =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAACACAYAAADK+QP0AAAALUlEQVR42mNiYGAIYmJgYPgLJ/4RyaKdYkYQwQAnqMOlxBQmehGMdLVtEDgXAIYdHZ+Ywal/AAAAAElFTkSuQmCC';
 
 /** The city's photo across the top, darkened at the foot, with the plan's name over it. */
-function cover(pdf: Page, city: City, plan: TripPlan, photo: string | null) {
+function cover(pdf: Page, city: City, plan: TripPlan, photo: PdfPhoto | null) {
   const { doc } = pdf;
-  if (photo) doc.addImage(photo, 'JPEG', 0, 0, W, BAND);
-  else {
+  if (photo) {
+    doc.addImage(photo.jpeg, 'JPEG', 0, 0, W, BAND);
+    if (!photo.shaded) doc.addImage(SHADE, 'PNG', 0, 0, W, BAND);
+  } else {
     doc.setFillColor(lookFor(city.state).ground);
     doc.rect(0, 0, W, BAND, 'F');
   }
@@ -446,64 +469,11 @@ function longDay(iso: string) {
 
 const list = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
-// ── Loading ───────────────────────────────────────────────────────────────────────────────────
-
-const FONTS = [
+/** The app's own fonts, by the names the pages above ask for them. */
+export const PDF_FONTS = [
   { family: 'Geist', file: 'Geist-Regular.ttf', source: Geist_400Regular },
   { family: 'GeistMedium', file: 'Geist-Medium.ttf', source: Geist_500Medium },
   { family: 'GeistSemi', file: 'Geist-SemiBold.ttf', source: Geist_600SemiBold },
   { family: 'JakartaBold', file: 'PlusJakartaSans-Bold.ttf', source: PlusJakartaSans_700Bold },
   { family: 'Jakarta', file: 'PlusJakartaSans-ExtraBold.ttf', source: PlusJakartaSans_800ExtraBold },
 ];
-
-let fontFiles: Promise<{ family: string; file: string; data: string }[]> | null = null;
-/** The app's own fonts, as the PDF embeds them; fetched once. */
-function loadFontFiles() {
-  fontFiles ??= Promise.all(
-    FONTS.map(async (f) => {
-      // On the web a bundled font is a plain URL; elsewhere an asset id.
-      const uri = typeof f.source === 'string' ? f.source : uriOf(f.source as number);
-      if (!uri) throw new Error(`No font ${f.family}`);
-      const bytes = new Uint8Array(await (await fetch(uri)).arrayBuffer());
-      return { family: f.family, file: f.file, data: base64(bytes) };
-    }),
-  ).catch((e: unknown) => {
-    fontFiles = null;
-    throw e;
-  });
-  return fontFiles;
-}
-
-function base64(bytes: Uint8Array) {
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s);
-}
-
-/** The city's photo cropped to the cover band, as a JPEG; null when it can't be read back. */
-async function photoFor(city: City): Promise<string | null> {
-  const img = await loadImage(city.hero);
-  if (!img) return null;
-  const scale = 2;
-  const cw = Math.round(W * scale);
-  const ch = Math.round(BAND * scale);
-  const canvas = document.createElement('canvas');
-  canvas.width = cw;
-  canvas.height = ch;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  const k = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
-  const w = img.naturalWidth * k;
-  const h = img.naturalHeight * k;
-  ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
-  // Darker at the top (the wordmark) and from the middle down (the title), so white type reads on
-  // any photo. Painted into the photo: one smooth gradient, no seams.
-  const shade = ctx.createLinearGradient(0, 0, 0, ch);
-  shade.addColorStop(0, 'rgba(0,0,0,0.32)');
-  shade.addColorStop(0.22, 'rgba(0,0,0,0.04)');
-  shade.addColorStop(0.45, 'rgba(0,0,0,0.08)');
-  shade.addColorStop(1, 'rgba(0,0,0,0.62)');
-  ctx.fillStyle = shade;
-  ctx.fillRect(0, 0, cw, ch);
-  return canvas.toDataURL('image/jpeg', 0.85);
-}

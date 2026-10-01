@@ -85,11 +85,12 @@ export async function saveImage(
 
 /**
  * The plan as a PDF: into the share sheet where there is one (iPhone: Save to Files, WhatsApp,
- * Mail), else as a download. Web only for now; the PDF code loads on the first ask.
+ * Mail), else as a download. The PDF code loads on the first ask; the website and the phone apps
+ * each have their own way of making the file (planPdfSave).
  */
 export async function savePlanPdf(input: PdfInput): Promise<SaveResult> {
-  const { planPdfFile } = await import('@/lib/planPdf');
-  return deliver(await planPdfFile(input));
+  const { savePlanPdf: save } = await import('@/lib/planPdfSave');
+  return save(input);
 }
 
 /**
@@ -127,7 +128,7 @@ export async function sharePlanCard(card: RefObject<View | null>, message: strin
 }
 
 /** A made file, on the web: the share sheet where the browser has one, else a download. */
-async function deliver(file: File): Promise<SaveResult> {
+export async function deliver(file: File): Promise<SaveResult> {
   const nav = navigator as WebNav;
   if (nav.canShare?.({ files: [file] })) {
     try {

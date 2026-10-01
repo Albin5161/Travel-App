@@ -105,7 +105,7 @@ flowchart LR
 | **Error tracking** | No Sentry or similar. A root `ErrorBoundary` shows a recovery screen and sends an `app crashed` event (error name only) to PostHog. | Know that crashes happen, without collecting data | `ErrorBoundary` in `src/app/_layout.tsx` | Phone → PostHog |
 | **CI/CD** | **None in the repo.** No `.github/` workflows, no `eas.json`. Builds and deploys are run by hand. | n/a | n/a | Developer machine |
 | **Environment config** | `.env.local` (git-ignored) holds keys; `.env.example` documents them. Names starting `EXPO_PUBLIC_` are built into the app and are public; all others are server-only. | Keep secrets off the phone | `.env.example`, `src/server/env.ts`, `src/lib/api.ts`, `src/lib/live/client.ts` | Developer machine + EAS env vars |
-| **Other device features** | Location + background geofencing (arrival alerts), local notifications, haptics, sounds, clipboard, share sheet, image capture (phones), jsPDF (web PDF) | Product features | `src/lib/arrival.ts`, `src/lib/haptics.ts`, `src/lib/sound.ts`, `src/lib/share.ts`, `src/lib/planPdf.ts`, `src/lib/cardImage.ts` | Phone / browser |
+| **Other device features** | Location + background geofencing (arrival alerts), local notifications, haptics, sounds, clipboard, share sheet, image capture (phones), jsPDF (the plan's PDF, on the website and the phones) | Product features | `src/lib/arrival.ts`, `src/lib/haptics.ts`, `src/lib/sound.ts`, `src/lib/share.ts`, `src/lib/planPdf.ts`, `src/lib/planPdfSave.ts` (`.native.ts` on phones), `src/lib/cardImage.ts` | Phone / browser |
 
 ---
 

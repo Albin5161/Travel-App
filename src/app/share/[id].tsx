@@ -216,16 +216,14 @@ export default function ShareScreen() {
             style={styles.save}
             accessibilityHint="Saves a tall version for Instagram or WhatsApp stories"
           />
-          {pdf.available ? (
-            <Button
-              kind="secondary"
-              compact
-              label={pdf.making ? 'Making…' : 'PDF'}
-              onPress={savePdf}
-              style={styles.save}
-              accessibilityHint="Saves the plan as a PDF: every day, to print or keep for the trip"
-            />
-          ) : null}
+          <Button
+            kind="secondary"
+            compact
+            label={pdf.making ? 'Making…' : 'PDF'}
+            onPress={savePdf}
+            style={styles.save}
+            accessibilityHint="Saves the plan as a PDF: every day, to print or keep for the trip"
+          />
         </View>
         {sent && party === 'solo' ? null : (
           <Button kind="text" label={sent ? 'Done' : 'Done for now'} onPress={() => router.dismissTo('/trips')} />

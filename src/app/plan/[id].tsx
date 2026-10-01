@@ -576,20 +576,18 @@ export default function PlanScreen() {
               before you go.
             </Text>
             {/* A copy to keep: every day, its reasons and its stops, to print or open offline. */}
-            {pdf.available ? (
-              <Button
-                kind="secondary"
-                compact
-                label={pdf.making ? 'Making the PDF…' : 'Download as PDF'}
-                onPress={async () => {
-                  const result = await pdf.save();
-                  if (result === 'failed') setNote('Couldn’t make the PDF. Try again?');
-                  else if (result === 'downloaded') setNote('PDF saved to your downloads.');
-                }}
-                style={styles.pdf}
-                accessibilityHint="A printable copy of every day, to keep for the trip"
-              />
-            ) : null}
+            <Button
+              kind="secondary"
+              compact
+              label={pdf.making ? 'Making the PDF…' : 'Download as PDF'}
+              onPress={async () => {
+                const result = await pdf.save();
+                if (result === 'failed') setNote('Couldn’t make the PDF. Try again?');
+                else if (result === 'downloaded') setNote('PDF saved to your downloads.');
+              }}
+              style={styles.pdf}
+              accessibilityHint="A printable copy of every day, to keep for the trip"
+            />
           </View>
         </Animated.ScrollView>
 

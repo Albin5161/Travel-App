@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Platform } from 'react-native';
 
 import { getReel } from '@/data/api';
 import type { TripPlan } from '@/data/planner';
@@ -11,7 +10,7 @@ import { useTrips } from '@/state/trips';
 
 /**
  * Saving a plan as a PDF, from any screen that shows one: who made the videos comes from the city's
- * collection. `available` is false on the phone apps for now (the PDF is drawn in the browser).
+ * collection.
  */
 export function usePlanPdf(city: City | undefined, plan: TripPlan | undefined) {
   const { state } = useTrips();
@@ -37,5 +36,5 @@ export function usePlanPdf(city: City | undefined, plan: TripPlan | undefined) {
     }
   };
 
-  return { making, save, available: Platform.OS === 'web' };
+  return { making, save };
 }

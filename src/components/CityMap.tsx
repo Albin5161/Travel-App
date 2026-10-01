@@ -57,6 +57,7 @@ function tilted(dx: number, dy: number, t: number) {
 
 /** The flat-map offset from centre that lands `d` points below the centre once tilted by t degrees. */
 export function untilt(d: number, t: number) {
+  'worklet';
   const a = (t * Math.PI) / 180;
   return (d * DEPTH) / (DEPTH * Math.cos(a) + d * Math.sin(a));
 }

@@ -12,7 +12,11 @@ import { cleared, EASE, hold, LAND, seg, useLoop } from './loop';
 // One stop in a shared plan, voted on live: three friends react one after another, the bar fills in
 // their colours, Meera types a counter-suggestion, and the stop settles as Keeping.
 const CYCLE = 6400;
-const VOTE = (i: number) => 0.08 + i * 0.1;
+/** When voter `i` reacts, on the loop's clock. Read by the animations, so it runs on the UI thread. */
+function VOTE(i: number) {
+  'worklet';
+  return 0.08 + i * 0.1;
+}
 const TYPING: [number, number] = [0.4, 0.5];
 const DECIDED: [number, number] = [0.62, 0.68];
 

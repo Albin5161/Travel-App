@@ -2,12 +2,11 @@ import Feather from '@expo/vector-icons/Feather';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Platform, ScrollView, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { ScrollView, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
-import { CityMap, fitCameraToRect, flyTo, useCamera, type MapPin } from '@/components/CityMap';
 import { GoogleMap } from '@/components/GoogleMap';
 import { HomePicker } from '@/components/HomePicker';
 import { PressableScale } from '@/components/PressableScale';
@@ -19,9 +18,8 @@ import { Chips } from '@/components/spots/Chips';
 import { SpotRow } from '@/components/spots/SpotRow';
 import { WeekendRouteCard } from '@/components/spots/WeekendRouteCard';
 import { getCity, getReel } from '@/data/api';
-import { KERALA, getDistrict } from '@/data/regions';
+import { getDistrict } from '@/data/regions';
 import type { Place } from '@/data/types';
-import type { Point } from '@/lib/geo';
 import { fadeUp } from '@/lib/motion';
 import { KIND_LABEL, clusterSpots, DAY_TRIP_MINUTES, driveMinutes, kmAway, matchesKind, weekendRoutes, type SpotKind } from '@/lib/spots';
 import { useArrivalTargets, useSpotStatus, useSpotsByDistrict, useTrips } from '@/state/trips';
@@ -66,32 +64,13 @@ export default function SpotsMap() {
 
   const visible = useMemo(() => groups.flatMap((g) => g.spots).filter((p) => matchesKind(p, kind)), [groups, kind]);
 
-  // The phone app draws the painted Kerala map, where only Kerala spots have a place; the web uses
-  // Google's map, where every spot does.
-  const pins: MapPin[] = useMemo(
-    () =>
-      visible
-        .filter((p) => p.regionPoint)
-        .map((p) => ({ id: p.id, place: p, point: p.regionPoint as Point })),
-    [visible],
+  // Google's map on the web and on phones alike: every spot has a place on it, wherever it is.
+  const pins = useMemo(
+    () => visible.map((p) => ({ id: p.id, name: p.name, coords: p.coords, photo: p.photo, been: statusOf(p.id) === 'been' })),
+    [visible, statusOf],
   );
 
   const panelH = Math.round(H * PANEL_RATIO);
-  const fit = useMemo(() => {
-    const points = pins.length > 0 ? pins.map((p) => p.point as Point) : regionCorners();
-    // Generous padding on purpose: a tight cluster like Fort Kochi would otherwise fill the
-    // screen with blank paper. Keeping the district labels in frame is what makes it a map.
-    return fitCameraToRect(points, { w: W, h: H }, { top: insets.top + 56, bottom: panelH }, 300);
-  }, [pins, W, H, insets.top, panelH]);
-
-  const camera = useCamera(fit);
-  // Re-fit when the filters change what's on the map, but never fight a pan in progress.
-  const fitKey = `${fit.x.toFixed(0)}:${fit.y.toFixed(0)}:${fit.s.toFixed(3)}`;
-  useEffect(() => {
-    flyTo(camera, fit);
-    // Keyed on the fit itself: a new frame means new content, not a user gesture.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitKey]);
 
   const arrived = state.arrivedDistrictId;
   const arrivedTarget = targets.find((t) => t.districtId === arrived);
@@ -103,28 +82,14 @@ export default function SpotsMap() {
     <SkyScreen>
       {/* The map is paper: its labels keep the paper palette. */}
       <Tone value="light">
-      {Platform.OS === 'web' ? (
-        <GoogleMap
-          pins={visible.map((p) => ({ id: p.id, name: p.name, coords: p.coords, photo: p.photo, been: statusOf(p.id) === 'been' }))}
-          width={W}
-          height={H}
-          padding={{ top: insets.top + 80, bottom: panelH + 24, left: 40, right: 40 }}
-          focusId={null}
-          onPinPress={(id) => router.push({ pathname: '/place/[id]', params: { id } })}
-        />
-      ) : (
-      <CityMap
-        city={{ map: KERALA.map }}
-        world={KERALA.world}
+      <GoogleMap
         pins={pins}
         width={W}
         height={H}
-        camera={camera}
-        maxScale={Math.max(fit.s * 1.6, 0.8)}
-        pinSize={40}
+        padding={{ top: insets.top + 80, bottom: panelH + 24, left: 40, right: 40 }}
+        focusId={null}
         onPinPress={(id) => router.push({ pathname: '/place/[id]', params: { id } })}
       />
-      )}
       </Tone>
 
       <LinearGradient
@@ -419,14 +384,6 @@ function EmptySpots() {
     </SkyScreen>
   );
 }
-
-const regionCorners = (): Point[] => {
-  const { x0, y0, w, h } = KERALA.world;
-  return [
-    [x0 + w * 0.18, y0 + h * 0.22],
-    [x0 + w * 0.82, y0 + h * 0.78],
-  ];
-};
 
 const styles = StyleSheet.create({
   topFade: { position: 'absolute', left: 0, right: 0, top: 0 },

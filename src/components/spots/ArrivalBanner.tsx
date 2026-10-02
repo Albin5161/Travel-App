@@ -4,6 +4,7 @@ import Animated from 'react-native-reanimated';
 
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
+import { dims } from '@/components/pressed';
 import { FADE_OUT, NUDGE_IN } from '@/lib/motion';
 import { skyFill, skyInk } from '@/theme/sky';
 import { light, shadows } from '@/theme/tokens';
@@ -45,7 +46,7 @@ export function ArrivalBanner({
       <Pressable
         onPress={onDismiss}
         hitSlop={10}
-        style={styles.close}
+        style={dims(styles.close)}
         accessibilityRole="button"
         accessibilityLabel="Dismiss"
       >

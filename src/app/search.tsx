@@ -12,6 +12,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
+import { dims } from '@/components/pressed';
 import { getCity } from '@/data/api';
 import type { City } from '@/data/types';
 import { haptic } from '@/lib/haptics';
@@ -75,7 +76,7 @@ export default function Search() {
             accessibilityLabel="Search your saved places, cities and creators"
           />
           {typed ? (
-            <Pressable onPress={() => setQuery('')} style={styles.clear} accessibilityRole="button" accessibilityLabel="Clear search">
+            <Pressable onPress={() => setQuery('')} style={dims(styles.clear)} accessibilityRole="button" accessibilityLabel="Clear search">
               <Feather name="x" size={14} color={skyInk.soft} />
             </Pressable>
           ) : null}

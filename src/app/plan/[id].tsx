@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   useAnimatedProps,
   useAnimatedReaction,
@@ -438,7 +438,7 @@ export default function PlanScreen() {
               {dayLabels.map((label, i) => {
                 const on = i === dayIndex;
                 return (
-                  <Pressable
+                  <PressableScale
                     key={label}
                     onPress={() => {
                       if (on) return;
@@ -452,7 +452,7 @@ export default function PlanScreen() {
                     <Text variant="label" color={on ? skyCta : skyInk.strong}>
                       {label}
                     </Text>
-                  </Pressable>
+                  </PressableScale>
                 );
               })}
             </ScrollView>
@@ -938,17 +938,18 @@ function SmallButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       disabled={disabled}
       hitSlop={6}
-      style={({ pressed }) => [styles.small, on && styles.smallOn, pressed && styles.smallPressed, disabled && styles.smallDisabled]}
+      pressedScale={0.92}
+      style={[styles.small, on && styles.smallOn, disabled && styles.smallDisabled]}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected: on, disabled }}
     >
       <Feather name={icon} size={15} color={on ? skyCta : skyInk.strong} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -1074,7 +1075,6 @@ const styles = StyleSheet.create({
     borderColor: skyInk.rim,
   },
   smallOn: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
-  smallPressed: { transform: [{ scale: 0.92 }] },
   smallDisabled: { opacity: 0.3 },
   leg: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 5, paddingVertical: 8 },
   legCompact: { paddingTop: 0 },

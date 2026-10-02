@@ -11,6 +11,7 @@ import { Tick } from '@/components/sky/Tick';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { SHEET_CLOSE_ROOM, SheetClose } from '@/components/SheetClose';
+import { dims } from '@/components/pressed';
 import { getPlace } from '@/data/api';
 import { usePlaceInfo } from '@/lib/details';
 import { haptic } from '@/lib/haptics';
@@ -73,7 +74,7 @@ export default function PlaceSheet() {
             haptic.selection();
             toggle(place.id);
           }}
-          style={styles.been}
+          style={dims(styles.been)}
           accessibilityRole="checkbox"
           aria-checked={statusOf(place.id) === 'been'}
         >

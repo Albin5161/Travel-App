@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { typeLine } from '@/components/PlaceMeta';
 import { GlassSheet } from '@/components/sky/GlassSheet';
 import { Text } from '@/components/Text';
+import { dims } from '@/components/pressed';
 import type { TripStop } from '@/data/planner';
 import type { Place } from '@/data/types';
 import { skyFill, skyInk, skySignal } from '@/theme/sky';
@@ -74,7 +75,7 @@ export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap
             <View style={styles.swapTop}>
               <View style={styles.swapHead}>
                 <Text variant="micro">Swap for</Text>
-                <Pressable onPress={() => swapTo(false)} hitSlop={10} style={styles.backTap} accessibilityRole="button" accessibilityLabel="Back to actions">
+                <Pressable onPress={() => swapTo(false)} hitSlop={10} style={dims(styles.backTap)} accessibilityRole="button" accessibilityLabel="Back to actions">
                   <Text variant="label" style={styles.back}>
                     Back
                   </Text>
@@ -95,7 +96,7 @@ export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap
                     accessibilityLabel="Search the places you can swap in"
                   />
                   {query ? (
-                    <Pressable onPress={() => setQuery('')} style={styles.clear} accessibilityRole="button" accessibilityLabel="Clear search">
+                    <Pressable onPress={() => setQuery('')} style={dims(styles.clear)} accessibilityRole="button" accessibilityLabel="Clear search">
                       <Feather name="x" size={14} color={skyInk.soft} />
                     </Pressable>
                   ) : null}

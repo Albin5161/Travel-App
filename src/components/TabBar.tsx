@@ -77,7 +77,7 @@ function Tab({ name, focused, sky, onPress }: { name: string; focused: boolean; 
   const labelStyle = useAnimatedStyle(() => ({
     opacity: withTiming(focused ? 1 : 0.55, { duration: DURATION.small, easing: EASE_OUT }),
   }));
-  const dotStyle = useAnimatedStyle(() => ({ opacity: lit.get(), transform: [{ scale: lit.get() }] }));
+  const dotStyle = useAnimatedStyle(() => ({ opacity: lit.get(), transform: [{ scale: 0.5 + 0.5 * lit.get() }] }));
 
   return (
     <Pressable
@@ -111,8 +111,9 @@ const styles = StyleSheet.create({
     boxShadow: shadows.card,
   },
   barSky: { flexDirection: 'row', height: 60, boxShadow: '0 10px 30px rgba(4,10,30,0.25)' },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  // Icon and label sit a little high, leaving the foot of the tab to the dot.
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, paddingBottom: 6 },
   label: { fontFamily: fonts.sansMedium, fontSize: 11 },
-  dot: { position: 'absolute', bottom: 7, width: 4, height: 4, borderRadius: 2, backgroundColor: light.ink },
+  dot: { position: 'absolute', bottom: 6, width: 4, height: 4, borderRadius: 2, backgroundColor: light.ink },
   dotSky: { backgroundColor: skyInk.strong },
 });

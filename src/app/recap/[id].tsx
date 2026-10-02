@@ -9,6 +9,8 @@ import { IconButton } from '@/components/IconButton';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Tick } from '@/components/sky/Tick';
 import { Text } from '@/components/Text';
+import { dims } from '@/components/pressed';
+import { PressableScale } from '@/components/PressableScale';
 import { getCity } from '@/data/api';
 import { isCustom } from '@/data/custom';
 import { formatDay, formatRange } from '@/data/planner';
@@ -86,7 +88,7 @@ export default function Recap() {
             haptic.selection();
             setBeen(allOn ? new Set() : new Set(rows.map((r) => r.place.id)));
           }}
-          style={styles.all}
+          style={dims(styles.all)}
           accessibilityRole="button"
         >
           <Text variant="label" color={skyInk.soft}>
@@ -98,9 +100,10 @@ export default function Recap() {
           {rows.map(({ place, day }) => {
             const on = been.has(place.id);
             return (
-              <Pressable
+              <PressableScale
                 key={place.id}
                 onPress={() => toggle(place.id)}
+                pressedScale={0.985}
                 style={styles.row}
                 accessibilityRole="checkbox"
                 aria-checked={on}
@@ -116,7 +119,7 @@ export default function Recap() {
                   </Text>
                 </View>
                 <Tick on={on} />
-              </Pressable>
+              </PressableScale>
             );
           })}
         </View>

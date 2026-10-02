@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/IconButton';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
+import { dims } from '@/components/pressed';
 import { CHANGES, CREDITS, FROM_VIDEOS, STAND_INS, UNSPLASH } from '@/data/credits';
 import { skyFill, skyInk } from '@/theme/sky';
 import { space } from '@/theme/tokens';
@@ -51,7 +52,7 @@ export default function Credits() {
                   {c.standIn}
                 </Text>
               ) : null}
-              <Pressable onPress={() => open(c.sourceUrl)} hitSlop={6} accessibilityRole="link" style={styles.source}>
+              <Pressable onPress={() => open(c.sourceUrl)} hitSlop={6} accessibilityRole="link" style={dims(styles.source)}>
                 <Text variant="label" style={styles.link}>
                   View on Wikimedia Commons
                 </Text>

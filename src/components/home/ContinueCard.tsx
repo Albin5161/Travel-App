@@ -7,6 +7,7 @@ import Animated from 'react-native-reanimated';
 import { PressableScale } from '@/components/PressableScale';
 import { Glass } from '@/components/sky/Glass';
 import { Text } from '@/components/Text';
+import { dims } from '@/components/pressed';
 import { getCity, getReel, isSampleLink } from '@/data/api';
 import { haptic } from '@/lib/haptics';
 import { fadeUp } from '@/lib/motion';
@@ -108,7 +109,7 @@ export function ContinueCard() {
             haptic.selection();
             dispatch({ type: 'setDraft', draft: null });
           }}
-          style={styles.stop}
+          style={dims(styles.stop)}
           accessibilityRole="button"
           accessibilityLabel={`Stop planning ${name}`}
         >

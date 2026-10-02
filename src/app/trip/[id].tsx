@@ -2,16 +2,17 @@ import Feather from '@expo/vector-icons/Feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
+import { PressableScale } from '@/components/PressableScale';
 import { planningScript } from '@/components/mascots/planScript';
 import { PlanningScene } from '@/components/mascots/ReadingScene';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
-import { TICK } from '@/components/sky/Tick';
+import { Tick } from '@/components/sky/Tick';
 import { Text } from '@/components/Text';
 import { getCity, getLocalPicks } from '@/data/api';
 import { customStops } from '@/data/custom';
@@ -37,9 +38,9 @@ import {
 import { haptic } from '@/lib/haptics';
 import { findStay, newSearchSession, searchPlaces, stayFromPick, type Suggestion } from '@/lib/extract';
 import { terrainOf, type Getting, type LatLng } from '@/lib/geo';
-import { FADE_IN, FADE_OUT, fadeUp, SPRING_SETTLE } from '@/lib/motion';
+import { DURATION, EASE_OUT, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { isNearHome, useCityPlaces, useTrips } from '@/state/trips';
-import { skyAccent, skyAccentRim, skyAccentText, skyAccentWash, skyCta, skyFill, skyInk } from '@/theme/sky';
+import { skyAccentRim, skyAccentText, skyAccentWash, skyCta, skyFill, skyInk } from '@/theme/sky';
 import { fonts, radii, space } from '@/theme/tokens';
 
 type Step = 'who' | 'when' | 'dates' | 'days' | 'pace' | 'getting' | 'stay' | 'build';
@@ -399,7 +400,7 @@ function Progress({ total, at }: { total: number; at: number }) {
 function Segment({ on }: { on: boolean }) {
   const v = useSharedValue(on ? 1 : 0);
   useEffect(() => {
-    v.set(withTiming(on ? 1 : 0, { duration: 320 }));
+    v.set(withTiming(on ? 1 : 0, { duration: DURATION.ui, easing: EASE_OUT }));
   }, [on, v]);
   const fill = useAnimatedStyle(() => ({ transform: [{ scaleX: v.get() }] }));
   return (
@@ -465,11 +466,12 @@ function StaySearch({ cityName, near, onPick }: { cityName: string; near: LatLng
         accessibilityLabel="Where you're staying"
       />
       {shown.map((s) => (
-        <Pressable
+        <PressableScale
           key={s.placeId}
           onPress={() => pick(s)}
           disabled={status === 'picking'}
-          style={({ pressed }) => [styles.stayHit, pressed && styles.optionPressed]}
+          pressedScale={ROW_PRESSED}
+          style={styles.stayHit}
           accessibilityRole="button"
           accessibilityLabel={`${s.name}, ${s.where}`}
         >
@@ -482,7 +484,7 @@ function StaySearch({ cityName, near, onPick }: { cityName: string; near: LatLng
               {s.where}
             </Text>
           </View>
-        </Pressable>
+        </PressableScale>
       ))}
       {status === 'searching' || status === 'picking' ? (
         <Text variant="label" color={skyInk.soft}>
@@ -514,15 +516,11 @@ function Options({ options, selected, onPick }: { options: Option[]; selected: s
 }
 
 function OptionRow({ option, on, onPress }: { option: Option; on: boolean; onPress: () => void }) {
-  const check = useSharedValue(on ? 1 : 0);
-  useEffect(() => {
-    check.set(on ? withSpring(1, SPRING_SETTLE) : withTiming(0, { duration: 120 }));
-  }, [check, on]);
-  const tick = useAnimatedStyle(() => ({ opacity: check.get(), transform: [{ scale: 0.6 + 0.4 * check.get() }] }));
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
-      style={({ pressed }) => [styles.option, on && styles.optionOn, pressed && styles.optionPressed]}
+      pressedScale={ROW_PRESSED}
+      style={[styles.option, on && styles.optionOn]}
       accessibilityRole="button"
       accessibilityState={{ selected: on }}
       accessibilityLabel={`${option.title}. ${option.detail}`}
@@ -533,15 +531,13 @@ function OptionRow({ option, on, onPress }: { option: Option; on: boolean; onPre
           {option.detail}
         </Text>
       </View>
-      {/* An empty ring until chosen, then the ember tick springs in over it. */}
-      <View style={styles.ring}>
-        <Animated.View style={[styles.tick, tick]}>
-          <Feather name="check" size={14} color={skyCta} />
-        </Animated.View>
-      </View>
-    </Pressable>
+      <Tick on={on} />
+    </PressableScale>
   );
 }
+
+/** A whole row gives less than a button does: the same press, scaled to its size. */
+const ROW_PRESSED = 0.985;
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -666,19 +662,20 @@ function Calendar({
 
 function MonthStep({ icon, label, disabled, onPress }: { icon: 'chevron-left' | 'chevron-right'; label: string; disabled: boolean; onPress: () => void }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={() => {
         haptic.selection();
         onPress();
       }}
       disabled={disabled}
-      style={({ pressed }) => [styles.monthStep, pressed && styles.optionPressed, disabled && styles.monthStepOff]}
+      hitSlop={0}
+      style={[styles.monthStep, disabled && styles.monthStepOff]}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
     >
       <Feather name={icon} size={20} color={skyInk.strong} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -743,11 +740,12 @@ function Build({
           <PlanningScene script={script} finale={finale} ready={!!plan} width={sceneW} onCheered={cheer} />
         </View>
       </Glass>
-      <Pressable
+      <PressableScale
         onPress={() => {
           haptic.light();
           setSkipped(true);
         }}
+        containerStyle={styles.skipTap}
         style={styles.skip}
         accessibilityRole="button"
         accessibilityLabel="Skip to the plan"
@@ -755,7 +753,7 @@ function Build({
         <Text variant="label" color={skyInk.soft}>
           Skip
         </Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
@@ -786,7 +784,6 @@ const styles = StyleSheet.create({
   },
   // The chosen answer warms: an ember wash and rim, the one warm note on the screen.
   optionOn: { borderColor: skyAccentRim, backgroundColor: skyAccentWash },
-  optionPressed: { transform: [{ scale: 0.985 }] },
   optionText: { flex: 1, gap: 2 },
   staySearch: { marginTop: 12, padding: 12, gap: 6 },
   stayInput: {
@@ -799,18 +796,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   stayHit: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingHorizontal: 6, borderRadius: radii.pane },
-  ring: { width: TICK, height: TICK, borderRadius: TICK / 2, borderWidth: 1.5, borderColor: skyInk.outline },
-  tick: {
-    position: 'absolute',
-    top: -1.5,
-    left: -1.5,
-    width: TICK,
-    height: TICK,
-    borderRadius: TICK / 2,
-    backgroundColor: skyAccent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   footer: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },
   calendar: { gap: 6 },
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 4 },
@@ -832,5 +817,6 @@ const styles = StyleSheet.create({
   buildCard: { paddingTop: 14, paddingHorizontal: 14, alignItems: 'center' },
   buildScene: { overflow: 'hidden' },
   // A quiet way out for anyone who's seen it: 44pt tall, centred under the card.
-  skip: { alignSelf: 'center', minHeight: 44, minWidth: 88, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
+  skipTap: { alignSelf: 'center', marginTop: 12 },
+  skip: { minHeight: 44, minWidth: 88, alignItems: 'center', justifyContent: 'center' },
 });

@@ -155,7 +155,7 @@ export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
             keyboardType="url"
             returnKeyType="go"
             selectionColor={ink.strong}
-            style={[styles.input, { color: ink.strong }, NO_FOCUS_RING]}
+            style={[styles.input, sky && styles.inputSky, { color: ink.strong }, NO_FOCUS_RING]}
             accessibilityLabel="Link to an Instagram reel or post, or a YouTube video"
           />
           {sky ? action : null}
@@ -232,6 +232,8 @@ const styles = css.create({
   icon: { width: 20, alignItems: 'center', marginRight: 10 },
   // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },
+  // The button rides inside the field here: a long link stops short of it instead of touching it.
+  inputSky: { marginRight: 10 },
   // Room for one hint line, so one appearing never moves the page.
   hintSlot: { minHeight: 34, justifyContent: 'center' },
   hint: { marginTop: 8, marginLeft: 4 },

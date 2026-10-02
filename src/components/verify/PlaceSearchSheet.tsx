@@ -18,6 +18,7 @@ import { IconButton } from '@/components/IconButton';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { typeLine } from '@/components/PlaceMeta';
 import { Text } from '@/components/Text';
+import { dims } from '@/components/pressed';
 import type { Place } from '@/data/types';
 import { ApiFailure } from '@/lib/api';
 import { newSearchSession, searchPlaces, type Suggestion } from '@/lib/extract';
@@ -162,7 +163,7 @@ export function PlaceSearchSheet({ visible, wrong, cityName, candidates, live, o
               setQuery('');
               onNotAPlace();
             }}
-            style={styles.notPlace}
+            style={dims(styles.notPlace)}
             accessibilityRole="button"
           >
             <Text variant="label" color={skyInk.soft}>

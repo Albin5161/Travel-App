@@ -16,6 +16,7 @@ import { Tick } from '@/components/sky/Tick';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { PlaceSearchSheet } from '@/components/verify/PlaceSearchSheet';
+import { dims } from '@/components/pressed';
 import { places as catalogPlaces } from '@/data/catalog';
 import type { Place } from '@/data/types';
 import { CHECK_AS_LIST_FROM, isLiveReel, placeFromPick, sendVerdicts, type Suggestion } from '@/lib/extract';
@@ -291,7 +292,7 @@ export default function Verify() {
                     setSheet({ wrong: offer });
                   }}
                   hitSlop={10}
-                  style={styles.linkTap}
+                  style={dims(styles.linkTap)}
                   accessibilityRole="button"
                   accessibilityLabel={`Fix ${offer.name}`}
                 >
@@ -508,7 +509,7 @@ function Done({
                   ) : null}
                 </View>
                 {fix === undefined ? (
-                  <Pressable onPress={() => onFix(p)} hitSlop={10} style={styles.linkTap} accessibilityRole="button" accessibilityLabel={`Fix ${p.name}`}>
+                  <Pressable onPress={() => onFix(p)} hitSlop={10} style={dims(styles.linkTap)} accessibilityRole="button" accessibilityLabel={`Fix ${p.name}`}>
                     <Text variant="label" style={styles.link}>
                       Fix
                     </Text>

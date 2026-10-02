@@ -11,6 +11,7 @@ import { IconButton } from '@/components/IconButton';
 import Ionicons from '@/components/Ionicons';
 import { MascotMoment } from '@/components/mascots/ReadingScene';
 import { PhotoCard } from '@/components/PhotoCard';
+import { PressableScale } from '@/components/PressableScale';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
@@ -141,7 +142,7 @@ export default function AddPlaces() {
         </Animated.View>
 
         <Animated.View entering={ENTER[1]}>
-          <Pressable onPress={watch} accessibilityRole="link" accessibilityLabel={instagram ? 'Watch the reel on Instagram' : 'Watch the video on YouTube'}>
+          <PressableScale onPress={watch} accessibilityRole="link" accessibilityLabel={instagram ? 'Watch the reel on Instagram' : 'Watch the video on YouTube'}>
             <Tone value="dark">
               <PhotoCard source={reel.thumbnail} gradient="pick" style={{ width: cardW, height: cardW * 0.56 }}>
                 <View style={styles.reelText}>
@@ -166,7 +167,7 @@ export default function AddPlaces() {
                 </View>
               </PhotoCard>
             </Tone>
-          </Pressable>
+          </PressableScale>
         </Animated.View>
 
         {spots ? (

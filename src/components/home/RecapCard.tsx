@@ -7,6 +7,7 @@ import Animated from 'react-native-reanimated';
 import { PressableScale } from '@/components/PressableScale';
 import { Glass } from '@/components/sky/Glass';
 import { Text } from '@/components/Text';
+import { dims } from '@/components/pressed';
 import { getCity } from '@/data/api';
 import { haptic } from '@/lib/haptics';
 import { fadeUp } from '@/lib/motion';
@@ -52,7 +53,7 @@ export function RecapCard() {
             haptic.selection();
             dispatch({ type: 'finishRecap', cityId: id, been: [] });
           }}
-          style={styles.stop}
+          style={dims(styles.stop)}
           accessibilityRole="button"
           accessibilityLabel={`Don’t ask about ${city.name}`}
         >

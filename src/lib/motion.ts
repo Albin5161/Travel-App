@@ -7,6 +7,8 @@ const native = <T,>(anim: T): T | undefined => (Platform.OS === 'web' ? undefine
 
 export const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 export const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
+// Sheets rising from the bottom: most of the way at once, then a long settle (the iOS sheet curve).
+export const EASE_SHEET = Easing.bezier(0.32, 0.72, 0, 1);
 
 export const DURATION = { press: 120, small: 180, ui: 260, uiMax: 300, cinematic: 450 } as const;
 

@@ -163,3 +163,42 @@ export function fitCamera(points: Point[], viewW: number, viewH: number, padding
   const s = Math.min(viewW / (maxX - minX + padding * 2), viewH / (maxY - minY + padding * 2));
   return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, s: Math.max(0.2, Math.min(1.2, s)) };
 }
+
+/** How far a leg of the route bows out from the straight line between its two stops, as a share of its length. */
+const BOW = 0.18;
+const ARC_STEPS = 20;
+
+/**
+ * The day's route as a run of gentle arcs, one per leg, all bowing to the same side: a line between
+ * stops is a guess at the way, not a road, and an arc says so where a ruler line pretends otherwise.
+ * (There and back between two stops also stop drawing on top of each other.) `at[i]` is where stop
+ * `i` sits in `points`, so the part already travelled can be cut out of it.
+ */
+export function arcRoute(stops: LatLng[]): { points: LatLng[]; at: number[] } {
+  const points: LatLng[] = [];
+  const at: number[] = [];
+  stops.forEach((b, i) => {
+    if (i === 0) {
+      points.push(b);
+      at.push(0);
+      return;
+    }
+    const a = stops[i - 1];
+    // Flat enough over a day's distances: longitude squeezed by the latitude, then plain geometry.
+    const k = Math.cos((((a.lat + b.lat) / 2) * Math.PI) / 180);
+    const dx = (b.lng - a.lng) * k;
+    const dy = b.lat - a.lat;
+    // The control point: the middle of the leg, pushed out square to it.
+    const cx = (a.lng + b.lng) / 2 + (-dy * 2 * BOW) / (k || 1);
+    const cy = (a.lat + b.lat) / 2 + dx * 2 * BOW;
+    for (let t = 1; t <= ARC_STEPS; t++) {
+      const u = t / ARC_STEPS;
+      points.push({
+        lat: (1 - u) * (1 - u) * a.lat + 2 * (1 - u) * u * cy + u * u * b.lat,
+        lng: (1 - u) * (1 - u) * a.lng + 2 * (1 - u) * u * cx + u * u * b.lng,
+      });
+    }
+    at.push(points.length - 1);
+  });
+  return { points, at };
+}

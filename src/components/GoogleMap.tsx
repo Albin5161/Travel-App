@@ -5,7 +5,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 import { Text } from '@/components/Text';
-import type { LatLng } from '@/lib/geo';
+import { arcRoute, type LatLng } from '@/lib/geo';
 import { PLAN_LINK_BASE } from '@/lib/share';
 import { light } from '@/theme/tokens';
 
@@ -63,28 +63,28 @@ export function GoogleMap({ pins, width, height, route, padding, onPinPress, foc
 
   const pad = { top: 60, bottom: 60, left: 40, right: 40, ...padding };
   // As text, so the page is told only when something it draws has actually changed.
-  const state = useMemo(
-    () =>
-      JSON.stringify({
-        pins: pins.map((p) => ({
-          id: p.id,
-          name: p.name,
-          lat: p.coords.lat,
-          lng: p.coords.lng,
-          photo: photoUri(p.photo),
-          number: p.number,
-          been: p.been,
-        })),
-        route: !!route,
-        padding: pad,
-        focusId,
-        width,
-        height,
-        reduced,
-      } satisfies MapPageState),
+  const state = useMemo(() => {
+    const arc = route && pins.length > 1 ? arcRoute(pins.map((p) => p.coords)) : null;
+    return JSON.stringify({
+      pins: pins.map((p) => ({
+        id: p.id,
+        name: p.name,
+        lat: p.coords.lat,
+        lng: p.coords.lng,
+        photo: photoUri(p.photo),
+        number: p.number,
+        been: p.been,
+      })),
+      route: !!route,
+      ...(arc ? { line: arc.points, lineAt: arc.at } : {}),
+      padding: pad,
+      focusId,
+      width,
+      height,
+      reduced,
+    } satisfies MapPageState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pins, route, pad.top, pad.bottom, pad.left, pad.right, focusId, width, height, reduced],
-  );
+  }, [pins, route, pad.top, pad.bottom, pad.left, pad.right, focusId, width, height, reduced]);
 
   useEffect(() => {
     if (ready) web.current?.injectJavaScript(`window.apply(${state}); true;`);

@@ -11,6 +11,9 @@ import { colors, light, shadows } from '@/theme/tokens';
 export type MapPageState = {
   pins: { id: string; name: string; lat: number; lng: number; photo: string | null; number?: number; been?: boolean }[];
   route: boolean;
+  /** The route as drawn: arcs between the stops (lib/geo arcRoute), and where each stop sits along them. */
+  line?: { lat: number; lng: number }[];
+  lineAt?: number[];
   padding: { top: number; bottom: number; left: number; right: number };
   /** Undefined: a plain map. Null: the whole day, flat. An id: tilted and close on that stop. */
   focusId?: string | null;
@@ -99,15 +102,18 @@ export function googleMapPage(key: string, mapId: string): string {
     });
   }
 
-  // The day's stops joined in order, in the app's ink; the way so far, up to the stop in focus, in ember.
+  // The day's stops joined in order by a dotted trail of arcs, in the app's ink; the way so far, up
+  // to the stop in focus, as a solid ember line over it.
   function drawRoute(s) {
     if (baseLine) { baseLine.setMap(null); baseLine = null; }
     if (reachedLine) { reachedLine.setMap(null); reachedLine = null; }
     if (!s.route || s.pins.length < 2) return;
-    var path = s.pins.map(function (p) { return { lat: p.lat, lng: p.lng }; });
-    baseLine = new google.maps.Polyline({ map: map, path: path, strokeColor: '${light.ink}', strokeOpacity: 0.85, strokeWeight: 3 });
+    var path = s.line || s.pins.map(function (p) { return { lat: p.lat, lng: p.lng }; });
+    var dot = { path: google.maps.SymbolPath.CIRCLE, scale: 2.2, fillColor: '${light.ink}', fillOpacity: 0.9, strokeOpacity: 0 };
+    baseLine = new google.maps.Polyline({ map: map, path: path, strokeOpacity: 0, icons: [{ icon: dot, offset: '0', repeat: '9px' }] });
     var reached = s.pins.findIndex(function (p) { return p.id === s.focusId; });
-    if (reached >= 1) reachedLine = new google.maps.Polyline({ map: map, path: path.slice(0, reached + 1), strokeColor: '${colors.ember}', strokeOpacity: 1, strokeWeight: 5, zIndex: 1 });
+    var upTo = s.lineAt ? s.lineAt[reached] : reached;
+    if (reached >= 1) reachedLine = new google.maps.Polyline({ map: map, path: path.slice(0, upTo + 1), strokeColor: '${colors.ember}', strokeOpacity: 1, strokeWeight: 4, zIndex: 1 });
   }
 
   // Follows the plan as it's scrolled: the whole day flat at the top, then tilted and close on each

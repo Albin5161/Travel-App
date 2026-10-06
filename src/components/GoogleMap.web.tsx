@@ -4,7 +4,7 @@ import type { ImageSourcePropType } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/Text';
-import type { LatLng } from '@/lib/geo';
+import { arcRoute, type LatLng } from '@/lib/geo';
 import { skyAccent, skyCta } from '@/theme/sky';
 import { colors, fonts, light, shadows } from '@/theme/tokens';
 
@@ -141,25 +141,31 @@ function MapUnavailable({ width, height }: { width: number; height: number }) {
   );
 }
 
-/** The day's stops joined in order, in the app's ink; the way so far, up to `reached`, in ember. */
+/**
+ * The day's stops joined in order by a dotted trail of gentle arcs, in the app's ink; the way so
+ * far, up to `reached`, drawn over it as a solid ember line. The trail fills in as the plan is read.
+ */
 function Route({ path, reached = -1 }: { path: LatLng[]; reached?: number }) {
   const map = useMap();
   const maps = useMapsLibrary('maps');
+  const core = useMapsLibrary('core');
   // Drawn again only when the stops change, not on every render.
   const key = path.map((p) => `${p.lat},${p.lng}`).join('|');
   useEffect(() => {
-    if (!map || !maps || !key) return;
-    const line = new maps.Polyline({ map, path: parsePath(key), strokeColor: light.ink, strokeOpacity: 0.85, strokeWeight: 3 });
+    if (!map || !maps || !core || !key) return;
+    const dot = { path: core.SymbolPath.CIRCLE, scale: 2.2, fillColor: light.ink, fillOpacity: 0.9, strokeOpacity: 0 };
+    const line = new maps.Polyline({ map, path: arcRoute(parsePath(key)).points, strokeOpacity: 0, icons: [{ icon: dot, offset: '0', repeat: '9px' }] });
     return () => line.setMap(null);
-  }, [map, maps, key]);
+  }, [map, maps, core, key]);
   useEffect(() => {
     if (!map || !maps || !key || reached < 1) return;
+    const arc = arcRoute(parsePath(key));
     const line = new maps.Polyline({
       map,
-      path: parsePath(key).slice(0, reached + 1),
+      path: arc.points.slice(0, arc.at[reached] + 1),
       strokeColor: colors.ember,
       strokeOpacity: 1,
-      strokeWeight: 5,
+      strokeWeight: 4,
       zIndex: 1,
     });
     return () => line.setMap(null);

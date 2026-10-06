@@ -216,7 +216,13 @@ export default function TripSetup() {
         />
       ) : (
         <Animated.View key={step} entering={FADE_IN} exiting={FADE_OUT} style={styles.body}>
-          <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
+            showsVerticalScrollIndicator={false}
+            // On the calendar, a page that fits doesn't rubber-band: a tap whose finger slid a few
+            // points was being taken as the start of a scroll, and the day never got it.
+            alwaysBounceVertical={step !== 'dates'}
+          >
             <Animated.View entering={ENTER[0]}>
               <Text variant="eyebrow">Plan your trip · {city.name}</Text>
             </Animated.View>
@@ -588,6 +594,9 @@ function Calendar({
 
   const tap = (iso: string) => {
     haptic.selection();
+    // The first day tapped again while the last is being chosen: still waiting for the last day.
+    // (It used to end the choosing with nothing to show for it, so the next tap started over.)
+    if (picking === 'end' && iso === start) return;
     if (picking === 'start' || !start || iso < start || (!!lastPickable && iso > lastPickable)) {
       onChange(iso, 1);
       setPicking('end');
@@ -637,19 +646,25 @@ function Calendar({
                 onPress={() => tap(iso)}
                 disabled={off}
                 style={styles.cell}
+                pressRetentionOffset={16}
                 accessibilityRole="button"
                 accessibilityState={{ selected: inRange, disabled: off }}
                 accessibilityLabel={formatDay(iso)}
               >
-                {band ? <View style={[styles.band, iso === start && styles.bandStart, iso === end && styles.bandEnd]} /> : null}
-                <View style={[styles.day, edge && styles.dayEdge, off && styles.dayOff]}>
-                  <Text
-                    variant="data"
-                    color={edge ? skyCta : off ? skyInk.faint : iso === first ? skyAccentText : skyInk.strong}
-                  >
-                    {fromIso(iso).getDate()}
-                  </Text>
-                </View>
+                {({ pressed }) => (
+                  <>
+                    {band ? <View style={[styles.band, iso === start && styles.bandStart, iso === end && styles.bandEnd]} /> : null}
+                    {/* The day answers the finger at once, so a tap that landed is seen to land. */}
+                    <View style={[styles.day, pressed && !edge && styles.dayPressed, edge && styles.dayEdge, off && styles.dayOff]}>
+                      <Text
+                        variant="data"
+                        color={edge ? skyCta : off ? skyInk.faint : iso === first ? skyAccentText : skyInk.strong}
+                      >
+                        {fromIso(iso).getDate()}
+                      </Text>
+                    </View>
+                  </>
+                )}
               </Pressable>
             );
           })}
@@ -809,6 +824,7 @@ const styles = StyleSheet.create({
   bandStart: { left: '50%' },
   bandEnd: { right: '50%' },
   day: { width: DAY, height: DAY, borderRadius: DAY / 2, alignItems: 'center', justifyContent: 'center' },
+  dayPressed: { backgroundColor: skyFill.raised },
   dayEdge: { backgroundColor: skyInk.strong },
   // Can't be picked, and looks it: well back from the days that can.
   dayOff: { opacity: 0.4 },

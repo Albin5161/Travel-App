@@ -140,6 +140,10 @@ const PER_MINUTE_OVER = 0.1;
 // that, a later start still costs a little per minute, so a day sets out at the earliest time that
 // makes sense rather than the latest that avoids a short wait.
 const HALF_DAY = { startAfter: 90, endFrom: 15 * 60 + 30, per: 0.15, cap: 40, perEarly: 0.06 };
+// The day's last leg, when much of it falls after dark: a short ride home after dinner is nothing,
+// hours on the road at night to reach a bed are. Counted per minute driven later than an hour past
+// sunset, the first three quarters of an hour free.
+const NIGHT_DRIVE = { after: 60, free: 45, per: 0.3 };
 /** Coming back to a part of town already left that day. */
 const BACK_AGAIN = 30;
 /** Places within this many minutes of each other are one part of town. */
@@ -448,7 +452,8 @@ function finish(ctx: DayCtx, w: Walk): DayResult {
     Math.max(0, workload - PACE_HOURS[ctx.pace] * 60) * PER_MINUTE_OVER +
     Math.min(HALF_DAY.startAfter, Math.max(0, w.depart - EARLIEST[ctx.pace])) * HALF_DAY.perEarly +
     Math.min(HALF_DAY.cap, Math.max(0, w.starts[0] - (EARLIEST[ctx.pace] + HALF_DAY.startAfter)) * HALF_DAY.per) +
-    Math.min(HALF_DAY.cap, Math.max(0, HALF_DAY.endFrom - w.t) * HALF_DAY.per);
+    Math.min(HALF_DAY.cap, Math.max(0, HALF_DAY.endFrom - w.t) * HALF_DAY.per) +
+    Math.max(0, Math.min(home, end - (ctx.sunset + NIGHT_DRIVE.after)) - NIGHT_DRIVE.free) * NIGHT_DRIVE.per;
   return { order: w.order, starts: w.starts, cost, travel, workload, end, mistimed: w.mistimed, ok: withinDay(ctx, end, workload, travel) };
 }
 

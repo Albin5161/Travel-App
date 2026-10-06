@@ -455,22 +455,28 @@ export default function PlanScreen() {
               </Text>
               <View style={styles.offerActions}>
                 <Button compact kind="secondary" label={`Keep ${prefs.stay?.name ?? 'my stay'}`} onPress={() => update({ ...plan, offerDeclined: true })} style={styles.offerButton} />
-                <Button compact label="Plan it that way" onPress={() => replan(offer.nights, false)} style={styles.offerButton} />
+                <Button compact label="Stay there" onPress={() => replan(offer.nights, false)} style={styles.offerButton} />
               </View>
             </Glass>
           ) : null}
 
           {awayNights.length > 0 ? (
-            <View style={styles.thin}>
+            // The whole row is the button: a link inside wrapped text is a sliver to hit.
+            <PressableScale
+              onPress={() => replan(undefined, true)}
+              style={styles.thin}
+              accessibilityRole="button"
+              accessibilityLabel={`Sleeping away: ${awayNights.join(', ')}. Stay in ${prefs.stay?.name ?? 'one place'} every night instead`}
+            >
               <Feather name="moon" size={14} color={skyInk.soft} />
               <Text variant="label" color={skyInk.soft} style={styles.thinText}>
                 {`Sleeping away: ${awayNights.join(', ')}. `}
-                <Text variant="label" style={styles.thinLink} onPress={() => replan(undefined, true)}>
+                <Text variant="label" style={styles.thinLink}>
                   {`Stay in ${prefs.stay?.name ?? 'one place'} every night`}
                 </Text>
                 .
               </Text>
-            </View>
+            </PressableScale>
           ) : null}
 
           {emptyDays > 0 && n > 1 ? (

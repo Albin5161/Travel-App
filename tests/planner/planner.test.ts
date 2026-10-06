@@ -605,3 +605,193 @@ test('the planner names no place: nights away come from distances, not from a li
     assert.doesNotMatch(code, /ladakh|\bleh\b|nubra|pangong|hunder|diskit|kochi|gokarna|mumbai|delhi/i, `${f.pathname} names a place`);
   }
 });
+
+// ── Step 3.1: the trip weighed as one journey ───────────────────────────────────────────────────
+
+/** Days with nothing in them but a drive to another bed. */
+const driveOnly = (p: TripPlan) => p.days.filter((d) => d.stops.length === 0 && d.home).length;
+const nightNames = (p: { nights?: TripPlan['nights'] }) => (p.nights ?? []).map((n) => n?.name ?? null);
+const nubra = { name: 'Nubra Valley', coords: { lat: 34.56355, lng: 77.51525 } };
+/** Three places a six-hour drive from Fort Kochi, close to each other: more than one night's worth. */
+const faraway = [
+  P('Far Fort', 'sight', 'morning', 150, 11.2, 77.4, '', 'Faraway'),
+  P('Far Lake', 'sight', 'afternoon', 120, 11.22, 77.43, '', 'Faraway'),
+  P('Far Temple', 'sight', 'morning', 90, 11.21, 77.38, '', 'Faraway'),
+];
+const munnar = [
+  P('Top Station', 'sight', 'morning', 60, 10.1218, 77.2437, 'The view over the Western Ghats.', 'Munnar'),
+  P('Eravikulam National Park', 'sight', 'morning', 120, 10.1927, 77.0605, 'Nilgiri tahr on the high grassland.', 'Munnar'),
+];
+
+test('A. Ladakh, balanced: out on night 2 and back, every day with something in it, none spent only driving', () => {
+  const first = plan(facts.ladakh, ladakhInput());
+  assert.ok(first.offer);
+  assert.equal(first.offer.title, 'Stay in Nubra Valley on night 2?');
+  assert.deepEqual(nightNames(first.offer), [null, 'Nubra Valley', null], 'Leh, Nubra, Leh: not two nights in Leh and a last night away');
+  const p = plan(facts.ladakh, { ...ladakhInput(), nights: first.offer.nights });
+  assertWithinLimits(p);
+  assert.equal(look(p).placed, 7);
+  assert.equal(driveOnly(p), 0, 'no day is only the drive back');
+  p.days.forEach((d, i) => assert.ok(d.stops.length > 0, `Day ${i + 1} has something in it`));
+  // No more time on the road than the trip this replaces (night 3 away, Day 4 a bare drive: 12 h 8 min).
+  assert.ok(look(p).travel <= 12 * 60 + 8, `${look(p).travel} min on the road`);
+  assertCoversSunset(p, 'Shanti Stupa');
+});
+
+test('B. Ladakh, packed: two places to sleep away, one after the other, and the long drive is owned up to', () => {
+  const first = plan(facts.ladakh, ladakhInput('packed'));
+  assert.ok(first.offer);
+  const names = nightNames(first.offer);
+  const a = names.indexOf('Nubra Valley');
+  const b = names.indexOf('Pangong');
+  assert.ok(a >= 0 && b >= 0, 'both far areas get a night');
+  assert.equal(Math.abs(a - b), 1, 'one straight after the other, with no night back at the base between');
+  assert.match(first.offer.reason, /travel day|mostly driving/);
+  assert.match(first.offer.reason, /This adds 2 saved places to your plan\./);
+  const p = plan(facts.ladakh, { ...ladakhInput('packed'), nights: first.offer.nights });
+  assertWithinLimits(p);
+  assert.equal(p.left.length, 0);
+});
+
+test('C. a travel day a far place really needs is allowed, and nothing is squeezed into it', () => {
+  const over = { prefs: prefs({ days: 4, getting: 'drive' as const, stay: fortKochiStay }) };
+  const saved = [...kochi.slice(0, 4), ...faraway];
+  const first = plan(saved, over);
+  assert.ok(first.offer, 'two nights there are offered');
+  assert.match(first.offer.title, /^Stay in Faraway on nights \d and \d\?$/);
+  assert.match(first.offer.reason, /would be travel days: about 6 h from Fort Kochi to Faraway and about 6 h from Faraway to Fort Kochi/);
+  const p = plan(saved, { ...over, nights: first.offer.nights });
+  assertWithinLimits(p);
+  assert.equal(p.left.length, 0, 'all three far places are in');
+  assert.equal(driveOnly(p), 2, 'the drive there and the drive back are each a day');
+  // The day between is spent there, with all three.
+  const there = p.days.find((d) => d.stops.some((s) => s.place.name === 'Far Fort'))!;
+  assert.deepEqual(there.stops.map((s) => s.place.area), ['Faraway', 'Faraway', 'Faraway']);
+});
+
+test('D. a travel day that could be avoided loses: even with the last night away, the way back takes places in', () => {
+  // The arrangement step 3 gave for these nights was Day 4 as nothing but the three-hour drive.
+  const p = plan(facts.ladakh, { ...ladakhInput(), nights: [null, null, nubra] });
+  assertWithinLimits(p);
+  assert.equal(look(p).placed, 7);
+  assert.equal(driveOnly(p), 0);
+  assert.ok(p.days[3].stops.length >= 1, 'the day back to the base sees something');
+  // And given the choice, the planner doesn't put the night there at all.
+  assert.deepEqual(nightNames(plan(facts.ladakh, ladakhInput()).offer!), [null, 'Nubra Valley', null]);
+  // With days to spare, the empty ones come last, not first.
+  const six = accept(facts.ladakh, { ...ladakhInput(), prefs: prefs({ days: 6, getting: 'drive', terrain: 'mountain', stay: leh }) });
+  assert.equal(driveOnly(six), 0);
+  assert.ok(six.days[0].stops.length > 0, 'Day 1 is not the blank one');
+});
+
+test('E. free time on a journey stays free: nothing is invented for the afternoon before a sunset', () => {
+  const tempting = [P('Leh Market', 'experience', 'afternoon', 60, 34.164, 77.585, 'Shops.', 'Leh'), P('Tibetan Kitchen', 'food', 'afternoon', 60, 34.163, 77.584, 'Momos.', 'Leh')];
+  const p = accept(facts.ladakh, { ...ladakhInput(), suggestions: tempting });
+  const stupa = find(p, 'Shanti Stupa')!;
+  const day = p.days[stupa.day].stops;
+  const before = day[day.indexOf(day.find((s) => s.place.name === 'Shanti Stupa')!) - 1];
+  assert.ok(before, 'something comes before the sunset stop that day');
+  const gap = stupa.startMinutes - (before.startMinutes + before.place.minutes) - (stupa.legBefore?.minutes ?? 0);
+  assert.ok(gap >= 120, `a free afternoon of ${gap} min is left as it is`);
+  assert.ok(stopsOf(p).every((s) => !s.suggested || s.place.type === 'food'), 'no sight is added to fill it');
+  assert.ok(!find(p, 'Leh Market'));
+  assertCoversSunset(p, 'Shanti Stupa');
+});
+
+test('F. day balance: one locked stop is not left alone beside a six-stop day', () => {
+  for (const saved of [kochi, facts.kochi]) {
+    const lulu = saved.find((p) => p.name === 'Lulu Mall')!.id;
+    const drive = saved.find((p) => p.name === 'Marine Drive')!.id;
+    const p = plan(saved, { prefs: prefs({ days: 2 }), pins: [{ placeId: lulu, day: 0 }], removed: [drive] });
+    assertWithinLimits(p);
+    assert.equal(p.left.filter((l) => l.id !== drive).length, 0);
+    const counts = p.days.map((d) => d.stops.length);
+    assert.ok(Math.abs(counts[0] - counts[1]) <= 2, `days of ${counts.join(' and ')} stops`);
+    assert.equal(find(p, 'Lulu Mall')!.day, 0);
+    assert.ok(longestHole(p) <= 60);
+  }
+  // Not forced equal: a short sunset day stays short when moving things onto it would cost more.
+  const g = plan(gokarna, { prefs: prefs({ days: 2 }) });
+  assert.equal(g.left.length, 0);
+  assertCoversSunset(g, 'Om Beach');
+});
+
+test('G. the same anywhere: hills far from a coastal base get the middle night, not the last', () => {
+  const over = { prefs: prefs({ days: 4, getting: 'drive' as const, terrain: 'hilly' as const, stay: fortKochiStay }) };
+  const saved = [...kochi, ...munnar];
+  const first = plan(saved, over);
+  assert.ok(first.offer);
+  assert.deepEqual(nightNames(first.offer), [null, 'Munnar', null]);
+  assert.match(first.offer.reason, /Staying in Munnar lets you visit them without a long round trip\. This adds 2 saved places to your plan\./);
+  const p = plan(saved, { ...over, nights: first.offer.nights });
+  assertWithinLimits(p);
+  assert.equal(p.left.length, 0);
+  assert.equal(driveOnly(p), 0);
+  assert.equal(find(p, 'Eravikulam')!.day + find(p, 'Top Station')!.day, 1 + 2, 'one on the way in, one on the way out');
+  // The last day is a day at the base, not the long drive home.
+  assert.ok(look(p).days[3].travel < 120);
+});
+
+test('H. accepting the offer gives the journey it described', () => {
+  for (const pace of ['relaxed', 'balanced', 'packed'] as const) {
+    const over = { ...ladakhInput(), prefs: prefs({ days: 4, pace, getting: 'drive', terrain: 'mountain', stay: leh }) };
+    const first = plan(facts.ladakh, over);
+    assert.ok(first.offer, `${pace}: an offer`);
+    const p = plan(facts.ladakh, { ...over, nights: first.offer.nights });
+    assertWithinLimits(p);
+    // Each day sleeps where the offer said, and the next sets out from there.
+    p.days.forEach((d, i) => assert.equal(d.sleep?.name ?? null, i < 3 ? (first.offer!.nights[i]?.name ?? null) : null));
+    // Every place the offer promised is in.
+    first.offer.gains.forEach((id) => assert.ok(stopsOf(p).some((s) => s.place.id === id), `${pace}: a promised place is planned`));
+    // And a day of nothing but driving is there only if the offer said so.
+    assert.equal(driveOnly(p) > 0, /travel days?:/.test(first.offer.reason), `${pace}: travel days as described`);
+  }
+});
+
+test('I. going back to one base gives the first plan again', () => {
+  const first = plan(facts.ladakh, ladakhInput());
+  const taken = plan(facts.ladakh, { ...ladakhInput(), nights: first.offer!.nights });
+  assert.notDeepEqual(taken.days.map((d) => d.stops.map((s) => s.place.id)), first.days.map((d) => d.stops.map((s) => s.place.id)));
+  // What the plan screen does for "Stay in Leh every night": the same answers, no nights.
+  const back = plan(facts.ladakh, { ...ladakhInput(), nights: undefined });
+  assert.equal(back.nights, undefined);
+  back.days.forEach((d) => assert.equal(d.sleep, undefined));
+  assert.deepEqual(back.days.map((d) => d.stops.map((s) => [s.place.id, s.startMinutes])), first.days.map((d) => d.stops.map((s) => [s.place.id, s.startMinutes])));
+  assert.deepEqual(back.left.map((l) => l.id), first.left.map((l) => l.id));
+});
+
+test('J. reshuffling a journey keeps its nights, its places and its shape', () => {
+  const first = plan(facts.ladakh, ladakhInput());
+  const seen = new Set<string>();
+  for (let seed = 1; seed <= 8; seed++) {
+    const p = plan(facts.ladakh, { ...ladakhInput(), nights: first.offer!.nights, seed });
+    assertWithinLimits(p);
+    assert.deepEqual(nightNames(p), [null, 'Nubra Valley', null], `seed ${seed}`);
+    assert.equal(look(p).placed, 7, `seed ${seed}: nothing dropped`);
+    assert.equal(driveOnly(p), 0, `seed ${seed}: no day turned into a bare drive`);
+    assert.equal(p.days[1].sleep?.name, 'Nubra Valley');
+    seen.add(JSON.stringify(p.days.map((d) => d.stops.map((s) => s.place.id))));
+  }
+  assert.ok(seen.size > 1, 'and it does change something');
+});
+
+test('K. pace: the nights offered follow the pace, and nights agreed at one pace are kept or let go at another', () => {
+  const at = (pace: 'relaxed' | 'balanced' | 'packed') => ({ ...ladakhInput(), prefs: prefs({ days: 4, pace, getting: 'drive' as const, terrain: 'mountain' as const, stay: leh }) });
+  const relaxed = plan(facts.ladakh, at('relaxed'));
+  const balanced = plan(facts.ladakh, at('balanced'));
+  const packed = plan(facts.ladakh, at('packed'));
+  // One far area at the gentler paces; both once the days are long enough to link them.
+  assert.deepEqual(nightNames(relaxed.offer!).filter(Boolean), ['Nubra Valley']);
+  assert.deepEqual(nightNames(balanced.offer!).filter(Boolean), ['Nubra Valley']);
+  assert.deepEqual(nightNames(packed.offer!).filter(Boolean).sort(), ['Nubra Valley', 'Pangong']);
+  // Balanced nights still work at a packed pace: kept as agreed, and no second offer on top.
+  const faster = plan(facts.ladakh, { ...at('packed'), nights: balanced.offer!.nights });
+  assert.deepEqual(nightNames(faster), nightNames(balanced.offer!));
+  assert.equal(faster.offer, undefined);
+  assertWithinLimits(faster);
+  // Packed nights can't be driven at a relaxed pace: let go, the base kept, and the right offer made afresh.
+  const slower = plan(facts.ladakh, { ...at('relaxed'), nights: packed.offer!.nights });
+  assert.equal(slower.nights, undefined);
+  assert.deepEqual(nightNames(slower.offer!), nightNames(relaxed.offer!));
+  assertWithinLimits(slower);
+});

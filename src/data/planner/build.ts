@@ -33,6 +33,21 @@ const AREA_SPLIT = 15;
 const ROOMY = 0.6;
 const NEARLY_EMPTY = 0.25;
 const PER_CRAMMED_MINUTE = 0.6;
+// The trip as a journey, beyond what each day costs on its own.
+// A day out and back that is more road than places counts for every minute the driving outruns
+// the seeing: a long drive for one short stop loses to a trip that sees as much with less of it.
+// (A day that moves on to another bed is left alone here: getting there is what it's for.)
+const PER_ROAD_HEAVY_MINUTE = 0.3;
+// A day that moves on to another bed and sees nothing. When the drive fills the day, that is what
+// a far place takes, and it stands at no more than its travel. When the drive is short and the
+// rest of the day goes unused, the unused part counts, so a trip that sees something that day at
+// either end of the drive is the better one. It never makes a long drive day worth padding out.
+const PER_IDLE_TRANSFER_MINUTE = 0.75;
+// One day far fuller than another, among the days that have anything in them. A gap of up to this
+// share of the pace's hours is just how days fall (a sunset day is short, a transfer day long);
+// past it, each minute counts a little, so an even trip wins when timing and travel are much the same.
+const UNEVEN_FROM = 0.5;
+const PER_UNEVEN_MINUTE = 0.15;
 /** Places this far (minutes) from every other are on their own. */
 const NEARBY_MINUTES = 45;
 /** Another arrangement this close to the best is as good, for a reshuffle. */
@@ -131,16 +146,25 @@ export function build({ pool, suggestions, prefs, pins, seed, nights, quick = fa
     const daysIn = new Map<number, number>();
     let empty = 0;
     let crammed = 0;
+    let fullest = 0;
+    let thinnest = Infinity;
     for (let k = 0; k < s.days.length; k++) {
       const d = s.days[k];
       const day = dayOf(d, k);
       if (!day) return Infinity;
       sum += day.cost;
+      if (!ctxOf(k).moving) sum += Math.max(0, day.travel - (day.workload - day.travel)) * PER_ROAD_HEAVY_MINUTE;
+      else if (d.length === 0) sum += Math.max(0, PACE_HOURS[pace] * 60 * ROOMY - day.travel) * PER_IDLE_TRANSFER_MINUTE;
+      if (d.length) {
+        fullest = Math.max(fullest, day.workload);
+        thinnest = Math.min(thinnest, day.workload);
+      }
       if (day.workload < PACE_HOURS[pace] * 60 * NEARLY_EMPTY) empty++;
       crammed += Math.max(0, day.workload - PACE_HOURS[pace] * 60 * ROOMY);
       new Set(d.map((i) => ctx.areas[i])).forEach((a) => daysIn.set(a, (daysIn.get(a) ?? 0) + 1));
     }
     daysIn.forEach((count) => (sum += (count - 1) * AREA_SPLIT));
+    sum += Math.max(0, fullest - thinnest - PACE_HOURS[pace] * 60 * UNEVEN_FROM) * PER_UNEVEN_MINUTE;
     return sum + empty * crammed * PER_CRAMMED_MINUTE;
   };
 
@@ -416,14 +440,26 @@ export function build({ pool, suggestions, prefs, pins, seed, nights, quick = fa
     return s;
   };
 
+  // With nights away the days are a journey in order, and only days that start and end in the
+  // same beds as each other can change places: the days at the base, either side of the nights away.
+  // Without nights that is every day.
+  const sameEnds = (): number[][] => {
+    const groups = new Map<string, number[]>();
+    for (let d = 0; d < n; d++) {
+      const k = ctxs ? JSON.stringify(endsOf(d)) : '';
+      groups.set(k, [...(groups.get(k) ?? []), d]);
+    }
+    return [...groups.values()];
+  };
+
   /** Days nobody locked are put fullest first, so Day 1 isn't the thin one. */
   const arrange = (s: State): State => {
-    // With nights away the days are a journey in order: which is first isn't ours to shuffle.
-    if (ctxs) return { days: s.days, left: [...s.left].sort((a, b) => a - b) };
-    const open = s.days.map((_, d) => d).filter((d) => !fixed[d].length);
-    const sets = open.map((d) => s.days[d]).sort((a, b) => (dayOf(b, 0)?.workload ?? 0) - (dayOf(a, 0)?.workload ?? 0) || key(a).localeCompare(key(b)));
     const days = s.days.map((d) => d);
-    open.forEach((d, k) => (days[d] = sets[k]));
+    for (const group of sameEnds()) {
+      const open = group.filter((d) => !fixed[d].length);
+      const sets = open.map((d) => s.days[d]).sort((a, b) => (dayOf(b, open[0])?.workload ?? 0) - (dayOf(a, open[0])?.workload ?? 0) || key(a).localeCompare(key(b)));
+      open.forEach((d, k) => (days[d] = sets[k]));
+    }
     return { days, left: [...s.left].sort((a, b) => a - b) };
   };
   const signature = (s: State) => s.days.map(key).join('|');
@@ -455,12 +491,12 @@ export function build({ pool, suggestions, prefs, pins, seed, nights, quick = fa
     ranked.slice(1).forEach((r) => {
       if (r.state.left.length <= best.state.left.length && r.cost <= best.cost + AS_GOOD) choices.push({ state: r.state });
     });
-    const open = best.state.days.map((_, d) => d).filter((d) => !fixed[d].length && best.state.days[d].length);
-    if (open.length > 1 && !ctxs) {
-      const days = best.state.days.map((d) => d);
+    const days = best.state.days.map((d) => d);
+    for (const group of sameEnds()) {
+      const open = group.filter((d) => !fixed[d].length && best.state.days[d].length);
       open.forEach((d, k) => (days[d] = best.state.days[open[open.length - 1 - k]]));
-      choices.push({ state: { days, left: best.state.left } });
     }
+    if (signature({ days, left: [] }) !== signature(best.state)) choices.push({ state: { days, left: best.state.left } });
     best.state.days.forEach((set, d) => {
       const all = ways(set, d) ?? [];
       const second = all[1];

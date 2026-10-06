@@ -1,38 +1,61 @@
-// Old planner and new, side by side, on every test trip:
+// Three planners side by side on every test trip:
 //   npm run planner:compare
+// OLD      the planner before October 2026 (tests/planner/legacy.ts)
+// PLAIN    today's planner on places as they were saved before (no Gemini facts)
+// FACTS    today's planner on the same places with Gemini's recorded facts (gemini-facts.json)
 import { planNow, type PlannerInput } from '@/data/planner';
-import { sunFor } from '@/data/planner/schedule';
+import { kindOf, sunFor } from '@/data/planner/schedule';
+import type { Place } from '@/data/types';
 import { formatClock } from '@/lib/geo';
 
-import { fortKochiStay, foodHeavy, gokarna, kochi, ladakh, leh, mumbai, prefs, sparse } from './fixtures';
+import { facts, foodHeavy, gokarna, kochi, ladakh, leh, mumbai, prefs } from './fixtures';
 import { planNow as planBefore } from './legacy';
 import { print } from './report';
 
-const cases: { title: string; input: Omit<PlannerInput, 'cityId' | 'suggestions' | 'seed'> }[] = [
-  { title: 'Gokarna, 1 day, balanced', input: { saved: gokarna, prefs: prefs(), pins: [], removed: [] } },
-  { title: 'Gokarna, 2 days, balanced', input: { saved: gokarna, prefs: prefs({ days: 2 }), pins: [], removed: [] } },
-  { title: 'Gokarna, 1 day, relaxed (can’t fit all)', input: { saved: gokarna, prefs: prefs({ pace: 'relaxed' }), pins: [], removed: [] } },
-  { title: 'Kochi, 2 days, balanced', input: { saved: kochi, prefs: prefs({ days: 2 }), pins: [], removed: [] } },
-  { title: 'Kochi, 2 days, staying in Fort Kochi', input: { saved: kochi, prefs: prefs({ days: 2, stay: fortKochiStay }), pins: [], removed: [] } },
-  { title: 'Ladakh, 4 days, own vehicle, staying in Leh', input: { saved: ladakh, prefs: prefs({ days: 4, getting: 'drive', terrain: 'mountain', stay: leh }), pins: [], removed: [] } },
-  { title: 'Mumbai, 3 days, balanced', input: { saved: mumbai, prefs: prefs({ days: 3 }), pins: [], removed: [] } },
-  { title: 'Old Delhi (food-heavy), 2 days', input: { saved: foodHeavy, prefs: prefs({ days: 2 }), pins: [], removed: [] } },
-  { title: 'Two far-apart places (sparse), 1 day, own vehicle', input: { saved: sparse, prefs: prefs({ getting: 'drive' }), pins: [], removed: [] } },
-  {
-    title: 'Kochi, 2 days, Lulu Mall locked to Day 1, Marine Drive removed',
-    input: { saved: kochi, prefs: prefs({ days: 2 }), pins: [{ placeId: kochi[7].id, day: 0 }], removed: [kochi[6].id] },
-  },
+type Case = { title: string; plain: Place[]; rich: Place[]; over: Partial<PlannerInput> };
+const pick = (list: Place[], name: string) => list.find((p) => p.name.startsWith(name))!.id;
+const ladakhPrefs = prefs({ days: 4, getting: 'drive', terrain: 'mountain', stay: leh });
+
+const cases: Case[] = [
+  { title: 'Gokarna, 1 day', plain: gokarna, rich: facts.gokarna, over: {} },
+  { title: 'Gokarna, 2 days', plain: gokarna, rich: facts.gokarna, over: { prefs: prefs({ days: 2 }) } },
+  { title: 'Kochi, 1 day', plain: kochi, rich: facts.kochi, over: {} },
+  { title: 'Kochi, 2 days', plain: kochi, rich: facts.kochi, over: { prefs: prefs({ days: 2 }) } },
+  { title: 'Ladakh, 4 days, own vehicle, staying in Leh', plain: ladakh, rich: facts.ladakh, over: { prefs: ladakhPrefs } },
+  { title: 'Mumbai, 3 days', plain: mumbai, rich: facts.mumbai, over: { prefs: prefs({ days: 3 }) } },
+  { title: 'Old Delhi (food-heavy), 2 days', plain: foodHeavy, rich: facts.foodHeavy, over: { prefs: prefs({ days: 2 }) } },
+  { title: 'Kochi, 2 days, Lulu Mall locked to Day 1, Marine Drive removed', plain: kochi, rich: facts.kochi, over: { prefs: prefs({ days: 2 }) } },
 ];
 
+const only = process.argv[2];
 for (const c of cases) {
-  const input: PlannerInput = { cityId: 'test', suggestions: [], seed: 1, ...c.input };
-  const at = input.prefs.stay?.coords ?? input.saved[0].coords;
-  console.log(`\n${'='.repeat(100)}\n${c.title}   (sunset ${formatClock(sunFor(at, input.prefs.start).sunset)})\n${'='.repeat(100)}`);
-  console.log(' BEFORE');
-  console.log(print(planBefore(input)));
-  console.log(' AFTER');
-  const t0 = performance.now();
-  const after = planNow(input);
-  console.log(print(after));
-  console.log(`  (planned in ${Math.round(performance.now() - t0)} ms)`);
+  if (only && !c.title.toLowerCase().includes(only.toLowerCase())) continue;
+  const locked = c.title.includes('locked');
+  const input = (saved: Place[]): PlannerInput => ({
+    cityId: 'test',
+    saved,
+    suggestions: [],
+    prefs: prefs(),
+    seed: 1,
+    pins: locked ? [{ placeId: pick(saved, 'Lulu'), day: 0 }] : [],
+    removed: locked ? [pick(saved, 'Marine Drive')] : [],
+    ...c.over,
+  });
+  const at = input(c.plain).prefs.stay?.coords ?? c.plain[0].coords;
+  console.log(`\n${'='.repeat(104)}\n${c.title}   (14 Nov 2026, balanced, sunset ${formatClock(sunFor(at, input(c.plain).prefs.start).sunset)})\n${'='.repeat(104)}`);
+  console.log(' OLD');
+  console.log(print(planBefore(input(c.plain))));
+  console.log(' PLAIN (no Gemini facts)');
+  console.log(print(planNow(input(c.plain))));
+  console.log(' FACTS (with Gemini facts)');
+  console.log(print(planNow(input(c.rich))));
+  if (!c.title.includes('2 days') && !locked) {
+    console.log(' How each place is read (name → without facts → with Gemini’s facts):');
+    c.plain.forEach((p, i) => {
+      const r = c.rich[i];
+      const f = r.facts;
+      const said = f ? [f.meal, f.window, f.sunset && 'sunset✓', f.sunrise && 'sunrise✓', f.night && 'night✓'].filter(Boolean).join(', ') : 'nothing';
+      console.log(`    ${p.name.padEnd(30)} ${`${kindOf(p)}/${p.bestTime}`.padEnd(22)} → ${`${kindOf(r)}/${r.bestTime}`.padEnd(22)} (Gemini: ${said})`);
+    });
+  }
 }

@@ -1,7 +1,9 @@
 // Places for the planner's tests: real coordinates, with the kind, best time and visit length the
 // app would hold for them. Made by hand so the tests need no network and no photos.
 import type { TripPrefs } from '@/data/planner';
-import type { DayPart, Place, PlaceType } from '@/data/types';
+import type { DayPart, Place, PlaceFacts, PlaceType } from '@/data/types';
+
+import recorded from './gemini-facts.json' with { type: 'json' };
 
 let made = 0;
 export function P(name: string, type: PlaceType, bestTime: DayPart, minutes: number, lat: number, lng: number, why = '', area = ''): Place {
@@ -105,3 +107,33 @@ export const sparse = [
 ];
 
 export const fortKochiStay = { name: 'Fort Kochi', coords: { lat: 9.9658, lng: 76.2421 }, at: 0 };
+
+// ── The same places with Gemini's facts ─────────────────────────────────────────────────────────
+// What the real model answered about each place (gemini-facts.json, recorded by record-facts.ts),
+// put on the place the way the app does when a link is read: the finer facts, and the best part of
+// the day worked out from the window. Visit lengths and kinds are left as above, so old against new
+// differs only by the facts.
+
+type Recorded = { window: PlaceFacts['window']; mealType: PlaceFacts['meal']; sunsetRelevant: boolean; sunriseRelevant: boolean; nightRelevant: boolean; parentArea: string | null };
+const PART: Record<NonNullable<PlaceFacts['window']>, DayPart> = { early_morning: 'morning', morning: 'morning', afternoon: 'afternoon', sunset: 'evening', evening: 'evening', night: 'evening' };
+
+export function withFacts(city: string, places: Place[]): Place[] {
+  return places.map((p) => {
+    const r = (recorded as Record<string, Recorded | undefined>)[`${city}: ${p.name}`];
+    if (!r) return p;
+    return {
+      ...p,
+      bestTime: r.window ? PART[r.window] : p.bestTime,
+      facts: { meal: p.type === 'food' ? r.mealType : null, window: r.window, sunset: r.sunsetRelevant, sunrise: r.sunriseRelevant, night: r.nightRelevant, parentArea: r.parentArea },
+    };
+  });
+}
+
+export const facts = {
+  gokarna: withFacts('Gokarna', gokarna),
+  kochi: withFacts('Kochi', kochi),
+  ladakh: withFacts('Ladakh', ladakh),
+  mumbai: withFacts('Mumbai', mumbai),
+  foodHeavy: withFacts('Old Delhi', foodHeavy),
+  sparse: withFacts('Central Kerala', sparse),
+};

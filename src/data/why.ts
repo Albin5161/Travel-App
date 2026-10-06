@@ -18,6 +18,8 @@ const COMPACT_KM = 5;
 const LIGHT_ROAD_MIN = 60;
 /** Enough time on the road that the day is as much a drive as a day out: worth saying plainly. */
 const LONG_ROAD_MIN = 180;
+/** A wait this long before a stop is called what it is: free time. */
+const FREE_TIME_MIN = 120;
 
 /** Sunset on a plan's day, where its stops are. */
 const sunsetOn = (plan: TripPlan, day: number) => {
@@ -116,11 +118,14 @@ export function whyStop(plan: TripPlan, day: number, index: number): string | nu
   }
   if (isCustom(p)) return `Your own stop, in the ${p.bestTime} as asked.`;
   if (s.pinned) return 'Locked by you: it stays on this day when you reshuffle.';
+  // A long wait before it is said, not hidden: it's free time, because nothing saved fills it.
+  const waited = prev ? s.startMinutes - (prev.startMinutes + prev.place.minutes) - (s.legBefore?.minutes ?? 0) : 0;
+  const free = waited >= FREE_TIME_MIN ? ` The ${formatDuration(Math.round(waited / 15) * 15)} before it are free: nothing you saved fits there.` : '';
   // What the clock says first: a sunset caught, a meal at its hour.
-  if (atSunset(s, sunsetOn(plan, day))) return `Timed for the sunset, about ${formatClock(sunsetOn(plan, day))}.`;
+  if (atSunset(s, sunsetOn(plan, day))) return `Timed for the sunset, about ${formatClock(sunsetOn(plan, day))}.${free}`;
   if (p.type === 'food') {
     if (within(s.startMinutes, LUNCH_WINDOW)) return index === 0 ? 'Lunch, to start the day.' : 'Lunch, between the morning and the afternoon.';
-    if (within(s.startMinutes, DINNER_WINDOW)) return 'Dinner, to end the day.';
+    if (within(s.startMinutes, DINNER_WINDOW)) return `Dinner, to end the day.${free}`;
     if (s.startMinutes < 10 * 60 && index === 0) return 'Breakfast, to start the day.';
     return kindOf(p) === 'cafe' ? 'A break between stops.' : null;
   }

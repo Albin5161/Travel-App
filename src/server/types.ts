@@ -17,6 +17,18 @@ export type FoundPlace = {
   bestTime?: 'morning' | 'afternoon' | 'evening' | null;
   /** 0 free, 1–3 for ₹ to ₹₹₹. */
   price?: 0 | 1 | 2 | 3 | null;
+  // Finer facts for timing a day, asked for since October 2026. Facts about the place only: the
+  // model never says which day or what order. Absent on results read (and cached) before then.
+  /** For a place to eat: the meal it's for. Null for anything else. */
+  mealType?: 'breakfast' | 'lunch' | 'dinner' | 'cafe' | 'snack' | 'dessert' | 'unknown' | null;
+  /** When it's at its best, finer than `bestTime` (which is worked out from this). */
+  window?: 'early_morning' | 'morning' | 'afternoon' | 'sunset' | 'evening' | 'night' | null;
+  /** People go there for the sunset, for the sunrise, or after dark. */
+  sunsetRelevant?: boolean;
+  sunriseRelevant?: boolean;
+  nightRelevant?: boolean;
+  /** The wider area `area` is part of ("Fort Kochi" is in "Kochi"). */
+  parentArea?: string | null;
 };
 
 export type Timings = Record<string, number>;

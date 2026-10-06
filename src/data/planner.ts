@@ -214,7 +214,7 @@ function once<T>(key: string, make: () => T): T {
   if (kept.size > 16) kept.delete(kept.keys().next().value as string);
   return made;
 }
-const facts = (ps: Place[]) => ps.map((p) => [p.id, p.name, p.type, p.bestTime, p.minutes, p.coords?.lat, p.coords?.lng]);
+const facts = (ps: Place[]) => ps.map((p) => [p.id, p.name, p.type, p.bestTime, p.minutes, p.coords?.lat, p.coords?.lng, p.facts ?? null]);
 
 /**
  * How many of these places a trip of `days` at `pace` would fit, for the questions before a plan

@@ -67,6 +67,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test:planner": "TZ=Asia/Kolkata node --experimental-strip-types --no-warnings --import ./scripts/ts-paths.mjs --test tests/planner/*.test.ts",
+    "planner:record-facts": "node --experimental-transform-types --no-warnings --import ./scripts/ts-paths.mjs tests/planner/record-facts.ts",
     "planner:compare": "TZ=Asia/Kolkata node --experimental-strip-types --no-warnings --import ./scripts/ts-paths.mjs tests/planner/compare.ts"
   },
   "private": true

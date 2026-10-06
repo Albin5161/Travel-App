@@ -3,7 +3,7 @@ import type { ImageSourcePropType } from 'react-native';
 import { cityName, sameCityName } from '@/data/cityNames';
 import type { Stay } from '@/data/planner';
 import { live, register } from '@/data/registry';
-import type { City, DayPart, Extraction, Place, PlaceType, Reel } from '@/data/types';
+import type { City, DayPart, Extraction, Place, PlaceFacts, PlaceType, Reel } from '@/data/types';
 import { ApiFailure, post } from '@/lib/api';
 import { distanceKm, type LatLng, type Terrain } from '@/lib/geo';
 import { deviceStorage } from '@/lib/live/storage';
@@ -418,6 +418,25 @@ function seconds(clockText: string): number {
   return parts.reduce((sum, n) => sum * 60 + n, 0);
 }
 
+/**
+ * The model's finer facts for timing a day, as the app keeps them on a place. Nothing at all when
+ * the result is from before they were asked for (an older read kept on the server or the phone):
+ * the planner then goes by the place's kind, best part of the day and name, as it always has.
+ */
+function factsOf(found: FoundPlace): { facts?: PlaceFacts } {
+  if (found.window === undefined && found.mealType === undefined && found.sunsetRelevant === undefined) return {};
+  return {
+    facts: {
+      meal: found.mealType ?? null,
+      window: found.window ?? null,
+      sunset: !!found.sunsetRelevant,
+      sunrise: !!found.sunriseRelevant,
+      night: !!found.nightRelevant,
+      parentArea: found.parentArea ?? null,
+    },
+  };
+}
+
 function toPlaces(pairs: { found: FoundPlace; match: MatchedPlace }[], reel: Reel, cityId: string): Place[] {
   const points = project(pairs.map((p) => p.match.location));
   const seen = new Set<string>();
@@ -438,6 +457,7 @@ function toPlaces(pairs: { found: FoundPlace; match: MatchedPlace }[], reel: Ree
         photo,
         photoCredit: match.photo?.attributions.map((a) => a.name).join(', ') || undefined,
         ...(match.photo ? {} : { photoFromVideo: Date.now() }),
+        ...factsOf(found),
         why: found.why,
         source: { kind: 'reel', reelId: reel.id, timestamp: found.timestamp ?? '' },
         ...planningDetails(found),

@@ -54,9 +54,9 @@ export function print(plan: AnyPlan): string {
     d.stops.forEach((s) => {
       const leg = s.legBefore?.minutes ?? 0;
       const wait = prevEnd === null ? 0 : s.startMinutes - prevEnd - leg;
-      const tag = `${s.place.type}/${s.place.bestTime}${s.suggested ? ', local pick' : ''}${s.pinned ? ', locked' : ''}`;
+      const tag = `${s.place.facts?.meal ?? s.place.type}/${s.place.facts?.window ?? s.place.bestTime}${s.suggested ? ', local pick' : ''}${s.pinned ? ', locked' : ''}`;
       out.push(
-        `    ${formatClock(s.startMinutes).padStart(8)}  ${s.place.name.padEnd(30)} ${hm(s.place.minutes).padEnd(7)} ${tag.padEnd(22)}` +
+        `    ${formatClock(s.startMinutes).padStart(8)}  ${s.place.name.padEnd(30)} ${hm(s.place.minutes).padEnd(7)} ${tag.padEnd(26)}` +
           (leg ? ` travel ${hm(leg)}` : '') +
           (wait >= 30 ? `   ← waits ${hm(wait)}` : ''),
       );

@@ -14,6 +14,27 @@ export type PlaceSource =
   /** Typed in by someone on the trip: "Lunch at Ammachi's", "Pick up Amma, 7:00". */
   | { kind: 'custom'; by: string; note?: string };
 
+/** The meal a place to eat is for, as the model knows it. `unknown` when it can't tell. */
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'cafe' | 'snack' | 'dessert' | 'unknown';
+/** When a place is at its best, finer than morning / afternoon / evening. */
+export type TimeWindow = 'early_morning' | 'morning' | 'afternoon' | 'sunset' | 'evening' | 'night';
+
+/**
+ * What the model knows of a place that helps time it in a day: facts about the place, never a plan.
+ * Every field is optional: a place saved before these were asked for has none, and the planner
+ * falls back to its kind, its best part of the day and its name.
+ */
+export interface PlaceFacts {
+  meal?: MealType | null;
+  window?: TimeWindow | null;
+  /** People go for the sunset, the sunrise, or after dark. */
+  sunset?: boolean;
+  sunrise?: boolean;
+  night?: boolean;
+  /** The wider area its `area` is part of: "Fort Kochi" is in "Kochi". */
+  parentArea?: string | null;
+}
+
 export interface Place {
   id: string;
   cityId: string;
@@ -31,6 +52,8 @@ export interface Place {
   why: string;
   source: PlaceSource;
   bestTime: DayPart;
+  /** Finer facts for timing, from links read since October 2026. Absent on older places. */
+  facts?: PlaceFacts;
   /** 0 free, 1–3 for ₹ to ₹₹₹; null when it isn't known, so nothing claims a price it doesn't have. */
   cost: 0 | 1 | 2 | 3 | null;
   minutes: number;

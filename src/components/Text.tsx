@@ -75,21 +75,10 @@ const styles = StyleSheet.create({
   body: { fontFamily: fonts.sans, fontSize: 15, lineHeight: 22 },
   bodyStrong: { fontFamily: fonts.sansMedium, fontSize: 15, lineHeight: 22 },
   label: { fontFamily: fonts.sansMedium, fontSize: 13, lineHeight: 18 },
-  // Caps whisper rather than shout: 0.08 em, not the 0.18 em of a generated landing page.
-  micro: {
-    fontFamily: fonts.sansSemi,
-    fontSize: 11,
-    lineHeight: 14,
-    letterSpacing: 0.9,
-    textTransform: 'uppercase',
-  },
-  // The caption above a screen's title: micro, spaced wide, the way a weather app labels a panel.
-  eyebrow: {
-    fontFamily: fonts.sansSemi,
-    fontSize: 11,
-    lineHeight: 14,
-    letterSpacing: 1.8,
-    textTransform: 'uppercase',
-  },
+  // Small print, set as it's written. Not in spaced-out capitals: a small capital label over
+  // every block is the mark of a generated screen, and it reads slower than plain words.
+  micro: { fontFamily: fonts.sansMedium, fontSize: 12, lineHeight: 16, letterSpacing: 0.1 },
+  // The quiet line above a screen's title: who or where this is about, in ordinary words.
+  eyebrow: { fontFamily: fonts.sansMedium, fontSize: 13, lineHeight: 18 },
   data: { fontFamily: fonts.sansMedium, fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums'] },
 });

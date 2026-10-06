@@ -137,6 +137,13 @@ list wins**, and the code is the final word.
 - **Onboarding page one:** tilted "From this… …to this" cards (`src/components/onboarding/FromThisToThis.tsx`),
   not the video-to-map loop.
 - **Tabs:** Home · Trips · Map · Profile.
+- **Small print (7 Oct 2026):** the `eyebrow` and `micro` text styles are plain sentence case, not
+  spaced-out capitals, on every screen. Home's headline is one colour, its collections sit under a
+  plain "Your places" heading, and counts are written as words ("7 spots"). The opening screen is
+  the logo on white (`LaunchIntro`), matching the splash and the app icon.
+- **Links without a screen of their own (7 Oct 2026):** links shared into the app, or pasted several
+  at once, are read in the background and wait on Home (`LinkInbox`, `src/state/inbox.tsx`); a
+  sheet says what was found when they were read unwatched.
 
 Architecture (server, database, AI, planner): [docs/](docs/TECHNICAL_ARCHITECTURE.md).
 

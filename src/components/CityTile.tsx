@@ -14,7 +14,7 @@ export type Rect = { x: number; y: number; width: number; height: number };
 
 type FaceProps = {
   name: string;
-  /** Bottom row on the photo, e.g. SPOTS · 7 */
+  /** The count under the name, e.g. "7 spots" */
   statLabel: string;
   statValue: string;
   badge?: string;
@@ -58,16 +58,13 @@ function faceScale(width: number | undefined) {
     nameLine: compact ? 18 : 25,
     nameTrack: compact ? -0.4 : -0.7,
     inset: compact ? 9 : 14,
-    ruleTop: compact ? 10 : 18,
-    ruleBottom: compact ? 7 : 12,
-    stat: compact ? 8 : 10,
-    statTrack: compact ? 0.5 : 0.8,
+    stat: compact ? 11 : 13,
     radius: tileRadius(width),
   };
 }
 
 // Tall photo card for the home grid (after Atlys's country cards): name in heavy Jakarta over the
-// photo, a hairline, one stat row, and a two-line caption below the card (the source, then who made
+// photo, the count in words under it, and a two-line caption below the card (the source, then who made
 // the videos). A Google photo's credit sits on the photo.
 export function CityTile({
   name,
@@ -153,15 +150,10 @@ export function CityTileFace({ name, statLabel, statValue, badge, width, photoCr
         >
           {name}
         </Text>
-        <View style={[styles.rule, { marginTop: f.ruleTop, marginBottom: f.ruleBottom }]} />
-        <View style={styles.stat}>
-          <Text variant="micro" color={light.photoInkSoft} style={[styles.statText, { fontSize: f.stat, letterSpacing: f.statTrack }]}>
-            {statLabel}
-          </Text>
-          <Text variant="micro" color={light.photoInk} style={[styles.statText, { fontSize: f.stat, letterSpacing: f.statTrack }]}>
-            {statValue}
-          </Text>
-        </View>
+        {/* The count as words under the name ("7 spots"), not a label and a figure on a ruled row. */}
+        <Text variant="micro" color={light.photoInk} style={{ fontSize: f.stat, lineHeight: f.stat + 4, marginTop: f.compact ? 2 : 4 }}>
+          {statValue} {statLabel.toLowerCase()}
+        </Text>
         {/* Google asks for the photographer's credit wherever its photo shows: on the photo, so the
             caption below the card keeps to its two lines. */}
         {photoCredit ? (
@@ -208,9 +200,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.7,
     color: light.photoInk,
   },
-  rule: { height: StyleSheet.hairlineWidth, backgroundColor: light.photoLine, marginTop: 18, marginBottom: 12 },
-  stat: { flexDirection: 'row', justifyContent: 'space-between' },
-  statText: { fontSize: 10, letterSpacing: 0.8 },
   caption: { paddingHorizontal: 4, paddingTop: 10, gap: 1 },
   captionCompact: { paddingHorizontal: 2, paddingTop: 7 },
   captionText: { fontSize: 11, lineHeight: 15 },

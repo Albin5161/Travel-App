@@ -11,8 +11,8 @@ import { dims } from '@/components/pressed';
 import { getCity, getReel, isSampleLink } from '@/data/api';
 import { haptic } from '@/lib/haptics';
 import { fadeUp } from '@/lib/motion';
-import { draftProgress, useTrips, type Draft } from '@/state/trips';
-import { skyAccent, skyFill, skyInk } from '@/theme/sky';
+import { useTrips, type Draft } from '@/state/trips';
+import { skyFill, skyInk } from '@/theme/sky';
 import { radii } from '@/theme/tokens';
 
 const ENTER = fadeUp(80);
@@ -21,13 +21,13 @@ const ENTER = fadeUp(80);
 function stepLine(d: Draft, places: number): string {
   switch (d.stage) {
     case 'reading':
-      return 'Reading your video';
+      return 'Still reading it';
     case 'checking':
-      return places ? `${places} places found · check them` : 'Places found · check them';
+      return places ? `${places} places found. Check them next.` : 'Places found. Check them next.';
     case 'questions':
-      return 'Answering a few questions';
+      return 'A few questions left';
     case 'plan':
-      return 'Your plan is ready · save it';
+      return 'Your plan is ready to save';
   }
 }
 
@@ -45,7 +45,6 @@ export function ContinueCard() {
   const reel = extraction?.reel ?? (d.stage === 'checking' && d.reelId ? getReel(d.reelId) : null);
   const name = city?.name ?? 'your video';
   const photo = city?.hero ?? reel?.thumbnail ?? null;
-  const progress = draftProgress(d);
 
   const resume = () => {
     haptic.light();
@@ -79,7 +78,7 @@ export function ContinueCard() {
           onPress={resume}
           style={styles.main}
           accessibilityRole="button"
-          accessibilityLabel={`Continue planning ${name}. ${progress} percent done. ${stepLine(d, extraction?.places.length ?? 0)}`}
+          accessibilityLabel={`Carry on with ${name}. ${stepLine(d, extraction?.places.length ?? 0)}`}
         >
           {photo ? (
             <Image source={photo} style={styles.thumb} contentFit="cover" transition={0} />
@@ -89,20 +88,15 @@ export function ContinueCard() {
             </View>
           )}
           <View style={styles.text}>
-            <Text variant="eyebrow">Continue planning</Text>
+            {/* Where it was left, in words. No bar and no percentage: this is a trip, not a download. */}
             <Text variant="title" numberOfLines={1}>
-              {name}
+              {city ? `Carry on with ${name}` : 'Carry on with your video'}
             </Text>
             <Text variant="label" color={skyInk.soft} numberOfLines={1}>
               {stepLine(d, extraction?.places.length ?? 0)}
             </Text>
-            <View style={styles.progressRow}>
-              <View style={styles.track}>
-                <View style={[styles.fill, { width: `${progress}%` }]} />
-              </View>
-              <Text variant="data">{progress}%</Text>
-            </View>
           </View>
+          <Feather name="arrow-right" size={18} color={skyInk.soft} />
         </PressableScale>
         <Pressable
           onPress={() => {
@@ -127,9 +121,6 @@ const styles = StyleSheet.create({
   thumb: { width: 64, height: 64, borderRadius: radii.pane, backgroundColor: skyFill.pane },
   thumbEmpty: { alignItems: 'center', justifyContent: 'center' },
   text: { flex: 1, gap: 3 },
-  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
-  track: { flex: 1, height: 6, borderRadius: 3, backgroundColor: skyFill.pressed, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 3, backgroundColor: skyAccent },
   // Top-right, out of the way of the card's own tap: 44pt, as every tap target.
   stop: { position: 'absolute', top: 0, right: 0, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 });

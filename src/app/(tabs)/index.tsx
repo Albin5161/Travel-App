@@ -37,7 +37,7 @@ import { FADE_IN, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips, type HomeTab } from '@/state/trips';
 import { useHomeSky } from '@/state/sky';
 import { useHere } from '@/state/where';
-import { SKY, skyAccent as ACCENT, skyFill, skyInk } from '@/theme/sky';
+import { SKY, skyFill, skyInk } from '@/theme/sky';
 import { fonts, space } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
@@ -108,6 +108,7 @@ export default function Home() {
   // Filed by where the places are, never picked: each collection lands in exactly one of the two.
   const near = collections.filter((c) => isNearHome(c.placeIds, state.homeDistrictId));
   const away = collections.filter((c) => !near.includes(c));
+  const spotCount = collections.reduce((n, c) => n + c.placeIds.length, 0);
   const tab = state.homeTab;
   const shown = tab === 'near' ? near : away;
   const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? null;
@@ -185,9 +186,6 @@ export default function Home() {
               style={{ marginTop: heroPad ?? MIN_PAD, opacity: heroPad === null ? 0 : 1 }}
             >
             <Animated.View entering={ENTER[0]}>
-              <Text variant="eyebrow">
-                Turn videos into trips
-              </Text>
               <Text style={styles.question} accessibilityRole="header">
                 {firstName ? (
                   <>
@@ -225,9 +223,14 @@ export default function Home() {
               save, fading up as it lands, rather than greeting a new user with two empty tabs. */}
           {collections.length === 0 ? null : (
             <Animated.View entering={ENTER[2]} style={styles.panelWrap}>
-              <Text variant="eyebrow" accessibilityRole="header">
-                My collections
-              </Text>
+              <View style={styles.panelHead}>
+                <Text variant="headline" accessibilityRole="header">
+                  Your places
+                </Text>
+                <Text variant="label" color={skyInk.soft}>
+                  {countLine(collections.length, spotCount)}
+                </Text>
+              </View>
               <Segmented
                 value={tab}
                 onChange={(t) => dispatch({ type: 'setHomeTab', tab: t })}
@@ -288,6 +291,11 @@ export default function Home() {
       />
     </SkyScreen>
   );
+}
+
+/** "2 cities · 11 spots": what's saved, in a line beside the heading. */
+function countLine(cities: number, spots: number) {
+  return `${cities} ${cities === 1 ? 'city' : 'cities'} · ${spots} ${spots === 1 ? 'spot' : 'spots'}`;
 }
 
 /** "Instagram reel" or "YouTube video" for one source; "2 videos" once there are more. */
@@ -458,10 +466,9 @@ const styles = StyleSheet.create({
     backgroundColor: skyFill.raised,
   },
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
-  // Two weights, one line box: a quiet Medium lead-in, then the ask in ExtraBold. The weight change
-  // does the emphasis a decorative italic used to.
+  // Two weights, one colour: a quiet Medium lead-in, then the name and the ask in ExtraBold. The
+  // weight does the emphasis; a second colour on the last line is every generated landing page.
   question: {
-    marginTop: 10,
     fontFamily: fonts.displayMedium,
     fontSize: 34,
     lineHeight: 38,
@@ -471,7 +478,7 @@ const styles = StyleSheet.create({
   },
   // Sized again on purpose: the nested Text is our own component, which would otherwise reset it
   // to body's 15/22 rather than inherit from the line around it.
-  questionStrong: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: ACCENT, letterSpacing: -1.1 },
+  questionStrong: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
   questionName: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
   hidden: { opacity: 0 },
   continue: { paddingHorizontal: GUTTER },
@@ -481,6 +488,7 @@ const styles = StyleSheet.create({
   frostFill: { flex: 1, borderWidth: 0 },
   // Straight on the sky, no card: the caption, the switch and the tiles, like a weather app's list.
   panelWrap: { marginTop: 16, paddingHorizontal: GUTTER, gap: 14 },
+  panelHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
   empty: { width: '100%', gap: 8, paddingHorizontal: 4, paddingTop: 4, paddingBottom: 8 },
   setHome: { alignSelf: 'flex-start', marginTop: 4 },
   askBody: { gap: 12 },

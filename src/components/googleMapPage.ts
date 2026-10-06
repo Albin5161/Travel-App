@@ -55,7 +55,7 @@ export function googleMapPage(key: string, mapId: string): string {
   var map = null, Marker = null, pending = null, state = null;
   var markers = {}, baseLine = null, reachedLine = null, frame = 0, dragStop = null;
 
-  var TILE = 256, JOURNEY_TILT = 45;
+  var TILE = 256, JOURNEY_TILT = 55, JOURNEY_HEADING = 25;
   var toWorld = function (p) { var s = Math.sin(p.lat * Math.PI / 180); return { x: (p.lng + 180) / 360, y: 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI) }; };
   var fromWorld = function (x, y) { return { lng: x * 360 - 180, lat: Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI }; };
   var easeInOut = function (u) { return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; };
@@ -128,15 +128,16 @@ export function googleMapPage(key: string, mapId: string): string {
     var i = s.pins.findIndex(function (p) { return p.id === s.focusId; });
     var target;
     if (i < 0) {
-      target = { x: (minX + maxX) / 2 - offX / scale(fitZoom), y: (minY + maxY) / 2 - offY / scale(fitZoom), zoom: fitZoom, tilt: 0 };
+      target = { x: (minX + maxX) / 2 - offX / scale(fitZoom), y: (minY + maxY) / 2 - offY / scale(fitZoom), zoom: fitZoom, tilt: 0, heading: 0 };
     } else {
-      var zoom = clamp(fitZoom + 2.5, 13.5, 17.5);
+      var zoom = clamp(fitZoom + 3, 17, 17.6);
       var lift = offY / Math.cos(JOURNEY_TILT * Math.PI / 180);
-      target = { x: pts[i].x - offX / scale(zoom), y: pts[i].y - lift / scale(zoom), zoom: zoom, tilt: JOURNEY_TILT };
+      var h = JOURNEY_HEADING * Math.PI / 180;
+      target = { x: pts[i].x - (offX * Math.cos(h) - lift * Math.sin(h)) / scale(zoom), y: pts[i].y - (offX * Math.sin(h) + lift * Math.cos(h)) / scale(zoom), zoom: zoom, tilt: JOURNEY_TILT, heading: JOURNEY_HEADING };
     }
-    var put = function (c) { map.moveCamera({ center: fromWorld(c.x, c.y), zoom: c.zoom, tilt: c.tilt, heading: 0 }); };
+    var put = function (c) { map.moveCamera({ center: fromWorld(c.x, c.y), zoom: c.zoom, tilt: c.tilt, heading: c.heading }); };
     var center = map.getCenter();
-    var from = center ? { x: toWorld({ lat: center.lat(), lng: center.lng() }).x, y: toWorld({ lat: center.lat(), lng: center.lng() }).y, zoom: map.getZoom() || target.zoom, tilt: map.getTilt() || 0 } : null;
+    var from = center ? { x: toWorld({ lat: center.lat(), lng: center.lng() }).x, y: toWorld({ lat: center.lat(), lng: center.lng() }).y, zoom: map.getZoom() || target.zoom, tilt: map.getTilt() || 0, heading: map.getHeading() || 0 } : null;
     if (!from || s.reduced) { put(target); return; }
     var hop = Math.hypot(target.x - from.x, target.y - from.y);
     var bothFit = hop > 0 ? Math.log2((0.8 * Math.min(availW, availH)) / (hop * TILE)) : Infinity;
@@ -146,7 +147,7 @@ export function googleMapPage(key: string, mapId: string): string {
     var start = performance.now();
     var step = function (now) {
       var u = Math.min(1, (now - start) / duration), e = easeInOut(u);
-      put({ x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, zoom: from.zoom + (target.zoom - from.zoom) * e - dip * Math.sin(Math.PI * u), tilt: from.tilt + (target.tilt - from.tilt) * e });
+      put({ x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, zoom: from.zoom + (target.zoom - from.zoom) * e - dip * Math.sin(Math.PI * u), tilt: from.tilt + (target.tilt - from.tilt) * e, heading: from.heading + (target.heading - from.heading) * e });
       if (u < 1) frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);

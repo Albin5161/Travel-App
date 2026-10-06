@@ -175,9 +175,14 @@ const parsePath = (key: string) =>
 
 // The camera, in Google's world coordinates (0–1 across the whole Earth), so a glide between two
 // stops is a straight line on the map and the zoom can be worked out for any pair of places.
-type Cam = { x: number; y: number; zoom: number; tilt: number };
+type Cam = { x: number; y: number; zoom: number; tilt: number; heading: number };
 const TILE = 256;
-const JOURNEY_TILT = 45;
+// On a stop the map leans well over and turns a little, so streets run on the diagonal and the
+// buildings stand up as blocks (Google raises them from zoom 17). The whole-day view stays flat
+// and north up.
+const JOURNEY_TILT = 55;
+const JOURNEY_HEADING = 25;
+const STOP_ZOOM = { min: 17, max: 17.6 };
 const toWorld = ({ lat, lng }: LatLng) => {
   const s = Math.sin((lat * Math.PI) / 180);
   return { x: (lng + 180) / 360, y: 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI) };
@@ -239,19 +244,27 @@ function Journey({
     if (i < 0) {
       const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
       const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-      target = { x: cx - offX / scale(fitZoom), y: cy - offY / scale(fitZoom), zoom: fitZoom, tilt: 0 };
+      target = { x: cx - offX / scale(fitZoom), y: cy - offY / scale(fitZoom), zoom: fitZoom, tilt: 0, heading: 0 };
     } else {
-      const zoom = clamp(fitZoom + 2.5, 13.5, 17.5);
+      const zoom = clamp(fitZoom + 3, STOP_ZOOM.min, STOP_ZOOM.max);
       // Tilted, ground near the centre is stretched about 1/cos(tilt) up the screen.
       const lift = offY / Math.cos((JOURNEY_TILT * Math.PI) / 180);
-      target = { x: pts[i].x - offX / scale(zoom), y: pts[i].y - lift / scale(zoom), zoom, tilt: JOURNEY_TILT };
+      // Turned, the screen's right and down no longer run east and south: the offset turns with it.
+      const h = (JOURNEY_HEADING * Math.PI) / 180;
+      target = {
+        x: pts[i].x - (offX * Math.cos(h) - lift * Math.sin(h)) / scale(zoom),
+        y: pts[i].y - (offX * Math.sin(h) + lift * Math.cos(h)) / scale(zoom),
+        zoom,
+        tilt: JOURNEY_TILT,
+        heading: JOURNEY_HEADING,
+      };
     }
 
     const center = map.getCenter();
     const from: Cam | null = center
-      ? { ...toWorld({ lat: center.lat(), lng: center.lng() }), zoom: map.getZoom() ?? target.zoom, tilt: map.getTilt() ?? 0 }
+      ? { ...toWorld({ lat: center.lat(), lng: center.lng() }), zoom: map.getZoom() ?? target.zoom, tilt: map.getTilt() ?? 0, heading: map.getHeading() ?? 0 }
       : null;
-    const put = (c: Cam) => map.moveCamera({ center: fromWorld(c.x, c.y), zoom: c.zoom, tilt: c.tilt, heading: 0 });
+    const put = (c: Cam) => map.moveCamera({ center: fromWorld(c.x, c.y), zoom: c.zoom, tilt: c.tilt, heading: c.heading });
 
     cancelAnimationFrame(frame.current);
     const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -274,6 +287,7 @@ function Journey({
         y: from.y + (target.y - from.y) * e,
         zoom: from.zoom + (target.zoom - from.zoom) * e - dip * Math.sin(Math.PI * u),
         tilt: from.tilt + (target.tilt - from.tilt) * e,
+        heading: from.heading + (target.heading - from.heading) * e,
       });
       if (u < 1) frame.current = requestAnimationFrame(step);
     };

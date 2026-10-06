@@ -60,6 +60,8 @@ function withClient(f: (c: PostHog) => void) {
 export type AnalyticsEvent =
   | 'onboarding completed'
   | 'link pasted'
+  | 'links pasted'
+  | 'link shared in'
   | 'places found'
   | 'link failed'
   | 'places saved'

@@ -9,6 +9,7 @@ import type { Extraction, Place, SpotStatus } from '@/data/types';
 import { cityName } from '@/data/cityNames';
 import { betterPhoto, framePhoto, refreshPlace, sameCity } from '@/lib/extract';
 import { distanceKm } from '@/lib/geo';
+import { linkKey } from '@/lib/links';
 import { deviceStorage } from '@/lib/live/storage';
 import { fromWire, toWire, type WirePlan } from '@/lib/live/wire';
 import { clusterSpots, districtAt, districtOf } from '@/lib/spots';
@@ -57,8 +58,30 @@ export function draftProgress(d: Draft): number {
   }
 }
 
+/**
+ * A link waiting on Home: shared into the app from Instagram or YouTube, or pasted along with
+ * others. Each is read in its turn without a screen of its own, then waits to be checked.
+ */
+export type InboxItem = {
+  /** The video it is ("yt:…", "ig:…"): one entry per video, however its link was copied. */
+  key: string;
+  url: string;
+  from: 'share' | 'paste';
+  at: number;
+  status: 'queued' | 'ready' | 'failed';
+  /** Ready: what was found, held until it's checked. */
+  extraction?: Extraction;
+  /** Failed: what to say, and whether trying again could help. */
+  problem?: string;
+  retryable?: boolean;
+  /** Already said: watched arriving on Home, or shown in the "here's what we found" sheet. */
+  told?: boolean;
+};
+
 interface State {
   pendingLink: string | null;
+  /** Links being read without a screen of their own, and those read and waiting to be checked. */
+  inbox: InboxItem[];
   /** Planning in progress, kept across closing the app. */
   draft: Draft | null;
   /**
@@ -122,6 +145,14 @@ type Action =
   /** Save the places the user confirmed. Omitting placeIds saves every place found. */
   | { type: 'commitExtraction'; extraction: Extraction; placeIds?: string[] }
   | { type: 'setHomeTab'; tab: HomeTab }
+  /** Links to read in the background, in the order given. One already waiting isn't added twice. */
+  | { type: 'inboxAdd'; urls: string[]; from: InboxItem['from'] }
+  | { type: 'inboxRead'; key: string; extraction: Extraction; told: boolean }
+  | { type: 'inboxFailed'; key: string; problem: string; retryable: boolean }
+  | { type: 'inboxRetry'; key: string }
+  | { type: 'inboxRemove'; key: string }
+  /** The sheet saying what was found has been seen. */
+  | { type: 'inboxTold' }
   | { type: 'decide'; placeId: string; keep: boolean }
   | { type: 'keepAll'; placeIds: string[] }
   | { type: 'addLocal'; cityId: string; placeId: string }
@@ -149,6 +180,7 @@ type Action =
 
 const initial: State = {
   pendingLink: null,
+  inbox: [],
   draft: null,
   // Unset until chosen: asked on the intro, on Map and on Home's Near Home, never assumed.
   homeDistrictId: null,
@@ -209,6 +241,11 @@ function reducer(state: State, action: Action): State {
     case 'setDraft':
       return { ...state, draft: action.draft };
     case 'stageExtraction': {
+      // One of the waiting links, opened to be checked: it stays in its row on Home until its
+      // places are saved, so it isn't also offered as planning to continue.
+      if (state.inbox.some((i) => i.extraction?.reel.id === action.extraction.reel.id)) {
+        return { ...state, lastExtraction: action.extraction, pendingLink: null };
+      }
       // The link it came from: the one being read, or (resuming a check) the one kept before.
       const url = state.pendingLink ?? (state.draft && 'url' in state.draft ? state.draft.url : '');
       const keep = !isSampleLink(url);
@@ -255,12 +292,15 @@ function reducer(state: State, action: Action): State {
       const confirmed = (action.placeIds ?? places.map((p) => p.id)).filter(
         (id) => !savedElsewhere(state.collections, id, city.id),
       );
-      if (confirmed.length === 0) return { ...state, lastExtraction: null, pendingLink: null, draft: null };
+      // Checked, so it's no longer waiting, whatever was kept.
+      const inbox = state.inbox.filter((i) => i.extraction?.reel.id !== reel.id);
+      if (confirmed.length === 0) return { ...state, inbox, lastExtraction: null, pendingLink: null, draft: null };
       const existing = state.collections[city.id];
       const placeIds = [...new Set([...(existing?.placeIds ?? []), ...confirmed])];
       const reelIds = [...new Set([...(existing?.reelIds ?? []), reel.id])];
       return {
         ...state,
+        inbox,
         lastExtraction: action.extraction,
         pendingLink: null,
         collections: {
@@ -273,6 +313,49 @@ function reducer(state: State, action: Action): State {
         homeTab: isNearHome(placeIds, state.homeDistrictId) ? 'near' : 'cities',
       };
     }
+    case 'inboxAdd': {
+      const reading = state.draft?.stage === 'reading' ? linkKey(state.draft.url) : null;
+      const known = new Set(state.inbox.map((i) => i.key));
+      const added: InboxItem[] = [];
+      action.urls.forEach((url) => {
+        const key = linkKey(url);
+        if (known.has(key) || key === reading) return;
+        known.add(key);
+        added.push({ key, url, from: action.from, at: Date.now(), status: 'queued' });
+      });
+      return added.length ? { ...state, inbox: [...state.inbox, ...added] } : state;
+    }
+    case 'inboxRead':
+      return {
+        ...state,
+        inbox: state.inbox.map((i) =>
+          i.key === action.key && i.status === 'queued'
+            ? { ...i, status: 'ready', extraction: action.extraction, told: action.told }
+            : i,
+        ),
+      };
+    case 'inboxFailed':
+      return {
+        ...state,
+        inbox: state.inbox.map((i) =>
+          i.key === action.key && i.status === 'queued'
+            ? { ...i, status: 'failed', problem: action.problem, retryable: action.retryable }
+            : i,
+        ),
+      };
+    case 'inboxRetry':
+      return {
+        ...state,
+        inbox: state.inbox.map((i) =>
+          i.key === action.key && i.status === 'failed' ? { ...i, status: 'queued', problem: undefined, at: Date.now() } : i,
+        ),
+      };
+    case 'inboxRemove':
+      return { ...state, inbox: state.inbox.filter((i) => i.key !== action.key) };
+    case 'inboxTold':
+      return state.inbox.some((i) => i.status === 'ready' && !i.told)
+        ? { ...state, inbox: state.inbox.map((i) => (i.status === 'ready' ? { ...i, told: true } : i)) }
+        : state;
     case 'decide':
       return { ...state, skipped: { ...state.skipped, [action.placeId]: !action.keep } };
     case 'keepAll': {
@@ -420,6 +503,8 @@ type SavedTrips = {
   live: LiveSnapshot;
   /** Planning in progress. A real link's extraction goes whole: its places aren't saved anywhere else yet. */
   draft?: Draft | null;
+  /** Absent in saves from before links could wait on Home. */
+  inbox?: InboxItem[];
   /**
    * Set once real places' prices stopped being guessed. Copies saved before that have every real
    * place priced from its kind ("Free" for any sight), so those guesses are cleared on load.
@@ -480,6 +565,7 @@ function loadTrips(): Partial<State> {
       remote: s.remote,
       homeTab: s.homeTab,
       draft,
+      inbox: attempt(() => restoreInbox(s.inbox), []),
     };
   } catch {
     // Damaged past reading: start fresh rather than crash, but keep the copy aside (the next save
@@ -577,6 +663,22 @@ function oneCityOnce(s: SavedTrips) {
   s.live.cities = s.live.cities.filter((c) => !gone.has(c.id));
 }
 
+/**
+ * Waiting links back from storage: the places of those already read are registered again, and one
+ * that failed for a passing reason (no signal, our side) gets another turn on this launch.
+ */
+function restoreInbox(inbox: InboxItem[] | undefined): InboxItem[] {
+  return (inbox ?? []).flatMap((i): InboxItem[] => {
+    if (i.status === 'ready') {
+      if (!i.extraction) return [];
+      const { city, reel, places } = i.extraction;
+      register({ city, reel, places });
+      return [i];
+    }
+    return [i.status === 'failed' && i.retryable ? { ...i, status: 'queued', problem: undefined } : i];
+  });
+}
+
 /** A draft back from storage: its real places re-registered, and dropped if what it points at is gone. */
 function restoreDraft(d: Draft | null, collections: State['collections']): Draft | null {
   if (!d) return null;
@@ -611,6 +713,7 @@ function saveTrips(state: State) {
     remote: state.remote,
     homeTab: state.homeTab,
     draft: state.draft,
+    inbox: state.inbox,
     live: snapshot(
       [
         ...collections.flatMap((c) => c.placeIds),
@@ -672,6 +775,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       state.homeTab,
       state.liveVersion,
       state.draft,
+      state.inbox,
     ],
   );
 

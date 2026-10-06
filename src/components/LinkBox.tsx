@@ -10,6 +10,7 @@ import { Text } from '@/components/Text';
 import { detectPlatform } from '@/data/api';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
+import { LINKS_AT_ONCE, linksIn } from '@/lib/links';
 import { FADE_IN, FADE_OUT } from '@/lib/motion';
 import { skyCta, skyFill, skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
@@ -17,6 +18,8 @@ import { fonts, light, shadows } from '@/theme/tokens';
 
 type Props = {
   onSubmit: (url: string) => void;
+  /** Several links at once: they're read in the background instead of on a screen of their own. */
+  onSubmitMany?: (urls: string[]) => void;
   /** A link is on the clipboard (checked without reading it, so no iOS alert). */
   clipboardHasLink?: boolean;
 };
@@ -30,18 +33,19 @@ export const FIELD_TRAILING = CIRCLE + GAP;
 // Says what a good link looks like, since "not a link" alone leaves you guessing.
 const ERROR = 'That’s not an Instagram or YouTube link. They look like instagram.com/reel/… or youtu.be/…';
 const UNREADABLE = 'Tap and hold the box, then Paste.';
-/** The first Instagram or YouTube link in a piece of text, with or without https:// and www. */
-const LINK_IN_TEXT = /(?:https?:\/\/)?(?:www\.|m\.)?(?:instagram\.com|instagr\.am|youtube\.com|youtu\.be)\/[^\s<>"]+/i;
 
 // The home screen's link field: type or paste a video link, or tap the system Paste button beside it.
-export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
+// It takes several links too (pasted together, or one after another): those are read in the
+// background, one by one.
+export function LinkBox({ onSubmit, onSubmitMany, clipboardHasLink }: Props) {
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The paste button couldn't read the clipboard: the field is focused and says how to paste by hand.
   const [unreadable, setUnreadable] = useState(false);
   const input = useRef<TextInput>(null);
-  const platform = detectPlatform(value);
+  const links = linksIn(value);
+  const platform = links.length ? detectPlatform(links[0]) : null;
   const sky = useTone() === 'sky';
   const ink = sky ? SKY_INK : PAPER_INK;
 
@@ -66,9 +70,9 @@ export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
     const raw = text.trim();
     if (!raw) return;
     // A forwarded message ("Check this reel https://www.instagram.com/reel/…") carries words around
-    // the link: only the link is read.
-    const url = raw.match(LINK_IN_TEXT)?.[0] ?? raw;
-    if (!detectPlatform(url)) {
+    // the link: only the links are read.
+    const found = linksIn(raw);
+    if (found.length === 0) {
       setValue(raw);
       reject();
       return;
@@ -77,17 +81,20 @@ export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
     setValue('');
     setError(null);
     setUnreadable(false);
-    onSubmit(url);
+    if (found.length > 1 && onSubmitMany) onSubmitMany(found.slice(0, LINKS_AT_ONCE));
+    else onSubmit(found[0]);
   };
 
   // Pasting only fills the box. Nothing is read until Go: a wrong paste costs nothing, and the
   // person decides when to start.
   const fill = (text: string) => {
-    const url = text.trim();
-    if (!url) return;
+    const pasted = text.trim();
+    if (!pasted) return;
+    // With a link already in the box, another paste adds to it rather than replacing it.
+    const url = links.length && onSubmitMany ? `${value.trim()} ${pasted}` : pasted;
     setValue(url);
     setUnreadable(false);
-    if (detectPlatform(url)) {
+    if (linksIn(pasted).length) {
       setError(null);
       haptic.light();
     } else reject();
@@ -108,7 +115,7 @@ export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
         onPress={() => submit(value)}
         style={[styles.go, sky && styles.goSky]}
         accessibilityRole="button"
-        accessibilityLabel="Go: find the places in this video"
+        accessibilityLabel={links.length > 1 ? `Go: find the places in these ${links.length} videos` : 'Go: find the places in this video'}
       >
         <Feather name="arrow-right" size={20} color={light.ctaInk} />
       </PressableScale>
@@ -117,7 +124,20 @@ export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
     <PasteButton shape="circle" onText={fill} onUnreadable={pasteByHand} />
   );
 
-  const hint = error ?? (unreadable && !value ? UNREADABLE : null) ?? (clipboardHasLink && !value ? 'You copied a link. Tap paste to add it.' : null);
+  const many =
+    links.length > LINKS_AT_ONCE
+      ? `${links.length} links. We’ll read the first ${LINKS_AT_ONCE} now, one by one.`
+      : links.length > 1
+        ? `${links.length} links. We’ll read them one by one while you carry on.`
+        : null;
+  // One link in the box: the moment to say more can go in with it.
+  const more = links.length === 1 && !!onSubmitMany && !error;
+  const hint =
+    error ??
+    many ??
+    (more ? 'Got more? Add them and we’ll read them all.' : null) ??
+    (unreadable && !value ? UNREADABLE : null) ??
+    (clipboardHasLink && !value ? 'You copied a link. Tap paste to add it.' : null);
 
   return (
     <View>
@@ -164,10 +184,11 @@ export function LinkBox({ onSubmit, clipboardHasLink }: Props) {
       </View>
       <View style={styles.hintSlot}>
         {hint ? (
-          <Animated.View key={hint} entering={FADE_IN} exiting={FADE_OUT}>
+          <Animated.View key={hint} entering={FADE_IN} exiting={FADE_OUT} style={styles.hintRow}>
             <Text variant="label" color={error ? ink.strong : ink.soft} style={styles.hint}>
               {hint}
             </Text>
+            {more || many ? <PasteButton shape="pill" onText={fill} onUnreadable={pasteByHand} /> : null}
           </Animated.View>
         ) : null}
       </View>
@@ -234,7 +255,8 @@ const styles = css.create({
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },
   // The button rides inside the field here: a long link stops short of it instead of touching it.
   inputSky: { marginRight: 10 },
-  // Room for one hint line, so one appearing never moves the page.
-  hintSlot: { minHeight: 34, justifyContent: 'center' },
-  hint: { marginTop: 8, marginLeft: 4 },
+  // Room for one hint line and the "add another" paste button, so neither appearing moves the page.
+  hintSlot: { minHeight: 46, justifyContent: 'center' },
+  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+  hint: { flex: 1, marginLeft: 4 },
 });

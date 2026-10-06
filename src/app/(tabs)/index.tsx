@@ -24,6 +24,7 @@ import { EXAMPLE_LINKS, getCity, getReel } from '@/data/api';
 import { places, smallPhoto } from '@/data/catalog';
 import { Button } from '@/components/Button';
 import { ContinueCard } from '@/components/home/ContinueCard';
+import { FoundSheet, LinkInbox } from '@/components/home/LinkInbox';
 import { HomePicker } from '@/components/HomePicker';
 import { GlassSheet } from '@/components/sky/GlassSheet';
 import { RecapCard } from '@/components/home/RecapCard';
@@ -31,6 +32,7 @@ import { PhotoStrip } from '@/components/home/PhotoStrip';
 import { allDistricts } from '@/data/regions';
 import type { Platform as SourcePlatform } from '@/data/types';
 import { platformOfLink, track } from '@/lib/analytics';
+import { haptic } from '@/lib/haptics';
 import { FADE_IN, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips, type HomeTab } from '@/state/trips';
 import { useHomeSky } from '@/state/sky';
@@ -75,6 +77,13 @@ export default function Home() {
   const start = (url: string) => {
     setBoxKey((k) => k + 1);
     startLink(url);
+  };
+  // Several at once aren't watched one by one: they're read in the background and wait here.
+  const startMany = (urls: string[]) => {
+    setBoxKey((k) => k + 1);
+    haptic.light();
+    track('links pasted', { count: urls.length });
+    dispatch({ type: 'inboxAdd', urls, from: 'paste' });
   };
 
   const phase = useHomeSky();
@@ -129,7 +138,7 @@ export default function Home() {
     const h = Math.round(e.nativeEvent.layout.height);
     setSizes((m) => (m[k] === h ? m : { ...m, [k]: h }));
   };
-  const below = collections.length > 0 || !!state.draft ? PEEK : 0;
+  const below = collections.length > 0 || !!state.draft || state.inbox.length > 0 ? PEEK : 0;
   const room = viewH - insets.top - 12 - TAB_BAR_CLEARANCE - below;
   const heroPad =
     sizes.top && sizes.hero && sizes.link
@@ -203,10 +212,11 @@ export default function Home() {
             <Animated.View style={[styles.frost, frostStyle]} pointerEvents="none">
               <Glass blur tint={look.glass} radius={0} style={styles.frostFill} />
             </Animated.View>
-            <LinkBox key={boxKey} onSubmit={start} clipboardHasLink={hasLink} />
+            <LinkBox key={boxKey} onSubmit={start} onSubmitMany={startMany} clipboardHasLink={hasLink} />
           </Animated.View>
 
           <View style={styles.continue}>
+            <LinkInbox />
             <RecapCard />
             <ContinueCard />
           </View>
@@ -269,6 +279,7 @@ export default function Home() {
         </Animated.ScrollView>
       </View>
       <HomePicker visible={pickingHome} onClose={() => setPickingHome(false)} />
+      <FoundSheet />
       <CityOpenOverlay
         card={cityOpen.card}
         progress={cityOpen.progress}

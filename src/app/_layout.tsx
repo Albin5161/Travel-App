@@ -17,6 +17,7 @@ import { ScreenViews, track } from '@/lib/analytics';
 // before any arrival event can reach the app.
 import '@/lib/arrival';
 import { GroupScripts } from '@/state/group';
+import { InboxRunner, introFinished } from '@/state/inbox';
 import { TripsProvider } from '@/state/trips';
 import { SkyPhaseProvider } from '@/state/sky';
 import { firstFonts, laterFonts } from '@/theme/fontFiles';
@@ -43,6 +44,10 @@ export default function RootLayout() {
   // the app opens on something else (a shared trip or city link), which shouldn't wait behind it.
   const pathname = usePathname();
   const [intro, setIntro] = useState(() => pathname === '/' || pathname === '/onboarding');
+  const introShowing = intro && !reduced;
+  useEffect(() => {
+    if (!introShowing) introFinished();
+  }, [introShowing]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -88,6 +93,7 @@ export default function RootLayout() {
             <Stack.Screen name="share/[id]" options={{ animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="group/[id]" />
             <Stack.Screen name="join" options={{ animation: 'fade' }} />
+            <Stack.Screen name="add" options={{ animation: 'none' }} />
             <Stack.Screen name="join/[code]" options={{ animation: 'fade' }} />
             <Stack.Screen
               name="addstop/[id]"
@@ -121,8 +127,9 @@ export default function RootLayout() {
             />
           </Stack>
           <GroupScripts />
+          <InboxRunner />
           <ScreenViews />
-          {intro && !reduced ? <LaunchIntro onDone={() => setIntro(false)} /> : null}
+          {introShowing ? <LaunchIntro onDone={() => setIntro(false)} /> : null}
           </SkyPhaseProvider>
         </TripsProvider>
       </ThemeProvider>

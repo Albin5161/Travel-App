@@ -34,11 +34,15 @@ type WireStop = {
 export type WirePlan = {
   cityId: string;
   prefs: TripPlan['prefs'];
-  days: { date: string | null; totalKm: number; stops: WireStop[]; home?: TripPlan['days'][number]['home'] }[];
+  days: { date: string | null; totalKm: number; stops: WireStop[]; home?: TripPlan['days'][number]['home']; sleep?: TripPlan['days'][number]['sleep'] }[];
   left: string[];
   leftWhy?: TripPlan['leftWhy'];
   removed: string[];
   seed: number;
+  /** Nights away, an offer of one, and whether it was turned down. All absent on older plans. */
+  nights?: TripPlan['nights'];
+  offer?: TripPlan['offer'];
+  offerDeclined?: boolean;
   /** The real places, city and videos the plan uses, for phones that haven't seen them. */
   live?: LiveSnapshot;
 };
@@ -54,6 +58,7 @@ export function toWire(plan: TripPlan): WirePlan {
       date: d.date,
       totalKm: d.totalKm,
       ...(d.home ? { home: d.home } : {}),
+      ...(d.sleep ? { sleep: d.sleep } : {}),
       stops: d.stops.map((s, i) => ({
         id: s.place.id,
         start: s.startMinutes,
@@ -78,6 +83,9 @@ export function toWire(plan: TripPlan): WirePlan {
     ...(plan.leftWhy ? { leftWhy: plan.leftWhy } : {}),
     removed: plan.removed,
     seed: plan.seed,
+    ...(plan.nights ? { nights: plan.nights } : {}),
+    ...(plan.offer ? { offer: plan.offer } : {}),
+    ...(plan.offerDeclined ? { offerDeclined: true } : {}),
     ...(real.length || live.cities[plan.cityId]
       ? { live: snapshot(real.map((p) => p.id), [plan.cityId], reelIds) }
       : {}),
@@ -113,6 +121,7 @@ export function fromWire(wire: WirePlan): TripPlan {
       date: d.date,
       totalKm: d.totalKm,
       ...(d.home ? { home: d.home } : {}),
+      ...(d.sleep ? { sleep: d.sleep } : {}),
       stops: d.stops.flatMap((s, i) => {
         const place = placeOf(s, d.stops, i);
         return place ? [{ place, startMinutes: s.start, legBefore: s.leg, pinned: s.pinned, suggested: s.suggested }] : [];
@@ -122,6 +131,9 @@ export function fromWire(wire: WirePlan): TripPlan {
     ...(wire.leftWhy ? { leftWhy: wire.leftWhy } : {}),
     removed: wire.removed,
     seed: wire.seed,
+    ...(wire.nights ? { nights: wire.nights } : {}),
+    ...(wire.offer ? { offer: wire.offer } : {}),
+    ...(wire.offerDeclined ? { offerDeclined: true } : {}),
   };
 }
 

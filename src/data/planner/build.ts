@@ -19,6 +19,7 @@ import {
   sunFor,
   type DayCtx,
   type DayResult,
+  type Night,
   type Trip,
 } from './schedule';
 
@@ -40,6 +41,8 @@ const AS_GOOD = 60;
 type State = { days: number[][]; left: number[] };
 
 export interface Built {
+  /** Scored as a whole trip: lower is better. For weighing one set of nights against another. */
+  cost: number;
   ctx: DayCtx;
   /** One per day of the trip, in order; indexes are into ctx.places. */
   days: DayResult[];
@@ -57,6 +60,12 @@ export interface BuildInput {
   /** Place id → the day it's locked to. */
   pins: Map<string, number>;
   seed: number;
+  /**
+   * Where each night is spent when it isn't the trip's base: one entry per night (a trip of n days
+   * has n − 1), null for the base. Day d starts where night d − 1 was spent and ends where night d
+   * is; the last day ends back at the base. Absent means every night at the base.
+   */
+  nights?: (Night | null)[];
   /** A lighter search, for the "fits 8 of your 11" lines asked before there's a plan. */
   quick?: boolean;
   now?: Date;
@@ -69,13 +78,24 @@ function hours(minutes: number) {
   return h < 1 ? `${Math.round(minutes)} min` : `${h} h`;
 }
 
-export function build({ pool, suggestions, prefs, pins, seed, quick = false, now }: BuildInput): Built {
+export function build({ pool, suggestions, prefs, pins, seed, nights, quick = false, now }: BuildInput): Built {
   const trip: Trip = { getting: prefs.getting, terrain: prefs.terrain ?? 'flat', base: prefs.stay?.coords ?? null };
   const pace: Pace = prefs.pace;
   const n = Math.max(1, prefs.days);
   const places = [...pool, ...suggestions];
   const centre = middle(pool.map((p) => p.coords).filter(validAt));
-  const ctx = dayCtx(places, trip, pace, sunFor(trip.base ?? centre, prefs.start, now));
+  const sun = sunFor(trip.base ?? centre, prefs.start, now);
+  // The trip seen from its base: used for what doesn't depend on the day (which places are near
+  // each other, how far each is from the base).
+  const ctx = dayCtx(places, trip, pace, sun);
+  // With a night away, each day has its own two ends: last night's place and tonight's.
+  const away = !!trip.base && !!nights?.some(Boolean);
+  const endsOf = (d: number) => ({
+    from: d === 0 ? trip.base : (nights?.[d - 1]?.coords ?? trip.base),
+    to: d === n - 1 ? trip.base : (nights?.[d]?.coords ?? trip.base),
+  });
+  const ctxs = away ? Array.from({ length: n }, (_, d) => dayCtx(places, trip, pace, sun, endsOf(d))) : null;
+  const ctxOf = (d: number) => (ctxs ? ctxs[d] : ctx);
 
   const saved = pool.map((_, i) => i);
   const usable = saved.filter((i) => validAt(places[i].coords));
@@ -91,27 +111,29 @@ export function build({ pool, suggestions, prefs, pins, seed, quick = false, now
   const seen = new Map<string, DayResult[] | null>();
   let tried = 0;
   const key = (set: number[]) => [...set].sort((a, b) => a - b).join(',');
-  const ways = (set: number[]): DayResult[] | null => {
-    const k = key(set);
+  const ways = (set: number[], d: number): DayResult[] | null => {
+    // Without nights away every day is the same day, and one answer serves them all.
+    const k = ctxs ? `${d}:${key(set)}` : key(set);
     let got = seen.get(k);
     if (got === undefined) {
       tried++;
-      const fits = bestDays(ctx, set, true);
+      const fits = bestDays(ctxOf(d), set, true);
       // A day of nothing but locked stops is the traveller's own choice, however long: it stands.
-      got = fits.length ? fits : set.every(locked) ? bestDays(ctx, set, false).map((d) => ({ ...d, ok: true })) : null;
+      got = fits.length ? fits : set.length && set.every(locked) ? bestDays(ctxOf(d), set, false).map((r) => ({ ...r, ok: true })) : null;
       seen.set(k, got);
     }
     return got;
   };
-  const dayOf = (set: number[]) => ways(set)?.[0] ?? null;
+  const dayOf = (set: number[], d: number) => ways(set, d)?.[0] ?? null;
 
   const total = (s: State) => {
     let sum = s.left.length * LEFT_OUT;
     const daysIn = new Map<number, number>();
     let empty = 0;
     let crammed = 0;
-    for (const d of s.days) {
-      const day = dayOf(d);
+    for (let k = 0; k < s.days.length; k++) {
+      const d = s.days[k];
+      const day = dayOf(d, k);
       if (!day) return Infinity;
       sum += day.cost;
       if (day.workload < PACE_HOURS[pace] * 60 * NEARLY_EMPTY) empty++;
@@ -147,7 +169,7 @@ export function build({ pool, suggestions, prefs, pins, seed, quick = false, now
       let bestCost = Infinity;
       const before = total(out);
       for (let d = 0; d < n; d++) {
-        if (!dayOf([...out.days[d], i])) continue;
+        if (!dayOf([...out.days[d], i], d)) continue;
         out.days[d].push(i);
         const c = total(out) - before;
         out.days[d].pop();
@@ -166,8 +188,8 @@ export function build({ pool, suggestions, prefs, pins, seed, quick = false, now
   const repair = (days: number[][]): State => {
     const pending: number[] = [];
     const out = days.map((d) => [...d]);
-    out.forEach((d) => {
-      while (d.length && !dayOf(d)) {
+    out.forEach((d, k) => {
+      while (d.length && !dayOf(d, k)) {
         const loose = d.filter((i) => !locked(i));
         if (!loose.length) break;
         const weight = (i: number) => places[i].minutes + d.reduce((sum, j) => sum + (j === i ? 0 : ctx.leg(i, j).minutes), 0) / Math.max(1, d.length - 1);
@@ -396,8 +418,10 @@ export function build({ pool, suggestions, prefs, pins, seed, quick = false, now
 
   /** Days nobody locked are put fullest first, so Day 1 isn't the thin one. */
   const arrange = (s: State): State => {
+    // With nights away the days are a journey in order: which is first isn't ours to shuffle.
+    if (ctxs) return { days: s.days, left: [...s.left].sort((a, b) => a - b) };
     const open = s.days.map((_, d) => d).filter((d) => !fixed[d].length);
-    const sets = open.map((d) => s.days[d]).sort((a, b) => (dayOf(b)?.workload ?? 0) - (dayOf(a)?.workload ?? 0) || key(a).localeCompare(key(b)));
+    const sets = open.map((d) => s.days[d]).sort((a, b) => (dayOf(b, 0)?.workload ?? 0) - (dayOf(a, 0)?.workload ?? 0) || key(a).localeCompare(key(b)));
     const days = s.days.map((d) => d);
     open.forEach((d, k) => (days[d] = sets[k]));
     return { days, left: [...s.left].sort((a, b) => a - b) };
@@ -416,6 +440,11 @@ export function build({ pool, suggestions, prefs, pins, seed, quick = false, now
   }
   const ranked = [...found.values()].sort((a, b) => a.cost - b.cost || signature(a.state).localeCompare(signature(b.state)));
   const best = ranked[0];
+  // These nights can't be made to work at all (a drive between two of them too long for a day):
+  // say so by the cost, and let whoever asked fall back to the trip from the base.
+  if (!Number.isFinite(best.cost)) {
+    return { cost: Infinity, ctx, days: best.state.days.map(() => bestDays(ctx, [], false)[0]), suggested: new Set(), left: [...saved], leftWhy: {} };
+  }
 
   // ── Reshuffle: other trips as good as the best ────────────────────────────────────────────────
   // The best first; then other groupings that leave out no more and score close; then the best
@@ -427,13 +456,13 @@ export function build({ pool, suggestions, prefs, pins, seed, quick = false, now
       if (r.state.left.length <= best.state.left.length && r.cost <= best.cost + AS_GOOD) choices.push({ state: r.state });
     });
     const open = best.state.days.map((_, d) => d).filter((d) => !fixed[d].length && best.state.days[d].length);
-    if (open.length > 1) {
+    if (open.length > 1 && !ctxs) {
       const days = best.state.days.map((d) => d);
       open.forEach((d, k) => (days[d] = best.state.days[open[open.length - 1 - k]]));
       choices.push({ state: { days, left: best.state.left } });
     }
     best.state.days.forEach((set, d) => {
-      const all = ways(set) ?? [];
+      const all = ways(set, d) ?? [];
       const second = all[1];
       if (second && second.cost <= all[0].cost + AS_GOOD / 2) choices.push({ state: best.state, orders: new Map([[d, second]]) });
     });
@@ -445,13 +474,13 @@ export function build({ pool, suggestions, prefs, pins, seed, quick = false, now
   const suggested = new Set<number>();
   const offered = suggestions.map((_, k) => pool.length + k).filter((i) => validAt(places[i].coords) && !pool.some((p) => p.id === places[i].id));
   const days: DayResult[] = state.days.map((set, d) => {
-    const day = chosen.orders?.get(d) ?? (dayOf(set) as DayResult);
+    const day = chosen.orders?.get(d) ?? (dayOf(set, d) as DayResult);
     const dines = day.order.some((i, k) => isFood(ctx.kinds[i]) && (places[i].bestTime === 'evening' || day.starts[k] >= DINNER_WINDOW[0] - 30));
     // A day with nothing in it stays empty: a dinner alone isn't a day.
     if (dines || set.length === 0) return day;
     for (const pick of offered) {
       if (suggested.has(pick)) continue;
-      const withPick = dayOf([...set, pick]);
+      const withPick = dayOf([...set, pick], d);
       if (!withPick || !withPick.ok) continue;
       // Only as dinner: a pick the day could only take mid-afternoon isn't the dinner it's for.
       const at = withPick.starts[withPick.order.indexOf(pick)];
@@ -475,12 +504,14 @@ export function build({ pool, suggestions, prefs, pins, seed, quick = false, now
       leftWhy[p.id] = 'We don’t have its spot on the map, so it can’t be given a time. Search for it again to add it.';
       continue;
     }
+    // On its own, from wherever a day could start: the base, or a night away that's been chosen.
+    const reachable = ctxs ? ctxs.some((c) => bestDays(c, [i], true).length > 0) : null;
     const alone = bestDays(ctx, [i], false)[0];
     if (p.minutes > ceiling) {
       leftWhy[p.id] = 'Takes longer than a whole day at this pace.';
       continue;
     }
-    if (ctx.hasBase && !alone.ok) {
+    if (ctx.hasBase && !alone.ok && !reachable) {
       // On its own it's already too much for a day from where you're staying: say how far, and
       // whether a fuller pace would take it or only a night closer would.
       const each = ctx.leg(-1, i).minutes;
@@ -495,8 +526,8 @@ export function build({ pool, suggestions, prefs, pins, seed, quick = false, now
     // The day it would sit best on, with nothing held back: what breaks there is the reason.
     let probe: { d: number; day: DayResult; extra: number } | null = null;
     state.days.forEach((set, d) => {
-      const now1 = dayOf(set);
-      const then = bestDays(ctx, [...set, i], false)[0];
+      const now1 = dayOf(set, d);
+      const then = bestDays(ctxOf(d), [...set, i], false)[0];
       if (!now1 || !then) return;
       const beyond = (day: DayResult) => Math.max(0, day.workload - ceiling) + Math.max(0, day.end - LATEST_END[pace]) + Math.max(0, day.travel - roadLimit(pace));
       const over = beyond(then);
@@ -520,7 +551,7 @@ export function build({ pool, suggestions, prefs, pins, seed, quick = false, now
     }
   }
 
-  return { ctx, days, suggested, left, leftWhy };
+  return { cost: total(state), ctx, days, suggested, left, leftWhy };
 }
 
 function middle(points: LatLng[]): LatLng | null {

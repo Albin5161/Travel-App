@@ -10,7 +10,7 @@ import { formatClock } from '@/lib/geo';
 
 import { facts, foodHeavy, gokarna, kochi, ladakh, leh, mumbai, prefs } from './fixtures';
 import { planNow as planBefore } from './legacy';
-import { print } from './report';
+import { journey, print } from './report';
 
 type Case = { title: string; plain: Place[]; rich: Place[]; over: Partial<PlannerInput> };
 const pick = (list: Place[], name: string) => list.find((p) => p.name.startsWith(name))!.id;
@@ -57,5 +57,26 @@ for (const c of cases) {
       const said = f ? [f.meal, f.window, f.sunset && 'sunset✓', f.sunrise && 'sunrise✓', f.night && 'night✓'].filter(Boolean).join(', ') : 'nothing';
       console.log(`    ${p.name.padEnd(30)} ${`${kindOf(p)}/${p.bestTime}`.padEnd(22)} → ${`${kindOf(r)}/${r.bestTime}`.padEnd(22)} (Gemini: ${said})`);
     });
+  }
+}
+
+// ── Nights away: Ladakh from Leh, as a journey ──────────────────────────────────────────────────
+if (!only || 'ladakh journey'.includes(only.toLowerCase())) {
+  for (const pace of ['balanced', 'packed'] as const) {
+    const input: PlannerInput = { cityId: 'test', saved: facts.ladakh, suggestions: [], prefs: prefs({ days: 4, pace, getting: 'drive', terrain: 'mountain', stay: leh }), pins: [], removed: [], seed: 1 };
+    console.log(`\n${'='.repeat(104)}\nLadakh as a journey: 4 days from Leh, own vehicle, ${pace} pace (travel times are estimates)\n${'='.repeat(104)}`);
+    console.log(' OLD (every day out from Leh and back)');
+    console.log(print(planBefore({ ...input, saved: ladakh })));
+    const single = planNow(input);
+    console.log('\n NEW, as first planned (your base kept):');
+    console.log(journey(single));
+    if (!single.offer) {
+      console.log('  No night away is offered.');
+      continue;
+    }
+    console.log(`\n  OFFER: ${single.offer.title}`);
+    console.log(`         ${single.offer.reason}`);
+    console.log('\n NEW, if the offer is accepted:');
+    console.log(journey(planNow({ ...input, nights: single.offer.nights })));
   }
 }

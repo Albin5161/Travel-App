@@ -177,12 +177,21 @@ export const roadLimit = (pace: Pace) => PACE_HOURS[pace] * 60 * ROAD_SHARE;
 
 // ── A day's setting ─────────────────────────────────────────────────────────────────────────────
 
+/** Somewhere a night is spent that isn't the trip's base: a name to show and a point to measure from. Not necessarily a hotel. */
+export type Night = { name: string; coords: LatLng };
+/** Where a day starts and where it ends: last night's bed and tonight's. Null when not known. */
+export type Ends = { from: LatLng | null; to: LatLng | null };
+
 export interface DayCtx {
   places: Place[];
   kinds: Kind[];
-  /** Travel between two places by index; -1 is where you're staying. */
+  /** Travel between two places by index. As the first, -1 is where the day starts; as the second, where it ends. */
   leg(a: number, b: number): Leg;
+  /** The day sets out from a known place, and returns to (or arrives at) one. */
   hasBase: boolean;
+  hasEnd: boolean;
+  /** It ends somewhere other than where it began: a day that moves on, not one that goes out and back. */
+  moving: boolean;
   /** Which part of town each place is in: places a short hop apart share a number. */
   areas: number[];
   pace: Pace;
@@ -199,14 +208,16 @@ export function sunFor(at: LatLng | null, date: string | null, now: Date = new D
 }
 
 /** The setting for scheduling these places: travel between every two of them, worked out once. */
-export function dayCtx(places: Place[], trip: Trip, pace: Pace, sun: { sunrise: number; sunset: number }): DayCtx {
+export function dayCtx(places: Place[], trip: Trip, pace: Pace, sun: { sunrise: number; sunset: number }, ends: Ends = { from: trip.base, to: trip.base }): DayCtx {
   const n = places.length;
   const table: (Leg | undefined)[] = new Array((n + 1) * (n + 1));
-  const at = (i: number) => (i < 0 ? trip.base : places[i].coords);
+  const same = (a: LatLng, b: LatLng) => Math.abs(a.lat - b.lat) < 1e-6 && Math.abs(a.lng - b.lng) < 1e-6;
   const ctx: DayCtx = {
     places,
     kinds: places.map(kindOf),
-    hasBase: !!trip.base,
+    hasBase: !!ends.from,
+    hasEnd: !!ends.to,
+    moving: !!ends.from && !!ends.to && !same(ends.from, ends.to),
     areas: [],
     pace,
     ...sun,
@@ -214,8 +225,8 @@ export function dayCtx(places: Place[], trip: Trip, pace: Pace, sun: { sunrise: 
       const key = (a + 1) * (n + 1) + (b + 1);
       let l = table[key];
       if (!l) {
-        const from = at(a);
-        const to = at(b);
+        const from = a < 0 ? ends.from : places[a].coords;
+        const to = b < 0 ? ends.to : places[b].coords;
         l = from && to ? travelLegFor(from, to, trip.getting, trip.terrain) : { minutes: 0, km: 0, mode: 'walk' };
         table[key] = l;
       }
@@ -420,13 +431,13 @@ function step(ctx: DayCtx, w: Walk, i: number, restaurantInDay: boolean, earlies
     depart: first ? start - leg : w.depart,
     leftAreas: moved ? [...w.leftAreas, ctx.areas[prev]] : w.leftAreas,
   };
-  if (limits && (next.t > LATEST_END[ctx.pace] || next.doing + next.travel > ceilingMinutes(ctx.pace) || next.travel > roadLimit(ctx.pace))) return null;
+  if (limits && (next.t > LATEST_END[ctx.pace] || next.doing + next.travel > ceilingMinutes(ctx.pace) || (!ctx.moving && next.travel > roadLimit(ctx.pace)))) return null;
   return next;
 }
 
 function finish(ctx: DayCtx, w: Walk): DayResult {
   const last = w.order[w.order.length - 1];
-  const home = ctx.hasBase && last !== undefined ? ctx.leg(last, -1).minutes : 0;
+  const home = ctx.hasEnd && last !== undefined ? ctx.leg(last, -1).minutes : 0;
   const travel = w.travel + home;
   const workload = w.doing + travel;
   const end = w.t + home;
@@ -438,7 +449,23 @@ function finish(ctx: DayCtx, w: Walk): DayResult {
     Math.min(HALF_DAY.startAfter, Math.max(0, w.depart - EARLIEST[ctx.pace])) * HALF_DAY.perEarly +
     Math.min(HALF_DAY.cap, Math.max(0, w.starts[0] - (EARLIEST[ctx.pace] + HALF_DAY.startAfter)) * HALF_DAY.per) +
     Math.min(HALF_DAY.cap, Math.max(0, HALF_DAY.endFrom - w.t) * HALF_DAY.per);
-  return { order: w.order, starts: w.starts, cost, travel, workload, end, mistimed: w.mistimed, ok: end <= LATEST_END[ctx.pace] && workload <= ceilingMinutes(ctx.pace) && travel <= roadLimit(ctx.pace) };
+  return { order: w.order, starts: w.starts, cost, travel, workload, end, mistimed: w.mistimed, ok: withinDay(ctx, end, workload, travel) };
+}
+
+/**
+ * The limits no day may break: its latest end, the pace's hours, and, for a day that goes out and
+ * comes back, the share of those hours spent on the road. A day that moves on to sleep somewhere
+ * else is allowed to be mostly a drive: getting there is what the day is for.
+ */
+function withinDay(ctx: DayCtx, end: number, workload: number, travel: number) {
+  return end <= LATEST_END[ctx.pace] && workload <= ceilingMinutes(ctx.pace) && (ctx.moving || travel <= roadLimit(ctx.pace));
+}
+
+/** A day with nothing to see: nothing at all, or just the drive to where tonight is spent. */
+function emptyDay(ctx: DayCtx): DayResult {
+  const travel = ctx.moving ? ctx.leg(-1, -1).minutes : 0;
+  const end = travel ? EARLIEST[ctx.pace] + 60 + travel : 0;
+  return { order: [], starts: [], cost: travel * PER_TRAVEL_MINUTE, travel, workload: travel, end, mistimed: 0, ok: withinDay(ctx, end, travel, travel) };
 }
 
 const start = (depart: number): Walk => ({ order: [], starts: [], t: depart, cost: 0, mistimed: 0, travel: 0, doing: 0, meals: 0, depart, leftAreas: [] });
@@ -451,6 +478,7 @@ function earliestFor(ctx: DayCtx, set: number[]) {
 
 /** The day in exactly this order, setting out at `depart` (the pace's hour when not given). */
 export function walkOrder(ctx: DayCtx, order: number[], depart?: number): DayResult {
+  if (order.length === 0) return emptyDay(ctx);
   const earliest = earliestFor(ctx, order);
   const restaurant = order.some((i) => ctx.kinds[i] === 'restaurant');
   let w = start(depart ?? earliest);
@@ -471,7 +499,10 @@ const TRY_LATER_FROM = 60;
  * With `limits`, only days inside the pace's hours and latest end; none may fit, and then it's empty.
  */
 export function bestDays(ctx: DayCtx, set: number[], limits: boolean): DayResult[] {
-  if (set.length === 0) return [{ order: [], starts: [], cost: 0, travel: 0, workload: 0, end: 0, mistimed: 0, ok: true }];
+  if (set.length === 0) {
+    const empty = emptyDay(ctx);
+    return !limits || empty.ok ? [empty] : [];
+  }
   const earliest = earliestFor(ctx, set);
   const restaurant = set.some((i) => ctx.kinds[i] === 'restaurant');
   const keep = set.length <= TRY_ALL ? Infinity : set.length <= 10 ? KEEP : KEEP_LONG;

@@ -39,8 +39,23 @@ const PACE_LEAD = { relaxed: 'A relaxed day', balanced: 'A comfortable day', pac
 export function whyDay(plan: TripPlan, day: number): Reason[] {
   const d = plan.days[day];
   const stops = d?.stops ?? [];
-  if (stops.length === 0) return [];
+  if (stops.length === 0) {
+    // Nothing to see, only the drive to where tonight is spent (or back from where last night was).
+    return d?.home ? [{ lead: 'A travel day', text: `About ${formatDuration(d.home.minutes)} on the road, by our estimate: the drive is the day.` }] : [];
+  }
   const out: Reason[] = [];
+
+  // A journey, not a loop: the day starts or ends somewhere other than the base.
+  const nights = plan.nights ?? [];
+  const woke = day > 0 ? nights[day - 1] : null;
+  if (d.sleep) {
+    out.push({
+      lead: `Tonight in ${d.sleep.name}`,
+      text: `The day ends there instead of driving back${plan.prefs.stay ? ` to ${plan.prefs.stay.name}` : ''}, so tomorrow starts from ${d.sleep.name}.`,
+    });
+  } else if (woke) {
+    out.push({ lead: `From ${woke.name}`, text: `The day starts where last night was spent${plan.prefs.stay ? ` and ends back in ${plan.prefs.stay.name}` : ''}.` });
+  }
 
   // Where: close together, or at least never doubling back.
   const real = stops.filter((s) => !isCustom(s.place));

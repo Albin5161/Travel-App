@@ -5,8 +5,11 @@
 import type { Getting, LatLng, Terrain, TravelMode } from '@/lib/geo';
 
 import { build } from './planner/build';
-import { dayCtx, PACE_HOURS, PACE_STOPS, sunFor, timeOrder, type Trip } from './planner/schedule';
+import { overnightOffer, type NightsOffer } from './planner/nights';
+import { dayCtx, PACE_HOURS, PACE_STOPS, sunFor, timeOrder, type Ends, type Night, type Trip } from './planner/schedule';
 import type { DayPart, Place } from './types';
+
+export type { Night, NightsOffer };
 
 export type When = 'this-weekend' | 'next-weekend' | 'dates' | 'flexible';
 export type Pace = 'relaxed' | 'balanced' | 'packed';
@@ -56,8 +59,10 @@ export interface TripDay {
   date: string | null;
   stops: TripStop[];
   totalKm: number;
-  /** Back to where you're staying after the last stop, when that's known. */
+  /** After the last stop: back to where you're staying, or on to where tonight is spent. */
   home?: { minutes: number; km: number; mode: TravelMode };
+  /** Where this night is spent, when it isn't the trip's base. */
+  sleep?: Night;
 }
 
 export interface TripPlan {
@@ -71,6 +76,16 @@ export interface TripPlan {
   /** Places the traveller took out. Regenerating keeps them out until they're added back. */
   removed: string[];
   seed: number;
+  /**
+   * Nights spent away from the base, chosen by the traveller: one entry per night, null for the
+   * base. Absent on every plan from before this existed, and on any plan that sleeps at the base
+   * throughout: each day then starts and ends there, as it always has.
+   */
+  nights?: (Night | null)[];
+  /** A night away the planner suggests, with its reason. Nothing changes until it's accepted. */
+  offer?: NightsOffer;
+  /** The offer was turned down: it isn't shown again for this plan. */
+  offerDeclined?: boolean;
 }
 
 export interface PlannerInput {
@@ -83,6 +98,8 @@ export interface PlannerInput {
   pins: { placeId: string; day: number }[];
   removed: string[];
   seed: number;
+  /** Nights away the traveller has agreed to (see TripPlan.nights). */
+  nights?: (Night | null)[];
 }
 
 export interface Planner {
@@ -167,23 +184,38 @@ type Placed = { place: Place; pinned: boolean; suggested: boolean };
  * only where waiting is better than being early (lunch, a sunset). Nothing is dropped here, however
  * long the day gets: an edit is the traveller's choice.
  */
-export function timeDay(stops: Placed[], prefs: TripPrefs, date: string | null): TripDay {
+export function timeDay(stops: Placed[], prefs: TripPrefs, date: string | null, sleeps?: { from: Night | null; to: Night | null }): TripDay {
   const t = tripOf(prefs);
-  const ctx = dayCtx(stops.map((s) => s.place), t, prefs.pace, sunFor(t.base ?? stops[0]?.place.coords ?? null, date));
+  // The day runs from last night's place to tonight's; both are the base unless a night is away.
+  const ends: Ends = { from: sleeps?.from?.coords ?? t.base, to: sleeps?.to?.coords ?? t.base };
+  const ctx = dayCtx(stops.map((s) => s.place), t, prefs.pace, sunFor(ends.from ?? stops[0]?.place.coords ?? null, date), ends);
   const day = timeOrder(ctx, stops.map((_, i) => i));
   let totalKm = 0;
   const timed = stops.map((s, i) => {
-    const legBefore = i > 0 || t.base ? ctx.leg(i - 1, i) : undefined;
+    const legBefore = i > 0 || ends.from ? ctx.leg(i - 1, i) : undefined;
     if (legBefore) totalKm += legBefore.km;
     return { ...s, startMinutes: day.starts[i], legBefore };
   });
-  const home = t.base && stops.length ? ctx.leg(stops.length - 1, -1) : undefined;
+  // The last leg of the day: home after the last stop, or, on a day with nothing but the drive, the drive itself.
+  const home = ends.to && (stops.length || ctx.moving) ? ctx.leg(stops.length - 1, -1) : undefined;
   if (home) totalKm += home.km;
-  return { date, stops: timed, totalKm, ...(home ? { home } : {}) };
+  return { date, stops: timed, totalKm, ...(home ? { home } : {}), ...(sleeps?.to ? { sleep: sleeps.to } : {}) };
+}
+
+/** Where day `i` of a trip starts and ends, when either isn't the base. */
+function sleepsOf(nights: (Night | null)[] | undefined, i: number, days: number) {
+  if (!nights?.some(Boolean)) return undefined;
+  return { from: i === 0 ? null : (nights[i - 1] ?? null), to: i === days - 1 ? null : (nights[i] ?? null) };
+}
+
+/** The names of where a day of the plan sets out from and ends up: the base, or a night away. */
+export function dayEndsOf(plan: TripPlan, day: number): { from?: string; to?: string } {
+  const s = sleepsOf(plan.nights, day, plan.days.length);
+  return { from: s?.from?.name ?? plan.prefs.stay?.name, to: s?.to?.name ?? plan.prefs.stay?.name };
 }
 
 function retime(plan: TripPlan): TripPlan {
-  return { ...plan, days: plan.days.map((d) => timeDay(d.stops, plan.prefs, d.date)) };
+  return { ...plan, days: plan.days.map((d, i) => timeDay(d.stops, plan.prefs, d.date, sleepsOf(plan.nights, i, plan.days.length))) };
 }
 
 // ── The rule-based engine ────────────────────────────────────────────────────────────────────────
@@ -247,15 +279,25 @@ export function daysNeeded(places: Place[], terrain: Terrain = 'flat', pace: Pac
 }
 
 /** The rule-based planner, run straight away: it does no waiting of its own. */
-export function planNow({ cityId, saved, suggestions, prefs, pins, removed, seed }: PlannerInput): TripPlan {
+export function planNow({ cityId, saved, suggestions, prefs, pins, removed, seed, nights: asked }: PlannerInput): TripPlan {
   const pool = saved.filter((p) => !removed.includes(p.id));
   const offered = suggestions.filter((s) => !removed.includes(s.id));
   const n = Math.max(1, prefs.days);
   const pinnedTo = new Map(pins.map((p) => [p.placeId, p.day]));
   const isPinned = (p: Place) => (pinnedTo.get(p.id) ?? n) < n;
-  return once(JSON.stringify(['plan', cityId, facts(pool), offered.map((p) => p.id), prefs, pins, removed, seed, isoDay(new Date())]), () => {
-    const built = build({ pool, suggestions: offered, prefs, pins: pinnedTo, seed });
+  // Nights away only mean something with a base to be away from; one per night, null where the list runs short.
+  const nights = prefs.stay && asked?.some(Boolean) ? Array.from({ length: n - 1 }, (_, k) => asked[k] ?? null) : undefined;
+  return once(JSON.stringify(['plan', cityId, facts(pool), offered.map((p) => p.id), prefs, pins, removed, seed, nights ?? null, isoDay(new Date())]), () => {
+    const input = { pool, suggestions: offered, prefs, pins: pinnedTo, seed, nights };
+    const withNights = build(input);
+    // Nights that no longer work (the days or the pace changed since they were agreed) are let
+    // go rather than leaving no plan: back to the base, and the offer is worked out afresh.
+    if (nights && !Number.isFinite(withNights.cost)) return planNow({ cityId, saved, suggestions, prefs, pins, removed, seed });
+    const built = withNights;
     const places = built.ctx.places;
+    // With every night at the base, see whether a night nearer the far places would make a
+    // meaningfully better trip. It's only offered: this plan stays as the traveller set it up.
+    const offer = nights ? null : overnightOffer(input, built);
     return {
       cityId,
       prefs,
@@ -264,12 +306,15 @@ export function planNow({ cityId, saved, suggestions, prefs, pins, removed, seed
           d.order.map((k) => ({ place: places[k], pinned: isPinned(places[k]), suggested: built.suggested.has(k) })),
           prefs,
           prefs.start ? addDays(prefs.start, i) : null,
+          sleepsOf(nights, i, n),
         ),
       ),
       left: built.left.map((k) => places[k]),
       leftWhy: built.leftWhy,
       removed,
       seed,
+      ...(nights ? { nights } : {}),
+      ...(offer ? { offer } : {}),
     };
   });
 }

@@ -36,6 +36,33 @@ Traced from `src/data/planner.ts`, `src/data/planner/schedule.ts`, `src/data/pla
    number of stops. The number of stops is never a limit.
 5. **Left-out places** each get a reason worked out from what adding them would really do.
 
+## Nights away from the base
+
+A trip is a journey: where you sleep tonight decides what you can reach tomorrow.
+
+- **The model.** A plan may carry `nights`: one entry per night, either the base (null) or a named
+  point to sleep at (`{ name, coords }`: a place to measure from, not necessarily a hotel). Day *d*
+  starts where night *d − 1* was spent and ends where night *d* is; the last day ends at the base.
+  With no `nights` (every older plan, and every plan that sleeps at the base throughout) each day
+  goes out from the base and back, exactly as before.
+- **Where a night could be** (`nights.ts`). Saved places that can't be visited and come back from
+  in a day are grouped with the places near them (within about 75 minutes of each other). Each
+  group is a possible night, named from the area its places share.
+- **Trying them.** The trip is planned with a night at each of the two biggest groups on each
+  evening it could fall, and with both on two evenings in either order. Each is scored like any
+  trip, plus a cost for every night away and more for a second different bed.
+- **The traveller decides.** The plan handed back always keeps the traveller's base. If the best
+  trip with nights away is meaningfully better after those costs, it is attached as `offer`, with a
+  title and a reason built from the planner's own estimates. The plan screen shows it as a card:
+  keep the base, or plan it that way. Accepting replans with those nights; declining hides it.
+- **Limits that change.** A day that moves on to another bed may be mostly a drive (the road-share
+  limit applies only to days that go out and come back); the pace's hours and latest end still hold.
+  A day with nothing to see but the drive is shown as a travel day.
+- **What it doesn't do.** It only suggests a night where something is out of a day's reach: a place
+  that is merely a long day trip is planned as one. At most two different beds away are tried. It
+  doesn't know roads: Nubra to Pangong is driven in about five hours by a direct road, but by
+  distance and terrain it estimates nearly nine, so it routes that trip back through the base.
+
 ## Places saved before the new facts
 
 The finer facts were added in October 2026. A place read before that has none, and so does any
@@ -51,9 +78,7 @@ fresh.
   a one-way system or a mountain pass that's closed isn't known. The plan says "about".
 - **Opening hours aren't used.** Google's terms don't allow storing its hours, and no Google call is
   made while planning. The planner never claims a place is closed.
-- **One base.** Every day starts and ends where you're staying. A place too far for a day trip
-  (Pangong or Nubra from Leh) is left out with "it needs a night nearby"; planning the night away
-  is a later step.
+- **Nights away are suggested, never imposed**, and only from estimated distances (see above).
 - **Gemini's facts are its general knowledge**, not checked, and it can answer differently on
   another day. So they are preferences, never rules: no fact can drop a place or break a day.
   - *What a place is* (kind, meal type, area) and *when to go* (best time, "also good at sunset /

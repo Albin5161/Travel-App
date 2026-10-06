@@ -35,6 +35,7 @@ import { getCity, getLocalPicks, isLiveCity } from '@/data/api';
 import {
   addStop,
   changedStops,
+  dayEndsOf,
   formatDay,
   formatRange,
   fromIso,
@@ -236,6 +237,7 @@ export default function PlanScreen() {
       prefs: plan.prefs,
       pins: pinsOf(plan),
       removed: plan.removed,
+      nights: plan.nights,
     };
     let next = plan;
     let changed = new Set<string>();
@@ -297,7 +299,28 @@ export default function PlanScreen() {
   ].join(' · ');
   const left = plan.left.filter((p) => !inPlan.has(p.id));
   // Asking for more days than there are places is easy; say so rather than show empty days bare.
-  const emptyDays = plan.days.filter((d) => d.stops.length === 0).length;
+  const emptyDays = plan.days.filter((d) => d.stops.length === 0 && !d.home).length;
+  // Where today sets out from and ends up: the base, unless a night is spent away.
+  const ends = dayEndsOf(plan, dayIndex);
+  const awayNights = (plan.nights ?? []).flatMap((night, k) => (night ? [`night ${k + 1} in ${night.name}`] : []));
+  // A night away the planner suggests. Taking it replans the trip with that night; nothing moves before then.
+  const offer = plan.offer && !plan.offerDeclined && awayNights.length === 0 ? plan.offer : null;
+  const replan = (nights: TripPlan['nights'], declined: boolean) => {
+    haptic.success();
+    const next = planNow({
+      cityId: id,
+      saved: [...collected, ...customStops(plan).map((c) => c.place)],
+      suggestions: locals,
+      prefs,
+      pins: pinsOf(plan),
+      removed: plan.removed,
+      seed: 1,
+      nights,
+    });
+    const changed = changedStops(plan, next);
+    update({ ...next, ...(declined ? { offerDeclined: true } : {}) });
+    setFlash(changed);
+  };
   const placed = plan.days.reduce((sum, d) => sum + d.stops.filter((s) => !s.suggested).length, 0);
   // One more day, worked out before it's offered: how many of the places the planner couldn't fit
   // it would really take. Some may be too far for any day; places taken out by hand don't count.
@@ -312,6 +335,8 @@ export default function PlanScreen() {
           pins: pinsOf(plan),
           removed: plan.removed,
           seed: plan.seed,
+          // The nights already agreed stay; the new last night is at the base.
+          nights: plan.nights ? [...plan.nights, null] : undefined,
         })
       : null;
   const gain = bigger ? bigger.days.reduce((sum, d) => sum + d.stops.filter((s) => !s.suggested).length, 0) - placed : 0;
@@ -420,6 +445,34 @@ export default function PlanScreen() {
             </Text>
           )}
 
+          {offer ? (
+            <Glass style={styles.offer}>
+              <Text variant="title" accessibilityRole="header">
+                {offer.title}
+              </Text>
+              <Text variant="label" color={skyInk.soft}>
+                {offer.reason}
+              </Text>
+              <View style={styles.offerActions}>
+                <Button compact kind="secondary" label={`Keep ${prefs.stay?.name ?? 'my stay'}`} onPress={() => update({ ...plan, offerDeclined: true })} style={styles.offerButton} />
+                <Button compact label="Plan it that way" onPress={() => replan(offer.nights, false)} style={styles.offerButton} />
+              </View>
+            </Glass>
+          ) : null}
+
+          {awayNights.length > 0 ? (
+            <View style={styles.thin}>
+              <Feather name="moon" size={14} color={skyInk.soft} />
+              <Text variant="label" color={skyInk.soft} style={styles.thinText}>
+                {`Sleeping away: ${awayNights.join(', ')}. `}
+                <Text variant="label" style={styles.thinLink} onPress={() => replan(undefined, true)}>
+                  {`Stay in ${prefs.stay?.name ?? 'one place'} every night`}
+                </Text>
+                .
+              </Text>
+            </View>
+          ) : null}
+
           {emptyDays > 0 && n > 1 ? (
             <View style={styles.thin}>
               <Feather name="info" size={14} color={skyInk.soft} />
@@ -467,7 +520,9 @@ export default function PlanScreen() {
 
             {stops.length === 0 ? (
               <Text variant="body" style={styles.emptyDay}>
-                Nothing planned this day. Add a saved spot below, move one here, or reshuffle.
+                {today.home
+                  ? `A travel day: ${ends.from ?? 'last night’s stay'} to ${ends.to ?? 'tonight’s stay'}, about ${formatDuration(today.home.minutes)} by our estimate.`
+                  : 'Nothing planned this day. Add a saved spot below, move one here, or reshuffle.'}
               </Text>
             ) : null}
 
@@ -488,7 +543,7 @@ export default function PlanScreen() {
                     <Leg
                       leg={stop.legBefore}
                       compact={j === 0}
-                      from={i === 0 ? plan.prefs.stay?.name : undefined}
+                      from={i === 0 ? ends.from : undefined}
                       index={i}
                       activeIdx={activeIdx}
                     />
@@ -514,7 +569,7 @@ export default function PlanScreen() {
               )),
             ])}
 
-            {today.home && stops.length > 0 ? <Leg leg={today.home} to={plan.prefs.stay?.name} /> : null}
+            {today.home && stops.length > 0 ? <Leg leg={today.home} to={today.sleep ? `${today.sleep.name}, for the night` : ends.to} /> : null}
 
             <PressableScale
               onPress={() => router.push({ pathname: '/addstop/[id]', params: { id, day: String(dayIndex) } })}
@@ -1045,6 +1100,9 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   name: { flexShrink: 1 },
   emptyDay: { marginTop: 14 },
+  offer: { marginTop: 14, padding: 16, gap: 8 },
+  offerActions: { flexDirection: 'row', gap: 10, marginTop: 6 },
+  offerButton: { flex: 1 },
   partHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 20, marginBottom: 10 },
   stop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   stopMainSlot: { flex: 1 },

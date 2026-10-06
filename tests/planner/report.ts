@@ -16,7 +16,7 @@ export type Seen = {
   days: { stops: number; start: number; end: number; wait: number; travel: number; span: number }[];
 };
 
-type AnyPlan = Pick<TripPlan, 'days' | 'left' | 'leftWhy'>;
+type AnyPlan = { days: (TripPlan['days'][number] | Omit<TripPlan['days'][number], 'sleep'>)[]; left: TripPlan['left']; leftWhy?: TripPlan['leftWhy'] };
 
 export function look(plan: AnyPlan): Seen {
   const days = plan.days.map((d) => {
@@ -49,7 +49,8 @@ const hm = (m: number) => (m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${m % 60 ? 
 export function print(plan: AnyPlan): string {
   const out: string[] = [];
   plan.days.forEach((d, i) => {
-    out.push(`  Day ${i + 1}${d.stops.length ? '' : '  (empty)'}`);
+    const drive = !d.stops.length && d.home ? `  (travel day: ${hm(d.home.minutes)} on the road)` : '';
+    out.push(`  Day ${i + 1}${d.stops.length ? '' : drive || '  (empty)'}${'sleep' in d && d.sleep ? `   → night in ${d.sleep.name}` : ''}`);
     let prevEnd: number | null = null;
     d.stops.forEach((s) => {
       const leg = s.legBefore?.minutes ?? 0;
@@ -62,7 +63,7 @@ export function print(plan: AnyPlan): string {
       );
       prevEnd = s.startMinutes + s.place.minutes;
     });
-    if (d.home && d.stops.length) out.push(`              back ${hm(d.home.minutes)}, home by ${formatClock((prevEnd ?? 0) + d.home.minutes)}`);
+    if (d.home && d.stops.length) out.push(`              ${'sleep' in d && d.sleep ? `on to ${d.sleep.name}` : 'back'} ${hm(d.home.minutes)}, there by ${formatClock((prevEnd ?? 0) + d.home.minutes)}`);
   });
   if (plan.left.length) {
     out.push('  Not in this plan:');
@@ -70,5 +71,29 @@ export function print(plan: AnyPlan): string {
   }
   const s = look(plan);
   out.push(`  = ${s.placed} placed, ${s.left} left out, longest wait ${hm(s.longestWait)}, ${hm(s.travel)} on the road`);
+  return out.join('\n');
+}
+
+/** A trip as a journey, day by day: where it starts, what's seen, how long on the road, where the night is spent. */
+export function journey(plan: TripPlan): string {
+  const base = plan.prefs.stay?.name ?? '(no base)';
+  const out: string[] = [];
+  let travel = 0;
+  plan.days.forEach((d, i) => {
+    const from = i === 0 ? base : (plan.nights?.[i - 1]?.name ?? base);
+    const to = d.sleep?.name ?? base;
+    const road = d.stops.reduce((n, s) => n + (s.legBefore?.minutes ?? 0), 0) + (d.home?.minutes ?? 0);
+    travel += road;
+    out.push(`  Day ${i + 1}`);
+    out.push(`    Base:      ${from}`);
+    out.push(`    Places:    ${d.stops.length ? d.stops.map((s) => `${s.place.name} ${formatClock(s.startMinutes)}`).join(' → ') : road ? '(none: a travel day)' : '(none)'}`);
+    out.push(`    Travel:    ${road ? `about ${hm(road)}` : 'none'}`);
+    out.push(`    Overnight: ${i === plan.days.length - 1 ? `${to} (trip ends)` : to}${to !== base ? '   ← away from the base' : ''}`);
+  });
+  const placed = plan.days.reduce((n, d) => n + d.stops.filter((s) => !s.suggested).length, 0);
+  out.push(`  Included: ${placed}.  Left out: ${plan.left.length}.  On the road in all: about ${hm(travel)}.`);
+  const away = (plan.nights ?? []).flatMap((n, k) => (n ? [`night ${k + 1} in ${n.name}`] : []));
+  out.push(`  Nights away: ${away.length ? away.join(', ') : 'none'}.`);
+  plan.left.forEach((p) => out.push(`    - ${p.name}: ${plan.leftWhy?.[p.id] ?? '(no reason given)'}`));
   return out.join('\n');
 }

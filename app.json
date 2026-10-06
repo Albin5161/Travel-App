@@ -9,14 +9,13 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#F5F4F1",
     "ios": {
-      "icon": "./assets/expo.icon",
       "infoPlist": {
         "CADisableMinimumFrameDurationOnPhone": true
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0D0F0E",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -39,9 +38,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F5F4F1",
-          "image": "./assets/images/splash-icon-ink.png",
-          "imageWidth": 76
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 116
         }
       ],
       [
@@ -67,7 +66,15 @@
           "enableBackgroundPlayback": false
         }
       ],
-      "expo-sharing",
+      [
+        "expo-sharing",
+        {
+          "android": {
+            "enabled": true,
+            "singleShareMimeTypes": ["text/plain"]
+          }
+        }
+      ],
       "expo-sqlite",
       "expo-localization",
       "expo-asset"

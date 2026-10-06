@@ -47,3 +47,42 @@ export function phaseAt(at: LatLng, date: Date): SkyPhase {
 export function guessFromClock(date: Date): LatLng {
   return { lat: 15, lng: -date.getTimezoneOffset() / 4 };
 }
+
+/** The sun's height when its top edge touches the horizon, with the air's bending allowed for. */
+const HORIZON = -0.833;
+
+/**
+ * The hours a place's clocks run ahead of UTC, in minutes, without a time-zone table. Planning a
+ * trip in your own country (nearly every trip here), the phone's own zone is the answer, so a zone
+ * that isn't a whole number of hours (India's +5:30) comes out right. Somewhere far from the
+ * phone's zone, the longitude gives the nearest whole hour: within an hour of the truth.
+ */
+export function clockOffsetMinutes(at: LatLng, date: Date = new Date()): number {
+  const phone = -date.getTimezoneOffset();
+  const here = (at.lng / 15) * 60;
+  return Math.abs(here - phone) <= 120 ? phone : Math.round(at.lng / 15) * 60;
+}
+
+/**
+ * Sunrise and sunset at a place on a calendar day, as minutes after midnight on that place's clocks.
+ * The same sun as the sky behind the app (sunAt), searched for the moment it crosses the horizon.
+ * `offset` is the place's clock offset from UTC in minutes. Null near the poles, where it may not rise or set.
+ */
+export function sunTimes(at: LatLng, day: { y: number; m: number; d: number }, offset = clockOffsetMinutes(at)): { sunrise: number; sunset: number } | null {
+  const midnight = Date.UTC(day.y, day.m - 1, day.d) - offset * 60000;
+  const height = (minutes: number) => sunAt(at, new Date(midnight + minutes * 60000)).elevation - HORIZON;
+  // The sun is highest at solar noon: 12:00 where the clock matches the longitude, shifted by how far it doesn't.
+  const noon = 720 + offset - (at.lng / 15) * 60;
+  if (height(noon) <= 0 || height(noon - 720) >= 0 || height(noon + 720) >= 0) return null;
+  const cross = (lo: number, hi: number) => {
+    // height(lo) and height(hi) differ in sign; close in on the minute between them.
+    const rising = height(lo) < 0;
+    for (let i = 0; i < 14; i++) {
+      const mid = (lo + hi) / 2;
+      if (height(mid) < 0 === rising) lo = mid;
+      else hi = mid;
+    }
+    return Math.round((lo + hi) / 2);
+  };
+  return { sunrise: cross(noon - 720, noon), sunset: cross(noon, noon + 720) };
+}

@@ -553,7 +553,7 @@ export default function PlanScreen() {
                         {p.name}
                       </Text>
                       {/* Why the planner left it out, when it did: too far, or the days are full. */}
-                      <Text variant="label" color={skyInk.soft} numberOfLines={plan.leftWhy?.[p.id] ? 4 : 1}>
+                      <Text variant="label" color={skyInk.soft} numberOfLines={plan.leftWhy?.[p.id] ? 6 : 1}>
                         {plan.leftWhy?.[p.id] ?? typeLine(p)}
                       </Text>
                     </View>

@@ -2,12 +2,13 @@ import { distanceKm, formatClock, formatDuration } from '@/lib/geo';
 
 import { isCustom } from './custom';
 import { partOf, type TripPlan, type TripStop } from './planner';
+import { DINNER_WINDOW, kindOf, LUNCH_WINDOW, sunFor } from './planner/schedule';
 
 // Why a plan is the way it is, in words for the traveller: read off the plan itself (where its stops
-// are, when each is at its best, how long is spent getting between them), so it stays true after
-// any edit, and says only what the planner really did. It groups places within reach of each other
-// on one day, orders each day morning → afternoon → evening, nearest next stop first, never starts a
-// place before its best part of the day, and adds a dinner nearby when a day has none.
+// are, when each happens, how long is spent getting between them), so it stays true after any edit,
+// and says only what is really so. The planner keeps places that are near each other on one day,
+// puts each at a good time (lunch at lunchtime, a sunset place at sunset), and keeps travel and
+// waiting down; these lines say which of those a day or a stop shows.
 
 export type Reason = { lead: string; text: string };
 
@@ -15,6 +16,18 @@ export type Reason = { lead: string; text: string };
 const COMPACT_KM = 5;
 /** Little enough time on the road to say so. */
 const LIGHT_ROAD_MIN = 60;
+/** Enough time on the road that the day is as much a drive as a day out: worth saying plainly. */
+const LONG_ROAD_MIN = 180;
+
+/** Sunset on a plan's day, where its stops are. */
+const sunsetOn = (plan: TripPlan, day: number) => {
+  const d = plan.days[day];
+  return sunFor(plan.prefs.stay?.coords ?? d.stops[0]?.place.coords ?? null, d.date).sunset;
+};
+/** A stop the sun goes down during: a sunset place, there at sunset. */
+const atSunset = (s: TripStop, sunset: number) =>
+  kindOf(s.place) === 'sunset' && s.startMinutes <= sunset - 10 && s.startMinutes + s.place.minutes >= sunset - 5;
+const within = (minutes: number, [from, to]: readonly [number, number] | number[]) => minutes >= from - 5 && minutes <= to + 5;
 
 const RANK = { morning: 0, afternoon: 1, evening: 2 } as const;
 
@@ -36,14 +49,19 @@ export function whyDay(plan: TripPlan, day: number): Reason[] {
       lead: 'Close together',
       text: `All ${real.length} stops are within ${round(spread)} km of each other${here.length ? `, around ${list(here)}` : ''}, so there are no long rides.`,
     });
-  } else if (stops.length >= 3) {
-    out.push({ lead: 'No doubling back', text: 'Each stop leads to the nearest next one, so the route runs one way through the day.' });
   }
 
-  // When: each place at its best part of the day.
+  // When: the sunset place at sunset, lunch at lunchtime, or each place in its best part of the day.
+  const sunset = sunsetOn(plan, day);
+  const dusk = stops.find((s) => atSunset(s, sunset));
+  const lunch = stops.find((s) => s.place.type === 'food' && within(s.startMinutes, LUNCH_WINDOW));
   const evening = stops.filter((s) => s.place.bestTime === 'evening' && partOf(s.startMinutes) === 'evening' && !s.suggested);
   const morning = stops.filter((s) => s.place.bestTime === 'morning' && partOf(s.startMinutes) === 'morning' && !s.suggested);
-  if (evening.length && morning.length) {
+  if (dusk) {
+    out.push({ lead: 'There for the sunset', text: `${dusk.place.name} is timed for the sunset, about ${formatClock(sunset)}.` });
+  } else if (lunch && stops.length >= 3) {
+    out.push({ lead: 'Lunch at lunchtime', text: `${lunch.place.name} at ${formatClock(lunch.startMinutes)}, between the morning’s stops and the afternoon’s.` });
+  } else if (evening.length && morning.length) {
     out.push({
       lead: 'Timed right',
       text: `${morning[0].place.name} in the morning and ${names(evening)} in the evening, each at its best time.`,
@@ -54,10 +72,12 @@ export function whyDay(plan: TripPlan, day: number): Reason[] {
 
   // Getting around: the time spent on the road, all day.
   const road = stops.reduce((m, s) => m + (s.legBefore?.minutes ?? 0), 0) + (d.home?.minutes ?? 0);
-  if (road > 0) {
+  if (road >= LONG_ROAD_MIN) {
+    out.push({ lead: 'A long day on the road', text: `About ${formatDuration(road)} of travel (${round(d.totalKm)} km), estimated from the distances, not from live traffic. A night nearer would shorten it.` });
+  } else if (road > 0) {
     out.push({
-      lead: road <= LIGHT_ROAD_MIN ? 'Little time on the road' : 'The shortest way round',
-      text: `About ${formatDuration(road)} of travel all day (${round(d.totalKm)} km), in the shortest order we found.`,
+      lead: road <= LIGHT_ROAD_MIN ? 'Little time on the road' : 'Travel kept down',
+      text: `About ${formatDuration(road)} of travel all day (${round(d.totalKm)} km), in the order that wastes the least of it.`,
     });
   }
 
@@ -96,17 +116,23 @@ export function whyStop(plan: TripPlan, day: number, index: number): string | nu
   }
   if (isCustom(p)) return `Your own stop, in the ${p.bestTime} as asked.`;
   if (s.pinned) return 'Locked by you: it stays on this day when you reshuffle.';
-  // Earlier than its best time: the planner never does that, so it was moved by hand. Later: the
-  // stops before it ran on, and this is the first slot after them.
-  if (RANK[p.bestTime] > RANK[part]) return `Best in the ${p.bestTime}; moved earlier by you.`;
-  if (RANK[p.bestTime] < RANK[part]) return `Best in the ${p.bestTime}; the first slot after the stops before it.`;
+  // What the clock says first: a sunset caught, a meal at its hour.
+  if (atSunset(s, sunsetOn(plan, day))) return `Timed for the sunset, about ${formatClock(sunsetOn(plan, day))}.`;
+  if (p.type === 'food') {
+    if (within(s.startMinutes, LUNCH_WINDOW)) return index === 0 ? 'Lunch, to start the day.' : 'Lunch, between the morning and the afternoon.';
+    if (within(s.startMinutes, DINNER_WINDOW)) return 'Dinner, to end the day.';
+    if (s.startMinutes < 10 * 60 && index === 0) return 'Breakfast, to start the day.';
+    return kindOf(p) === 'cafe' ? 'A break between stops.' : null;
+  }
+  // Away from its best part of the day: it fitted the rest of the day better here, or was moved by hand.
+  if (RANK[p.bestTime] !== RANK[part]) return `Best in the ${p.bestTime}; it’s here to keep the day’s route short and without long waits.`;
   if (index === 0) {
-    if (plan.prefs.stay) return `First: the nearest stop to ${plan.prefs.stay.name}.`;
-    return part === 'morning' ? 'First, so the day has the shortest route.' : `Starts the day: the ${part} is its best time.`;
+    if (plan.prefs.stay && (s.legBefore?.minutes ?? 99) <= 15) return `First: close to ${plan.prefs.stay.name}.`;
+    return `Starts the day: the ${part} is its best time.`;
   }
   if (p.bestTime === 'evening') return index === stops.length - 1 ? 'Ends the day: the evening is its best time.' : 'Saved for the evening, its best time.';
-  if (p.bestTime === 'afternoon' && prev && prev.place.bestTime === 'morning') return 'After lunch: the afternoon is its best time.';
-  return prev ? `The nearest next stop after ${prev.place.name}.` : null;
+  if (prev && (s.legBefore?.minutes ?? 99) <= 15) return `A short hop from ${prev.place.name}.`;
+  return null;
 }
 
 function maxSpreadKm(stops: TripStop[]) {

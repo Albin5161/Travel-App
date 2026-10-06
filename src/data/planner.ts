@@ -1,9 +1,11 @@
 // Trip planning: the answers a traveller gives, the plan they get back, and the edits they make to
-// it. The Planner interface is the seam: the rule-based engine below drives it for now, and a
-// Gemini engine (behind a server function, so no key ships in the app) replaces it without any
-// screen changing. Whatever engine arranges the places, travel times are always computed here.
-import { travelLegFor, type Getting, type LatLng, type Terrain, type TravelMode } from '@/lib/geo';
+// it. The plan is made by rules, on the phone, never by a model: planner/build.ts decides which
+// places share a day and planner/schedule.ts when each happens. The Planner interface is the seam
+// the screens call through.
+import type { Getting, LatLng, Terrain, TravelMode } from '@/lib/geo';
 
+import { build } from './planner/build';
+import { dayCtx, PACE_HOURS, PACE_STOPS, sunFor, timeOrder, type Trip } from './planner/schedule';
 import type { DayPart, Place } from './types';
 
 export type When = 'this-weekend' | 'next-weekend' | 'dates' | 'flexible';
@@ -34,13 +36,11 @@ export interface Stay {
 }
 
 /** The travel side of a trip's answers: how to get around, over what land, from where. */
-type Trip = { getting: Getting; terrain: Terrain; base: LatLng | null };
 const tripOf = (prefs: TripPrefs): Trip => ({
   getting: prefs.getting,
   terrain: prefs.terrain ?? 'flat',
   base: prefs.stay?.coords ?? null,
 });
-const leg = (a: LatLng, b: LatLng, t: Trip) => travelLegFor(a, b, t.getting, t.terrain);
 
 export interface TripStop {
   place: Place;
@@ -92,16 +92,10 @@ export interface Planner {
 
 export const partyOf = (prefs: TripPrefs): Party => prefs.party ?? 'friends';
 
-/** Stops per day at each pace: an upper limit. The hours below are what actually fill a day. */
-export const PACE_STOPS: Record<Pace, number> = { relaxed: 3, balanced: 4, packed: 6 };
-/** Hours of seeing and getting around in a day at each pace, driving between stops included. */
-export const PACE_HOURS: Record<Pace, number> = { relaxed: 6, balanced: 8, packed: 10 };
-/** Places this close (the drive or walk between them) make one outing, kept on one day if they fit. */
-const NEARBY_MINUTES = 45;
-// A relaxed day starts later; a packed one earlier.
-const DAY_START: Record<Pace, number> = { relaxed: 9 * 60, balanced: 8 * 60, packed: 7 * 60 };
-const AFTERNOON = 12 * 60 + 30;
-const EVENING = 16 * 60 + 30;
+export { PACE_HOURS, PACE_STOPS };
+// Where the list's "Morning / Afternoon / Evening" headers change. Only headers: nothing is timed by them.
+const AFTERNOON = 12 * 60;
+const EVENING = 17 * 60;
 const PART_RANK: Record<DayPart, number> = { morning: 0, afternoon: 1, evening: 2 };
 
 /** Which part of the day a start time falls in. Used for the list's section headers. */
@@ -168,28 +162,22 @@ export function formatRange(start: string, days: number) {
 type Placed = { place: Place; pinned: boolean; suggested: boolean };
 
 /**
- * Put clock times on a day's stops, in the order given. A stop never starts before its best part
- * of the day, so an evening place moved to the front waits for the evening: honest, if not ideal.
+ * Put clock times on a day's stops, in the order given: the planner's, or the traveller's own after
+ * an edit. The clock is walked stop by stop (planner/schedule.ts): travel, then the visit, waiting
+ * only where waiting is better than being early (lunch, a sunset). Nothing is dropped here, however
+ * long the day gets: an edit is the traveller's choice.
  */
 export function timeDay(stops: Placed[], prefs: TripPrefs, date: string | null): TripDay {
   const t = tripOf(prefs);
-  // The day starts when you set out: from where you're staying when that's known.
-  let cursor = DAY_START[prefs.pace];
+  const ctx = dayCtx(stops.map((s) => s.place), t, prefs.pace, sunFor(t.base ?? stops[0]?.place.coords ?? null, date));
+  const day = timeOrder(ctx, stops.map((_, i) => i));
   let totalKm = 0;
   const timed = stops.map((s, i) => {
-    const from = i > 0 ? stops[i - 1].place.coords : t.base;
-    const legBefore = from ? leg(from, s.place.coords, t) : undefined;
-    if (legBefore) {
-      cursor += legBefore.minutes;
-      totalKm += legBefore.km;
-    }
-    const earliest = s.place.bestTime === 'evening' ? EVENING : s.place.bestTime === 'afternoon' ? AFTERNOON : 0;
-    const start = Math.round(Math.max(cursor, earliest) / 5) * 5;
-    cursor = start + s.place.minutes;
-    return { ...s, startMinutes: start, legBefore };
+    const legBefore = i > 0 || t.base ? ctx.leg(i - 1, i) : undefined;
+    if (legBefore) totalKm += legBefore.km;
+    return { ...s, startMinutes: day.starts[i], legBefore };
   });
-  const last = stops[stops.length - 1];
-  const home = t.base && last ? leg(last.place.coords, t.base, t) : undefined;
+  const home = t.base && stops.length ? ctx.leg(stops.length - 1, -1) : undefined;
   if (home) totalKm += home.km;
   return { date, stops: timed, totalKm, ...(home ? { home } : {}) };
 }
@@ -199,137 +187,15 @@ function retime(plan: TripPlan): TripPlan {
 }
 
 // ── The rule-based engine ────────────────────────────────────────────────────────────────────────
-
-// A small seeded generator, so a regenerate is a different arrangement but the same seed always
-// gives the same plan (useful when comparing engines later).
-function random(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const PARTS: DayPart[] = ['morning', 'afternoon', 'evening'];
-const legMinutes = (a: LatLng, b: LatLng, t: Trip) => leg(a, b, t).minutes;
+// Which places share a day is decided in planner/build.ts; when each happens, in
+// planner/schedule.ts. Both are plain rules: the same places, answers and seed give the same plan.
 
 /**
- * The order to visit a day's stops: morning places first, then afternoon, then evening, and within
- * each part always the nearest next stop, so the route doesn't zigzag. The first stop is whichever
- * gives the shortest morning. `flip` walks each part the other way round, for a regenerate.
- */
-export function routeOrder<T extends { place: Place }>(stops: T[], t: Trip, flip = false): T[] {
-  const out: T[] = [];
-  for (const part of PARTS) {
-    const group = stops.filter((s) => s.place.bestTime === part);
-    if (group.length === 0) continue;
-    const chainFrom = (start: LatLng | null) => chain(null, start).path;
-    const chain = (first: T | null, start: LatLng | null = null) => {
-      const rest = [...group];
-      const path: T[] = [];
-      let at: LatLng | null = first?.place.coords ?? out[out.length - 1]?.place.coords ?? start;
-      if (first) {
-        rest.splice(rest.indexOf(first), 1);
-        path.push(first);
-      }
-      let minutes = 0;
-      while (rest.length) {
-        let best = 0;
-        if (at) {
-          for (let i = 1; i < rest.length; i++) {
-            if (legMinutes(at, rest[i].place.coords, t) < legMinutes(at, rest[best].place.coords, t)) best = i;
-          }
-          minutes += legMinutes(at, rest[best].place.coords, t);
-        }
-        const next = rest.splice(best, 1)[0];
-        at = next.place.coords;
-        path.push(next);
-      }
-      return { path, minutes };
-    };
-    // Carrying on from the last part's final stop; at the start of the day, the nearest stop to where
-    // you're staying, or without one, whichever first stop gives the shortest morning.
-    const path =
-      out.length || t.base
-        ? chainFrom(t.base)
-        : group.map((g) => chain(g)).sort((a, b) => a.minutes - b.minutes)[0].path;
-    out.push(...(flip && !out.length ? path.reverse() : path));
-  }
-  return out;
-}
-
-/**
- * Minutes a day of these stops takes: time at each place plus getting between them, in route order,
- * and out from and back to where you're staying when that's known.
- */
-export function dayMinutes(places: Place[], t: Trip) {
-  if (places.length === 0) return 0;
-  const ordered = routeOrder(places.map((place) => ({ place })), t);
-  const between = ordered.reduce(
-    (sum, s, i) => sum + s.place.minutes + (i > 0 ? legMinutes(ordered[i - 1].place.coords, s.place.coords, t) : 0),
-    0,
-  );
-  const outAndBack = t.base
-    ? legMinutes(t.base, ordered[0].place.coords, t) + legMinutes(ordered[ordered.length - 1].place.coords, t.base, t)
-    : 0;
-  return between + outAndBack;
-}
-
-function hours(minutes: number) {
-  const h = Math.round(minutes / 30) / 2;
-  return h < 1 ? `${Math.round(minutes)} min` : `${h} h`;
-}
-
-type Group = { places: Place[]; day?: number };
-
-/**
- * Joins groups of places, two at a time, picking the pair that makes the shortest day together,
- * while there are more groups than `days` and the joined day still fits. Groups tied to a day
- * (pinned stops) never join each other.
- */
-function joinIntoDays(start: Group[], days: number, fits: (ps: Place[]) => boolean, length: (ps: Place[]) => number, rand: () => number) {
-  let groups = start;
-  while (groups.length > days) {
-    let best: { i: number; j: number; cost: number } | null = null;
-    for (let i = 0; i < groups.length; i++) {
-      for (let j = i + 1; j < groups.length; j++) {
-        if (groups[i].day !== undefined && groups[j].day !== undefined) continue;
-        const joined = [...groups[i].places, ...groups[j].places];
-        if (!fits(joined)) continue;
-        // A hair of seeded noise, so a regenerate can pick between two equally good days.
-        const cost = length(joined) + rand() * 5;
-        if (!best || cost < best.cost) best = { i, j, cost };
-      }
-    }
-    if (!best) break;
-    const { i, j } = best;
-    const joined = { places: [...groups[i].places, ...groups[j].places], day: groups[i].day ?? groups[j].day };
-    groups = [...groups.filter((_, k) => k !== i && k !== j), joined];
-  }
-  return groups;
-}
-
-/** How many days these places need at a pace: the fewest days they all fit into. */
-export function daysNeeded(places: Place[], terrain: Terrain = 'flat', pace: Pace = 'balanced', getting: Getting = 'local') {
-  if (places.length === 0) return 0;
-  const t: Trip = { getting, terrain, base: null };
-  const fits = (ps: Place[]) => ps.length <= PACE_STOPS[pace] && dayMinutes(ps, t) <= PACE_HOURS[pace] * 60;
-  const length = (ps: Place[]) => dayMinutes(ps, t);
-  return joinIntoDays(places.map((p) => ({ places: [p] })), 1, fits, length, () => 0).length;
-}
-
-/**
- * Fits saved places into days by time, not by count. Each day has an hours budget for the pace
- * (time at places plus getting between them) and a stop limit.
- *
- * Every place starts as its own group. The two groups that make the shortest day together are
- * joined, again and again, while there are more groups than days and the joined day still fits. So
- * places near each other share a day, a trip's days are all used, and a place too far to share a
- * day keeps one to itself. Groups that still don't get a day wait in "not in this plan", each with
- * the reason. Pinned stops stay on their day, and other places can join them there.
+ * Fits saved places into days by what a day asks of you (time at places plus getting between them),
+ * not by a count of stops. Several whole trips are tried and the best kept: as many of the saved
+ * places as the days can honestly hold, each at a sensible time, meals at mealtimes, the sunset
+ * place at sunset, and as little time on the road and waiting as that allows. Places that don't get
+ * a day wait in "not in this plan", each with the reason. Locked stops stay on their day.
  */
 export const rulePlanner: Planner = {
   name: 'rules',
@@ -338,105 +204,74 @@ export const rulePlanner: Planner = {
   },
 };
 
+// The screens ask for the same plan again on every redraw ("one more day would fit 3"), so the
+// last few are kept. A plan depends on the day it's made (sunset moves), hence the date in the key.
+const kept = new Map<string, unknown>();
+function once<T>(key: string, make: () => T): T {
+  if (kept.has(key)) return kept.get(key) as T;
+  const made = make();
+  kept.set(key, made);
+  if (kept.size > 16) kept.delete(kept.keys().next().value as string);
+  return made;
+}
+const facts = (ps: Place[]) => ps.map((p) => [p.id, p.name, p.type, p.bestTime, p.minutes, p.coords?.lat, p.coords?.lng]);
+
 /**
  * How many of these places a trip of `days` at `pace` would fit, for the questions before a plan
- * ("fits 8 of your 11"). The same planner, without dinner picks or where you're staying yet.
+ * ("fits 8 of your 11"). The same planner, searched more lightly, without dinner picks.
  */
 export function placesThatFit(saved: Place[], prefs: TripPrefs): number {
-  const plan = planNow({ cityId: '', saved, suggestions: [], prefs, pins: [], removed: [], seed: 1 });
-  return plan.days.reduce((n, d) => n + d.stops.filter((s) => !s.suggested).length, 0);
+  return once(JSON.stringify(['fit', facts(saved), prefs, isoDay(new Date())]), () => {
+    const built = build({ pool: saved, suggestions: [], prefs, pins: new Map(), seed: 1, quick: true });
+    return saved.length - built.left.length;
+  });
+}
+
+/** How many days these places need at a pace: the fewest days they all fit into. */
+export function daysNeeded(places: Place[], terrain: Terrain = 'flat', pace: Pace = 'balanced', getting: Getting = 'local') {
+  if (places.length === 0) return 0;
+  return once(JSON.stringify(['days', facts(places), terrain, pace, getting, isoDay(new Date())]), () => {
+    const prefs: TripPrefs = { when: 'flexible', start: null, days: 1, pace, getting, terrain, stay: null };
+    let fewestLeft = Infinity;
+    let answer = 1;
+    for (let days = 1; days <= Math.min(places.length, 10); days++) {
+      const left = places.length - placesThatFit(places, { ...prefs, days });
+      if (left < fewestLeft) {
+        fewestLeft = left;
+        answer = days;
+      }
+      if (left === 0) break;
+    }
+    return answer;
+  });
 }
 
 /** The rule-based planner, run straight away: it does no waiting of its own. */
 export function planNow({ cityId, saved, suggestions, prefs, pins, removed, seed }: PlannerInput): TripPlan {
-  const rand = random(seed);
-  const cap = PACE_STOPS[prefs.pace];
-  const budget = PACE_HOURS[prefs.pace] * 60;
-  const t = tripOf(prefs);
+  const pool = saved.filter((p) => !removed.includes(p.id));
+  const offered = suggestions.filter((s) => !removed.includes(s.id));
   const n = Math.max(1, prefs.days);
   const pinnedTo = new Map(pins.map((p) => [p.placeId, p.day]));
-  const pool = saved.filter((p) => !removed.includes(p.id));
   const isPinned = (p: Place) => (pinnedTo.get(p.id) ?? n) < n;
-
-  const length = (ps: Place[]) => dayMinutes(ps, t);
-  const fitsDay = (ps: Place[]) => ps.length <= cap && length(ps) <= budget;
-
-  const startGroups: Group[] = [];
-  for (let d = 0; d < n; d++) {
-    const pinned = pool.filter((p) => pinnedTo.get(p.id) === d);
-    if (pinned.length) startGroups.push({ places: pinned, day: d });
-  }
-  startGroups.push(...pool.filter((p) => !isPinned(p)).map((p) => ({ places: [p] })));
-  const groups = joinIntoDays(startGroups, n, fitsDay, length, rand);
-
-  const days: Place[][] = Array.from({ length: n }, () => []);
-  for (const g of groups) if (g.day !== undefined) days[g.day] = g.places;
-  // The fullest groups get the free days, Day 1 first; a regenerate shuffles which day is which.
-  const free = groups
-    .filter((g) => g.day === undefined)
-    .sort((a, b) => b.places.length - a.places.length || length(a.places) - length(b.places));
-  const freeDays = days.map((d, i) => (d.length ? -1 : i)).filter((i) => i >= 0);
-  if (seed !== 1) freeDays.sort(() => rand() - 0.5);
-  free.slice(0, freeDays.length).forEach((g, k) => (days[freeDays[k]] = g.places));
-
-  // Groups without a day: each place tries every day it could still fit into, cheapest first.
-  const left: Place[] = [];
-  const leftWhy: Record<string, string> = {};
-  for (const g of free.slice(freeDays.length)) {
-    for (const place of g.places) {
-      const target = days
-        .map((d, i) => ({ i, extra: length([...d, place]) - length(d) }))
-        .filter(({ i }) => fitsDay([...days[i], place]))
-        .sort((a, b) => a.extra - b.extra)[0];
-      if (target) {
-        days[target.i] = [...days[target.i], place];
-        continue;
-      }
-      left.push(place);
-      const others = pool.filter((p) => p.id !== place.id);
-      const nearest = others.length ? Math.min(...others.map((o) => legMinutes(o.coords, place.coords, t))) : 0;
-      const each = t.base ? legMinutes(t.base, place.coords, t) : 0;
-      const stayName = prefs.stay?.name ?? 'where you’re staying';
-      // Only a reason particular to this place; "the days are full" is said once, above the list.
-      const why =
-        place.minutes > budget
-          ? 'Takes longer than a whole day at this pace.'
-          : t.base && length([place]) > budget
-            ? length([place]) <= PACE_HOURS.packed * 60
-              ? `About ${hours(each)} each way from ${stayName}: a long day there and back. It fits at a packed pace.`
-              : `About ${hours(each)} each way from ${stayName}, too far to get there and back in a day. It’s worth a night nearby.`
-            : nearest > NEARBY_MINUTES
-              ? `About ${hours(nearest)} from your other places, so it needs a day of its own.`
-              : null;
-      if (why) leftWhy[place.id] = why;
-    }
-  }
-
-  const placed: Placed[][] = days.map((d) => d.map((place) => ({ place, pinned: isPinned(place), suggested: false })));
-
-  // One local pick per day that has room and time and no dinner, never the same pick twice.
-  const offered = suggestions.filter((s) => !removed.includes(s.id) && !pool.some((p) => p.id === s.id));
-  placed.forEach((d) => {
-    const noDinner = !d.some((s) => s.place.type === 'food' && s.place.bestTime === 'evening');
-    const pick = offered.find((o) => fitsDay([...d.map((s) => s.place), o]));
-    if (noDinner && pick) {
-      offered.splice(offered.indexOf(pick), 1);
-      d.push({ place: pick, pinned: false, suggested: true });
-    }
+  return once(JSON.stringify(['plan', cityId, facts(pool), offered.map((p) => p.id), prefs, pins, removed, seed, isoDay(new Date())]), () => {
+    const built = build({ pool, suggestions: offered, prefs, pins: pinnedTo, seed });
+    const places = built.ctx.places;
+    return {
+      cityId,
+      prefs,
+      days: built.days.map((d, i) =>
+        timeDay(
+          d.order.map((k) => ({ place: places[k], pinned: isPinned(places[k]), suggested: built.suggested.has(k) })),
+          prefs,
+          prefs.start ? addDays(prefs.start, i) : null,
+        ),
+      ),
+      left: built.left.map((k) => places[k]),
+      leftWhy: built.leftWhy,
+      removed,
+      seed,
+    };
   });
-
-  // Walking a day the other way round is as good, unless it starts from where you're staying.
-  const flip = !t.base && rand() < 0.5;
-  const plan: TripPlan = {
-    cityId,
-    prefs,
-    days: placed.map((d, i) => timeDay(routeOrder(d, t, flip), prefs, prefs.start ? addDays(prefs.start, i) : null)),
-    left,
-    leftWhy,
-    removed,
-    seed,
-  };
-  return plan;
 }
 
 // ── Edits ────────────────────────────────────────────────────────────────────────────────────────

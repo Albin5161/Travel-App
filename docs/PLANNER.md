@@ -54,8 +54,15 @@ fresh.
 - **One base.** Every day starts and ends where you're staying. A place too far for a day trip
   (Pangong or Nubra from Leh) is left out with "it needs a night nearby"; planning the night away
   is a later step.
-- **Gemini's facts are its general knowledge**, not checked. It ticks "sunset" generously, so the
-  planner trusts its time-of-day window over that tick.
+- **Gemini's facts are its general knowledge**, not checked, and it can answer differently on
+  another day. So they are preferences, never rules: no fact can drop a place or break a day.
+  - *What a place is* (kind, meal type, area) and *when to go* (best time, "also good at sunset /
+    sunrise / after dark") are kept apart. "Dessert" doesn't mean evening; "lunch" doesn't mean noon.
+  - Only a **best time of sunset** claims the sunset hour. "Also good at sunset" is weaker: the place
+    keeps its own best time, and may take the sunset if it happens to be passing.
+  - One confidence number comes with the timing answers; the lower it is, the more loosely a place
+    is held to them (down to half). In practice the model says 0.9 for nearly everything, so this
+    softens little: the real protection is that every timing fact is soft.
 - **Scoring weights are judgement**, tuned on the test trips in `tests/planner/`.
 
 ## Checking it

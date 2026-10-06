@@ -44,15 +44,14 @@ export function kindOf(p: Place): Kind {
   }
   // Told outright whether it's a sunset, sunrise or after-dark place: that's the answer, either way.
   if (f && (f.sunset !== undefined || f.window)) {
-    // The window is the firmer answer. The model ticks "sunset" generously (any beach, any sea
-    // wall), so the tick alone counts only when the window is the evening or isn't given: a beach
-    // it calls a morning place stays a morning place.
-    const late = f.window === 'evening' || !f.window;
-    // Ticked for sunset and for night both (a promenade, a lively beach): an evening place, good
-    // from late afternoon on, not one that's missed if the sun is already down.
-    if (f.window === 'sunset' || (f.sunset && late && !f.night)) return 'sunset';
-    if (f.window === 'early_morning' && f.sunrise) return 'sunrise';
-    if (f.window === 'night' || (f.night && late && !f.sunset)) return 'night';
+    // Its best time is what claims an hour: "sunset" as the best time is the one strong claim on
+    // the sunset. "Also good at sunset" (a tick the model gives most beaches and sea walls) is a
+    // weaker thing, handled as a second choice of time in windows() below: the place keeps its
+    // own best time.
+    // (There is no "sunrise" best time to answer with: an early-morning place ticked for sunrise
+    // goes first thing, and the day isn't dragged to dawn for it.)
+    if (f.window === 'sunset') return 'sunset';
+    if (f.window === 'night') return 'night';
     return 'sight';
   }
   // Older places: read it off the name and the line about why to go.
@@ -103,7 +102,7 @@ export const DINNER_WINDOW = MEAL_WINDOW[DINNER];
 // `early` is the per-minute cost of starting before the good time when that's less than `per`:
 // an afternoon place at eleven is nearly as good, a morning place at two is not.
 const OFF: Record<Kind, { per: number; early?: number; cap: number; free: number; wait: number }> = {
-  sight: { per: 0.3, early: 0.2, cap: 60, free: 20, wait: 70 },
+  sight: { per: 0.3, early: 0.2, cap: 110, free: 20, wait: 70 },
   sunset: { per: 0.6, cap: 120, free: 45, wait: 70 },
   sunrise: { per: 0.5, cap: 40, free: 0, wait: 70 },
   night: { per: 0.3, cap: 30, free: 30, wait: 40 },
@@ -117,6 +116,15 @@ const LONG_WAIT = 180;
 const PER_LONG_WAIT_MINUTE = 0.15;
 /** A café at mid-morning or teatime when it could have been the day's lunch. */
 const CAFE_NOT_LUNCH = 25;
+/** "Also good at sunset / after dark": nearly as good as the place's own best time, not quite. */
+const ALSO_GOOD = 6;
+/** A light stop (café, snack, sweet) at a between-meals hour that isn't the one it's best at. */
+const LIGHT_OTHER_HOUR = 15;
+/**
+ * How firmly a place is held to its good time, from how sure the model was of it: fully at 1, half
+ * as firmly at 0. A place with no such answer (anything saved before it was asked) is held fully.
+ */
+export const firmness = (p: Place) => (p.facts && typeof p.facts.sure === 'number' ? 0.5 + 0.5 * Math.min(1, Math.max(0, p.facts.sure)) : 1);
 /** A meal that isn't the one the place is known for (a lunch place at dinner). */
 const OTHER_MEAL = 35;
 /** A food stop when the day's meals are already taken. */
@@ -146,7 +154,14 @@ function waitCost(wait: number, free: number, most: number) {
   return wait <= free ? 0 : most * (1 - Math.exp(-(wait - free) / 120)) + Math.max(0, wait - LONG_WAIT) * PER_LONG_WAIT_MINUTE;
 }
 
-type Window = { from: number; to: number; extra: number; meal: number };
+type Window = {
+  from: number;
+  to: number;
+  extra: number;
+  meal: number;
+  /** Counts only if you arrive inside it: not worth waiting for, and no excuse for being late. */
+  passing?: boolean;
+};
 
 /**
  * When a sunset place may start so the sun goes down while you're there: no later than twenty
@@ -236,26 +251,36 @@ function windows(ctx: DayCtx, i: number, meals: number, restaurantInDay: boolean
     case 'night':
       return [{ from: ctx.sunset + 15, to: 21 * 60 + 30, extra: 0, meal: 0 }];
     case 'restaurant': {
+      // What it is (the meal it's known for) and when it's best are two facts; either can make a
+      // meal its own. A lunch place that's best in the evening is at home at lunch and at dinner.
       const meal = p.facts?.meal;
-      const known =
-        meal === 'breakfast' ? BREAKFAST : meal === 'dinner' ? DINNER : meal === 'lunch' ? LUNCH : p.bestTime === 'morning' ? BREAKFAST : p.bestTime === 'evening' ? DINNER : LUNCH;
-      const open = [LUNCH, DINNER, ...(known === BREAKFAST ? [BREAKFAST] : [])].filter((m) => !(meals & m));
-      return open.map((m) => ({ from: MEAL_WINDOW[m][0], to: MEAL_WINDOW[m][1], extra: m === known ? 0 : OTHER_MEAL, meal: m }));
+      const part = partFor(p);
+      const byMeal = meal === 'breakfast' ? BREAKFAST : meal === 'dinner' ? DINNER : meal === 'lunch' ? LUNCH : 0;
+      const byTime = part === 'early' || part === 'morning' ? BREAKFAST : part === 'evening' ? DINNER : LUNCH;
+      const own = byMeal ? (p.facts?.window ? byMeal | byTime : byMeal) : byTime;
+      const open = [LUNCH, DINNER, ...(own & BREAKFAST ? [BREAKFAST] : [])].filter((m) => !(meals & m));
+      return open.map((m) => ({ from: MEAL_WINDOW[m][0], to: MEAL_WINDOW[m][1], extra: own & m ? 0 : OTHER_MEAL, meal: m }));
     }
     case 'cafe': {
-      // Something sweet: mid-afternoon, or after dinner. A snack: between meals. Neither is lunch.
-      if (p.facts?.meal === 'dessert') {
-        return [
-          { from: 13 * 60 + 30, to: 17 * 60 + 30, extra: 0, meal: 0 },
-          { from: 20 * 60, to: 21 * 60 + 45, extra: 0, meal: 0 },
+      if (p.facts) {
+        // A light stop (café, snack, something sweet). What it is doesn't set the hour: its best
+        // time does, and the other between-meals hours are nearly as good, so a sweet shop best
+        // in the morning is a morning stop and one answer of the model's moving doesn't upend a day.
+        const part = partFor(p);
+        const hours: [number, number][] = [
+          [Math.max(earliest, 8 * 60), 11 * 60 + 30],
+          [14 * 60 + 30, 18 * 60],
+          [16 * 60 + 30, 21 * 60 + 30],
         ];
+        const best = part === 'early' || part === 'morning' ? 0 : part === 'afternoon' ? 1 : 2;
+        const out: Window[] = hours.map(([from, to], k) => ({ from, to, extra: k === best ? 0 : LIGHT_OTHER_HOUR, meal: 0 }));
+        // A café (not a snack or a sweet) with no restaurant in the day is where lunch can happen.
+        if (p.facts.meal === 'cafe' && !restaurantInDay && !(meals & LUNCH) && part !== 'evening') {
+          out.push({ from: LUNCH_WINDOW[0], to: LUNCH_WINDOW[1], extra: part === 'afternoon' ? 0 : LIGHT_OTHER_HOUR, meal: LUNCH });
+        }
+        return out;
       }
-      if (p.facts?.meal === 'snack') {
-        return [
-          { from: 10 * 60, to: 11 * 60 + 30, extra: 0, meal: 0 },
-          { from: 15 * 60 + 30, to: 18 * 60 + 30, extra: 0, meal: 0 },
-        ];
-      }
+      // Places saved before the model was asked: as it has always been.
       // With no restaurant in the day, a café known for the afternoon is where lunch happens; it can
       // still be the mid-morning or teatime stop, a little less well.
       const lunch = !restaurantInDay && !(meals & LUNCH) && p.bestTime !== 'evening';
@@ -271,10 +296,23 @@ function windows(ctx: DayCtx, i: number, meals: number, restaurantInDay: boolean
     default: {
       const part = partFor(p);
       // First thing: before the heat and the crowds.
-      if (part === 'early') return [{ from: earliest, to: 9 * 60, extra: 0, meal: 0 }];
-      if (part === 'morning') return [{ from: earliest, to: 11 * 60 + 30, extra: 0, meal: 0 }];
-      if (part === 'afternoon') return [{ from: 11 * 60, to: 16 * 60 + 30, extra: 0, meal: 0 }];
-      return [{ from: 16 * 60, to: ctx.sunset + 60, extra: 0, meal: 0 }];
+      const own: Window =
+        part === 'early'
+          ? { from: earliest, to: 9 * 60, extra: 0, meal: 0 }
+          : part === 'morning'
+            ? { from: earliest, to: 11 * 60 + 30, extra: 0, meal: 0 }
+            : part === 'afternoon'
+              ? { from: 11 * 60, to: 16 * 60 + 30, extra: 0, meal: 0 }
+              : { from: 16 * 60, to: ctx.sunset + 60, extra: 0, meal: 0 };
+      // "Also good at sunset" or "after dark": a second hour it would be nearly as happy at. Its
+      // own best time stays first, and it never waits around for the sunset the way a sunset place does.
+      const also: Window[] = [];
+      if (p.facts?.sunset) {
+        const [from, to] = sunsetWindow(p.minutes, ctx.sunset);
+        also.push({ from, to, extra: ALSO_GOOD, meal: 0, passing: true });
+      }
+      if (p.facts?.night) also.push({ from: ctx.sunset + 15, to: 21 * 60 + 30, extra: ALSO_GOOD, meal: 0, passing: true });
+      return [own, ...also];
     }
   }
 }
@@ -323,6 +361,8 @@ function step(ctx: DayCtx, w: Walk, i: number, restaurantInDay: boolean, earlies
   const kind = ctx.kinds[i];
   const off = OFF[kind];
   const open = windows(ctx, i, w.meals, restaurantInDay, earliest);
+  // The less sure the model was of this place's timing, the less being off it counts.
+  const firm = firmness(ctx.places[i]);
 
   let start = arrive;
   let cost = isFood(kind) ? SPARE_FOOD : 0;
@@ -330,6 +370,7 @@ function step(ctx: DayCtx, w: Walk, i: number, restaurantInDay: boolean, earlies
   let meal = 0;
   let found = false;
   for (const win of open) {
+    if (win.passing && (arrive < win.from || arrive > win.to)) continue;
     let s = arrive;
     let c = win.extra;
     let m = win.extra;
@@ -337,7 +378,7 @@ function step(ctx: DayCtx, w: Walk, i: number, restaurantInDay: boolean, earlies
       const wait = win.from - arrive;
       // Before the first stop there's nothing to wait through: the day simply starts later.
       const waiting = first ? 0 : waitCost(wait, off.free, win.meal === DINNER ? DINNER_WAIT : off.wait);
-      const early = Math.min(off.cap, wait * (off.early ?? off.per));
+      const early = Math.min(off.cap, wait * (off.early ?? off.per)) * firm;
       if (waiting <= early) {
         s = win.from;
         c += waiting;
@@ -348,7 +389,7 @@ function step(ctx: DayCtx, w: Walk, i: number, restaurantInDay: boolean, earlies
     } else if (arrive > win.to) {
       // Late for a sunset is a little less of it, until the sun is down: then it's missed outright.
       const missed = kind === 'sunset' && arrive >= ctx.sunset;
-      const late = missed ? off.cap : Math.min(off.cap, (arrive - win.to) * off.per);
+      const late = (missed ? off.cap : Math.min(off.cap, (arrive - win.to) * off.per)) * firm;
       c += late;
       m += late;
     }

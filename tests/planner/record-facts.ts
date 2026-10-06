@@ -46,6 +46,7 @@ for (const [city, places] of Object.entries(trips)) {
       sunsetRelevant: hit.sunsetRelevant,
       sunriseRelevant: hit.sunriseRelevant,
       nightRelevant: hit.nightRelevant,
+      factsConfidence: hit.factsConfidence,
       confidence: hit.confidence,
     };
   }

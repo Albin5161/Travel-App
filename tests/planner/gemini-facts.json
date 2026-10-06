@@ -3,12 +3,13 @@
     "type": "sight",
     "area": "Gokarna Town",
     "parentArea": "Gokarna",
-    "visitMinutes": 60,
+    "visitMinutes": 45,
     "window": "early_morning",
     "mealType": null,
     "sunsetRelevant": false,
-    "sunriseRelevant": false,
+    "sunriseRelevant": true,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Gokarna: Gokarna Beach": {
@@ -21,6 +22,7 @@
     "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Gokarna: Kudle Beach": {
@@ -33,6 +35,7 @@
     "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Gokarna: Strawberry Farms Café": {
@@ -42,9 +45,10 @@
     "visitMinutes": 60,
     "window": "afternoon",
     "mealType": "lunch",
-    "sunsetRelevant": false,
+    "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.7,
     "confidence": 1
   },
   "Gokarna: Paradise Beach": {
@@ -57,6 +61,7 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Gokarna: Half Moon Beach": {
@@ -64,11 +69,12 @@
     "area": "Cliff trail",
     "parentArea": "Gokarna",
     "visitMinutes": 90,
-    "window": "afternoon",
+    "window": "morning",
     "mealType": null,
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Gokarna: Om Beach": {
@@ -81,6 +87,7 @@
     "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Kochi: Fort Kochi Street Art": {
@@ -93,6 +100,7 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.8,
     "confidence": 0.95
   },
   "Kochi: Jew Town, Mattancherry": {
@@ -105,6 +113,7 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 0.95
   },
   "Kochi: Fort Kochi Jetty": {
@@ -114,9 +123,10 @@
     "visitMinutes": 30,
     "window": "morning",
     "mealType": null,
-    "sunsetRelevant": false,
+    "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.8,
     "confidence": 0.95
   },
   "Kochi: Fort Kochi Waterfront": {
@@ -129,6 +139,7 @@
     "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 0.95
   },
   "Kochi: Kashi Art Café": {
@@ -137,10 +148,11 @@
     "parentArea": "Kochi",
     "visitMinutes": 60,
     "window": "morning",
-    "mealType": "breakfast",
+    "mealType": "cafe",
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 0.95
   },
   "Kochi: Seagull Restaurant": {
@@ -152,7 +164,8 @@
     "mealType": "dinner",
     "sunsetRelevant": true,
     "sunriseRelevant": false,
-    "nightRelevant": false,
+    "nightRelevant": true,
+    "factsConfidence": 0.9,
     "confidence": 0.95
   },
   "Kochi: Marine Drive": {
@@ -165,6 +178,7 @@
     "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": true,
+    "factsConfidence": 0.9,
     "confidence": 0.95
   },
   "Kochi: Lulu Mall": {
@@ -176,7 +190,8 @@
     "mealType": null,
     "sunsetRelevant": false,
     "sunriseRelevant": false,
-    "nightRelevant": false,
+    "nightRelevant": true,
+    "factsConfidence": 0.9,
     "confidence": 0.95
   },
   "Ladakh: Leh Palace": {
@@ -186,10 +201,11 @@
     "visitMinutes": 60,
     "window": "morning",
     "mealType": null,
-    "sunsetRelevant": false,
+    "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": false,
-    "confidence": 0.99
+    "factsConfidence": 0.9,
+    "confidence": 1
   },
   "Ladakh: Shanti Stupa": {
     "type": "sight",
@@ -200,8 +216,9 @@
     "mealType": null,
     "sunsetRelevant": true,
     "sunriseRelevant": false,
-    "nightRelevant": false,
-    "confidence": 0.99
+    "nightRelevant": true,
+    "factsConfidence": 0.9,
+    "confidence": 1
   },
   "Ladakh: Thiksey Monastery": {
     "type": "sight",
@@ -211,21 +228,23 @@
     "window": "early_morning",
     "mealType": null,
     "sunsetRelevant": false,
-    "sunriseRelevant": false,
+    "sunriseRelevant": true,
     "nightRelevant": false,
-    "confidence": 0.99
+    "factsConfidence": 0.9,
+    "confidence": 1
   },
   "Ladakh: Pangong Lake": {
     "type": "sight",
     "area": "Pangong",
     "parentArea": null,
     "visitMinutes": 180,
-    "window": "afternoon",
+    "window": "morning",
     "mealType": null,
-    "sunsetRelevant": false,
-    "sunriseRelevant": false,
+    "sunsetRelevant": true,
+    "sunriseRelevant": true,
     "nightRelevant": false,
-    "confidence": 0.99
+    "factsConfidence": 0.9,
+    "confidence": 1
   },
   "Ladakh: Diskit Monastery": {
     "type": "sight",
@@ -237,7 +256,8 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
-    "confidence": 0.99
+    "factsConfidence": 0.9,
+    "confidence": 1
   },
   "Ladakh: Hunder Sand Dunes": {
     "type": "sight",
@@ -249,7 +269,8 @@
     "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": false,
-    "confidence": 0.99
+    "factsConfidence": 0.9,
+    "confidence": 1
   },
   "Ladakh: Khardung La": {
     "type": "sight",
@@ -261,7 +282,8 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
-    "confidence": 0.99
+    "factsConfidence": 0.9,
+    "confidence": 1
   },
   "Ladakh: Magnetic Hill": {
     "type": "sight",
@@ -273,7 +295,8 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
-    "confidence": 0.99
+    "factsConfidence": 0.9,
+    "confidence": 1
   },
   "Mumbai: Gateway of India": {
     "type": "sight",
@@ -283,8 +306,9 @@
     "window": "morning",
     "mealType": null,
     "sunsetRelevant": true,
-    "sunriseRelevant": false,
-    "nightRelevant": false,
+    "sunriseRelevant": true,
+    "nightRelevant": true,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Mumbai: Elephanta Caves": {
@@ -297,6 +321,7 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Mumbai: Colaba Causeway": {
@@ -309,6 +334,7 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.8,
     "confidence": 1
   },
   "Mumbai: Leopold Cafe": {
@@ -318,21 +344,23 @@
     "visitMinutes": 60,
     "window": "afternoon",
     "mealType": "lunch",
-    "sunsetRelevant": false,
+    "sunsetRelevant": true,
     "sunriseRelevant": false,
-    "nightRelevant": false,
+    "nightRelevant": true,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Mumbai: Chhatrapati Shivaji Terminus": {
     "type": "sight",
     "area": "Fort",
     "parentArea": "Mumbai",
-    "visitMinutes": 30,
+    "visitMinutes": 20,
     "window": "morning",
     "mealType": null,
     "sunsetRelevant": false,
     "sunriseRelevant": false,
-    "nightRelevant": false,
+    "nightRelevant": true,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Mumbai: Britannia & Co.": {
@@ -345,54 +373,59 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Mumbai: Marine Drive": {
     "type": "sight",
     "area": "Marine Drive",
     "parentArea": "Mumbai",
-    "visitMinutes": 60,
+    "visitMinutes": 45,
     "window": "sunset",
     "mealType": null,
     "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": true,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Mumbai: Haji Ali Dargah": {
     "type": "sight",
     "area": "Worli",
     "parentArea": "Mumbai",
-    "visitMinutes": 90,
+    "visitMinutes": 60,
     "window": "afternoon",
     "mealType": null,
     "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Mumbai: Bandra Bandstand": {
     "type": "sight",
     "area": "Bandra",
     "parentArea": "Mumbai",
-    "visitMinutes": 60,
+    "visitMinutes": 45,
     "window": "sunset",
     "mealType": null,
     "sunsetRelevant": true,
     "sunriseRelevant": false,
-    "nightRelevant": false,
+    "nightRelevant": true,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Mumbai: Juhu Beach": {
     "type": "sight",
     "area": "Juhu",
     "parentArea": "Mumbai",
-    "visitMinutes": 90,
+    "visitMinutes": 60,
     "window": "evening",
     "mealType": null,
     "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": true,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Mumbai: Siddhivinayak Temple": {
@@ -403,20 +436,22 @@
     "window": "early_morning",
     "mealType": null,
     "sunsetRelevant": false,
-    "sunriseRelevant": false,
+    "sunriseRelevant": true,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Mumbai: Bademiya": {
     "type": "food",
     "area": "Colaba",
     "parentArea": "Mumbai",
-    "visitMinutes": 60,
+    "visitMinutes": 45,
     "window": "night",
     "mealType": "dinner",
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": true,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Old Delhi: Red Fort": {
@@ -429,6 +464,7 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Old Delhi: Jama Masjid": {
@@ -438,9 +474,10 @@
     "visitMinutes": 60,
     "window": "morning",
     "mealType": null,
-    "sunsetRelevant": false,
+    "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Old Delhi: Chandni Chowk": {
@@ -453,6 +490,7 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Old Delhi: Paranthe Wali Gali": {
@@ -465,6 +503,7 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Old Delhi: Karim’s": {
@@ -472,11 +511,12 @@
     "area": "Old Delhi",
     "parentArea": "Delhi",
     "visitMinutes": 60,
-    "window": "afternoon",
-    "mealType": "lunch",
+    "window": "evening",
+    "mealType": "dinner",
     "sunsetRelevant": false,
     "sunriseRelevant": false,
-    "nightRelevant": false,
+    "nightRelevant": true,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Old Delhi: Al Jawahar": {
@@ -484,11 +524,12 @@
     "area": "Old Delhi",
     "parentArea": "Delhi",
     "visitMinutes": 60,
-    "window": "afternoon",
-    "mealType": "lunch",
+    "window": "evening",
+    "mealType": "dinner",
     "sunsetRelevant": false,
     "sunriseRelevant": false,
-    "nightRelevant": false,
+    "nightRelevant": true,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Old Delhi: Natraj Dahi Bhalle": {
@@ -501,6 +542,7 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Old Delhi: Old Famous Jalebi Wala": {
@@ -508,11 +550,12 @@
     "area": "Old Delhi",
     "parentArea": "Delhi",
     "visitMinutes": 20,
-    "window": "afternoon",
+    "window": "evening",
     "mealType": "dessert",
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Old Delhi: Giani’s Di Hatti": {
@@ -520,11 +563,12 @@
     "area": "Old Delhi",
     "parentArea": "Delhi",
     "visitMinutes": 20,
-    "window": "afternoon",
+    "window": "evening",
     "mealType": "dessert",
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Old Delhi: Indian Coffee House": {
@@ -537,6 +581,7 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
+    "factsConfidence": 0.9,
     "confidence": 1
   },
   "Central Kerala: Athirappilly Falls": {
@@ -549,7 +594,8 @@
     "sunsetRelevant": false,
     "sunriseRelevant": false,
     "nightRelevant": false,
-    "confidence": 0.95
+    "factsConfidence": 0.9,
+    "confidence": 1
   },
   "Central Kerala: Cherai Beach": {
     "type": "sight",
@@ -561,6 +607,7 @@
     "sunsetRelevant": true,
     "sunriseRelevant": false,
     "nightRelevant": false,
-    "confidence": 0.95
+    "factsConfidence": 0.9,
+    "confidence": 1
   }
 }

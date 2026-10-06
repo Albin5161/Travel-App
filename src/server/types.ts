@@ -29,6 +29,8 @@ export type FoundPlace = {
   nightRelevant?: boolean;
   /** The wider area `area` is part of ("Fort Kochi" is in "Kochi"). */
   parentArea?: string | null;
+  /** How sure the model is of `window`, `mealType` and the three "…Relevant" answers, 0 to 1. */
+  factsConfidence?: number | null;
 };
 
 export type Timings = Record<string, number>;

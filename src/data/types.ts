@@ -25,14 +25,28 @@ export type TimeWindow = 'early_morning' | 'morning' | 'afternoon' | 'sunset' | 
  * falls back to its kind, its best part of the day and its name.
  */
 export interface PlaceFacts {
+  // What it is.
+  /** For a place to eat: the kind of food stop. Says nothing about the hour. */
   meal?: MealType | null;
+  /** The wider area its `area` is part of: "Fort Kochi" is in "Kochi". */
+  parentArea?: string | null;
+
+  // When to go.
+  /** Its best time. `sunset` here means "go for the sunset": the one strong claim on that hour. */
   window?: TimeWindow | null;
-  /** People go for the sunset, the sunrise, or after dark. */
+  /**
+   * It can also be good at sunset, at sunrise, or after dark. Weaker than `window`: a beach that's
+   * best in the morning and pretty at sunset is still a morning place.
+   */
   sunset?: boolean;
   sunrise?: boolean;
   night?: boolean;
-  /** The wider area its `area` is part of: "Fort Kochi" is in "Kochi". */
-  parentArea?: string | null;
+
+  /**
+   * How sure the model was of the timing answers above, 0 to 1. The less sure, the more loosely the
+   * planner holds the place to them. Absent means as sure as any.
+   */
+  sure?: number | null;
 }
 
 export interface Place {

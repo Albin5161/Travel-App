@@ -433,6 +433,7 @@ function factsOf(found: FoundPlace): { facts?: PlaceFacts } {
       sunrise: !!found.sunriseRelevant,
       night: !!found.nightRelevant,
       parentArea: found.parentArea ?? null,
+      sure: found.factsConfidence ?? null,
     },
   };
 }

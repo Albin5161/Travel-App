@@ -311,13 +311,141 @@ test('facts: every trip still fits its limits, includes as many places, and eats
     stopsOf(after)
       .filter((s) => s.place.facts?.meal === 'dinner')
       .forEach((s) => assert.ok(s.startMinutes >= DINNER_WINDOW[0] - 30, `${s.place.name} at ${s.startMinutes}`));
-    // No morning place after one o'clock, no sunset place after the sun is down.
+    // No morning place after one o'clock, no sunset place after the sun is down. (One the model
+    // also calls good at sunset may be there for the sunset instead: that is what the tick is for.)
+    const sunset = sunsetAt(after);
+    const there = (s: { startMinutes: number; place: Place }) => s.startMinutes < sunset && s.startMinutes + s.place.minutes >= sunset - 5;
     stopsOf(after)
       .filter((s) => kindOf(s.place) === 'sight' && (s.place.facts?.window === 'morning' || s.place.facts?.window === 'early_morning'))
-      .forEach((s) => assert.ok(s.startMinutes <= 13 * 60, `${s.place.name} at ${s.startMinutes}`));
-    const sunset = sunsetAt(after);
+      .forEach((s) => assert.ok(s.startMinutes <= 13 * 60 || (s.place.facts?.sunset && there(s)), `${s.place.name} at ${s.startMinutes}`));
     stopsOf(after)
       .filter((s) => kindOf(s.place) === 'sunset')
       .forEach((s) => assert.ok(s.startMinutes < sunset && s.startMinutes + s.place.minutes >= sunset - 5, `${s.place.name} at ${s.startMinutes}, sunset ${sunset}`));
+  }
+});
+
+// ── Refinement: what a place is, when to go, and how sure ───────────────────────────────────────
+
+const withF = (p: Place, f: Place['facts'], bestTime = p.bestTime): Place => ({ ...p, bestTime, facts: f });
+const startOf = (p: TripPlan, name: string) => find(p, name)!.startMinutes;
+
+test('sunset: "also good at sunset" is not "best at sunset"', () => {
+  const beach = facts.gokarna.find((p) => p.name === 'Gokarna Beach')!;
+  assert.equal(beach.facts?.sunset, true);
+  assert.equal(beach.facts?.window, 'morning');
+  assert.equal(kindOf(beach), 'sight', 'ticked for sunset, best in the morning: a morning place');
+  // An evening place ticked for sunset is an evening place too; only "best at sunset" claims the hour.
+  const prom = withF(P('Promenade', 'sight', 'evening', 60, 14.53, 74.318), { window: 'evening', sunset: true, night: true }, 'evening');
+  assert.equal(kindOf(prom), 'sight');
+  assert.equal(kindOf(withF(prom, { window: 'sunset', sunset: true })), 'sunset');
+});
+
+test('sunset: the true sunset place gets the sunset, and the morning beach stays in the morning', () => {
+  const p = plan(facts.gokarna);
+  assert.equal(p.left.length, 0);
+  assertCoversSunset(p, 'Om Beach');
+  assert.ok(startOf(p, 'Gokarna Beach') < 12 * 60, `Gokarna Beach at ${startOf(p, 'Gokarna Beach')}`);
+  // Two days, two beaches ticked for sunset, one best at it: only that one is held to the hour.
+  const two = plan(facts.gokarna, { prefs: prefs({ days: 2 }) });
+  assertCoversSunset(two, 'Om Beach');
+  assert.ok(startOf(two, 'Kudle Beach') < sunsetAt(two) - 120, 'Kudle Beach, ticked for sunset but best in the afternoon, is an afternoon stop');
+});
+
+test('missing facts fall back: no facts, empty facts and half-filled facts all plan as before', () => {
+  const plain = gokarna.find((p) => p.name === 'Om Beach')!;
+  assert.equal(kindOf(plain), 'sunset', 'an old place is read from its name and "why" line');
+  assert.equal(kindOf(withF(plain, {})), 'sunset', 'empty facts change nothing');
+  assert.equal(kindOf(withF(plain, { parentArea: 'Gokarna' })), 'sunset', 'an area alone changes nothing');
+  const cafe = gokarna.find((p) => p.name.startsWith('Strawberry'))!;
+  assert.equal(kindOf(cafe), 'cafe');
+  assert.equal(kindOf(withF(cafe, { window: 'afternoon' })), 'cafe', 'no meal given: the name still decides');
+  assert.equal(kindOf(withF(cafe, { meal: 'unknown' })), 'cafe');
+  assert.equal(kindOf(withF(cafe, { meal: 'lunch' })), 'restaurant');
+  // A collection that is half old places and half new plans without trouble.
+  const mixed = gokarna.map((p, i) => (i % 2 ? facts.gokarna[i] : p));
+  const p = plan(mixed);
+  assert.equal(p.left.length, 0);
+  assertWithinLimits(p);
+  assertCoversSunset(p, 'Om Beach');
+});
+
+test('low confidence: an unsure, even wrong, timing guess never drops a place or breaks a day', () => {
+  // Every place given a time that makes no sense for it, and the model barely sure of any.
+  const odd = ['night', 'sunset', 'early_morning', 'evening', 'night', 'early_morning', 'morning'] as const;
+  const wrong = gokarna.map((p, i) => withF(p, { window: odd[i], meal: p.type === 'food' ? 'dinner' : null, sunset: i % 2 === 0, night: i % 3 === 0, sure: 0.1 }));
+  const p = plan(wrong);
+  assert.equal(look(p).placed, 7, 'all seven still fit');
+  assertWithinLimits(p);
+  const two = plan(wrong, { prefs: prefs({ days: 2 }) });
+  assert.equal(two.left.length, 0);
+  assertWithinLimits(two);
+});
+
+test('low confidence holds a place to its time half as firmly; no answer holds it fully', async () => {
+  const { firmness } = await import('@/data/planner/schedule');
+  const beach = gokarna[1];
+  assert.equal(firmness(beach), 1, 'an old place');
+  assert.equal(firmness(withF(beach, { window: 'morning' })), 1, 'facts without a confidence');
+  assert.equal(firmness(withF(beach, { window: 'morning', sure: 1 })), 1);
+  assert.equal(firmness(withF(beach, { window: 'morning', sure: 0 })), 0.5);
+  assert.ok(firmness(withF(beach, { window: 'morning', sure: 0.6 })) > 0.5 && firmness(withF(beach, { window: 'morning', sure: 0.6 })) < 1);
+});
+
+test('what and when are separate: a lunch place best in the evening can be dinner; a dessert place can be a morning stop', () => {
+  const fort = P('Old Fort', 'sight', 'morning', 90, 28.6562, 77.241);
+  const bazaar = P('Bazaar', 'experience', 'afternoon', 90, 28.6506, 77.2303);
+  const noon = withF(P('Noon Kitchen', 'food', 'afternoon', 60, 28.6494, 77.2337), { meal: 'lunch', window: 'afternoon' });
+  const late = withF(P('Late Kitchen', 'food', 'evening', 60, 28.6497, 77.2335), { meal: 'lunch', window: 'evening' }, 'evening');
+  const sweets = withF(P('Morning Sweets', 'food', 'morning', 20, 28.656, 77.2318), { meal: 'dessert', window: 'morning' }, 'morning');
+  const p = plan([fort, bazaar, noon, late, sweets]);
+  assert.equal(p.left.length, 0);
+  assert.ok(startOf(p, 'Noon Kitchen') >= LUNCH_WINDOW[0] && startOf(p, 'Noon Kitchen') <= LUNCH_WINDOW[1], `lunch at ${startOf(p, 'Noon Kitchen')}`);
+  assert.ok(startOf(p, 'Late Kitchen') >= DINNER_WINDOW[0] - 30, `a "lunch" place best in the evening eats at ${startOf(p, 'Late Kitchen')}`);
+  assert.ok(startOf(p, 'Morning Sweets') <= 11 * 60 + 45, `dessert, best in the morning, at ${startOf(p, 'Morning Sweets')}`);
+  // The same sweet shop, best in the evening, moves to the evening: the time fact decides, not "dessert".
+  const evening = plan([fort, bazaar, noon, late, withF(sweets, { meal: 'dessert', window: 'evening' }, 'evening')]);
+  assert.ok(startOf(evening, 'Morning Sweets') >= 16 * 60, `at ${startOf(evening, 'Morning Sweets')}`);
+});
+
+test('a small gap is not traded for a late start', () => {
+  // Two morning sights and lunch: about half an hour to spare before the lunch hour.
+  const a = P('Palace', 'sight', 'morning', 120, 9.9655, 76.2445);
+  const b = P('Museum', 'sight', 'morning', 70, 9.9662, 76.2437);
+  const lunch = withF(P('Harbour Kitchen', 'food', 'afternoon', 60, 9.9668, 76.2487), { meal: 'lunch', window: 'afternoon' });
+  const p = plan([a, b, lunch]);
+  const d = look(p).days[0];
+  assert.ok(d.start <= 8 * 60 + 5, `the day sets out at ${d.start}, not later to swallow a ${d.wait} min wait`);
+  assert.ok(d.wait >= 15 && d.wait <= 45, `a ${d.wait} min breather before lunch is left alone`);
+});
+
+test('a genuine free afternoon is allowed, and nothing is invented to fill it', () => {
+  const morning = withF(P('Hill Temple', 'sight', 'morning', 60, 14.5439, 74.3187), { window: 'morning' });
+  const dusk = withF(P('West Beach', 'sight', 'evening', 60, 14.5196, 74.3242), { window: 'sunset', sunset: true }, 'evening');
+  const pick = P('Somewhere Else', 'food', 'evening', 45, 14.5441, 74.3181);
+  const p = plan([morning, dusk], { suggestions: [pick] });
+  assert.equal(p.left.length, 0, 'both places are in the plan');
+  assertCoversSunset(p, 'West Beach');
+  assert.ok(startOf(p, 'Hill Temple') <= 11 * 60 + 30, 'the temple is still a morning stop');
+  assert.ok(longestHole(p) >= 120, 'the afternoon between them is free');
+  assert.ok(stopsOf(p).filter((s) => !s.suggested).length === 2 && !stopsOf(p).some((s) => s.suggested && s.startMinutes < DINNER_WINDOW[0] - 45), 'no stop is made up for the gap');
+});
+
+test('the model changing its mind about one place moves that place, not the whole day', () => {
+  const flip = (to: 'morning' | 'afternoon') => facts.gokarna.map((p) => (p.name === 'Half Moon Beach' ? withF(p, { ...p.facts, window: to }, to) : p));
+  // One day: everything else stays where it was, to within a couple of hours.
+  const [a, b] = [plan(flip('morning')), plan(flip('afternoon'))];
+  assert.equal(look(a).placed, 7);
+  assert.equal(look(b).placed, 7);
+  gokarna
+    .filter((p) => p.name !== 'Half Moon Beach')
+    .forEach((p) => assert.ok(Math.abs(startOf(a, p.name) - startOf(b, p.name)) <= 120, `${p.name}: ${startOf(a, p.name)} against ${startOf(b, p.name)}`));
+  // Two days: which places share a day can change (seven places this close are a near tie), but
+  // both trips hold everything, keep to the limits, and keep the sunset.
+  for (const to of ['morning', 'afternoon'] as const) {
+    const two = plan(flip(to), { prefs: prefs({ days: 2 }) });
+    assert.equal(two.left.length, 0);
+    assertWithinLimits(two);
+    assertCoversSunset(two, 'Om Beach');
+    assert.ok(longestHole(two) <= 90);
   }
 });

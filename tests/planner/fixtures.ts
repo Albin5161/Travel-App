@@ -114,7 +114,7 @@ export const fortKochiStay = { name: 'Fort Kochi', coords: { lat: 9.9658, lng: 7
 // the day worked out from the window. Visit lengths and kinds are left as above, so old against new
 // differs only by the facts.
 
-type Recorded = { window: PlaceFacts['window']; mealType: PlaceFacts['meal']; sunsetRelevant: boolean; sunriseRelevant: boolean; nightRelevant: boolean; parentArea: string | null };
+type Recorded = { window: PlaceFacts['window']; mealType: PlaceFacts['meal']; sunsetRelevant: boolean; sunriseRelevant: boolean; nightRelevant: boolean; parentArea: string | null; factsConfidence?: number | null };
 const PART: Record<NonNullable<PlaceFacts['window']>, DayPart> = { early_morning: 'morning', morning: 'morning', afternoon: 'afternoon', sunset: 'evening', evening: 'evening', night: 'evening' };
 
 export function withFacts(city: string, places: Place[]): Place[] {
@@ -124,7 +124,7 @@ export function withFacts(city: string, places: Place[]): Place[] {
     return {
       ...p,
       bestTime: r.window ? PART[r.window] : p.bestTime,
-      facts: { meal: p.type === 'food' ? r.mealType : null, window: r.window, sunset: r.sunsetRelevant, sunrise: r.sunriseRelevant, night: r.nightRelevant, parentArea: r.parentArea },
+      facts: { meal: p.type === 'food' ? r.mealType : null, window: r.window, sunset: r.sunsetRelevant, sunrise: r.sunriseRelevant, night: r.nightRelevant, parentArea: r.parentArea, sure: r.factsConfidence ?? null },
     };
   });
 }

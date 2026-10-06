@@ -26,9 +26,11 @@ import {
 const LEFT_OUT = 1000;
 /** One part of town spread over two days, when a day there would have done. */
 const AREA_SPLIT = 15;
-// A day left empty while another is crammed: you asked for two days, not one long one and a blank.
-// Counted per minute a day runs past this share of the pace's hours, for each empty day.
+// A day left empty, or nearly, while another is crammed: you asked for two days, not one long one
+// and a blank. Counted per minute a day runs past this share of the pace's hours, for each day
+// that holds less than a quarter of them.
 const ROOMY = 0.6;
+const NEARLY_EMPTY = 0.25;
 const PER_CRAMMED_MINUTE = 0.6;
 /** Places this far (minutes) from every other are on their own. */
 const NEARBY_MINUTES = 45;
@@ -112,7 +114,7 @@ export function build({ pool, suggestions, prefs, pins, seed, quick = false, now
       const day = dayOf(d);
       if (!day) return Infinity;
       sum += day.cost;
-      if (d.length === 0) empty++;
+      if (day.workload < PACE_HOURS[pace] * 60 * NEARLY_EMPTY) empty++;
       crammed += Math.max(0, day.workload - PACE_HOURS[pace] * 60 * ROOMY);
       new Set(d.map((i) => ctx.areas[i])).forEach((a) => daysIn.set(a, (daysIn.get(a) ?? 0) + 1));
     }
@@ -454,6 +456,8 @@ export function build({ pool, suggestions, prefs, pins, seed, quick = false, now
       // Only as dinner: a pick the day could only take mid-afternoon isn't the dinner it's for.
       const at = withPick.starts[withPick.order.indexOf(pick)];
       if (at < DINNER_WINDOW[0] - 45) continue;
+      // And never at your own places' expense: if fitting it in moves them off their times, it's left out.
+      if (withPick.mistimed > day.mistimed + 1) continue;
       suggested.add(pick);
       return withPick;
     }

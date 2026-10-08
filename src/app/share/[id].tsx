@@ -25,6 +25,7 @@ import { lookFor } from '@/lib/patterns';
 import { startGroup } from '@/state/group';
 import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
+import { isLight } from '@/theme/mode';
 import { SKY, skyInk } from '@/theme/sky';
 import { space } from '@/theme/tokens';
 
@@ -155,7 +156,11 @@ export default function ShareScreen() {
   return (
     <SkyScreen style={{ paddingTop: insets.top + 24, paddingBottom: insets.bottom + 12 }}>
       {/* The state's own cloth, as the saved story prints it: what's on screen is what gets posted. */}
-      <PatternBackdrop look={backdrop} ground calm={{ top: backdrop.ground, height: insets.top + 150 }} />
+      {/* The cloth is dark, and belongs under white type: in the light look the page stays paper and
+          the card alone carries it. */}
+      {isLight ? null : (
+  <PatternBackdrop look={backdrop} ground calm={{ top: backdrop.ground, height: insets.top + 150 }} />
+      )}
       <View style={styles.head}>
         <Animated.View entering={HEAD_IN}>
           <Text variant="eyebrow">

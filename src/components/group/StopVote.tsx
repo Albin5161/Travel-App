@@ -15,7 +15,7 @@ import { member, type Member, type Verdict, type Vote, type VoteKind } from '@/d
 import type { Place } from '@/data/types';
 import { haptic } from '@/lib/haptics';
 import { EASE_IN_OUT, EASE_OUT } from '@/lib/motion';
-import { skyAccent, skyAccentText, skyCta, skyFill, skyInk } from '@/theme/sky';
+import { skyAccent, skyAccentText, skyOnInk, skyFill, skyInk } from '@/theme/sky';
 import { fonts } from '@/theme/tokens';
 
 import { Glass } from '@/components/sky/Glass';
@@ -37,7 +37,7 @@ const POP = web
     }).duration(320);
 const NOTE_IN = web ? undefined : FadeIn.duration(220);
 
-export const VOTE_COLOR: Record<VoteKind, string> = { keep: skyInk.strong, swap: skyAccent, drop: 'rgba(255,255,255,0.4)' };
+export const VOTE_COLOR: Record<VoteKind, string> = { keep: skyInk.strong, swap: skyAccent, drop: skyInk.outline };
 
 type Props = {
   place: Place;
@@ -162,8 +162,8 @@ function Head({ place, meta, dropped, kicker }: { place: Place; meta: string; dr
 
 const PILL: Record<Verdict, { label: string; bg: string; ink: string }> = {
   waiting: { label: 'Voting…', bg: 'transparent', ink: skyInk.faint },
-  keep: { label: 'Keeping', bg: skyInk.strong, ink: skyCta },
-  swap: { label: 'Swapped', bg: skyAccent, ink: skyCta },
+  keep: { label: 'Keeping', bg: skyInk.strong, ink: skyOnInk },
+  swap: { label: 'Swapped', bg: skyAccent, ink: skyOnInk },
   drop: { label: 'Dropped', bg: skyFill.raised, ink: skyInk.soft },
 };
 

@@ -27,7 +27,7 @@ import { haptic } from '@/lib/haptics';
 import { fadeUp } from '@/lib/motion';
 import { useTrips } from '@/state/trips';
 import { Tone } from '@/theme/tone';
-import { skyCta, skyFill, skyInk } from '@/theme/sky';
+import { skyOnInk, skyFill, skyInk } from '@/theme/sky';
 import { colors, radii, space } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2].map((i) => fadeUp(i * 60));
@@ -160,8 +160,8 @@ export default function AddPlaces() {
                   ) : null}
                 </View>
                 <View style={styles.watch}>
-                  <Feather name="play" size={14} color={skyCta} />
-                  <Text variant="label" color={skyCta}>
+                  <Feather name="play" size={14} color={skyOnInk} />
+                  <Text variant="label" color={skyOnInk}>
                     {instagram ? 'Watch on Instagram' : 'Watch on YouTube'}
                   </Text>
                 </View>

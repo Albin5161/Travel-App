@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTone } from '@/theme/tone';
-import { skyCta, skyFill, skyInk } from '@/theme/sky';
+import { skyCta, skyFill, skyInk, skyOnCta } from '@/theme/sky';
 import { colors, fonts, light, shadows } from '@/theme/tokens';
 
 import { PressableScale } from './PressableScale';
@@ -69,7 +69,7 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
         >
           {text}
         </Text>
-        {skyArrow ? <Feather name="arrow-right" size={22} color={skyInk.strong} style={styles.arrow} /> : null}
+        {skyArrow ? <Feather name="arrow-right" size={22} color={skyOnCta} style={styles.arrow} /> : null}
       </PressableScale>
     </View>
   );
@@ -78,7 +78,7 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
 const LABEL = {
   dark: { primary: colors.night, secondary: colors.mist },
   // Over the sky: black with white type, the one solid thing on a screen of glass.
-  sky: { primary: skyInk.strong, secondary: skyInk.strong },
+  sky: { primary: skyOnCta, secondary: skyInk.strong },
   light: { primary: light.ctaInk, secondary: light.ink },
 } as const;
 

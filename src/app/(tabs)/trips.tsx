@@ -22,7 +22,7 @@ import { EASE_OUT, fadeUp } from '@/lib/motion';
 import { summarize } from '@/state/group';
 import { useTrips } from '@/state/trips';
 import { Tone } from '@/theme/tone';
-import { skyAccent, skyAccentText, skyAccentWash, skyFill, skyInk } from '@/theme/sky';
+import { skyAccent, skyAccentText, skyAccentWash, skyFill, skyInk, skyOnInk } from '@/theme/sky';
 import { colors, fonts, light, space } from '@/theme/tokens';
 
 const CARD_IN = [0, 1, 2, 3, 4, 5].map((i) => fadeUp(80 + i * 60));
@@ -189,7 +189,7 @@ function TripCard({ city, plan }: { city: City; plan: TripPlan }) {
 function StatusChip({ status }: { status: Status }) {
   const tone = {
     accent: { bg: skyAccentWash, ink: skyAccentText },
-    ink: { bg: skyInk.strong, ink: colors.night },
+    ink: { bg: skyInk.strong, ink: skyOnInk },
     quiet: { bg: skyFill.raised, ink: skyInk.soft },
   }[status.tone];
   return (

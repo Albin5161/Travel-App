@@ -23,7 +23,7 @@ import { haptic } from '@/lib/haptics';
 import { EASE_OUT, SPRING_SHEET } from '@/lib/motion';
 import { useHomeSky } from '@/state/sky';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { deepGlass, SKY } from '@/theme/sky';
+import { deepGlass, SKY, skyVeil } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
 import { radii, space } from '@/theme/tokens';
 
@@ -138,7 +138,7 @@ export default function CityMapScreen() {
 
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(4,10,30,0.5)', 'rgba(4,10,30,0)']}
+        colors={[skyVeil(0.5), skyVeil(0)]}
         style={[styles.topFade, { height: insets.top + 90 }]}
       />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>

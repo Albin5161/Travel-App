@@ -3,6 +3,7 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import type { SkyPhase } from '@/lib/sun';
+import { isLight } from '@/theme/mode';
 import { SKY } from '@/theme/sky';
 
 type Props = {
@@ -51,7 +52,9 @@ const STARS = (() => {
  * a few cloud banks and, at night, stars. Drawn as one picture with no motion, so it costs a single
  * paint and nothing while the screen is open.
  */
-export const Sky = memo(function Sky({ phase, shade = 0 }: Props) {
+export const Sky = memo(function Sky({ phase, shade: asked = 0 }: Props) {
+  // Paper isn't darkened for reading: its ink is already dark.
+  const shade = isLight ? 0 : asked;
   const { width: W, height: H } = useWindowDimensions();
   const look = SKY[phase];
   const { glow } = look;

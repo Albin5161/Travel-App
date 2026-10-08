@@ -21,7 +21,7 @@ import { InboxRunner, introFinished } from '@/state/inbox';
 import { TripsProvider } from '@/state/trips';
 import { SkyPhaseProvider } from '@/state/sky';
 import { firstFonts, laterFonts } from '@/theme/fontFiles';
-import { SKY, skyInk } from '@/theme/sky';
+import { SKY, skyInk, skyBar } from '@/theme/sky';
 import { space } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync();
@@ -64,7 +64,7 @@ export default function RootLayout() {
       <ThemeProvider value={theme}>
         <TripsProvider>
           <SkyPhaseProvider>
-          <StatusBar style="light" />
+          <StatusBar style={skyBar} />
           <Stack
             screenOptions={{
               headerShown: false,

@@ -1,8 +1,13 @@
 // Checks that every ink on the sky meets WCAG AA (4.5:1) at each sky's brightest spots: its three
 // stops, the glow at full strength, and the densest cloud, both bare and under the glass tint.
-// Run with Node 22: node --experimental-strip-types scripts/check-sky-contrast.mjs
+// Then the same for the light look: every ink for words on the canvas and on a white panel.
+// Run with Node 22: node --experimental-strip-types --import ./scripts/ts-paths.mjs scripts/check-sky-contrast.mjs
 
-import { SKY, skyInk, skySignal } from '../src/theme/sky.ts';
+import { ON_PAPER, ON_SKY, PAPER, SKIES } from '../src/theme/semantic.ts';
+
+const SKY = SKIES;
+const skyInk = ON_SKY.ink;
+const skySignal = ON_SKY.signal;
 
 const AA = 4.5;
 const WHITE = [255, 255, 255];
@@ -69,6 +74,31 @@ for (const [phase, look] of Object.entries(SKY)) {
     worst.push(`${ink} ${min.toFixed(2)}${min < AA ? ' FAIL' : ''} (${where})`);
   }
   console.log(`${phase.padEnd(8)} ${worst.join('   ')}`);
+}
+
+// The light look: solid inks on the canvas's two papers and on a white panel.
+{
+  const backs = { 'canvas top': hex(PAPER.stops[0]), canvas: hex(PAPER.stops[1]), panel: hex(PAPER.glass) };
+  const words = {
+    strong: ON_PAPER.ink.strong,
+    soft: ON_PAPER.ink.soft,
+    faint: ON_PAPER.ink.faint,
+    'accent text': ON_PAPER.accentText,
+    'signal up': ON_PAPER.signal.up,
+    'signal down': ON_PAPER.signal.down,
+  };
+  const worst = [];
+  for (const [ink, colour] of Object.entries(words)) {
+    let min = Infinity;
+    let where = '';
+    for (const [name, back] of Object.entries(backs)) {
+      const r = ratio(hex(colour), back);
+      if (r < min) [min, where] = [r, name];
+    }
+    if (min < AA) failed++;
+    worst.push(`${ink} ${min.toFixed(2)}${min < AA ? ' FAIL' : ''} (${where})`);
+  }
+  console.log(`${'light'.padEnd(8)} ${worst.join('   ')}`);
 }
 
 if (failed) {

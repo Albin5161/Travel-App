@@ -62,7 +62,7 @@ import { customStops } from '@/data/custom';
 import { usePlanWriter } from '@/state/live';
 import { useHomeSky } from '@/state/sky';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { deepGlass, SKY, skyAccent, skyAccentText, skyAccentWash, skyCta, skyFill, skyInk, withAlpha } from '@/theme/sky';
+import { deepGlass, SKY, skyAccent, skyAccentText, skyAccentWash, skyOnInk, skyFill, skyInk, withAlpha, skyVeil } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
 import { colors, fonts, radii, space } from '@/theme/tokens';
 
@@ -399,7 +399,7 @@ export default function PlanScreen() {
         )}
         <LinearGradient
           pointerEvents="none"
-          colors={['rgba(4,10,30,0.5)', 'rgba(4,10,30,0)']}
+          colors={[skyVeil(0.5), skyVeil(0)]}
           style={[styles.topFade, { height: insets.top + 80 }]}
         />
       </View>
@@ -508,7 +508,7 @@ export default function PlanScreen() {
                     accessibilityRole="tab"
                     accessibilityState={{ selected: on }}
                   >
-                    <Text variant="label" color={on ? skyCta : skyInk.strong}>
+                    <Text variant="label" color={on ? skyOnInk : skyInk.strong}>
                       {label}
                     </Text>
                   </PressableScale>
@@ -745,8 +745,8 @@ function Tool({
   return (
     <PressableScale onPress={onPress} containerStyle={styles.toolSlot} accessibilityRole="button" accessibilityLabel={a11y ?? label}>
       <View style={[styles.tool, on && styles.toolOn]}>
-        <Feather name={icon} size={13} color={on ? skyCta : skyInk.strong} />
-        <Text variant="label" color={on ? skyCta : skyInk.strong} numberOfLines={1}>
+        <Feather name={icon} size={13} color={on ? skyOnInk : skyInk.strong} />
+        <Text variant="label" color={on ? skyOnInk : skyInk.strong} numberOfLines={1}>
           {label}
         </Text>
       </View>
@@ -1009,7 +1009,7 @@ function SmallButton({
       accessibilityLabel={label}
       accessibilityState={{ selected: on, disabled }}
     >
-      <Feather name={icon} size={15} color={on ? skyCta : skyInk.strong} />
+      <Feather name={icon} size={15} color={on ? skyOnInk : skyInk.strong} />
     </PressableScale>
   );
 }
@@ -1054,7 +1054,7 @@ const styles = StyleSheet.create({
     paddingLeft: 16,
     paddingRight: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(4,10,30,0.72)',
+    backgroundColor: skyVeil(0.72),
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
   },
@@ -1124,7 +1124,7 @@ const styles = StyleSheet.create({
   },
   stopReached: { ...StyleSheet.absoluteFill, borderRadius: 12, backgroundColor: skyAccent },
   stopRing: { position: 'absolute', left: -5, top: -5, right: -5, bottom: -5, borderRadius: 17, borderWidth: 2, borderColor: skyAccent },
-  stopNumberText: { fontFamily: fonts.sansSemi, fontSize: 12, color: skyCta, fontVariant: ['tabular-nums'] },
+  stopNumberText: { fontFamily: fonts.sansSemi, fontSize: 12, color: skyOnInk, fontVariant: ['tabular-nums'] },
   thumb: { width: 56, height: 56, borderRadius: radii.thumb, backgroundColor: skyFill.pane },
   stopText: { flex: 1, gap: 2 },
   editTools: { flexDirection: 'row', gap: 6 },

@@ -6,7 +6,7 @@ import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, w
 
 import type { SkyPhase } from '@/lib/sun';
 import { useHomeSky } from '@/state/sky';
-import { SKY } from '@/theme/sky';
+import { SKY, skyBar } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
 
 import { Sky } from './Sky';
@@ -46,7 +46,7 @@ export function SkyScreen({ shade, enter = true, style, children }: Props) {
   const shown = useSharedValue(1);
   useFocusEffect(
     useCallback(() => {
-      setStatusBarStyle('light');
+      setStatusBarStyle(skyBar);
       if (ENTER && enter && !reduced) {
         shown.set(0);
         shown.set(withTiming(1, { duration: ENTER_MS, easing: ENTER_EASE }));

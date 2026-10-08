@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/PressableScale';
 import { dims } from '@/components/pressed';
+import { isLight } from '@/theme/mode';
 import { light, shadows } from '@/theme/tokens';
 import { Tone } from '@/theme/tone';
 
@@ -13,7 +14,8 @@ const STUB = 64;
 /** The corner where the two pieces meet. Two of them, back to back, are the notch at the tear. */
 const NOTCH = 10;
 const CORNER = 18;
-const PAPER = light.canvas;
+// On the sky the ticket is pale paper; on the light look's pale canvas it has to be white to show.
+const PAPER = isLight ? light.panel : light.canvas;
 
 type Props = {
   photo: ImageProps['source'] | null;

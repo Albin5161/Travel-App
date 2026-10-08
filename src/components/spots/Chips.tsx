@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { haptic } from '@/lib/haptics';
-import { skyFill, skyInk } from '@/theme/sky';
+import { skyFill, skyInk, skyOnInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
 import { light } from '@/theme/tokens';
 
@@ -43,7 +43,7 @@ export function Chips<T extends string | number | null>({
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
           >
-            <Text variant="label" color={sky ? (active ? light.ink : skyInk.soft) : active ? light.ctaInk : light.inkSoft}>
+            <Text variant="label" color={sky ? (active ? skyOnInk : skyInk.soft) : active ? light.ctaInk : light.inkSoft}>
               {o.label}
             </Text>
           </PressableScale>

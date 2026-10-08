@@ -27,7 +27,7 @@ import { haptic } from '@/lib/haptics';
 import { EASE_OUT } from '@/lib/motion';
 import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
-import { skyFill, skyInk } from '@/theme/sky';
+import { skyBar, skyFill, skyInk } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
 import { fonts, space } from '@/theme/tokens';
 
@@ -262,7 +262,7 @@ function Segment({ index, s }: { index: number; s: SharedValue<number> }) {
 
 /** White status bar over the sky, dark again for the paper screens after. */
 function lightStatusBar() {
-  setStatusBarStyle('light');
+  setStatusBarStyle(skyBar);
   return () => setStatusBarStyle('dark');
 }
 

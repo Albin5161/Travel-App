@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 import { DURATION, SPRING_SETTLE } from '@/lib/motion';
-import { skyAccent, skyCta, skyInk } from '@/theme/sky';
+import { skyAccent, skyOnInk, skyInk } from '@/theme/sky';
 
 export const TICK = 26;
 const RIM = 1.5;
@@ -25,7 +25,7 @@ export function Tick({ on }: { on: boolean }) {
   return (
     <View style={styles.ring}>
       <Animated.View style={[styles.disc, disc]}>
-        <Feather name="check" size={14} color={skyCta} />
+        <Feather name="check" size={14} color={skyOnInk} />
       </Animated.View>
     </View>
   );

@@ -27,7 +27,7 @@ import { DURATION, FADE_IN, fadeUp, project, SPRING_DRAG } from '@/lib/motion';
 import { KIND_LABEL, clusterSpots, DAY_TRIP_MINUTES, driveMinutes, kmAway, matchesKind, weekendRoutes, type SpotKind } from '@/lib/spots';
 import { useArrivalTargets, useSpotStatus, useSpotsByDistrict, useTrips } from '@/state/trips';
 import { useWhereIAm } from '@/state/where';
-import { deepGlass, skyFill, skyInk } from '@/theme/sky';
+import { deepGlass, skyFill, skyInk, skyVeil } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
 import { radii, space } from '@/theme/tokens';
 
@@ -157,7 +157,7 @@ export default function SpotsMap() {
 
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(4,10,30,0.8)', 'rgba(4,10,30,0.55)', 'rgba(4,10,30,0)']}
+        colors={[skyVeil(0.8), skyVeil(0.55), skyVeil(0)]}
         locations={[0, 0.55, 1]}
         style={[styles.topFade, { height: insets.top + 120 }]}
       />
@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 32,
     borderRadius: 999,
-    backgroundColor: 'rgba(4,10,30,0.4)',
+    backgroundColor: skyVeil(0.4),
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
   },

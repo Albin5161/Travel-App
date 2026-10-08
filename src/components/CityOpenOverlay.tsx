@@ -2,6 +2,8 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
+
+import { skyBar } from '@/theme/sky';
 import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
@@ -58,7 +60,7 @@ export function useCityOpen() {
     setCard(next);
     from.set(next.rect);
     progress.set(0);
-    setStatusBarStyle('light');
+    setStatusBarStyle(skyBar);
     const push = () => router.push({ pathname: '/city/[id]', params: { id: next.city.id } });
     progress.set(
       withTiming(1, reduced ? FADE : OPEN, (finished) => {
@@ -69,12 +71,12 @@ export function useCityOpen() {
 
   const close = useCallback(() => {
     if (!cardRef.current) return;
-    setStatusBarStyle('light');
+    setStatusBarStyle(skyBar);
     const done = () => {
       cardRef.current = null;
       setCard(null);
       // Back on Home, which sits on the sky.
-      setStatusBarStyle('light');
+      setStatusBarStyle(skyBar);
     };
     const finish = (finished?: boolean) => {
       'worklet';

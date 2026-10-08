@@ -19,7 +19,7 @@ import { fadeUp, REFLOW } from '@/lib/motion';
 import { parseLink } from '@/server/links';
 import { useIntroOver } from '@/state/inbox';
 import { useTrips, type InboxItem } from '@/state/trips';
-import { skyCta, skyFill, skyInk } from '@/theme/sky';
+import { skyCta, skyFill, skyInk, skyOnCta } from '@/theme/sky';
 import { radii, space } from '@/theme/tokens';
 
 const ENTER = fadeUp(80);
@@ -131,7 +131,9 @@ function Row({ item, active, onOpen, onRemove }: { item: InboxItem; active: bool
         </View>
         {action ? (
           <View style={[styles.action, item.status === 'ready' && styles.actionMain]}>
-            <Text variant="label">{action}</Text>
+            <Text variant="label" color={item.status === 'ready' ? skyOnCta : undefined}>
+              {action}
+            </Text>
           </View>
         ) : null}
       </PressableScale>

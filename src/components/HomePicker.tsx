@@ -7,7 +7,7 @@ import { Text } from '@/components/Text';
 import { allDistricts } from '@/data/regions';
 import { haptic } from '@/lib/haptics';
 import { useTrips } from '@/state/trips';
-import { skyAccent, skyCta, skyInk } from '@/theme/sky';
+import { skyAccent, skyOnInk, skyInk } from '@/theme/sky';
 
 /**
  * "Where's home?", asked where it matters (Near Home, distances on the map) rather than assumed:
@@ -52,7 +52,7 @@ export function HomePicker({ visible, onClose }: { visible: boolean; onClose: ()
                 </View>
                 {on ? (
                   <View style={styles.check}>
-                    <Feather name="check" size={12} color={skyCta} />
+                    <Feather name="check" size={12} color={skyOnInk} />
                   </View>
                 ) : null}
               </View>

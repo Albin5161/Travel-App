@@ -20,7 +20,7 @@ import { EASE_OUT } from '@/lib/motion';
 import { useGroupVote } from '@/state/group';
 import { useLiveVote } from '@/state/live';
 import { useTrips } from '@/state/trips';
-import { skyAccentRim, skyAccentWash, skyCta, skyFill, skyInk } from '@/theme/sky';
+import { skyAccentRim, skyAccentWash, skyOnInk, skyFill, skyInk } from '@/theme/sky';
 import { fonts, radii, space } from '@/theme/tokens';
 
 const web = Platform.OS === 'web';
@@ -182,7 +182,7 @@ function Vote() {
               accessibilityRole="button"
               accessibilityState={{ selected: note === n }}
             >
-              <Text variant="label" color={note === n ? skyCta : skyInk.strong}>
+              <Text variant="label" color={note === n ? skyOnInk : skyInk.strong}>
                 {n}
               </Text>
             </PressableScale>

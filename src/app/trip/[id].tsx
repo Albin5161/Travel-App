@@ -39,7 +39,7 @@ import { findStay, newSearchSession, searchPlaces, stayFromPick, type Suggestion
 import { terrainOf, type Getting, type LatLng } from '@/lib/geo';
 import { DURATION, EASE_OUT, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { isNearHome, useCityPlaces, useTrips } from '@/state/trips';
-import { skyAccentRim, skyAccentText, skyAccentWash, skyCta, skyFill, skyInk } from '@/theme/sky';
+import { skyAccentRim, skyAccentText, skyAccentWash, skyOnInk, skyFill, skyInk } from '@/theme/sky';
 import { fonts, radii, space } from '@/theme/tokens';
 
 type Step = 'who' | 'when' | 'dates' | 'days' | 'pace' | 'getting' | 'stay' | 'build';
@@ -658,7 +658,7 @@ function Calendar({
                     <View style={[styles.day, pressed && !edge && styles.dayPressed, edge && styles.dayEdge, off && styles.dayOff]}>
                       <Text
                         variant="data"
-                        color={edge ? skyCta : off ? skyInk.faint : iso === first ? skyAccentText : skyInk.strong}
+                        color={edge ? skyOnInk : off ? skyInk.faint : iso === first ? skyAccentText : skyInk.strong}
                       >
                         {fromIso(iso).getDate()}
                       </Text>

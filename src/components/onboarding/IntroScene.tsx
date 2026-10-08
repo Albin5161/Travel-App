@@ -31,6 +31,7 @@ import { haptic } from '@/lib/haptics';
 import { SPRING_DRAG, SPRING_SETTLE } from '@/lib/motion';
 import { useHomeSky } from '@/state/sky';
 import { SKY, skyAccent, skyCta, skyInk } from '@/theme/sky';
+import { isLight } from '@/theme/mode';
 import { fonts, light, radii, shadows, space } from '@/theme/tokens';
 import { Tone } from '@/theme/tone';
 
@@ -494,7 +495,9 @@ function MapStage({
   dayHeight: number;
 }) {
   const city = cities[reels[pick.reelId].cityId];
-  const palette = useDarkMap();
+  const dark = useDarkMap();
+  // On the sky the map is drawn dark, from the sky; in the light look it is its own paper self.
+  const palette = isLight ? undefined : dark;
   const points = useMemo(() => stops.map((p) => p.map as Point), [stops]);
   const view = { w: width, h: height };
   const open = useMemo(() => fitCameraToRect(points, view, { top: 20, bottom: 20 }, 120), [points, view.w, view.h]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -552,7 +555,7 @@ function MapStage({
           <AnimatedPath
             d={d}
             fill="none"
-            stroke="#FFFFFF"
+            stroke={isLight ? light.ink : '#FFFFFF'}
             strokeWidth={2.5 / open.s}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -692,7 +695,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    backgroundColor: light.canvas,
+    backgroundColor: isLight ? light.panel : light.canvas,
     borderTopLeftRadius: 18,
     borderBottomLeftRadius: 18,
     borderTopRightRadius: NOTCH,
@@ -704,7 +707,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    backgroundColor: light.canvas,
+    backgroundColor: isLight ? light.panel : light.canvas,
     borderTopLeftRadius: NOTCH,
     borderBottomLeftRadius: NOTCH,
     borderTopRightRadius: 18,

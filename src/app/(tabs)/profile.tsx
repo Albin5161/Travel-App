@@ -12,11 +12,13 @@ import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { allDistricts } from '@/data/regions';
+import { Segmented } from '@/components/Segmented';
 import { haptic } from '@/lib/haptics';
+import { MODE, setMode } from '@/theme/mode';
 import { fadeUp, REFLOW } from '@/lib/motion';
 import { useArrivalWatch, type Permissions } from '@/state/arrival';
 import { useSavedSpots, useTrips } from '@/state/trips';
-import { skyAccent, skyCta, skyFill, skyInk } from '@/theme/sky';
+import { skyAccent, skyOnInk, skyFill, skyInk } from '@/theme/sky';
 import { fonts, radii, space } from '@/theme/tokens';
 
 type IconName = ComponentProps<typeof Feather>['name'];
@@ -41,6 +43,7 @@ export default function Profile() {
   const spots = useSavedSpots();
   const [picking, setPicking] = useState(false);
   const [name, setName] = useState(state.myName ?? '');
+  const [lookNote, setLookNote] = useState<string | null>(null);
   // The name is required, so clearing the field puts the saved one back rather than removing it.
   const saveName = () => {
     if (name.trim()) dispatch({ type: 'setMyName', name });
@@ -202,6 +205,23 @@ export default function Profile() {
 
       <Animated.View entering={ENTER[5]}>
         <Section title="About" footer="Everything you save stays on this phone, or in this browser. No account needed.">
+          <Row icon={MODE === 'light' ? 'sun' : 'moon'} label="Look" detail={lookNote ?? undefined}>
+            <View style={styles.look}>
+              <Segmented
+                value={MODE}
+                onChange={(next) => {
+                  if (next === MODE) return;
+                  haptic.selection();
+                  // The app starts again in the new look; a phone build can't do that by itself.
+                  if (!setMode(next)) setLookNote('Saved. Close Xplore and open it again to see it.');
+                }}
+                options={[
+                  { key: 'sky', label: 'Sky' },
+                  { key: 'light', label: 'Light' },
+                ]}
+              />
+            </View>
+          </Row>
           <Row icon="play-circle" label="Watch the intro again" onPress={() => router.push({ pathname: '/onboarding', params: { again: '1' } })} />
           <Row icon="image" label="Photo credits" onPress={() => router.push('/credits')} />
           <Row icon="shield" label="Privacy policy" onPress={() => router.push('/privacy')} />
@@ -324,7 +344,7 @@ function Choice({ label, detail, on, onPress }: { label: string; detail: string;
         </View>
         {on ? (
           <View style={styles.check}>
-            <Feather name="check" size={12} color={skyCta} />
+            <Feather name="check" size={12} color={skyOnInk} />
           </View>
         ) : null}
       </View>
@@ -389,6 +409,8 @@ function PermissionRow({
 const styles = StyleSheet.create({
   header: { paddingHorizontal: GUTTER + 4, flexDirection: 'row', alignItems: 'center', gap: 16 },
   headerText: { flex: 1, gap: 2 },
+  // Wide enough for both words, narrow enough to leave the row's label its room.
+  look: { width: 168 },
   nameField: {
     minWidth: 140,
     textAlign: 'right',

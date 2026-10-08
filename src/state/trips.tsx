@@ -4,7 +4,7 @@ import { getPlace, getCity, isLiveCity, isSampleLink } from '@/data/api';
 import { live, refreshed, register, restore, snapshot, type LiveSnapshot } from '@/data/registry';
 import { allDistricts, getDistrict } from '@/data/regions';
 import type { Group, GroupState, Member, Vote } from '@/data/group';
-import { isoDay, type TripPlan, type TripPrefs } from '@/data/planner';
+import { fromIso, isoDay, type TripPlan, type TripPrefs } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
 import { cityName } from '@/data/cityNames';
 import { betterPhoto, framePhoto, refreshPlace, sameCity } from '@/lib/extract';
@@ -1000,6 +1000,33 @@ export function useTripToRecap(): string | null {
       return !!last && last < today;
     }) ?? null
   );
+}
+
+/** How far ahead a trip counts as coming up on Home. */
+const AHEAD_DAYS = 14;
+
+export type TripAhead = { cityId: string; /** 0 while the trip is on. */ inDays: number; /** Which day of it today is; 0 before it starts. */ day: number };
+
+/**
+ * The saved trip that is on today, or else the next one starting within two weeks; null when
+ * there's none. Trips without dates never show: there's nothing to count down to.
+ */
+export function useTripAhead(): TripAhead | null {
+  const { state } = useTrips();
+  const today = isoDay(new Date());
+  let best: TripAhead | null = null;
+  for (const cityId of Object.keys(state.savedTrips)) {
+    if (!state.savedTrips[cityId]) continue;
+    const days = state.tripPlans[cityId]?.days ?? [];
+    const first = days[0]?.date;
+    const last = days[days.length - 1]?.date;
+    if (!first || !last || last < today) continue;
+    const inDays = Math.max(0, Math.round((fromIso(first).getTime() - fromIso(today).getTime()) / 86_400_000));
+    if (inDays > AHEAD_DAYS) continue;
+    const day = Math.max(0, days.findIndex((d) => d.date === today));
+    if (!best || inDays < best.inDays) best = { cityId, inDays, day };
+  }
+  return best;
 }
 
 export function useSpotStatus() {

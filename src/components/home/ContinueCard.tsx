@@ -1,19 +1,14 @@
 import Feather from '@expo/vector-icons/Feather';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { PressableScale } from '@/components/PressableScale';
-import { Glass } from '@/components/sky/Glass';
+import { Ticket } from '@/components/home/Ticket';
 import { Text } from '@/components/Text';
-import { dims } from '@/components/pressed';
 import { getCity, getReel, isSampleLink } from '@/data/api';
 import { haptic } from '@/lib/haptics';
 import { fadeUp } from '@/lib/motion';
 import { useTrips, type Draft } from '@/state/trips';
-import { skyFill, skyInk } from '@/theme/sky';
-import { radii } from '@/theme/tokens';
+import { light } from '@/theme/tokens';
 
 const ENTER = fadeUp(80);
 
@@ -31,11 +26,22 @@ function stepLine(d: Draft, places: number): string {
   }
 }
 
-/**
- * Planning that was left part-way, offered back at the top of Home: where it stopped, how far it
- * got, and one tap to carry on from that step. The x stops it for good.
- */
-export function ContinueCard() {
+/** The same, as the tail of a sentence that starts with the place's name. */
+function quietStep(d: Draft): string {
+  switch (d.stage) {
+    case 'reading':
+      return 'is still being read';
+    case 'checking':
+      return 'has places to check';
+    case 'questions':
+      return 'has a few questions left';
+    case 'plan':
+      return 'has a plan ready to save';
+  }
+}
+
+/** Planning that was left part-way: what to call it, its picture, and the tap that carries on from that step. */
+export function useDraft() {
   const { state, dispatch } = useTrips();
   const d = state.draft;
   if (!d) return null;
@@ -43,8 +49,6 @@ export function ContinueCard() {
   const extraction = d.stage === 'checking' ? d.extraction : null;
   const city = extraction?.city ?? ('cityId' in d && d.cityId ? getCity(d.cityId) : null);
   const reel = extraction?.reel ?? (d.stage === 'checking' && d.reelId ? getReel(d.reelId) : null);
-  const name = city?.name ?? 'your video';
-  const photo = city?.hero ?? reel?.thumbnail ?? null;
 
   const resume = () => {
     haptic.light();
@@ -71,56 +75,47 @@ export function ContinueCard() {
     }
   };
 
+  return {
+    name: city?.name ?? 'Your video',
+    named: !!city,
+    photo: city?.hero ?? reel?.thumbnail ?? null,
+    step: stepLine(d, extraction?.places.length ?? 0),
+    quiet: quietStep(d),
+    resume,
+    stop: () => {
+      haptic.selection();
+      dispatch({ type: 'setDraft', draft: null });
+    },
+  };
+}
+
+/**
+ * Planning that was left part-way, offered back at the top of Home as a ticket: where it's for,
+ * where it stopped, and one tap to carry on from that step. The x stops it for good.
+ */
+export function ContinueCard() {
+  const draft = useDraft();
+  if (!draft) return null;
+  const { name, named, photo, step } = draft;
+
   return (
     <Animated.View entering={ENTER}>
-      <Glass style={styles.card}>
-        <PressableScale
-          onPress={resume}
-          style={styles.main}
-          accessibilityRole="button"
-          accessibilityLabel={`Carry on with ${name}. ${stepLine(d, extraction?.places.length ?? 0)}`}
-        >
-          {photo ? (
-            <Image source={photo} style={styles.thumb} contentFit="cover" transition={0} />
-          ) : (
-            <View style={[styles.thumb, styles.thumbEmpty]}>
-              <Feather name="film" size={18} color={skyInk.soft} />
-            </View>
-          )}
-          <View style={styles.text}>
-            {/* Where it was left, in words. No bar and no percentage: this is a trip, not a download. */}
-            <Text variant="title" numberOfLines={1}>
-              {city ? `Carry on with ${name}` : 'Carry on with your video'}
-            </Text>
-            <Text variant="label" color={skyInk.soft} numberOfLines={1}>
-              {stepLine(d, extraction?.places.length ?? 0)}
-            </Text>
-          </View>
-          <Feather name="arrow-right" size={18} color={skyInk.soft} />
-        </PressableScale>
-        <Pressable
-          onPress={() => {
-            haptic.selection();
-            dispatch({ type: 'setDraft', draft: null });
-          }}
-          style={dims(styles.stop)}
-          accessibilityRole="button"
-          accessibilityLabel={`Stop planning ${name}`}
-        >
-          <Feather name="x" size={14} color={skyInk.faint} />
-        </Pressable>
-      </Glass>
+      <Ticket
+        photo={photo}
+        onPress={draft.resume}
+        accessibilityLabel={`Carry on with ${named ? name : 'your video'}. ${step}`}
+        onDismiss={draft.stop}
+        dismissLabel={`Stop planning ${named ? name : 'your video'}`}
+        stub={<Feather name="arrow-right" size={20} color={light.ink} />}
+      >
+        <Text variant="title" numberOfLines={1}>
+          {name}
+        </Text>
+        {/* Where it was left, in words. No bar and no percentage: this is a trip, not a download. */}
+        <Text variant="label" color={light.inkSoft} numberOfLines={2}>
+          {step}
+        </Text>
+      </Ticket>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { marginTop: 4 },
-  // Right padding keeps the text clear of the stop button in the corner.
-  main: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, paddingRight: 44 },
-  thumb: { width: 64, height: 64, borderRadius: radii.pane, backgroundColor: skyFill.pane },
-  thumbEmpty: { alignItems: 'center', justifyContent: 'center' },
-  text: { flex: 1, gap: 3 },
-  // Top-right, out of the way of the card's own tap: 44pt, as every tap target.
-  stop: { position: 'absolute', top: 0, right: 0, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-});

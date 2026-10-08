@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import * as Clipboard from 'expo-clipboard';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform, StyleSheet, type LayoutChangeEvent, View, useWindowDimensions } from 'react-native';
 import Animated, {
   interpolate,
@@ -23,12 +23,12 @@ import { SkyScreen } from '@/components/sky/SkyScreen';
 import { EXAMPLE_LINKS, getCity, getReel } from '@/data/api';
 import { places, smallPhoto } from '@/data/catalog';
 import { Button } from '@/components/Button';
-import { ContinueCard } from '@/components/home/ContinueCard';
-import { FoundSheet, LinkInbox } from '@/components/home/LinkInbox';
+import { FoundSheet } from '@/components/home/LinkInbox';
 import { HomePicker } from '@/components/HomePicker';
 import { GlassSheet } from '@/components/sky/GlassSheet';
-import { RecapCard } from '@/components/home/RecapCard';
 import { PhotoStrip } from '@/components/home/PhotoStrip';
+import { RightNow } from '@/components/home/RightNow';
+import { WeekendNudge, weekendIsNear } from '@/components/home/WeekendNudge';
 import { allDistricts } from '@/data/regions';
 import type { Platform as SourcePlatform } from '@/data/types';
 import { platformOfLink, track } from '@/lib/analytics';
@@ -55,6 +55,8 @@ const INSPIRATION = ['meg-dawki', 'kochi-mural', 'gok-om', 'meg-falls', 'gok-hal
 const TAB_BAR_CLEARANCE = 100;
 /** The hero's top space: never tighter than this, never emptier than that. */
 const MIN_PAD = 28;
+/** Above the one-line greeting, once there are places of your own to get to. */
+const COMPACT_PAD = 16;
 const MAX_PAD = 200;
 /** How much of what's below the fold (collections, a plan to continue) the first screen shows. */
 const PEEK = 110;
@@ -125,6 +127,12 @@ export default function Home() {
   // prints can't carry, and a video's frames or thumbnail made a strip that changed with every
   // paste. Muted before the first save, when nothing is yours yet.
   const inspiration = collections.length === 0;
+  // Once something is saved the greeting steps back to one line and the prints go, so your own
+  // things are on the first screen instead of below it.
+  const compact = !inspiration;
+  // Places near home, offered as a weekend out. Gone once Near Home is what's showing.
+  const nearSpots = near.reduce((n, c) => n + c.placeIds.length, 0);
+  const nudge = nearSpots > 0 && tab !== 'near' && weekendIsNear();
   const stripPhotos = INSPIRATION;
   const fresh = state.freshCityId;
   const tileW = (W - GUTTER * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
@@ -141,10 +149,20 @@ export default function Home() {
   };
   const below = collections.length > 0 || !!state.draft || state.inbox.length > 0 ? PEEK : 0;
   const room = viewH - insets.top - 12 - TAB_BAR_CLEARANCE - below;
-  const heroPad =
-    sizes.top && sizes.hero && sizes.link
+  const heroPad = compact
+    ? COMPACT_PAD
+    : sizes.top && sizes.hero && sizes.link
       ? Math.round(Math.min(MAX_PAD, Math.max(MIN_PAD, (room - sizes.top - sizes.hero - sizes.link) / 2)))
       : null;
+
+  const scroll = useRef<Animated.ScrollView>(null);
+  const [panelY, setPanelY] = useState(0);
+  const showNear = () => {
+    haptic.light();
+    dispatch({ type: 'setHomeTab', tab: 'near' });
+    // Up to the link box, which stays put above them.
+    scroll.current?.scrollTo({ y: Math.max(0, panelY - sizes.link), animated: true });
+  };
 
   useEffect(() => {
     if (!fresh) return;
@@ -156,6 +174,7 @@ export default function Home() {
     <SkyScreen>
       <View style={[styles.fill, { paddingTop: insets.top }]}>
         <Animated.ScrollView
+          ref={scroll}
           onScroll={onScroll}
           scrollEventThrottle={16}
           stickyHeaderIndices={[1]}
@@ -186,23 +205,41 @@ export default function Home() {
               style={{ marginTop: heroPad ?? MIN_PAD, opacity: heroPad === null ? 0 : 1 }}
             >
             <Animated.View entering={ENTER[0]}>
-              <Text style={styles.question} accessibilityRole="header">
-                {firstName ? (
-                  <>
-                    {'Hey '}
-                    <Text style={styles.questionName}>{firstName}</Text>
-                    {',\nwhich video is\n'}
-                  </>
-                ) : (
-                  'Which video is\n'
-                )}
-                <Text style={styles.questionStrong}>your next plan?</Text>
-              </Text>
+              {compact ? (
+                <Text style={styles.questionSmall} accessibilityRole="header">
+                  {firstName ? (
+                    <>
+                      {'Hey '}
+                      <Text style={styles.questionSmallStrong}>{firstName}</Text>
+                      {', which video next?'}
+                    </>
+                  ) : (
+                    'Which video next?'
+                  )}
+                </Text>
+              ) : (
+                <Text style={styles.question} accessibilityRole="header">
+                  {firstName ? (
+                    <>
+                      {'Hey '}
+                      <Text style={styles.questionName}>{firstName}</Text>
+                      {',\nwhich video is\n'}
+                    </>
+                  ) : (
+                    'Which video is\n'
+                  )}
+                  <Text style={styles.questionStrong}>your next plan?</Text>
+                </Text>
+              )}
             </Animated.View>
-            {/* Centred on the field, which now holds the paste button and runs the full width. */}
-            <View style={styles.strip}>
-              <PhotoStrip photos={stripPhotos} width={W - GUTTER * 2} muted={inspiration} />
-            </View>
+            {compact ? (
+              <View style={styles.compactGap} />
+            ) : (
+              // Centred on the field, which now holds the paste button and runs the full width.
+              <View style={styles.strip}>
+                <PhotoStrip photos={stripPhotos} width={W - GUTTER * 2} muted />
+              </View>
+            )}
             </View>
           </View>
 
@@ -214,15 +251,18 @@ export default function Home() {
           </Animated.View>
 
           <View style={styles.continue}>
-            <LinkInbox />
-            <RecapCard />
-            <ContinueCard />
+            <RightNow />
+            {nudge ? (
+              <Animated.View entering={ENTER[2]} style={styles.nudge}>
+                <WeekendNudge count={nearSpots} onPress={showNear} />
+              </Animated.View>
+            ) : null}
           </View>
 
           {/* First run is just the question and the link box. The collections appear with the first
               save, fading up as it lands, rather than greeting a new user with two empty tabs. */}
           {collections.length === 0 ? null : (
-            <Animated.View entering={ENTER[2]} style={styles.panelWrap}>
+            <Animated.View entering={ENTER[2]} style={styles.panelWrap} onLayout={(e) => setPanelY(e.nativeEvent.layout.y)}>
               <View style={styles.panelHead}>
                 <Text variant="headline" accessibilityRole="header">
                   Your places
@@ -480,6 +520,11 @@ const styles = StyleSheet.create({
   // to body's 15/22 rather than inherit from the line around it.
   questionStrong: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
   questionName: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
+  // One line, once there are places of your own below: the same two weights, a third of the room.
+  questionSmall: { fontFamily: fonts.displayMedium, fontSize: 22, lineHeight: 28, color: skyInk.soft, letterSpacing: -0.4 },
+  questionSmallStrong: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, color: skyInk.strong, letterSpacing: -0.6 },
+  compactGap: { height: 14 },
+  nudge: { marginTop: 12 },
   hidden: { opacity: 0 },
   continue: { paddingHorizontal: GUTTER },
   // Clear at rest, so the prints disappear behind the field rather than behind a flat band.

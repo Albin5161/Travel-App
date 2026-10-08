@@ -202,6 +202,7 @@ export default function Profile() {
 
       <Animated.View entering={ENTER[5]}>
         <Section title="About" footer="Everything you save stays on this phone, or in this browser. No account needed.">
+          <Row icon="play-circle" label="Watch the intro again" onPress={() => router.push({ pathname: '/onboarding', params: { again: '1' } })} />
           <Row icon="image" label="Photo credits" onPress={() => router.push('/credits')} />
           <Row icon="shield" label="Privacy policy" onPress={() => router.push('/privacy')} />
           <Row icon="file-text" label="Terms of use" onPress={() => router.push('/terms')} />

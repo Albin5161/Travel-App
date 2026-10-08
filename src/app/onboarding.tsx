@@ -1,112 +1,103 @@
 import Feather from '@expo/vector-icons/Feather';
-import { useFonts } from 'expo-font';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Keyboard, Platform, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
   interpolate,
-  interpolateColor,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withSpring,
+  Easing,
+  withDelay,
+  withSequence,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GroupVote } from '@/components/onboarding/GroupVote';
+import { INTRO_CTA, INTRO_MS, IntroScene, type PickId } from '@/components/onboarding/IntroScene';
 import { ProfilePreview } from '@/components/onboarding/ProfilePreview';
-import { FromThisToThis } from '@/components/onboarding/FromThisToThis';
-import { WeekendRoute } from '@/components/onboarding/WeekendRoute';
 import { Button } from '@/components/Button';
 import { PressableScale } from '@/components/PressableScale';
 import { Sky } from '@/components/sky/Sky';
 import { Text } from '@/components/Text';
-import { Chips } from '@/components/spots/Chips';
-import { allDistricts } from '@/data/regions';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
-import { EASE_OUT, project, SPRING_DRAG } from '@/lib/motion';
+import { EASE_OUT } from '@/lib/motion';
 import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
-import { skyAccent, skyFill, skyInk } from '@/theme/sky';
+import { skyFill, skyInk } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
 import { fonts, space } from '@/theme/tokens';
 
-const PAGES = 4;
 const GUTTER = space.screen;
-/** The words sit this far under their illustration. */
-const WORDS_GAP = 30;
-/** Clear air kept at the bottom of a page, so the dots (which reach up into it) never cover its words. */
-const DOTS_CLEAR = 24;
-/** An illustration never gets less room than this; past it, the picture is scaled down instead. */
-const MIN_ART = 140;
+/** The zoom from the Earth into the map: slow away, slow to land. */
+const ZOOM_EASE = Easing.bezier(0.5, 0, 0.25, 1);
+/** The step after the scene's four beats: your name. */
+const NAME = 4;
 
 /**
- * Four screens. The first says what Xplore does in one line and one picture: a reel becomes pins on
- * a map and a planned day ("From this… …to this"). Then the two reasons it's worth keeping: plans
- * the group decides together, and spots near home that become weekends (where it asks where home
- * is). Last, your name and photo, shown as the invite a friend would get.
+ * One scene, then your name. The scene says what Xplore does by doing it once: you pick one of
+ * three things you might have saved (a reel, a YouTube video, a photo post), the Earth turns to
+ * where it is, its places land on the map, and they become a day (components/onboarding/IntroScene).
+ * One tap a step, and each step grows out of the one before.
  *
- * The screen sits on the sky as it is right now (state/sky), the same sky Home opens on; the
- * illustrations stay paper, cards lifted off it and tilted in depth. Copy is kept to a line or two.
+ * The screen sits on the sky as it is right now (state/sky), the same sky Home opens on.
  *
  * The name is required: it's how friends see you on a shared plan, so sharing never has to ask.
  * Skip goes straight to it. `?step=name` opens on it (someone who skipped it before the name was
- * required), and `&then=back` returns to where they came from instead of Home.
+ * required), and `&then=back` returns to where they came from instead of Home. `?again=1` is the
+ * scene on its own, from Profile, for watching it again: no name, and it closes back to Profile.
  */
 export default function Onboarding() {
   const { width: W, height: H } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useTrips();
-  const { step, then } = useLocalSearchParams<{ step?: string; then?: string }>();
-  const first = step === 'name' ? PAGES - 1 : 0;
-  const [page, setPage] = useState(first);
+  const { step: asked, then, again } = useLocalSearchParams<{ step?: string; then?: string; again?: string }>();
+  const replay = again === '1';
+  const first = asked === 'name' && !replay ? NAME : 0;
+  const [step, setStep] = useState(first);
+  const [pick, setPick] = useState<PickId>('reel');
   const [name, setName] = useState(state.myName ?? '');
   const skipped = useRef(false);
-  // The height the pages have between the top bar and the dots, measured: a phone browser's own
-  // bars leave far less than the window height suggests, so each page is fitted to this.
-  const [slotH, setSlotH] = useState(0);
-  // Position in pages, continuous. The finger writes it directly, so the pages track the drag
-  // rather than snapping between states, and every derived animation reads this one value.
-  const p = useSharedValue(first);
-  const start = useSharedValue(0);
+  const reduced = useReducedMotion();
+  // Where the scene is, continuous: every moving part reads this one value (see IntroScene).
+  const s = useSharedValue(first);
+  // Skipping puts the scene away at once rather than running it fast.
+  const gone = useSharedValue(0);
+  const nameOn = useSharedValue(first === NAME ? 1 : 0);
   const lift = useKeyboardLift();
-  // The handwriting on page one: small, and not waited for (plain type stands in for a moment).
-  useFonts({ CaveatNotes: require('../../assets/fonts/CaveatNotes.ttf') });
   const phase = useHomeSky();
   useFocusEffect(lightStatusBar);
 
-  // The illustration's size when there's room for it; a page with more words gets less (see Page).
-  const art = Math.round(Math.min(320, Math.max(236, H * 0.38)));
-  const artW = W - GUTTER * 2;
-  const homeName = allDistricts.find((d) => d.id === state.homeDistrictId)?.name ?? 'home';
+  // The room the scene has, between the top bar and the button: measured, since a phone browser's
+  // own bars leave far less than the window height suggests.
+  const [topEnd, setTopEnd] = useState(0);
+  const [bottomStart, setBottomStart] = useState(0);
+  // The scene keeps to that room and is clipped to it: the Earth is far larger than the screen at
+  // both ends of its move, and would otherwise run under the bar and the button.
+  const sceneH = bottomStart - topEnd;
+  const frame = topEnd && bottomStart ? { top: 8, bottom: sceneH - 12 } : null;
 
+  // With Reduce Motion nothing travels: the scene dips out, changes, and comes back.
+  const veil = useSharedValue(0);
+  // A tap is never refused while the scene is moving: the move carries on from wherever it is to
+  // the new step, since every part of it reads the one value.
   const go = (next: number) => {
-    setPage(next);
-    p.set(withSpring(next, SPRING_DRAG));
+    setStep(next);
+    if (reduced) {
+      veil.set(withSequence(withTiming(1, { duration: 150 }), withTiming(0, { duration: 220 })));
+      s.set(withDelay(150, withTiming(next, { duration: 1 })));
+      nameOn.set(withDelay(150, withTiming(next === NAME ? 1 : 0, { duration: 220 })));
+      return;
+    }
+    // Forward takes its time; back is quick. Into the map the move eases in and out again: a
+    // gentle start, the fastest part through the middle of the zoom, and a long settle on the map.
+    const ms = next > step ? (INTRO_MS[next] ?? 600) : 600;
+    s.set(withTiming(next, { duration: ms, easing: next === 2 && next > step ? ZOOM_EASE : EASE_OUT }));
+    nameOn.set(withTiming(next === NAME ? 1 : 0, { duration: next === NAME ? ms : 200, easing: EASE_OUT }));
   };
-
-  const swipe = Gesture.Pan()
-    .activeOffsetX([-12, 12])
-    .onStart(() => {
-      start.set(p.get());
-    })
-    .onUpdate((e) => {
-      const raw = start.get() - e.translationX / W;
-      // Rubber-band past the ends instead of stopping dead.
-      p.set(raw < 0 ? raw * 0.35 : raw > PAGES - 1 ? PAGES - 1 + (raw - (PAGES - 1)) * 0.35 : raw);
-    })
-    .onEnd((e) => {
-      const projected = p.get() - project(e.velocityX) / W;
-      const next = Math.max(0, Math.min(PAGES - 1, Math.round(projected)));
-      p.set(withSpring(next, { ...SPRING_DRAG, velocity: -e.velocityX / W }));
-      scheduleOnRN(setPage, next);
-    });
 
   const named = !!name.trim();
   const finish = () => {
@@ -114,128 +105,124 @@ export default function Onboarding() {
     haptic.success();
     dispatch({ type: 'setMyName', name });
     dispatch({ type: 'finishOnboarding' });
-    track('onboarding completed', { named: true, skipped: skipped.current });
+    track('onboarding completed', { named: true, skipped: skipped.current, picked: pick });
     if (then === 'back' && router.canGoBack()) router.back();
     else router.replace('/');
   };
-  // Skipping skips the reasons, not the name.
+  const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  // Skipping skips the scene, not the name.
   const skip = () => {
+    if (replay) return close();
     skipped.current = true;
-    go(PAGES - 1);
+    setStep(NAME);
+    gone.set(withTiming(1, { duration: 180 }));
+    s.set(withDelay(180, withTiming(NAME, { duration: 1 })));
+    nameOn.set(withDelay(180, withTiming(1, { duration: 300, easing: EASE_OUT })));
+  };
+  const next = () => {
+    if (step === NAME) return finish();
+    haptic.light();
+    if (step === NAME - 1 && replay) return close();
+    go(step + 1);
   };
 
-  const last = page === PAGES - 1;
+  const onName = step === NAME;
+  const sceneStyle = useAnimatedStyle(() => ({
+    opacity: (1 - gone.get()) * (1 - veil.get()) * interpolate(s.get(), [3.2, 3.8], [1, 0], Extrapolation.CLAMP),
+  }));
+  const nameStyle = useAnimatedStyle(() => ({
+    opacity: nameOn.get(),
+    transform: [{ translateY: lift.get() + (1 - nameOn.get()) * 16 }],
+  }));
+  const art = Math.round(Math.min(280, Math.max(170, H * 0.3)));
+  const label = onName ? 'Paste a link of my own' : step === NAME - 1 && replay ? 'Done' : INTRO_CTA[step];
 
   return (
     <Tone value="sky">
     <View style={styles.fill}>
       <Sky phase={phase} shade={0.35} />
 
-      <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
-        {/* Past the first page, a way back that isn't a swipe (a mouse can't swipe the pages). */}
-        {page > 0 ? (
-          <PressableScale onPress={() => go(page - 1)} style={styles.back} accessibilityRole="button" accessibilityLabel="Back">
-            <Feather name="chevron-left" size={18} color={skyInk.soft} />
-            <Text variant="label" color={skyInk.soft}>
-              Back
-            </Text>
-          </PressableScale>
-        ) : (
-          <Text style={styles.wordmark}>Xplore</Text>
-        )}
-        {last ? null : (
-          <PressableScale onPress={skip} style={styles.skip} accessibilityRole="button" accessibilityLabel="Skip to your name">
-            <Text variant="label" color={skyInk.soft}>
-              Skip
-            </Text>
-          </PressableScale>
-        )}
+      {frame ? (
+        <Animated.View style={[styles.scene, { top: topEnd, height: sceneH }, sceneStyle]} pointerEvents={onName ? 'none' : 'box-none'}>
+          <IntroScene s={s} step={step} pick={pick} onPick={setPick} width={W} height={sceneH} frame={frame} />
+        </Animated.View>
+      ) : null}
+
+      <View
+        style={[styles.top, { paddingTop: insets.top + 6 }]}
+        onLayout={(e) => setTopEnd(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}
+        pointerEvents="box-none"
+      >
+        <View style={styles.topRow}>
+          {/* There's no swiping between steps, so past the first there's a way back. */}
+          {step > 0 && !onName ? (
+            <PressableScale onPress={() => go(step - 1)} style={styles.back} accessibilityRole="button" accessibilityLabel="Back">
+              <Feather name="chevron-left" size={18} color={skyInk.soft} />
+              <Text variant="label" color={skyInk.soft}>
+                Back
+              </Text>
+            </PressableScale>
+          ) : (
+            <Text style={styles.wordmark}>Xplore</Text>
+          )}
+          {onName ? null : (
+            <PressableScale
+              onPress={skip}
+              style={styles.skip}
+              accessibilityRole="button"
+              accessibilityLabel={replay ? 'Close' : 'Skip to your name'}
+            >
+              <Text variant="label" color={skyInk.soft}>
+                {replay ? 'Close' : 'Skip'}
+              </Text>
+            </PressableScale>
+          )}
+        </View>
+        <View style={styles.progress} accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: replay ? NAME : NAME + 1, now: step + 1 }}>
+          {Array.from({ length: replay ? NAME : NAME + 1 }, (_, i) => (
+            <Segment key={i} index={i} s={s} />
+          ))}
+        </View>
       </View>
 
-      {/* Clipped: the row is four screens wide, and without this it stretches the whole layout
-          to 4x the viewport — which silently moves every other control off the screen. */}
-      <View style={styles.viewport} onLayout={(e) => setSlotH(e.nativeEvent.layout.height)}>
-        <GestureDetector gesture={swipe}>
-          <Row p={p} width={W} lift={lift}>
-            <Page
-              index={0}
-              p={p}
-              slotH={slotH}
-              artHeight={art}
-              art={(h) => <FromThisToThis active={page === 0} width={artW} height={h} />}
-            >
-              <Copy
-                eyebrow="Turn inspiration into a plan"
-                lead={'Saw it in a video?\n'}
-                accent="Go there"
-                title=" for real."
-                body="Paste an Instagram or YouTube link. Xplore pins every place in it and plans your day."
-              />
-            </Page>
-
-            <Page index={1} p={p} slotH={slotH} artHeight={art} art={() => <Tilted turn={-1}><GroupVote active={page === 1} width={artW} /></Tilted>}>
-              <Copy
-                eyebrow="Plan with friends"
-                lead={'Going with friends?\n'}
-                accent="Decide"
-                title=" together."
-                body="Share the plan. Everyone keeps, swaps or drops each stop. No more forty messages about lunch."
-              />
-            </Page>
-
-            <Page
-              index={2}
-              p={p}
-              slotH={slotH}
-              artHeight={art}
-              art={() => <Tilted turn={1}><WeekendRoute active={page === 2} width={artW} homeName={homeName} /></Tilted>}
-            >
-              <Copy
-                eyebrow="Weekends near home"
-                lead={'A spot near home?\n'}
-                accent="Weekend,"
-                title=" sorted."
-                body="Places near home become ready-made day trips, drive and cost worked out."
-              />
-              <View style={styles.district}>
-                <Text variant="label" color={skyInk.soft}>
-                  Where’s home? <Text variant="label" color={skyInk.faint}>Kerala for now</Text>
-                </Text>
-                <View style={styles.districtChips}>
-                  <Chips
-                    value={state.homeDistrictId}
-                    onChange={(id) => id && dispatch({ type: 'setHomeDistrict', districtId: id })}
-                    options={allDistricts.map((d) => ({ key: d.id as string | null, label: d.name }))}
-                  />
-                </View>
-              </View>
-            </Page>
-
-            <Page index={3} p={p} slotH={slotH} artHeight={art} art={() => <ProfilePreview active={page === 3} name={name} />}>
-              <Copy
-                eyebrow="Your profile"
-                lead={'Last thing.\n'}
-                accent="Who’s"
-                title=" planning?"
-                body="How friends see you on a shared plan. Tap the circle for a photo."
-              />
-              <NameField value={name} onChange={setName} onDone={finish} />
-            </Page>
-          </Row>
-        </GestureDetector>
+      <View style={styles.viewport} pointerEvents="box-none">
+        <Animated.View style={[styles.namePage, nameStyle]} pointerEvents={onName ? 'auto' : 'none'}>
+          {/* The invite a friend would get is a paper card: it keeps the light palette on the sky. */}
+          <Tone value="light">
+            <View style={[styles.art, { height: art }]}>
+              <Fit height={art}>
+                <ProfilePreview active={onName} name={name} />
+              </Fit>
+            </View>
+          </Tone>
+          <View style={styles.words}>
+            <View style={styles.copy}>
+              <Text style={styles.title} accessibilityRole="header">
+                {'Your turn.\nWho’s planning?'}
+              </Text>
+              <Text variant="body" style={styles.body}>
+                How friends see you on a shared plan. Tap the circle for a photo.
+              </Text>
+            </View>
+            <NameField value={name} onChange={setName} onDone={finish} />
+          </View>
+        </Animated.View>
       </View>
 
-      <View style={[styles.bottom, { paddingBottom: insets.bottom + 20 }]}>
-        <Dots p={p} onPick={go} />
+      <View
+        style={[styles.bottom, { paddingBottom: insets.bottom + 20 }]}
+        onLayout={(e) => setBottomStart(e.nativeEvent.layout.y)}
+      >
         <Button
           trailingArrow
-          label={last ? 'Find my first trip' : 'Next'}
-          onPress={() => (last ? finish() : go(page + 1))}
-          disabled={last && !named}
-          accessibilityHint={last ? (named ? 'Opens the app, ready for your first video' : 'Add your first name first') : undefined}
+          label={label}
+          onPress={next}
+          disabled={onName && !named}
+          accessibilityHint={onName ? (named ? 'Opens the app, ready for your first link' : 'Add your first name first') : undefined}
         />
-        {/* On every page, wherever someone starts reading. The two links are taps of their own,
-            44pt tall, rather than words inside the sentence. */}
+        {/* On every step, wherever someone starts reading. The two links are taps of their own,
+            44pt tall, rather than words inside the sentence. Not shown when watching it again. */}
+        {replay ? null : (
         <View style={styles.consentBlock}>
           <Text variant="label" color={skyInk.faint} style={styles.consent}>
             By using Xplore you agree to its terms and privacy policy, and that you’re 18 or over.
@@ -253,9 +240,23 @@ export default function Onboarding() {
             </PressableScale>
           </View>
         </View>
+        )}
       </View>
     </View>
     </Tone>
+  );
+}
+
+/** One step of the bar at the top: it fills as the scene moves into that step. */
+function Segment({ index, s }: { index: number; s: SharedValue<number> }) {
+  // Scaled from its left end, not resized: a transform costs no layout.
+  const fill = useAnimatedStyle(() => ({
+    transform: [{ scaleX: interpolate(s.get(), [index - 1, index], [0, 1], Extrapolation.CLAMP) }],
+  }));
+  return (
+    <View style={styles.segment}>
+      <Animated.View style={[styles.segmentFill, index === 0 ? null : fill]} />
+    </View>
   );
 }
 
@@ -264,17 +265,6 @@ function lightStatusBar() {
   setStatusBarStyle('light');
   return () => setStatusBarStyle('dark');
 }
-
-/** A page's card laid back in depth, like page one's pair: tipped away at the top, turned a little. */
-function Tilted({ turn, children }: { turn: 1 | -1; children: ReactNode }) {
-  return (
-    <View style={{ transform: [{ perspective: 800 }, { rotateX: '14deg' }, { rotateY: `${turn * 10}deg` }, { rotateZ: `${turn * -3}deg` }] }}>
-      {children}
-    </View>
-  );
-}
-
-
 
 /**
  * How far to raise the pages so the focused field clears the keyboard. It follows the keyboard's
@@ -328,82 +318,6 @@ function NameField({ value, onChange, onDone }: { value: string; onChange: (v: s
   );
 }
 
-/** The pages side by side, slid by the shared page position, and raised clear of the keyboard. */
-function Row({
-  p,
-  width,
-  lift,
-  children,
-}: {
-  p: SharedValue<number>;
-  width: number;
-  lift: SharedValue<number>;
-  children: ReactNode;
-}) {
-  const style = useAnimatedStyle(() => ({
-    transform: [{ translateX: -p.get() * width }, { translateY: lift.get() }],
-  }));
-  return <Animated.View style={[styles.row, { width: width * PAGES }, style]}>{children}</Animated.View>;
-}
-
-/**
- * A page in two layers. The illustration sits deeper: it trails the swipe, shrinks and tilts away,
- * while the words move nearly with the finger. The difference is what gives the carousel depth.
- */
-function Page({
-  index,
-  p,
-  slotH,
-  art,
-  artHeight,
-  children,
-}: {
-  index: number;
-  p: SharedValue<number>;
-  /** The page's measured height; 0 until it's known. */
-  slotH: number;
-  /** Draws the illustration for the height it's given. */
-  art: (height: number) => ReactNode;
-  /** The illustration's height when there's room for it. */
-  artHeight: number;
-  children: ReactNode;
-}) {
-  const reduced = useReducedMotion();
-  // The words take what they need and the illustration gets what's left, so nothing is cut off on
-  // a short screen (a phone browser with its bars showing).
-  const [wordsH, setWordsH] = useState(0);
-  const room = slotH && wordsH ? slotH - wordsH - WORDS_GAP - DOTS_CLEAR : artHeight;
-  const height = Math.round(Math.max(MIN_ART, Math.min(artHeight, room)));
-  const artStyle = useAnimatedStyle(() => {
-    const d = p.get() - index;
-    const a = Math.min(Math.abs(d), 1);
-    return {
-      opacity: interpolate(Math.abs(d), [0, 0.75], [1, 0], Extrapolation.CLAMP),
-      transform: reduced ? [] : [{ translateX: d * 150 }, { scale: 1 - a * 0.12 }, { rotate: `${-d * 5}deg` }],
-    };
-  });
-  const copyStyle = useAnimatedStyle(() => {
-    const d = p.get() - index;
-    return {
-      opacity: interpolate(Math.abs(d), [0, 0.6], [1, 0], Extrapolation.CLAMP),
-      transform: reduced ? [] : [{ translateX: d * 36 }],
-    };
-  });
-  return (
-    <View style={styles.pageSlot}>
-      {/* The illustrations are paper cards: they keep the light palette on the sky. */}
-      <Tone value="light">
-        <Animated.View style={[styles.art, { height }, artStyle]}>
-          <Fit height={height}>{art(height)}</Fit>
-        </Animated.View>
-      </Tone>
-      <Animated.View style={[styles.words, copyStyle]} onLayout={(e) => setWordsH(e.nativeEvent.layout.height)}>
-        {children}
-      </Animated.View>
-    </View>
-  );
-}
-
 /**
  * Scales an illustration down, as a whole, when it's taller than the room it has. A transform
  * doesn't change layout, so measuring the natural size never feeds back into the scale.
@@ -418,74 +332,6 @@ function Fit({ height, children }: { height: number; children: ReactNode }) {
   );
 }
 
-/**
- * A small spaced caption, then the question and its answer in white, the answer's first words in
- * ember so the eye lands on the promise.
- */
-function Copy({
-  eyebrow,
-  lead,
-  accent,
-  title,
-  body,
-}: {
-  eyebrow: string;
-  lead: string;
-  accent: string;
-  title: string;
-  body: string;
-}) {
-  return (
-    <View style={styles.copy}>
-      <Text variant="eyebrow" style={styles.eyebrow}>
-        {eyebrow}
-      </Text>
-      <Text style={styles.title} accessibilityRole="header">
-        {lead}
-        <Text style={[styles.title, styles.accent]}>{accent}</Text>
-        <Text style={styles.title}>{title}</Text>
-      </Text>
-      <Text variant="body" style={styles.body}>
-        {body}
-      </Text>
-    </View>
-  );
-}
-
-/** The page dots, each a 44pt tap to its page. */
-function Dots({ p, onPick }: { p: SharedValue<number>; onPick: (page: number) => void }) {
-  return (
-    <View style={styles.dots}>
-      {Array.from({ length: PAGES }, (_, i) => (
-        <PressableScale
-          key={i}
-          onPress={() => onPick(i)}
-          containerStyle={styles.dotTap}
-          style={styles.dotSlot}
-          accessibilityRole="button"
-          accessibilityLabel={`Page ${i + 1} of ${PAGES}`}
-        >
-          <Dot index={i} p={p} />
-        </PressableScale>
-      ))}
-    </View>
-  );
-}
-
-function Dot({ index, p }: { index: number; p: SharedValue<number> }) {
-  // The active dot stretches into a bar and warms to ember, the button's colour. It is absolutely positioned and childless, so animating
-  // width costs no layout pass on anything else.
-  const style = useAnimatedStyle(() => {
-    const d = Math.abs(p.get() - index);
-    return {
-      width: interpolate(d, [0, 1], [20, 6], Extrapolation.CLAMP),
-      opacity: interpolate(d, [0, 1], [1, 0.45], Extrapolation.CLAMP),
-      backgroundColor: interpolateColor(Math.min(d, 1), [0, 1], [skyAccent, skyInk.strong]),
-    };
-  });
-  return <Animated.View style={[styles.dot, style]} />;
-}
-
 const styles = StyleSheet.create({
   consentBlock: { marginTop: 4 },
   consent: { textAlign: 'center' },
@@ -494,21 +340,19 @@ const styles = StyleSheet.create({
   consentLink: { color: skyInk.soft, textDecorationLine: 'underline' },
   back: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44, paddingRight: 8, marginLeft: -4 },
   fill: { flex: 1 },
-  top: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: GUTTER,
-    paddingBottom: 8,
-  },
+  top: { paddingHorizontal: GUTTER, paddingBottom: 4 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
   // Real padding, not hitSlop: the web ignores hitSlop, and a tap target should be 44pt tall.
   skip: { minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' },
+  progress: { flexDirection: 'row', gap: 5, marginTop: 2 },
+  segment: { flex: 1, height: 3, borderRadius: 2, overflow: 'hidden', backgroundColor: skyInk.rim },
+  segmentFill: { height: 3, width: '100%', backgroundColor: skyInk.strong, transformOrigin: 'left' },
+  scene: { position: 'absolute', left: 0, right: 0, overflow: 'hidden' },
   viewport: { flex: 1, overflow: 'hidden' },
-  row: { flex: 1, flexDirection: 'row' },
-  pageSlot: { flex: 1, paddingHorizontal: GUTTER, justifyContent: 'center' },
+  namePage: { flex: 1, paddingHorizontal: GUTTER, justifyContent: 'center' },
   art: { alignItems: 'center', justifyContent: 'center' },
-  words: { marginTop: WORDS_GAP, gap: 22 },
+  words: { marginTop: 26, gap: 22 },
   nameInput: {
     height: 54,
     paddingHorizontal: 18,
@@ -521,20 +365,9 @@ const styles = StyleSheet.create({
     color: skyInk.strong,
   },
   nameInputFocused: { backgroundColor: skyFill.pressed, borderColor: skyInk.outline },
-  // Clear air above (from the paragraph) and below (from the page dots), and the question close to its tags.
-  district: { gap: 12, marginTop: 8, marginBottom: 24 },
-  districtChips: { marginHorizontal: -GUTTER, paddingLeft: GUTTER },
   copy: { gap: 12 },
-  eyebrow: { marginBottom: 2 },
   // The display size every screen title uses, so the intro and the app read as one voice.
   title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
-  // Warmer and lighter than the button's ember, so it holds up as type on a dark sky.
-  accent: { color: skyAccent },
   body: { paddingRight: 8 },
   bottom: { paddingHorizontal: GUTTER, gap: 16 },
-  // 44pt tall to tap, drawn 6pt tall: the negative margins keep the layout as it was.
-  dots: { flexDirection: 'row', alignSelf: 'center', height: 44, marginVertical: -19, alignItems: 'center' },
-  dotTap: { height: 44, justifyContent: 'center' },
-  dotSlot: { height: 44, paddingHorizontal: 3, justifyContent: 'center' },
-  dot: { height: 6, borderRadius: 3, backgroundColor: skyInk.strong },
 });

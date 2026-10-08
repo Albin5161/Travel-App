@@ -136,6 +136,9 @@ export function glideTo(camera: Camera, target: CameraValue, view: { w: number; 
   );
 }
 
+/** The colours the map's art is drawn in. Paper by default; the intro passes a dark set that sits in the sky. */
+export type MapPalette = Record<'mapLand' | 'mapSea' | 'mapCoast' | 'mapRoad' | 'mapTrail' | 'mapLabel' | 'mapSeaLabel' | 'line', string>;
+
 export type MapPin = {
   id: string;
   place: Place;
@@ -156,6 +159,8 @@ type Props = {
   activeId?: SharedValue<string | null>;
   reveal?: boolean;
   revealDelay?: number;
+  /** The gap between one pin landing and the next, in ms. */
+  revealStagger?: number;
   onRevealed?: () => void;
   onPinPress?: (id: string) => void;
   interactive?: boolean;
@@ -164,6 +169,7 @@ type Props = {
   artChildren?: ReactNode;
   /** The world the art is drawn in. Defaults to the city world. */
   world?: World;
+  palette?: MapPalette;
 };
 
 export function CityMap({
@@ -176,12 +182,14 @@ export function CityMap({
   activeId,
   reveal = false,
   revealDelay = 0,
+  revealStagger = 80,
   onRevealed,
   onPinPress,
   interactive = true,
   pinSize = DEFAULT_PIN,
   artChildren,
   world = WORLD,
+  palette = light,
 }: Props) {
   const r = maxScale;
 
@@ -236,12 +244,12 @@ export function CityMap({
     <GestureDetector gesture={gesture}>
       <View
         // Past the drawn world, coastal maps continue as sea (it lies west), inland maps as land.
-        style={[styles.root, { width, height, backgroundColor: city.map.coast ? light.mapSea : light.mapLand }]}
+        style={[styles.root, { width, height, backgroundColor: city.map.coast ? palette.mapSea : palette.mapLand }]}
         collapsable={false}
       >
         <Animated.View style={[StyleSheet.absoluteFill, tiltStyle]}>
           <Animated.View style={[styles.world, { width: world.w * r, height: world.h * r }, worldStyle]}>
-            <MapArt art={city.map} r={r} world={world}>
+            <MapArt art={city.map} r={r} world={world} palette={palette}>
               {artChildren}
             </MapArt>
           </Animated.View>
@@ -258,6 +266,7 @@ export function CityMap({
             activeId={activeId}
             reveal={reveal}
             revealDelay={revealDelay}
+            revealStagger={revealStagger}
             onRevealed={i === pins.length - 1 ? onRevealed : undefined}
             onPress={onPinPress}
             size={pinSize}
@@ -272,11 +281,13 @@ const MapArt = memo(function MapArt({
   art,
   r,
   world,
+  palette,
   children,
 }: {
   art: CityMapArt;
   r: number;
   world: World;
+  palette: MapPalette;
   children?: ReactNode;
 }) {
   const land = useMemo(() => {
@@ -292,22 +303,22 @@ const MapArt = memo(function MapArt({
       height={world.h * r}
       viewBox={`${world.x0} ${world.y0} ${world.w} ${world.h}`}
     >
-      <Rect x={world.x0} y={world.y0} width={world.w} height={world.h} fill={land ? light.mapSea : light.mapLand} />
-      {land ? <Path d={land} fill={light.mapLand} stroke={light.mapCoast} strokeWidth={3} /> : null}
+      <Rect x={world.x0} y={world.y0} width={world.w} height={world.h} fill={land ? palette.mapSea : palette.mapLand} />
+      {land ? <Path d={land} fill={palette.mapLand} stroke={palette.mapCoast} strokeWidth={3} /> : null}
       {art.water?.map((w, i) => (
-        <Ellipse key={`w${i}`} cx={w.cx} cy={w.cy} rx={w.rx} ry={w.ry} fill={light.mapSea} stroke={light.mapCoast} strokeWidth={3} />
+        <Ellipse key={`w${i}`} cx={w.cx} cy={w.cy} rx={w.rx} ry={w.ry} fill={palette.mapSea} stroke={palette.mapCoast} strokeWidth={3} />
       ))}
       {art.rivers?.map((pts, i) => (
-        <Path key={`r${i}`} d={smoothPath(pts)} stroke={light.mapSea} strokeWidth={26} strokeLinecap="round" fill="none" />
+        <Path key={`r${i}`} d={smoothPath(pts)} stroke={palette.mapSea} strokeWidth={26} strokeLinecap="round" fill="none" />
       ))}
       {art.hills.map((h, i) => (
-        <Ellipse key={`h${i}`} cx={h.cx} cy={h.cy} rx={h.rx} ry={h.ry} fill="none" stroke={light.line} strokeWidth={2} />
+        <Ellipse key={`h${i}`} cx={h.cx} cy={h.cy} rx={h.rx} ry={h.ry} fill="none" stroke={palette.line} strokeWidth={2} />
       ))}
       {art.borders?.map((pts, i) => (
         <Path
           key={`b${i}`}
           d={smoothPath(pts)}
-          stroke={light.mapTrail}
+          stroke={palette.mapTrail}
           strokeWidth={3}
           strokeDasharray="2 14"
           strokeLinecap="round"
@@ -315,13 +326,13 @@ const MapArt = memo(function MapArt({
         />
       ))}
       {art.roads.map((pts, i) => (
-        <Path key={`rd${i}`} d={smoothPath(pts)} stroke={light.mapRoad} strokeWidth={7} strokeLinecap="round" fill="none" />
+        <Path key={`rd${i}`} d={smoothPath(pts)} stroke={palette.mapRoad} strokeWidth={7} strokeLinecap="round" fill="none" />
       ))}
       {art.trails?.map((pts, i) => (
         <Path
           key={`t${i}`}
           d={smoothPath(pts)}
-          stroke={light.mapTrail}
+          stroke={palette.mapTrail}
           strokeWidth={3}
           strokeDasharray="1 12"
           strokeLinecap="round"
@@ -334,7 +345,7 @@ const MapArt = memo(function MapArt({
             key={`l${i}`}
             x={l.x}
             y={l.y}
-            fill={light.mapSeaLabel}
+            fill={palette.mapSeaLabel}
             fontFamily={fonts.displayItalic}
             fontSize={44}
             letterSpacing={2}
@@ -347,7 +358,7 @@ const MapArt = memo(function MapArt({
             key={`l${i}`}
             x={l.x}
             y={l.y}
-            fill={light.mapLabel}
+            fill={palette.mapLabel}
             fontFamily={fonts.sansSemi}
             fontSize={20}
             letterSpacing={4}
@@ -372,12 +383,13 @@ type PinProps = {
   activeId?: SharedValue<string | null>;
   reveal: boolean;
   revealDelay: number;
+  revealStagger: number;
   onRevealed?: () => void;
   onPress?: (id: string) => void;
   size: number;
 };
 
-function MapPinView({ pin, index, camera, width, height, activeId, reveal, revealDelay, onRevealed, onPress, size }: PinProps) {
+function MapPinView({ pin, index, camera, width, height, activeId, reveal, revealDelay, revealStagger, onRevealed, onPress, size }: PinProps) {
   const reduced = useReducedMotion();
   const drop = useSharedValue(reveal ? 0 : 1);
   const selected = useSharedValue(0);
@@ -389,7 +401,7 @@ function MapPinView({ pin, index, camera, width, height, activeId, reveal, revea
       'worklet';
       if (finished && onRevealed) scheduleOnRN(onRevealed);
     };
-    const delay = revealDelay + index * 80;
+    const delay = revealDelay + index * revealStagger;
     drop.set(
       withDelay(
         delay,

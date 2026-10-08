@@ -37,3 +37,7 @@ above until the district is actually shot:
 | Thali at Meenachil Mess | gok-thali.jpg |
 
 Replace these before anything ships.
+
+## The Earth in the intro
+
+The Earth pictures in `assets/images/intro/` are drawn from Natural Earth's public-domain coastlines.

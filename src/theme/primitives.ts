@@ -12,6 +12,20 @@ export const paper = {
   300: '#E6E3DC',
 } as const;
 
+/**
+ * Neutral greys with no tint, lightest first: the light look's surfaces, lines and its one quiet
+ * ink. Measured from Airbnb's screens (9 Oct 2026), where four small steps of grey do the work of
+ * shadows. 600 passes 4.5:1 on every step up to 200.
+ */
+export const grey = {
+  50: '#F7F7F7',
+  100: '#F2F2F2',
+  200: '#EBEBEB',
+  300: '#DDDDDD',
+  600: '#6A6A6A',
+  900: '#222222',
+} as const;
+
 /** Neutral inks, lightest first. 500 is the lightest that passes 4.5:1 on paper 200. */
 export const ink = {
   300: '#A3A3A3',

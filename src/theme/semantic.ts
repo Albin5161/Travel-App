@@ -1,6 +1,6 @@
 import type { SkyPhase } from '@/lib/sun';
 
-import { black, ember, green, ink, navy, paper, red, white } from './primitives';
+import { black, ember, green, grey, ink, navy, paper, red, white } from './primitives';
 
 // Tier two of the design system, as plain data: what each colour is for, in each of the app's two
 // looks. Nothing here knows which look is on (theme/sky picks), so this file can also be read by
@@ -71,9 +71,9 @@ export const SKIES: Record<SkyPhase, SkyLook> = {
   },
 };
 
-// The light look has no sky: the same pale canvas at every hour, white panels on it, a dark status bar.
+// The light look has no sky: a white page at every hour, white panels edged in grey, a dark status bar.
 export const PAPER: SkyLook = {
-  stops: [paper[200], paper[100], paper[100]],
+  stops: [paper[0], paper[0], paper[0]],
   glow: { color: paper[0], x: 0.5, y: 0, r: 0.6, opacity: 0 },
   clouds: 0,
   stars: 0,
@@ -131,25 +131,29 @@ export const ON_SKY: Semantic = {
 };
 
 export const ON_PAPER: Semantic = {
-  // Ink on the pale canvas. Every strength used for words passes 4.5:1 on it.
+  // One dark ink and one grey, as Airbnb has it: the grey passes 4.5:1 on the page and on every
+  // fill below, so quieter words never need a second, weaker grey.
   ink: {
-    strong: ink[900],
-    soft: ink[600],
-    faint: ink[500],
-    line: black(0.08),
-    rim: black(0.12),
+    strong: grey[900],
+    soft: grey[600],
+    faint: grey[600],
+    line: grey[200],
+    rim: grey[300],
     outline: black(0.45),
     shadow: '0 0 0 rgba(0,0,0,0)',
   },
-  // A control is a white surface on the canvas; a pane inside a panel is a faint grey.
-  fill: { pane: black(0.04), raised: paper[0], pressed: black(0.08), well: black(0.06) },
+  // Depth by small steps of grey on a white page, not by shadow: a quiet pane, a control, and
+  // one step darker when pressed.
+  fill: { pane: grey[50], raised: grey[100], pressed: grey[200], well: grey[200] },
+  // The main button keeps its own black (Albin, 9 Oct 2026): it is not Airbnb's.
   cta: ink[900],
   onCta: paper[0],
   onInk: paper[0],
-  // Ember dark enough for paper: 600 for large type, 700 for small.
+  // Ember dark enough for white: 600 for large type, 700 for small.
   accent: ember[600],
   accentText: ember[700],
   accentWash: 'rgba(226,118,60,0.12)',
   accentRim: 'rgba(212,98,43,0.7)',
   signal: { up: green[700], down: red[700] },
 };
+

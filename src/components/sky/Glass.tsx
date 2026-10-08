@@ -6,8 +6,7 @@ import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'reac
 import { Text } from '@/components/Text';
 import { useReduceTransparency } from '@/lib/transparency';
 import { deepGlass, skyInk } from '@/theme/sky';
-import { isLight } from '@/theme/mode';
-import { radii, shadows } from '@/theme/tokens';
+import { radii } from '@/theme/tokens';
 
 import { useScreenSky } from './SkyScreen';
 
@@ -77,8 +76,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
-    // In the light look a panel is white on a pale canvas: a soft shadow is what lifts it off.
-    ...(isLight ? { boxShadow: shadows.field } : null),
   },
   label: {
     flexDirection: 'row',

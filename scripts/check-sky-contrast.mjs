@@ -78,7 +78,7 @@ for (const [phase, look] of Object.entries(SKY)) {
 
 // The light look: solid inks on the canvas's two papers and on a white panel.
 {
-  const backs = { 'canvas top': hex(PAPER.stops[0]), canvas: hex(PAPER.stops[1]), panel: hex(PAPER.glass) };
+  const backs = { canvas: hex(PAPER.stops[1]), panel: hex(PAPER.glass), pane: hex(ON_PAPER.fill.pane), control: hex(ON_PAPER.fill.raised) };
   const words = {
     strong: ON_PAPER.ink.strong,
     soft: ON_PAPER.ink.soft,

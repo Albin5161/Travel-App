@@ -50,6 +50,6 @@ export const skySignal = NOW.signal;
  * A fade laid over a map or a photo's top edge so the title and the status bar read on it: the
  * sky's night on the sky, paper in the light look. `alpha` is how much it hides.
  */
-export const skyVeil = (alpha: number) => (isLight ? `rgba(236,234,230,${alpha})` : `rgba(4,10,30,${alpha})`);
+export const skyVeil = (alpha: number) => (isLight ? `rgba(255,255,255,${alpha})` : `rgba(4,10,30,${alpha})`);
 /** The status bar's style over the canvas. */
 export const skyBar: 'light' | 'dark' = isLight ? 'dark' : 'light';

@@ -5,6 +5,7 @@ import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSprin
 import { Text } from '@/components/Text';
 import { haptic } from '@/lib/haptics';
 import { SPRING_SHEET } from '@/lib/motion';
+import { isLight } from '@/theme/mode';
 import { skyFill, skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
 import { light, shadows } from '@/theme/tokens';
@@ -100,6 +101,8 @@ const styles = StyleSheet.create({
   },
   // Over the sky: a darker well with a lighter pane sliding in it, like the system control on glass.
   trackSky: { backgroundColor: skyFill.well, borderColor: skyInk.line },
-  thumbSky: { backgroundColor: skyFill.pressed, boxShadow: 'none' },
+  // In the light look the well and the pressed grey are one colour, and the pane vanished into it:
+  // there it is the white pane with its small shadow.
+  thumbSky: isLight ? { backgroundColor: light.panel, boxShadow: shadows.button } : { backgroundColor: skyFill.pressed, boxShadow: 'none' },
   option: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
 });

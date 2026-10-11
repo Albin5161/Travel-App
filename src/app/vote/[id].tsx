@@ -18,7 +18,7 @@ import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT } from '@/lib/motion';
 import { useGroupVote } from '@/state/group';
-import { useLiveVote } from '@/state/live';
+import { useLiveVote, useUnsent } from '@/state/live';
 import { useTrips } from '@/state/trips';
 import { skyAccentRim, skyAccentWash, skyOnInk, skyFill, skyInk } from '@/theme/sky';
 import { fonts, radii, space } from '@/theme/tokens';
@@ -49,6 +49,7 @@ function Vote() {
   // The group screen underneath runs the script; this sheet only votes.
   const { group, members, stops } = useGroupVote(id);
   const live = useLiveVote(id);
+  const waiting = useUnsent(id).count;
   const [picked, setPicked] = useState<string | null>(null);
   // On a shared trip there's no one to pick: it's you.
   const voter = group?.live && live ? live.me : picked;
@@ -118,7 +119,11 @@ function Vote() {
           Thanks, {me.name}!
         </Text>
         <Text variant="body" style={styles.center}>
-          {group.live ? 'Your votes are in. Everyone can see them now.' : 'Pass the phone back. Your votes are in.'}
+          {!group.live
+            ? 'Pass the phone back. Your votes are in.'
+            : waiting
+              ? 'Your votes are saved on this phone. We’ll send them to everyone as soon as you’re back online.'
+              : 'Your votes are in. Everyone can see them now.'}
         </Text>
         <View style={styles.doneActions}>
           <Button trailingArrow label="Done" onPress={() => router.back()} />

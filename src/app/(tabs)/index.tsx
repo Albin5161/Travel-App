@@ -247,7 +247,7 @@ export default function Home() {
             <Animated.View style={[styles.frost, frostStyle]} pointerEvents="none">
               <Glass blur tint={look.glass} radius={0} style={styles.frostFill} />
             </Animated.View>
-            <LinkBox key={boxKey} onSubmit={start} onSubmitMany={startMany} clipboardHasLink={hasLink} />
+            <LinkBox key={boxKey} onSubmit={start} onSubmitMany={startMany} offerMore={collections.length > 0} clipboardHasLink={hasLink} />
           </Animated.View>
 
           <View style={styles.continue}>

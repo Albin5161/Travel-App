@@ -1,4 +1,5 @@
-import { DevSettings, Platform } from 'react-native';
+import { reloadAppAsync } from 'expo';
+import { Platform } from 'react-native';
 
 import { deviceStorage } from '@/lib/live/storage';
 
@@ -30,10 +31,10 @@ export const MODE: Mode = read();
 export const isLight = MODE === 'light';
 
 /**
- * Saves the look and starts the app again in it. Returns false when it couldn't restart by itself
- * (a phone build outside development), so the caller can say to close and reopen the app.
+ * Saves the look and starts the app again in it. Resolves false when it couldn't restart by itself,
+ * so the caller can say to close and reopen the app.
  */
-export function setMode(next: Mode): boolean {
+export async function setMode(next: Mode): Promise<boolean> {
   try {
     deviceStorage?.setItem(KEY, next);
   } catch {
@@ -46,9 +47,12 @@ export function setMode(next: Mode): boolean {
     window.location.replace(url.toString());
     return true;
   }
-  if (__DEV__) {
-    DevSettings.reload();
+  // Expo's own restart, which works in Expo Go and in a store build alike. React Native's
+  // DevSettings.reload() brought the app back without Expo's modules in Expo Go: a red screen.
+  try {
+    await reloadAppAsync('Look changed');
     return true;
+  } catch {
+    return false;
   }
-  return false;
 }

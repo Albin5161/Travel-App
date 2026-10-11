@@ -17,7 +17,9 @@ type Props = {
   style?: StyleProp<ViewStyle>;
 };
 
-const PILL = { height: 36, width: 96 };
+// Apple's button draws nothing at all, a blank block, when its box is smaller than its own icon and
+// word need: 96 by 36 was too small on an iPhone.
+const PILL = { height: 40, width: 124 };
 export const CIRCLE = 48;
 
 // On iOS 16+ this is Apple's UIPasteControl: the tap itself grants access, so iOS shows no
@@ -103,7 +105,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  circleSize: { width: CIRCLE, height: CIRCLE },
+  // Apple's control sits in a square box of its own with a plain backing, which showed as a pale
+  // square behind the round button: the box is cut to the circle.
+  circleSize: { width: CIRCLE, height: CIRCLE, borderRadius: CIRCLE / 2, overflow: 'hidden' },
   circle: { width: CIRCLE, height: CIRCLE, borderRadius: CIRCLE / 2, alignItems: 'center', justifyContent: 'center' },
   circleShadow: { boxShadow: shadows.cta },
 });

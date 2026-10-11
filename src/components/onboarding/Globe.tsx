@@ -1,10 +1,16 @@
 import { Image } from 'expo-image';
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
 const OCEAN = require('../../../assets/images/intro/earth-ocean.png');
-const LAND = require('../../../assets/images/intro/earth-land.png');
+// The Earth grows some fifty times over on its way into the map. On a phone the small land picture
+// broke into blocks at that size, so phones get it four times finer (scripts/fine-earth-land.py).
+// A browser scales the picture it has already drawn, so the web keeps the small, quick one.
+const LAND =
+  Platform.OS === 'web'
+    ? require('../../../assets/images/intro/earth-land.png')
+    : require('../../../assets/images/intro/earth-land-fine.png');
 const SHADE = require('../../../assets/images/intro/earth-shade.png');
 
 /** Where the picture looks: the middle of India. */

@@ -11,6 +11,7 @@ import { Avatar } from '@/components/group/Avatar';
 import { Confetti } from '@/components/group/Confetti';
 import { JoinWelcome } from '@/components/group/JoinWelcome';
 import { StopVote } from '@/components/group/StopVote';
+import { UnsentNote } from '@/components/group/UnsentNote';
 import { IconButton } from '@/components/IconButton';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
@@ -155,6 +156,8 @@ export default function GroupScreen() {
           </Text>
           <Text variant="data">{sub}</Text>
         </Animated.View>
+
+        <UnsentNote cityId={id} />
 
         {welcoming && remote && !isOwner && !locked && plan ? (
           <JoinWelcome

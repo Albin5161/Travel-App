@@ -212,8 +212,10 @@ export default function Profile() {
                 onChange={(next) => {
                   if (next === MODE) return;
                   haptic.selection();
-                  // The app starts again in the new look; a phone build can't do that by itself.
-                  if (!setMode(next)) setLookNote('Saved. Close Xplore and open it again to see it.');
+                  // The app starts again in the new look.
+                  void setMode(next).then((ok) => {
+                    if (!ok) setLookNote('Saved. Close Xplore and open it again to see it.');
+                  });
                 }}
                 options={[
                   { key: 'sky', label: 'Sky' },

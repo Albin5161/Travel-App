@@ -20,6 +20,12 @@ type Props = {
   onSubmit: (url: string) => void;
   /** Several links at once: they're read in the background instead of on a screen of their own. */
   onSubmitMany?: (urls: string[]) => void;
+  /**
+   * Say, with one link in the box, that more can go in with it. Off for someone who hasn't read a
+   * video yet: their first time is one link and one arrow, nothing else to weigh. Several links
+   * pasted together are still taken either way.
+   */
+  offerMore?: boolean;
   /** A link is on the clipboard (checked without reading it, so no iOS alert). */
   clipboardHasLink?: boolean;
 };
@@ -37,7 +43,7 @@ const UNREADABLE = 'Tap and hold the box, then Paste.';
 // The home screen's link field: type or paste a video link, or tap the system Paste button beside it.
 // It takes several links too (pasted together, or one after another): those are read in the
 // background, one by one.
-export function LinkBox({ onSubmit, onSubmitMany, clipboardHasLink }: Props) {
+export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHasLink }: Props) {
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,11 +137,11 @@ export function LinkBox({ onSubmit, onSubmitMany, clipboardHasLink }: Props) {
         ? `${links.length} links. We’ll read them one by one while you carry on.`
         : null;
   // One link in the box: the moment to say more can go in with it.
-  const more = links.length === 1 && !!onSubmitMany && !error;
+  const more = links.length === 1 && !!onSubmitMany && offerMore && !error;
   const hint =
     error ??
     many ??
-    (more ? 'Got more? Add them and we’ll read them all.' : null) ??
+    (more ? 'Ready. Tap the arrow, or paste another video first.' : null) ??
     (unreadable && !value ? UNREADABLE : null) ??
     (clipboardHasLink && !value ? 'You copied a link. Tap paste to add it.' : null);
 
@@ -184,12 +190,16 @@ export function LinkBox({ onSubmit, onSubmitMany, clipboardHasLink }: Props) {
       </View>
       <View style={styles.hintSlot}>
         {hint ? (
-          <Animated.View key={hint} entering={FADE_IN} exiting={FADE_OUT} style={styles.hintRow}>
-            <Text variant="label" color={error ? ink.strong : ink.soft} style={styles.hint}>
-              {hint}
-            </Text>
+          <View style={styles.hintRow}>
+            <Animated.View key={hint} entering={FADE_IN} exiting={FADE_OUT} style={styles.hint}>
+              <Text variant="label" color={error ? ink.strong : ink.soft}>
+                {hint}
+              </Text>
+            </Animated.View>
+            {/* Outside the fade: Apple's paste button draws itself blank while anything over it is
+                part-way see-through, and stayed blank after. */}
             {more || many ? <PasteButton shape="pill" onText={fill} onUnreadable={pasteByHand} /> : null}
-          </Animated.View>
+          </View>
         ) : null}
       </View>
     </View>
@@ -256,7 +266,7 @@ const styles = css.create({
   // The button rides inside the field here: a long link stops short of it instead of touching it.
   inputSky: { marginRight: 10 },
   // Room for one hint line and the "add another" paste button, so neither appearing moves the page.
-  hintSlot: { minHeight: 46, justifyContent: 'center' },
+  hintSlot: { minHeight: 50, justifyContent: 'center' },
   hintRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
   hint: { flex: 1, marginLeft: 4 },
 });

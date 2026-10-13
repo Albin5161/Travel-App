@@ -1,6 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useRef, useState } from 'react';
-import { Keyboard, Platform, TextInput, View, type TextStyle, type ViewStyle } from 'react-native';
+import { Keyboard, Platform, ScrollView, TextInput, View, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { css, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import Ionicons from '@/components/Ionicons';
@@ -12,6 +12,7 @@ import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { LINKS_AT_ONCE, linksIn } from '@/lib/links';
 import { FADE_IN, FADE_OUT } from '@/lib/motion';
+import { isLight } from '@/theme/mode';
 import { skyCta, skyFill, skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
 import { fonts, light, shadows } from '@/theme/tokens';
@@ -39,19 +40,26 @@ export const FIELD_TRAILING = CIRCLE + GAP;
 // Says what a good link looks like, since "not a link" alone leaves you guessing.
 const ERROR = 'That’s not an Instagram or YouTube link. They look like instagram.com/reel/… or youtu.be/…';
 const UNREADABLE = 'Tap and hold the box, then Paste.';
+const ALREADY = 'That video is already in.';
 
 // The home screen's link field: type or paste a video link, or tap the system Paste button beside it.
 // It takes several links too (pasted together, or one after another): those are read in the
 // background, one by one.
 export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHasLink }: Props) {
+  // What's in the field: a link being typed, or the one link pasted.
   const [value, setValue] = useState('');
+  // Links added beyond the first: each is a chip under the field, and the field is free for the
+  // next. Run together in the field as one long line, a second link couldn't be seen to be there.
+  const [added, setAdded] = useState<string[]>([]);
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The paste button couldn't read the clipboard: the field is focused and says how to paste by hand.
   const [unreadable, setUnreadable] = useState(false);
   const input = useRef<TextInput>(null);
-  const links = linksIn(value);
-  const platform = links.length ? detectPlatform(links[0]) : null;
+  // Every video waiting to be read, each once, chips first.
+  const links = linksIn([...added, value].join(' '));
+  const typed = linksIn(value);
+  const platform = typed.length ? detectPlatform(typed[0]) : null;
   const sky = useTone() === 'sky';
   const ink = sky ? SKY_INK : PAPER_INK;
 
@@ -72,23 +80,21 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
     );
   };
 
-  const submit = (text: string) => {
-    const raw = text.trim();
-    if (!raw) return;
+  const submit = () => {
+    if (!value.trim() && !added.length) return;
     // A forwarded message ("Check this reel https://www.instagram.com/reel/…") carries words around
     // the link: only the links are read.
-    const found = linksIn(raw);
-    if (found.length === 0) {
-      setValue(raw);
+    if (links.length === 0) {
       reject();
       return;
     }
     Keyboard.dismiss();
     setValue('');
+    setAdded([]);
     setError(null);
     setUnreadable(false);
-    if (found.length > 1 && onSubmitMany) onSubmitMany(found.slice(0, LINKS_AT_ONCE));
-    else onSubmit(found[0]);
+    if (links.length > 1 && onSubmitMany) onSubmitMany(links.slice(0, LINKS_AT_ONCE));
+    else onSubmit(links[0]);
   };
 
   // Pasting only fills the box. Nothing is read until Go: a wrong paste costs nothing, and the
@@ -96,14 +102,41 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
   const fill = (text: string) => {
     const pasted = text.trim();
     if (!pasted) return;
-    // With a link already in the box, another paste adds to it rather than replacing it.
-    const url = links.length && onSubmitMany ? `${value.trim()} ${pasted}` : pasted;
-    setValue(url);
     setUnreadable(false);
-    if (linksIn(pasted).length) {
-      setError(null);
+    const found = linksIn(pasted);
+    if (!found.length) {
+      if (!links.length) setValue(pasted);
+      reject();
+      return;
+    }
+    const all = linksIn([...links, ...found].join(' '));
+    if (all.length === links.length) {
+      // The same video again: nothing was added, and saying nothing looked like a paste that failed.
+      setError(ALREADY);
       haptic.light();
-    } else reject();
+      // A passing note, not a fault to clear: it goes by itself.
+      setTimeout(() => setError((e) => (e === ALREADY ? null : e)), 2600);
+      return;
+    }
+    setError(null);
+    haptic.light();
+    // One link sits in the field, as it always has. From the second on, each is a chip.
+    if (all.length === 1 || !onSubmitMany) setValue(all[0]);
+    else {
+      setAdded(all);
+      setValue('');
+    }
+  };
+
+  const remove = (url: string) => {
+    haptic.light();
+    setError(null);
+    const left = added.filter((l) => l !== url);
+    // Back to one, with nothing being typed: it returns to the field, where one link lives.
+    if (left.length === 1 && !value.trim()) {
+      setValue(left[0]);
+      setAdded([]);
+    } else setAdded(left);
   };
 
   const pasteByHand = () => {
@@ -113,12 +146,12 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
     track('paste failed');
   };
 
-  // Paste until there's a link in the box, then Go: one button, always the next step. Over the sky
-  // it rides inside the field's right end; on paper it sits beside it.
-  const action = platform ? (
+  // Paste until there's a link, then Go: one button, always the next step. Over the sky it rides
+  // inside the field's right end; on paper it sits beside it.
+  const action = links.length ? (
     <Animated.View key="go" entering={FADE_IN}>
       <PressableScale
-        onPress={() => submit(value)}
+        onPress={submit}
         style={[styles.go, sky && styles.goSky]}
         accessibilityRole="button"
         accessibilityLabel={links.length > 1 ? `Go: find the places in these ${links.length} videos` : 'Go: find the places in this video'}
@@ -130,20 +163,15 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
     <PasteButton shape="circle" onText={fill} onUnreadable={pasteByHand} />
   );
 
-  const many =
-    links.length > LINKS_AT_ONCE
-      ? `${links.length} links. We’ll read the first ${LINKS_AT_ONCE} now, one by one.`
-      : links.length > 1
-        ? `${links.length} links. We’ll read them one by one while you carry on.`
-        : null;
+  const chips = added.slice(0, LINKS_AT_ONCE);
+  const canAdd = !!onSubmitMany && links.length < LINKS_AT_ONCE;
   // One link in the box: the moment to say more can go in with it.
-  const more = links.length === 1 && !!onSubmitMany && offerMore && !error;
+  const more = links.length === 1 && canAdd && offerMore && !error;
   const hint =
     error ??
-    many ??
-    (more ? 'Ready. Tap the arrow, or paste another video first.' : null) ??
+    (more ? 'Another video to add?' : null) ??
     (unreadable && !value ? UNREADABLE : null) ??
-    (clipboardHasLink && !value ? 'You copied a link. Tap paste to add it.' : null);
+    (clipboardHasLink && !value && !added.length ? 'You copied a link. Tap paste to add it.' : null);
 
   return (
     <View>
@@ -173,9 +201,9 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
             }}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            onSubmitEditing={() => submit(value)}
-            placeholder="Paste a video link"
-            placeholderTextColor={ink.faint}
+            onSubmitEditing={submit}
+            placeholder={added.length ? `${added.length} videos ready. Add another?` : 'Paste a video link'}
+            placeholderTextColor={added.length ? ink.soft : ink.faint}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
@@ -189,6 +217,30 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
         {sky ? null : action}
       </View>
       <View style={styles.hintSlot}>
+        {!chips.length ? null : (
+          // One chip a video, so a second paste is seen to have landed, and any of them can go.
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.chips}>
+            {chips.map((url, i) => (
+              <Animated.View key={url} entering={FADE_IN} style={[styles.chip, { backgroundColor: sky ? skyFill.raised : light.field, borderColor: sky ? skyInk.rim : light.line }]}>
+                <Ionicons name={detectPlatform(url) === 'youtube' ? 'logo-youtube' : 'logo-instagram'} size={15} color={ink.strong} />
+                <Text variant="label" color={ink.strong}>
+                  Video {i + 1}
+                </Text>
+                <PressableScale onPress={() => remove(url)} hitSlop={10} style={styles.chipClose} accessibilityRole="button" accessibilityLabel={`Remove video ${i + 1}`}>
+                  <Feather name="x" size={14} color={ink.soft} />
+                </PressableScale>
+              </Animated.View>
+            ))}
+            {canAdd ? (
+              // Round and small here, so two videos and the way to add a third fit one line.
+              <PasteButton shape="circle" size={40} quiet onText={fill} onUnreadable={pasteByHand} />
+            ) : (
+              <Text variant="label" color={ink.soft} style={styles.most}>
+                {LINKS_AT_ONCE} at a time
+              </Text>
+            )}
+          </ScrollView>
+        )}
         {hint ? (
           <View style={styles.hintRow}>
             <Animated.View key={hint} entering={FADE_IN} exiting={FADE_OUT} style={styles.hint}>
@@ -198,7 +250,7 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
             </Animated.View>
             {/* Outside the fade: Apple's paste button draws itself blank while anything over it is
                 part-way see-through, and stayed blank after. */}
-            {more || many ? <PasteButton shape="pill" onText={fill} onUnreadable={pasteByHand} /> : null}
+            {more ? <PasteButton shape="pill" quiet onText={fill} onUnreadable={pasteByHand} /> : null}
           </View>
         ) : null}
       </View>
@@ -244,11 +296,13 @@ const styles = css.create({
     height: SKY_HEIGHT,
     borderRadius: SKY_HEIGHT / 2,
     paddingRight: (SKY_HEIGHT - CIRCLE) / 2,
-    backgroundColor: skyFill.raised,
+    // In the light look the field is the page's own white inside a grey line, lifted by a faint
+    // shadow: a grey slab on a white page read as a box of another colour set into it.
+    backgroundColor: isLight ? light.panel : skyFill.raised,
     borderColor: skyInk.rim,
-    boxShadow: 'none',
+    boxShadow: isLight ? '0 2px 12px rgba(0,0,0,0.06)' : 'none',
   },
-  fieldSkyFocused: { backgroundColor: skyFill.pressed, borderColor: skyInk.outline },
+  fieldSkyFocused: { backgroundColor: isLight ? light.panel : skyFill.pressed, borderColor: skyInk.outline },
   // The paste button's twin, so the swap reads as the same button changing job.
   go: {
     width: CIRCLE,
@@ -259,14 +313,19 @@ const styles = css.create({
     backgroundColor: light.cta,
     boxShadow: shadows.cta,
   },
-  goSky: { backgroundColor: skyCta, boxShadow: '0 6px 16px rgba(0,0,0,0.28)' },
+  goSky: { backgroundColor: skyCta, boxShadow: isLight ? 'none' : '0 6px 16px rgba(0,0,0,0.28)' },
   icon: { width: 20, alignItems: 'center', marginRight: 10 },
   // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },
   // The button rides inside the field here: a long link stops short of it instead of touching it.
   inputSky: { marginRight: 10 },
-  // Room for one hint line and the "add another" paste button, so neither appearing moves the page.
-  hintSlot: { minHeight: 50, justifyContent: 'center' },
-  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+  // The row under the field (a hint, or the videos added): air above it, and the same air under it
+  // before the card below. With nothing to say it is only that air, not an empty band.
+  hintSlot: { paddingTop: 12, paddingBottom: 12, gap: 8 },
+  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 36 },
   hint: { flex: 1, marginLeft: 4 },
+  chips: { alignItems: 'center', gap: 8, paddingRight: 4 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 7, height: 36, paddingLeft: 12, paddingRight: 6, borderRadius: 18, borderWidth: 1 },
+  chipClose: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
+  most: { marginLeft: 4 },
 });

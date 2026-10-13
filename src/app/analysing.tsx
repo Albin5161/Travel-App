@@ -226,7 +226,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   };
 
   const cardW = W - space.screen * 2;
-  const sceneW = Math.min(cardW - 28, 320);
+  const sceneW = Math.min(cardW - 28, 360);
 
   return (
     <SkyScreen style={{ paddingTop: insets.top + 8 }}>
@@ -242,7 +242,9 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
         style={styles.close}
       />
 
-      <View style={styles.body}>
+      {/* While reading, the card under the video runs to the foot of the screen, Amma and the child
+          standing at its base; once there's a button, it stops above it. */}
+      <View style={[styles.body, phase !== 'done' && { paddingBottom: insets.bottom + 12 }]}>
         <View>
           {card ? (
             <Animated.View entering={CARD_IN}>
@@ -739,11 +741,12 @@ const styles = StyleSheet.create({
   timeline: { position: 'absolute', left: 18, bottom: 14 },
   sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   // Shrinks to the room left above the button; its list scrolls inside.
-  found: { marginTop: 26, padding: 14, flexShrink: 1, minHeight: 0 },
+  found: { marginTop: 26, padding: 14, flexGrow: 1, flexShrink: 1, minHeight: 0 },
   creditsScroll: { flexShrink: 1 },
   // Down to the card's edge, through its padding. On a short screen it gives up its lower part (the
   // bodies; faces and words are at the top) well before the finds do.
-  scene: { marginTop: 4, marginBottom: -14, flexShrink: 4, minHeight: 0, overflow: 'hidden' },
+  // Pushed to the foot of the card, whatever room is left above.
+  scene: { marginTop: 'auto', paddingTop: 4, marginBottom: -14, flexShrink: 4, minHeight: 0, overflow: 'hidden' },
   sceneFolded: { maxHeight: 0, marginTop: 0, marginBottom: 0, opacity: 0 },
   sceneFold: {
     transitionProperty: ['maxHeight', 'marginTop', 'marginBottom', 'opacity'],

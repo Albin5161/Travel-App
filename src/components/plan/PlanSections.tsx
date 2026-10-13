@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
-import { Linking, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { Linking, StyleSheet, TextInput, View, type LayoutChangeEvent } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { typeLine } from '@/components/PlaceMeta';
@@ -16,7 +16,7 @@ import type { DayPart, Place } from '@/data/types';
 import { formatClock } from '@/lib/geo';
 import type { CityNotes } from '@/server/types';
 import { skyAccent, skyAccentText, skyFill, skyInk } from '@/theme/sky';
-import { radii, space } from '@/theme/tokens';
+import { fonts, radii, space } from '@/theme/tokens';
 
 type SectionProps = { onLayout: (e: LayoutChangeEvent) => void };
 
@@ -122,9 +122,25 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function PlacesSection({ places, cityId, onLayout }: SectionProps & { places: Place[]; cityId: string }) {
+export function PlacesSection({
+  places,
+  cityId,
+  onLayout,
+  onSearchFocus,
+}: SectionProps & { places: Place[]; cityId: string; /** The search was tapped: the page brings this section up, so results show above the keyboard. */ onSearchFocus?: () => void }) {
+  const [query, setQuery] = useState('');
+  // A long list gets a search: with sixty places, checking that one made it in meant scrolling
+  // past every other one. It looks in the name, the area and the kind of place.
+  const searchable = places.length > GROUP_FROM;
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const hits = words.length
+    ? places.filter((p) => {
+        const text = `${p.name} ${p.area} ${typeLine(p) ?? ''}`.toLowerCase();
+        return words.every((w) => text.includes(w));
+      })
+    : null;
   return (
-    <Section title="Your places" meta={`${places.length} saved`} onLayout={onLayout}>
+    <Section title="Your places" meta={hits ? `${hits.length} of ${places.length}` : `${places.length} saved`} onLayout={onLayout}>
       <Button
         kind="secondary"
         compact
@@ -132,7 +148,43 @@ export function PlacesSection({ places, cityId, onLayout }: SectionProps & { pla
         onPress={() => router.push({ pathname: '/citymap/[id]', params: { id: cityId } })}
         style={styles.mapButton}
       />
-      {places.length > GROUP_FROM ? (
+      {searchable ? (
+        <View style={styles.search}>
+          <Feather name="search" size={16} color={skyInk.faint} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            onFocus={onSearchFocus}
+            placeholder={`Search your ${places.length} places`}
+            placeholderTextColor={skyInk.faint}
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
+            clearButtonMode="never"
+            selectionColor={skyInk.strong}
+            style={styles.searchInput}
+            accessibilityLabel={`Search your ${places.length} saved places`}
+          />
+          {query ? (
+            <PressableScale onPress={() => setQuery('')} style={styles.searchClear} accessibilityRole="button" accessibilityLabel="Clear search">
+              <Feather name="x" size={16} color={skyInk.soft} />
+            </PressableScale>
+          ) : null}
+        </View>
+      ) : null}
+      {hits ? (
+        hits.length ? (
+          <View style={styles.places}>
+            {hits.map((p) => (
+              <PlaceRow key={p.id} place={p} />
+            ))}
+          </View>
+        ) : (
+          <Text variant="body" color={skyInk.soft} style={styles.noHits}>
+            Nothing saved here matches “{query.trim()}”.
+          </Text>
+        )
+      ) : places.length > GROUP_FROM ? (
         <View style={styles.groups}>
           {byArea(places).map((g) => (
             <AreaGroup key={g.area} area={g.area} places={g.places} />
@@ -445,6 +497,24 @@ const styles = StyleSheet.create({
   fill: { height: '100%', borderRadius: 3, backgroundColor: skyInk.strong },
 
   mapButton: { marginTop: 4, marginBottom: 6 },
+  search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: 46,
+    paddingLeft: 16,
+    paddingRight: 6,
+    marginTop: 6,
+    marginBottom: 14,
+    borderRadius: 23,
+    backgroundColor: skyFill.raised,
+    borderWidth: 1,
+    borderColor: skyInk.rim,
+  },
+  // 16 or more: iPhone browsers zoom the page into a smaller text box.
+  searchInput: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: skyInk.strong },
+  searchClear: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  noHits: { paddingVertical: 8 },
   places: { gap: 8 },
   groups: { gap: 18 },
   placeRow: {

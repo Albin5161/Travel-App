@@ -40,14 +40,30 @@ export function onGlobe(at: { lat: number; lng: number }, size: number) {
  */
 export function Globe({ size, turn, children }: { size: number; turn: SharedValue<number>; children?: ReactNode }) {
   const land = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.get()}deg` }] }));
+  // The Earth's edge is drawn, not painted: the sea and light pictures are small, and where the
+  // Earth is shown several times its size (the horizon under the first button) their own round
+  // edge came out in steps. The pictures are cut by a circle a hair inside that edge instead, which
+  // stays a clean line at any size. A thin pale ring stands in for the glow that was in the picture.
+  const inset = size * RIM + 0.75;
+  const disc = size - inset * 2;
+  const whole = { left: -inset, top: -inset, width: size, height: size } as const;
   return (
     <View style={{ width: size, height: size }}>
-      <Image source={OCEAN} style={StyleSheet.absoluteFill} contentFit="fill" transition={0} />
-      <Animated.View style={[StyleSheet.absoluteFill, land]}>
-        <Image source={LAND} style={StyleSheet.absoluteFill} contentFit="fill" transition={0} />
-        {children}
-      </Animated.View>
-      <Image source={SHADE} style={StyleSheet.absoluteFill} contentFit="fill" transition={0} pointerEvents="none" />
+      <View style={[styles.disc, { left: inset, top: inset, width: disc, height: disc, borderRadius: disc / 2 }]}>
+        <Image source={OCEAN} style={[styles.layer, whole]} contentFit="fill" transition={0} />
+        <Animated.View style={[styles.layer, whole, land]}>
+          <Image source={LAND} style={StyleSheet.absoluteFill} contentFit="fill" transition={0} />
+          {children}
+        </Animated.View>
+        <Image source={SHADE} style={[styles.layer, whole]} contentFit="fill" transition={0} pointerEvents="none" />
+      </View>
+      <View style={[styles.glow, { left: inset - 1, top: inset - 1, width: disc + 2, height: disc + 2, borderRadius: disc / 2 + 1 }]} pointerEvents="none" />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  disc: { position: 'absolute', overflow: 'hidden' },
+  layer: { position: 'absolute' },
+  glow: { position: 'absolute', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+});

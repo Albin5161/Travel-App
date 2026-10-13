@@ -4,8 +4,9 @@ import { Platform, StyleSheet, type StyleProp, type ViewStyle } from 'react-nati
 
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
+import { isLight } from '@/theme/mode';
 import { useTone } from '@/theme/tone';
-import { skyCta } from '@/theme/sky';
+import { skyCta, skyFill, skyInk } from '@/theme/sky';
 import { colors, light, shadows } from '@/theme/tokens';
 
 type Props = {
@@ -14,6 +15,10 @@ type Props = {
   onUnreadable?: () => void;
   /** `pill` shows "Paste"; `circle` is icon-only, for sitting beside a field. */
   shape?: 'pill' | 'circle';
+  /** A second-rank button: the field's grey rather than the main button's black, so it never competes with Go. */
+  quiet?: boolean;
+  /** A circle's width, when not the field's own 48. */
+  size?: number;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -25,10 +30,12 @@ export const CIRCLE = 48;
 // On iOS 16+ this is Apple's UIPasteControl: the tap itself grants access, so iOS shows no
 // "Allow Paste" alert, and it greys itself out when there's nothing to paste.
 // Elsewhere it falls back to reading the clipboard on press.
-export function PasteButton({ onText, onUnreadable, shape = 'pill', style }: Props) {
+export function PasteButton({ onText, onUnreadable, shape = 'pill', quiet = false, size = CIRCLE, style }: Props) {
   const tone = useTone();
   const bg = tone === 'light' ? light.cta : tone === 'sky' ? skyCta : colors.mist;
   const fg = tone === 'dark' ? colors.night : light.ctaInk;
+  const quietBg = tone === 'sky' ? skyFill.pressed : light.field;
+  const quietFg = tone === 'sky' ? skyInk.strong : light.ink;
   const circle = shape === 'circle';
 
   if (Clipboard.isPasteButtonAvailable) {
@@ -37,13 +44,13 @@ export function PasteButton({ onText, onUnreadable, shape = 'pill', style }: Pro
         acceptedContentTypes={['url', 'plain-text']}
         displayMode={circle ? 'iconOnly' : 'iconAndLabel'}
         cornerStyle="capsule"
-        backgroundColor={bg}
-        foregroundColor={fg}
+        backgroundColor={quiet ? quietBg : bg}
+        foregroundColor={quiet ? quietFg : fg}
         onPress={(data) => {
           if (data.type === 'text') onText(data.text.trim());
         }}
         // UIPasteControl needs an explicit size or it renders nothing.
-        style={[circle ? styles.circleSize : PILL, circle && styles.circleShadow, style]}
+        style={[circle ? [styles.circleSize, { width: size, height: size, borderRadius: size / 2 }] : PILL, circle && !isLight && !quiet && styles.circleShadow, style]}
       />
     );
   }
@@ -56,14 +63,14 @@ export function PasteButton({ onText, onUnreadable, shape = 'pill', style }: Pro
         if (text) onText(text);
         else onUnreadable?.();
       }}
-      style={[circle ? styles.circle : styles.pill, circle && styles.circleShadow, { backgroundColor: bg }, style]}
+      style={[circle ? [styles.circle, { width: size, height: size, borderRadius: size / 2 }] : styles.pill, circle && !isLight && !quiet && styles.circleShadow, { backgroundColor: quiet ? quietBg : bg }, style]}
       accessibilityRole="button"
       accessibilityLabel="Paste"
     >
       {circle ? (
-        <Feather name="clipboard" size={18} color={fg} />
+        <Feather name="clipboard" size={size < CIRCLE ? 16 : 18} color={quiet ? quietFg : fg} />
       ) : (
-        <Text variant="label" color={fg}>
+        <Text variant="label" color={quiet ? quietFg : fg}>
           Paste
         </Text>
       )}

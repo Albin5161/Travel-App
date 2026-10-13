@@ -175,6 +175,10 @@ export default function CityScreen() {
         scrollEventThrottle={16}
         stickyHeaderIndices={[1]}
         showsVerticalScrollIndicator={false}
+        // For the search in Your places: a result can be tapped with the keyboard up, and the
+        // keyboard doesn't cover what's being typed into.
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
         // Rest or fully up; past that, the panel's content scrolls freely.
         snapToOffsets={[0, rise]}
         snapToEnd={false}
@@ -213,7 +217,15 @@ export default function CityScreen() {
             loading={notesLoading}
             onLayout={(e) => setSectionY(0, e.nativeEvent.layout.y)}
           />
-          <PlacesSection places={collected} cityId={id} onLayout={(e) => setSectionY(1, e.nativeEvent.layout.y)} />
+          <PlacesSection
+            places={collected}
+            cityId={id}
+            onLayout={(e) => setSectionY(1, e.nativeEvent.layout.y)}
+            onSearchFocus={() => {
+              const y = (sectionYsRef.current[1] ?? rise + PANEL_HEADER_H) - PANEL_HEADER_H;
+              scrollRef.current?.scrollTo({ y: Math.max(y, rise), animated: true });
+            }}
+          />
           <PlanSection plan={plan} planned={planned} days={tripDays} onLayout={(e) => setSectionY(2, e.nativeEvent.layout.y)} />
           <GoodToKnowSection
             cityName={city.name}

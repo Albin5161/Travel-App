@@ -144,7 +144,7 @@ const HORIZON = 2.6;
 /** How far the land has still to turn when the Earth first shows, in degrees. */
 const TURN = -46;
 /** The room the last beat keeps under the map, on the sky, for the day's ticket and the words. */
-const DAY_H = 214;
+const DAY_H = 236;
 
 type Props = {
   s: SharedValue<number>;
@@ -324,7 +324,7 @@ export function IntroScene({ s, step, pick: pickId, onPick, width: W, height: H,
       ))}
 
       {mapOn ? (
-        <DayTicket s={s} stops={stops} name={cities[reels[pick.reelId].cityId]?.name ?? ''} left={map.x} width={map.w} top={map.y + dayH + 12} />
+        <DayTicket s={s} stops={stops} name={cities[reels[pick.reelId].cityId]?.name ?? ''} left={map.x} width={map.w} top={map.y + dayH + 20} />
       ) : null}
 
       <Words s={s} at={0} top={frame.top} title="You saved these." body="Pick one. Where is it, though?" />
@@ -582,38 +582,32 @@ function DayTicket({ s, stops, name, left, width, top }: { s: SharedValue<number
   return (
     <Tone value="light">
       <Animated.View style={[styles.ticket, { left, width, top }, style]} pointerEvents="none">
-        <View style={styles.ticketBody}>
-          <Text variant="title" numberOfLines={1}>
+        {/* One card: the place, how many stops, and the day in order. It had a stub with the count
+            again and a torn edge, which with the map, its pins and the heading was a lot at once. */}
+        <View style={styles.ticketHead}>
+          <Text variant="title" numberOfLines={1} style={styles.rowName}>
             {name}
           </Text>
-          <View style={styles.rows}>
-            {shown.map((p, i) => (
-              <View key={p.id} style={styles.row}>
-                <Text variant="data" style={styles.time}>
-                  {formatClock(540 + i * 120)}
-                </Text>
-                <Text variant="label" numberOfLines={1} style={styles.rowName}>
-                  {p.name}
-                </Text>
-              </View>
-            ))}
-            {more > 0 ? (
-              <Text variant="label" color={light.inkSoft}>
-                and {WORDS[more]?.toLowerCase() ?? more} more
-              </Text>
-            ) : null}
-          </View>
-        </View>
-        <View style={styles.ticketStub}>
-          <View style={styles.tear}>
-            {Array.from({ length: 24 }, (_, i) => (
-              <View key={i} style={styles.dash} />
-            ))}
-          </View>
-          <Text style={styles.count}>{stops.length}</Text>
-          <Text variant="micro" color={light.inkSoft}>
-            stops
+          <Text variant="label" color={light.inkSoft}>
+            {stops.length} {stops.length === 1 ? 'stop' : 'stops'}
           </Text>
+        </View>
+        <View style={styles.rows}>
+          {shown.map((p, i) => (
+            <View key={p.id} style={styles.row}>
+              <Text variant="data" style={styles.time}>
+                {formatClock(540 + i * 120)}
+              </Text>
+              <Text variant="label" numberOfLines={1} style={styles.rowName}>
+                {p.name}
+              </Text>
+            </View>
+          ))}
+          {more > 0 ? (
+            <Text variant="label" color={light.inkSoft}>
+              and {WORDS[more]?.toLowerCase() ?? more} more
+            </Text>
+          ) : null}
         </View>
       </Animated.View>
     </Tone>
@@ -640,7 +634,6 @@ function Words({ s, at, top, bottom, title, body }: { s: SharedValue<number>; at
   );
 }
 
-const NOTCH = 10;
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   globe: { position: 'absolute' },
@@ -690,34 +683,18 @@ const styles = StyleSheet.create({
   window: { position: 'absolute', overflow: 'hidden', borderColor: skyInk.rim },
   held: { position: 'absolute', left: 0, top: 0 },
   map: { position: 'absolute' },
-  ticket: { position: 'absolute', flexDirection: 'row' },
-  ticketBody: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+  ticket: {
+    position: 'absolute',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 18,
     backgroundColor: isLight ? light.panel : light.canvas,
-    borderTopLeftRadius: 18,
-    borderBottomLeftRadius: 18,
-    borderTopRightRadius: NOTCH,
-    borderBottomRightRadius: NOTCH,
-    boxShadow: shadows.card,
+    borderWidth: isLight ? StyleSheet.hairlineWidth : 0,
+    borderColor: light.line,
+    boxShadow: isLight ? 'none' : shadows.card,
   },
-  ticketStub: {
-    width: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    backgroundColor: isLight ? light.panel : light.canvas,
-    borderTopLeftRadius: NOTCH,
-    borderBottomLeftRadius: NOTCH,
-    borderTopRightRadius: 18,
-    borderBottomRightRadius: 18,
-    boxShadow: shadows.card,
-  },
-  tear: { position: 'absolute', left: 0, top: NOTCH + 2, bottom: NOTCH + 2, width: 1.5, gap: 4, overflow: 'hidden' },
-  dash: { width: 1.5, height: 5, backgroundColor: light.lineStrong },
-  count: { fontFamily: fonts.display, fontSize: 26, lineHeight: 30, letterSpacing: -0.8, color: light.ink },
-  rows: { marginTop: 6, gap: 3 },
+  ticketHead: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  rows: { marginTop: 8, gap: 4 },
   row: { flexDirection: 'row', gap: 8 },
   time: { width: 62 },
   rowName: { flex: 1 },

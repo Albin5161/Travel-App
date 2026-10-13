@@ -33,6 +33,7 @@ import { ApiFailure } from '@/lib/api';
 import { platformOfLink, track } from '@/lib/analytics';
 import { CHECK_AS_LIST_FROM, lengthLabel, readLink } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
+import { useOffline } from '@/lib/online';
 import { sound } from '@/lib/sound';
 import { CARD_IN, CREDIT_IN, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { parseLink } from '@/server/links';
@@ -134,6 +135,7 @@ export default function Analysing() {
 function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   const { dispatch } = useTrips();
   const insets = useSafeAreaInsets();
+  const offline = useOffline();
   const { width: W } = useWindowDimensions();
   // Whether whoever pasted is still here: leaving (Keep browsing, or back) lets the reading finish
   // and wait on Home; the ✕ stops it.
@@ -308,7 +310,12 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
             </Text>
           ) : null}
         </View>
-        {phase === 'reading' && script.expect ? (
+        {phase === 'reading' && offline ? (
+          // Said here, while it's waiting, rather than only when the read gives up.
+          <Text variant="label" color={skyInk.strong} style={styles.expect}>
+            You’re offline. This needs the internet to finish.
+          </Text>
+        ) : phase === 'reading' && script.expect ? (
           <Text variant="label" color={skyInk.soft} style={styles.expect}>
             {script.late && elapsed >= script.late.after ? script.late.text : script.expect}
           </Text>

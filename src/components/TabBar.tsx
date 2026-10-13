@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { OfflineNote } from '@/components/OfflineNote';
 import { Glass } from '@/components/sky/Glass';
 import { haptic } from '@/lib/haptics';
 import { DURATION, EASE_OUT, SPRING_SETTLE } from '@/lib/motion';
@@ -54,6 +55,7 @@ export function TabBar({ state, navigation }: TabBarProps) {
   ));
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
+      <OfflineNote />
       {sky ? (
         <Glass blur tint={SKY[phase].glass} radius={30} style={styles.barSky}>
           {tabs}

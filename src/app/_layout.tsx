@@ -88,6 +88,7 @@ export default function RootLayout() {
             {/* Questions before a plan: its own back handling steps through them, so no edge swipe. */}
             <Stack.Screen name="credits" />
             <Stack.Screen name="auth" options={{ animation: 'none' }} />
+            <Stack.Screen name="signin" options={{ animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="search" options={{ animation: 'fade' }} />
             <Stack.Screen name="privacy" />
             <Stack.Screen name="terms" />

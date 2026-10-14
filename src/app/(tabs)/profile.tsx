@@ -375,10 +375,10 @@ function BackupSection() {
   }
   const when = status === 'syncing' ? 'Backing up…' : backedUpAt ? `Backed up ${ago(backedUpAt)}` : 'Backed up';
   return (
-    <Section title="Backup" footer={error ?? 'Signing out keeps everything on this phone. Your backup stays with your Google account.'}>
-      <Row icon="cloud" label={account.name ?? 'Signed in'} detail={account.email} value={when} />
+    <Section title="Backup" footer={error ?? 'Signing out keeps everything on this phone, and asks for your email again. Your backup stays with your account.'}>
+      <Row icon="cloud" label={account.name ?? account.email} detail={account.name ? account.email : undefined} value={when} />
       {confirming ? (
-        <Row icon="log-out" label="Sign out of Google?" detail="Shared trips on this phone stop updating until you sign in again">
+        <Row icon="log-out" label="Sign out?" detail="You’ll be asked for your email to come back in">
           <PressableScale
             onPress={() => {
               haptic.light();

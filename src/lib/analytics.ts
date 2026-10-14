@@ -7,6 +7,7 @@
 import { useSegments } from 'expo-router';
 import type PostHog from 'posthog-react-native';
 import { useEffect } from 'react';
+import { LogBox } from 'react-native';
 
 import { deviceStorage } from '@/lib/live/storage';
 import { parseLink } from '@/server/links';
@@ -22,6 +23,10 @@ const ON = !!KEY && !!deviceStorage;
 const LOAD_AFTER_MS = 2500;
 const QUEUE_MAX = 50;
 let client: PostHog | null = null;
+// Counting a step is never worth an alarm: on a weak connection PostHog fails to send and says so
+// as a red error in development (Expo Go), which looked like the app failing. It tries again later.
+if (__DEV__) LogBox.ignoreLogs(['Error while flushing PostHog']);
+
 let queue: ((c: PostHog) => void)[] = [];
 let loading = false;
 
@@ -75,6 +80,8 @@ export type AnalyticsEvent =
   | 'plan locked'
   | 'location asked'
   | 'paste failed'
+  | 'email code sent'
+  | 'signed in'
   | 'app crashed';
 
 export function track(event: AnalyticsEvent, properties?: Record<string, string | number | boolean>) {

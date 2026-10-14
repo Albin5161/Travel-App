@@ -86,7 +86,8 @@ export function useAccount(): Snapshot {
   return useSyncExternalStore(subscribe, () => snap, () => snap);
 }
 
-const isGoogle = (user: User | null | undefined) => !!user && !user.is_anonymous && !!user.identities?.some((i) => i.provider === 'google');
+/** A real account (email or Google), as against the anonymous one every phone starts with. */
+const isPermanent = (user: User | null | undefined) => !!user && !user.is_anonymous && !!user.email;
 const accountOf = (user: User): Account => ({
   email: user.email ?? '',
   name: (user.user_metadata?.full_name as string | undefined) ?? (user.user_metadata?.name as string | undefined) ?? null,
@@ -185,11 +186,96 @@ async function finishSignIn(code: string) {
   if (!supabase) return;
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) throw error;
-  if (!isGoogle(data.user)) throw new Error('Not a Google account');
-  const account = accountOf(data.user);
+  await signedIn(supabase, data.user);
+}
+
+/** Whoever just signed in (Google or an email code): remembered, then their backup brought in. */
+async function signedIn(supabase: SupabaseClient, user: User | null) {
+  if (!user || !isPermanent(user)) throw new Error('Not signed in');
+  const account = accountOf(user);
   write(ACCOUNT_KEY, JSON.stringify(account));
   set({ account, status: 'idle', error: null });
-  await restore(supabase, data.user.id);
+  await restore(supabase, user.id);
+}
+
+// ── Signing in with an email code ────────────────────────────────────────────────────────────
+
+/**
+ * How the code being waited for will be checked. A new email turns this phone's anonymous account
+ * into an email one (an email change, so it's the same person on their shared trips); an email
+ * that already has an account (signed in on another phone first) signs in to that one instead.
+ */
+let codeFor: { email: string; kind: 'email_change' | 'email' } | null = null;
+
+export type CodeResult = { ok: true } | { ok: false; message: string };
+
+const codeError = (e: unknown): string => {
+  const m = e instanceof Error ? e.message : '';
+  if (/only request this after|rate limit|too many/i.test(m)) return 'Too many codes asked for. Wait a minute and try again.';
+  if (/invalid.*email|unable to validate email/i.test(m)) return 'That doesn’t look like an email address.';
+  if (/error sending|smtp|confirmation email/i.test(m)) return 'Couldn’t send the email just now. Try again in a minute.';
+  if (/expired|invalid/i.test(m)) return 'That code didn’t work. Check it, or ask for a new one.';
+  return 'Couldn’t reach Xplore. Check your connection and try again.';
+};
+
+/**
+ * Gives up on a request after a while. On a weak connection the phone can wait a long time for an
+ * answer that never comes, and the button sat on "Sending…" with nothing said.
+ */
+function inTime<T>(work: Promise<T>, ms = 20_000): Promise<T> {
+  return Promise.race([work, new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timed out')), ms))]);
+}
+
+/** Emails a 6-digit code to sign in with. */
+export function sendEmailCode(email: string): Promise<CodeResult> {
+  return inTime(sendCode(email)).catch((e: unknown) => ({ ok: false as const, message: codeError(e) }));
+}
+
+async function sendCode(email: string): Promise<CodeResult> {
+  const supabase = await getSupabase();
+  if (!supabase) return { ok: false, message: 'Sign-in isn’t available in this version.' };
+  const address = email.trim().toLowerCase();
+  try {
+    await ensureUser();
+    const { data } = await supabase.auth.getUser();
+    if (data.user?.is_anonymous) {
+      const changed = await supabase.auth.updateUser({ email: address });
+      if (!changed.error) {
+        codeFor = { email: address, kind: 'email_change' };
+        return { ok: true };
+      }
+      if (!/already|exists|registered/i.test(changed.error.message) && changed.error.code !== 'email_exists') throw changed.error;
+    }
+    // Someone already has this email: a code to sign in as them.
+    const sent = await supabase.auth.signInWithOtp({ email: address, options: { shouldCreateUser: true } });
+    if (sent.error) throw sent.error;
+    codeFor = { email: address, kind: 'email' };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: codeError(e) };
+  }
+}
+
+/** Checks the code from the email; signed in, the backup comes in (and may restart the app). */
+export function verifyEmailCode(email: string, code: string): Promise<CodeResult> {
+  return inTime(verifyCode(email, code), 30_000).catch((e: unknown) => ({ ok: false as const, message: codeError(e) }));
+}
+
+async function verifyCode(email: string, code: string): Promise<CodeResult> {
+  const supabase = await getSupabase();
+  if (!supabase) return { ok: false, message: 'Sign-in isn’t available in this version.' };
+  const address = email.trim().toLowerCase();
+  const kind = codeFor?.email === address ? codeFor.kind : 'email';
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({ email: address, token: code.trim(), type: kind });
+    if (error) throw error;
+    const user = data.user ?? (await supabase.auth.getUser()).data.user;
+    codeFor = null;
+    await signedIn(supabase, user);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: codeError(e) };
+  }
 }
 
 /** Signs out of Google. Everything saved stays on this phone; the backup stays with the account. */
@@ -262,7 +348,7 @@ export function scheduleBackup() {
     void (async () => {
       const supabase = await getSupabase();
       const { data } = (await supabase?.auth.getUser()) ?? { data: { user: null } };
-      if (!supabase || !isGoogle(data.user)) return;
+      if (!supabase || !isPermanent(data.user)) return;
       await push(supabase, data.user!.id).catch(() => set({ status: 'error', error: 'Couldn’t back up. It will try again.' }));
     })();
   }, 4000);
@@ -278,10 +364,12 @@ export function useAccountSync() {
     let alive = true;
     void (async () => {
       const supabase = await getSupabase();
-      const { data } = (await supabase?.auth.getUser()) ?? { data: { user: null } };
       if (!alive || !supabase) return;
-      if (!isGoogle(data.user)) {
-        // Signed out somewhere else, or the session ran out: say so by showing the sign-in again.
+      const { data, error } = await supabase.auth.getUser();
+      // Offline, or the server didn't answer: still signed in, as far as anyone knows.
+      if (!alive || error) return;
+      if (!isPermanent(data.user)) {
+        // Signed out, or the session ended: the sign-in comes back.
         write(ACCOUNT_KEY, null);
         set({ account: null });
         return;

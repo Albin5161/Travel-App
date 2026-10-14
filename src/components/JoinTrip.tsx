@@ -178,7 +178,8 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: skyInk.strong,
   },
-  code: { fontFamily: fonts.displayBold, fontSize: 24, letterSpacing: 6 },
+  // No letterSpacing on a text field: iOS reuses fields and carried it into others' placeholders.
+  code: { fontFamily: fonts.displayBold, fontSize: 24, fontVariant: ['tabular-nums'] },
   // Until a code is typed, the words in the box are ordinary type, not spaced like a code.
   codeEmpty: { fontFamily: fonts.sans, fontSize: 16, letterSpacing: 0 },
   offline: {

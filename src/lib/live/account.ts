@@ -26,6 +26,8 @@ const TRIPS_KEY = 'xplore.trips.v1';
 const NAME_KEY = 'xplore.name';
 /** Who is signed in, kept so the app knows at start without loading anything. */
 const ACCOUNT_KEY = 'xplore.account';
+/** Codes this phone has already sent off: each works once, and a newer email replaces it anyway. */
+const USED_CODES_KEY = 'xplore.usedCodes';
 /** When a restore last restarted the app, so two phones' copies can never restart it in a loop. */
 const RESTARTED_KEY = 'xplore.backup.restartedAt';
 /**
@@ -50,6 +52,13 @@ const read = (key: string) => {
     return null;
   }
 };
+/** A code this phone has already tried: one copied from an earlier email, so certainly dead. */
+export const usedCode = (code: string) => (read(USED_CODES_KEY) ?? '').split(',').includes(code);
+const rememberCode = (code: string) => {
+  const kept = (read(USED_CODES_KEY) ?? '').split(',').filter((c) => c && c !== code);
+  write(USED_CODES_KEY, [code, ...kept].slice(0, 10).join(','));
+};
+
 const write = (key: string, value: string | null) => {
   try {
     if (value === null) deviceStorage?.removeItem(key);
@@ -172,6 +181,8 @@ async function verifyCode(email: string, code: string): Promise<CodeResult> {
   const kind = codeFor?.email === address ? codeFor.kind : 'email';
   try {
     const { data, error } = await supabase.auth.verifyOtp({ email: address, token: code.trim(), type: kind });
+    // Supabase answered (right or wrong): the code is spent. A dropped connection leaves it to try again.
+    if (!error || error.name !== 'AuthRetryableFetchError') rememberCode(code.trim());
     if (error) throw error;
     const user = data.user ?? (await supabase.auth.getUser()).data.user;
     codeFor = null;

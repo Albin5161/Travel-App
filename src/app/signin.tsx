@@ -1,4 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
+import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -12,7 +13,7 @@ import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
-import { sendEmailCode, verifyEmailCode } from '@/lib/live/account';
+import { sendEmailCode, usedCode, verifyEmailCode } from '@/lib/live/account';
 import { fadeUp } from '@/lib/motion';
 import { useOffline } from '@/lib/online';
 import { skyFill, skyInk } from '@/theme/sky';
@@ -45,6 +46,9 @@ export default function SignIn() {
   const codeInput = useRef<TextInput>(null);
   // Each request to send a code; an answer to an older one (Back, then another email) is ignored.
   const asked = useRef(0);
+  // The code last put in with Paste: once it signs in, it's cleared from the clipboard so a later
+  // sign-in can't paste it again.
+  const pasted = useRef<string | null>(null);
 
   useEffect(() => {
     if (wait <= 0) return;
@@ -96,6 +100,7 @@ export default function SignIn() {
       return;
     }
     haptic.success();
+    if (pasted.current === value) void Clipboard.setStringAsync('').catch(() => {});
     track('signed in', { with: 'email' });
     router.replace('/');
   };
@@ -154,7 +159,7 @@ export default function SignIn() {
                     ? `Sending a 6-digit code to ${email.trim()}…`
                     : unsent
                       ? `We couldn’t send a code to ${email.trim()}.`
-                      : `We sent a 6-digit code to ${email.trim()}. It can take a minute, and may land in spam. Copied it? Tap paste.`}
+                      : `We sent a 6-digit code to ${email.trim()}. It can take a minute, and may land in spam. Copy the code from the newest one and tap paste.`}
               </Text>
             </View>
 
@@ -205,10 +210,15 @@ export default function SignIn() {
                 size={54}
                 onText={(text) => {
                   const found = codeIn(text);
-                  if (found) onCode(found);
-                  else {
+                  if (!found) {
                     setError('No 6-digit code in what you copied.');
                     haptic.error();
+                  } else if (usedCode(found)) {
+                    setError('That code is from an earlier email. Copy the one in the newest email.');
+                    haptic.error();
+                  } else {
+                    pasted.current = found;
+                    onCode(found);
                   }
                 }}
                 onUnreadable={() => setError('Couldn’t read what you copied. Long-press the box to paste.')}
@@ -279,7 +289,9 @@ const styles = StyleSheet.create({
     color: skyInk.strong,
   },
   codeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  code: { fontSize: 24, letterSpacing: 8, textAlign: 'center', fontFamily: fonts.sansSemi },
+  // No letterSpacing on a text field: iOS reuses fields and carried it into others' placeholders
+  // ("Paste a video link" on Home came out spaced). Even-width digits instead.
+  code: { fontSize: 26, textAlign: 'center', fontFamily: fonts.sansSemi, fontVariant: ['tabular-nums'] },
   noteSlot: { minHeight: 20 },
   actions: { gap: 4 },
 });

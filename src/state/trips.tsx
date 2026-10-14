@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNo
 
 import { getPlace, getCity, isLiveCity, isSampleLink } from '@/data/api';
 import { live, refreshed, register, restore, snapshot, type LiveSnapshot } from '@/data/registry';
+import { scheduleBackup } from '@/lib/live/account';
 import { allDistricts, getDistrict } from '@/data/regions';
 import type { Group, GroupState, Member, Vote } from '@/data/group';
 import { fromIso, isoDay, type TripPlan, type TripPrefs } from '@/data/planner';
@@ -725,6 +726,8 @@ function saveTrips(state: State) {
     ),
   };
   write(TRIPS_KEY, JSON.stringify(saved));
+  // Signed in with Google: the same copy goes to the account a moment later (lib/live/account).
+  scheduleBackup();
 }
 
 function read(key: string) {

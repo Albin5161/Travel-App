@@ -13,7 +13,10 @@ import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { allDistricts } from '@/data/regions';
 import { Segmented } from '@/components/Segmented';
+import { GoogleG } from '@/components/GoogleG';
 import { haptic } from '@/lib/haptics';
+import { signInWithGoogle, signOut, useAccount } from '@/lib/live/account';
+import { liveEnabled } from '@/lib/live/client';
 import { MODE, setMode } from '@/theme/mode';
 import { fadeUp, REFLOW } from '@/lib/motion';
 import { useArrivalWatch, type Permissions } from '@/state/arrival';
@@ -133,6 +136,10 @@ export default function Profile() {
       </Animated.View>
 
       <Animated.View entering={ENTER[3]}>
+        <BackupSection />
+      </Animated.View>
+
+      <Animated.View entering={ENTER[3]}>
         <Section
           title="Notifications"
           footer={
@@ -204,7 +211,7 @@ export default function Profile() {
       </Animated.View>
 
       <Animated.View entering={ENTER[5]}>
-        <Section title="About" footer="Everything you save stays on this phone, or in this browser. No account needed.">
+        <Section title="About" footer="Everything you save stays on this phone, or in this browser. No account needed; signing in only adds a backup.">
           <Row icon={MODE === 'light' ? 'sun' : 'moon'} label="Look" detail={lookNote ?? undefined}>
             <View style={styles.look}>
               <Segmented
@@ -329,6 +336,76 @@ function Row({
   ) : (
     body
   );
+}
+
+/**
+ * Signing in with Google, offered here and nowhere else: never needed, and what it gives is said
+ * plainly (your places and plans, back on a new phone). Signed in, it shows who and when it last
+ * backed up, and a way out that keeps everything on the phone.
+ */
+function BackupSection() {
+  const { account, status, backedUpAt, error } = useAccount();
+  const [confirming, setConfirming] = useState(false);
+  if (!liveEnabled) return null;
+  if (!account) {
+    return (
+      <Section
+        title="Backup"
+        footer={error ?? 'Optional. Your saved places and plans are kept with your Google account too, and come back when you sign in on a new phone or browser.'}
+      >
+        <Row icon="cloud" label="Back up with Google" detail="Keep your places if you change phone">
+          <PressableScale
+            onPress={() => {
+              haptic.light();
+              void signInWithGoogle();
+            }}
+            style={styles.pill}
+            disabled={status === 'signing-in'}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Google"
+          >
+            <View style={styles.google}>
+              <GoogleG size={14} />
+              <Text variant="label">{status === 'signing-in' ? 'Opening…' : 'Continue'}</Text>
+            </View>
+          </PressableScale>
+        </Row>
+      </Section>
+    );
+  }
+  const when = status === 'syncing' ? 'Backing up…' : backedUpAt ? `Backed up ${ago(backedUpAt)}` : 'Backed up';
+  return (
+    <Section title="Backup" footer={error ?? 'Signing out keeps everything on this phone. Your backup stays with your Google account.'}>
+      <Row icon="cloud" label={account.name ?? 'Signed in'} detail={account.email} value={when} />
+      {confirming ? (
+        <Row icon="log-out" label="Sign out of Google?" detail="Shared trips on this phone stop updating until you sign in again">
+          <PressableScale
+            onPress={() => {
+              haptic.light();
+              setConfirming(false);
+              void signOut();
+            }}
+            style={styles.pill}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
+          >
+            <Text variant="label">Sign out</Text>
+          </PressableScale>
+        </Row>
+      ) : (
+        <Row icon="log-out" label="Sign out" onPress={() => setConfirming(true)} />
+      )}
+    </Section>
+  );
+}
+
+/** "just now", "5 min ago", "2 h ago", or a date. */
+function ago(at: number) {
+  const min = Math.round((Date.now() - at) / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min} min ago`;
+  if (min < 24 * 60) return `${Math.round(min / 60)} h ago`;
+  return new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 
 /** A district in the home picker: a check on the chosen one, like the planning questions. */
@@ -460,6 +537,7 @@ const styles = StyleSheet.create({
   choice: { paddingLeft: 56, minHeight: 50 },
   check: { width: 20, height: 20, borderRadius: 10, backgroundColor: skyAccent, alignItems: 'center', justifyContent: 'center' },
   granted: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  google: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pill: {
     height: 32,
     paddingHorizontal: 14,

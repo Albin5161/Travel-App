@@ -20,7 +20,9 @@ export function getSupabase(): Promise<SupabaseClient | null> {
     url && key
       ? loadSupabase().then(({ createClient }) =>
           createClient(url, key, {
-            auth: { storage: sessionStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
+            // PKCE: Google sends back a code that only this phone or browser can trade for a session
+            // (lib/live/account), rather than the session itself in the address.
+            auth: { storage: sessionStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false, flowType: 'pkce' },
           }),
         )
       : Promise.resolve(null);

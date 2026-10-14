@@ -13,6 +13,7 @@ import { SkyScreen } from '@/components/sky/SkyScreen';
 import { LaunchIntro } from '@/components/motion/LaunchIntro';
 import { Text } from '@/components/Text';
 import { ScreenViews, track } from '@/lib/analytics';
+import { useAccountSync } from '@/lib/live/account';
 // Imported for its side effect: expo-location needs the geofencing task defined at module scope,
 // before any arrival event can reach the app.
 import '@/lib/arrival';
@@ -38,6 +39,8 @@ const SHEET_BG = SKY.night.stops[1];
 
 export default function RootLayout() {
   const [loaded] = useFonts(firstFonts);
+  // Signed in with Google: what was saved on another phone since this one last looked comes in.
+  useAccountSync();
   const reduced = useReducedMotion();
   const inBrowser = useInBrowser();
   // The opening animation plays once per launch, over home; skipped with Reduce Motion, and when
@@ -84,6 +87,7 @@ export default function RootLayout() {
             <Stack.Screen name="citymap/[id]" options={{ animation: 'fade' }} />
             {/* Questions before a plan: its own back handling steps through them, so no edge swipe. */}
             <Stack.Screen name="credits" />
+            <Stack.Screen name="auth" options={{ animation: 'none' }} />
             <Stack.Screen name="search" options={{ animation: 'fade' }} />
             <Stack.Screen name="privacy" />
             <Stack.Screen name="terms" />

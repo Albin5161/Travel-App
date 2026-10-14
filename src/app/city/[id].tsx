@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
-    paddingTop: 14,
+    paddingTop: 16,
     paddingHorizontal: space.screen,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,

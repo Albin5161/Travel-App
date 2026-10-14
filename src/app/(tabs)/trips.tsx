@@ -101,6 +101,8 @@ function TripCard({ city, plan }: { city: City; plan: TripPlan }) {
   const stops = plan.days.reduce((n, d) => n + d.stops.length, 0);
   const when = plan.days[0]?.date ? formatRange(plan.days[0].date, plan.days.length) : `${plan.days.length} ${plan.days.length === 1 ? 'day' : 'days'}`;
   const where = tripWhen(plan);
+  // A solo trip whose dates have passed is already marked Done on the photo; "Planned" would contradict it.
+  const showStatus = party !== 'solo' || !where.past;
 
   const status: Status =
     party === 'solo'
@@ -125,7 +127,7 @@ function TripCard({ city, plan }: { city: City; plan: TripPlan }) {
     <PressableScale
       onPress={open}
       accessibilityRole="button"
-      accessibilityLabel={`${city.name}, ${when}, ${where.label}, ${stops} stops, ${status.label}`}
+      accessibilityLabel={`${city.name}, ${when}, ${where.label}, ${stops} stops${showStatus ? `, ${status.label}` : ''}`}
     >
       <Glass>
       <View style={styles.photo}>
@@ -160,7 +162,7 @@ function TripCard({ city, plan }: { city: City; plan: TripPlan }) {
         <View style={styles.flex}>
           <DayStrip plan={plan} today={where.today} />
         </View>
-        {party === 'solo' ? <StatusChip status={status} /> : null}
+        {party === 'solo' && showStatus ? <StatusChip status={status} /> : null}
       </View>
 
       {party === 'solo' ? null : (
@@ -215,15 +217,15 @@ function Progress({ value }: { value: number }) {
 }
 
 const styles = StyleSheet.create({
-  title: { marginTop: 6, marginBottom: 18 },
+  title: { marginTop: 8, marginBottom: 16 },
   headRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   joinPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     height: 34,
-    marginTop: 14,
-    paddingHorizontal: 14,
+    marginTop: 16,
+    paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
@@ -240,22 +242,23 @@ const styles = StyleSheet.create({
   when: {
     alignSelf: 'flex-start',
     margin: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 999,
     backgroundColor: 'rgba(0,0,0,0.38)',
   },
   whenNow: { backgroundColor: skyAccent },
   whenText: { fontFamily: fonts.sansSemi, fontSize: 12, lineHeight: 15, color: light.photoInk },
   whenTextNow: { color: colors.night },
-  days: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 2 },
-  daysSolo: { paddingBottom: 14 },
-  city: { fontFamily: fonts.display, fontSize: 30, lineHeight: 36, letterSpacing: -1.1, color: light.photoInk },
-  footer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  days: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 2 },
+  daysSolo: { paddingBottom: 16 },
+  // A name on a photo card: the same size as Home's city tiles.
+  city: { fontFamily: fonts.display, fontSize: 22, lineHeight: 25, letterSpacing: -0.7, color: light.photoInk },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12 },
   people: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   avatars: { flexDirection: 'row' },
   overlap: { marginLeft: -8 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   chipText: { fontFamily: fonts.sansSemi, fontSize: 12, lineHeight: 15 },
   track: { height: 3, backgroundColor: skyInk.line },
   trackFill: { ...StyleSheet.absoluteFill, backgroundColor: skyAccent, transformOrigin: 'left' },
@@ -267,7 +270,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: skyFill.raised,
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  emptyButton: { marginTop: 10 },
+  emptyButton: { marginTop: 8 },
 });

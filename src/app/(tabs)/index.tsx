@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: GUTTER },
   // The strip's lower edge runs under the sticky link box below it (a later sibling, so it draws
   // on top), which is what makes the prints read as tucked behind the field.
-  strip: { marginTop: 14, marginBottom: -STRIP_TUCK },
+  strip: { marginTop: 16, marginBottom: -STRIP_TUCK },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 44 },
   // Centred on the screen, not in the gap left over, whatever the two ends measure.
   hereSlot: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
@@ -485,9 +485,9 @@ const styles = StyleSheet.create({
   herePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     height: 34,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
@@ -532,10 +532,10 @@ const styles = StyleSheet.create({
   frost: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   frostFill: { flex: 1, borderWidth: 0 },
   // Straight on the sky, no card: the caption, the switch and the tiles, like a weather app's list.
-  panelWrap: { marginTop: 16, paddingHorizontal: GUTTER, gap: 14 },
+  panelWrap: { marginTop: 16, paddingHorizontal: GUTTER, gap: 16 },
   panelHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
   empty: { width: '100%', gap: 8, paddingHorizontal: 4, paddingTop: 4, paddingBottom: 8 },
   setHome: { alignSelf: 'flex-start', marginTop: 4 },
   askBody: { gap: 12 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: GAP, rowGap: 18 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: GAP, rowGap: 16 },
 });

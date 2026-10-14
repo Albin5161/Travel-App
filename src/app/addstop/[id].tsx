@@ -136,7 +136,7 @@ function AddStopForm() {
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: space.screen, paddingTop: 28 },
-  title: { marginTop: 6, marginBottom: 18 },
+  title: { marginTop: 8, marginBottom: 16 },
   input: {
     paddingHorizontal: 16,
     borderRadius: radii.pane,
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     color: skyInk.strong,
   },
   titleInput: { height: 54, fontFamily: fonts.sansMedium, fontSize: 17 },
-  noteInput: { marginTop: 10, minHeight: 70, paddingTop: 14, textAlignVertical: 'top' },
-  label: { marginTop: 22, marginBottom: 10 },
+  noteInput: { marginTop: 8, minHeight: 70, paddingTop: 16, textAlignVertical: 'top' },
+  label: { marginTop: 24, marginBottom: 8 },
   cta: { marginTop: 28 },
 });

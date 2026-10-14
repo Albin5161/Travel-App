@@ -228,17 +228,17 @@ function Row({
 }
 
 const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: space.screen },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: space.screen },
   back: { width: 44, height: 44, borderRadius: 22 },
   field: { flex: 1, height: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 16, paddingRight: 4 },
   // 16pt: an iPhone zooms the page into any smaller field.
   input: { flex: 1, height: 48, fontFamily: fonts.sans, fontSize: 16, color: skyInk.strong, outlineStyle: 'none' } as object,
   clear: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   body: { paddingHorizontal: space.screen, paddingTop: 20 },
-  section: { gap: 10 },
-  group: { gap: 4, marginBottom: 14 },
-  heading: { marginTop: 10, marginBottom: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 6 },
+  section: { gap: 8 },
+  group: { gap: 4, marginBottom: 16 },
+  heading: { marginTop: 8, marginBottom: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 8 },
   thumb: { width: 48, height: 48, borderRadius: radii.pane, backgroundColor: skyFill.raised },
   thumbIcon: { alignItems: 'center', justifyContent: 'center' },
   rowText: { flex: 1, gap: 2 },

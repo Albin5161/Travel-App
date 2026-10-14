@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   },
   barSky: { flexDirection: 'row', height: 60, boxShadow: '0 10px 30px rgba(4,10,30,0.25)' },
   // Icon and label sit a little high, leaving the foot of the tab to the dot.
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, paddingBottom: 6 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, paddingBottom: 8 },
   label: { fontFamily: fonts.sansMedium, fontSize: 11 },
   dot: { position: 'absolute', bottom: 6, width: 4, height: 4, borderRadius: 2, backgroundColor: light.ink },
   dotSky: { backgroundColor: skyInk.strong },

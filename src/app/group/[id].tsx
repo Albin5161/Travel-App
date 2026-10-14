@@ -301,13 +301,13 @@ export default function GroupScreen() {
 
 const styles = StyleSheet.create({
   topBar: { paddingHorizontal: space.screen, flexDirection: 'row', justifyContent: 'flex-end' },
-  waitNote: { textAlign: 'center', paddingVertical: 10 },
-  head: { paddingHorizontal: 4, gap: 6 },
+  waitNote: { textAlign: 'center', paddingVertical: 8 },
+  head: { paddingHorizontal: 4, gap: 8 },
   title: { marginTop: 2 },
-  people: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18, marginBottom: 16, paddingHorizontal: 4 },
+  people: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, marginBottom: 16, paddingHorizontal: 4 },
   avatars: { flexDirection: 'row' },
   avatarSlot: { width: 40, height: 40 },
-  overlap: { marginLeft: -10 },
+  overlap: { marginLeft: -8 },
   emptySlot: {
     width: 40,
     height: 40,
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   toastWrap: { flex: 1, minHeight: 32, justifyContent: 'center', alignItems: 'flex-start' },
   toast: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: radii.pill,
     backgroundColor: skyFill.raised,
     borderWidth: StyleSheet.hairlineWidth,

@@ -170,6 +170,10 @@ type Props = {
   /** The world the art is drawn in. Defaults to the city world. */
   world?: World;
   palette?: MapPalette;
+  /** Drawn instead of the city's own art, in `world` units (the intro's street map). */
+  layers?: ReactNode;
+  /** Pins as small dots in these colours, numbered when they have a number, instead of photos. */
+  dots?: { fill: string; ink: string };
 };
 
 export function CityMap({
@@ -190,6 +194,8 @@ export function CityMap({
   artChildren,
   world = WORLD,
   palette = light,
+  layers,
+  dots,
 }: Props) {
   const r = maxScale;
 
@@ -244,14 +250,22 @@ export function CityMap({
     <GestureDetector gesture={gesture}>
       <View
         // Past the drawn world, coastal maps continue as sea (it lies west), inland maps as land.
-        style={[styles.root, { width, height, backgroundColor: city.map.coast ? palette.mapSea : palette.mapLand }]}
+        style={[styles.root, { width, height, backgroundColor: city.map.coast && !layers ? palette.mapSea : palette.mapLand }]}
         collapsable={false}
       >
         <Animated.View style={[StyleSheet.absoluteFill, tiltStyle]}>
           <Animated.View style={[styles.world, { width: world.w * r, height: world.h * r }, worldStyle]}>
-            <MapArt art={city.map} r={r} world={world} palette={palette}>
-              {artChildren}
-            </MapArt>
+            {layers ? (
+              <Svg width={world.w * r} height={world.h * r} viewBox={`${world.x0} ${world.y0} ${world.w} ${world.h}`}>
+                <Rect x={world.x0} y={world.y0} width={world.w} height={world.h} fill={palette.mapLand} />
+                {layers}
+                {artChildren}
+              </Svg>
+            ) : (
+              <MapArt art={city.map} r={r} world={world} palette={palette}>
+                {artChildren}
+              </MapArt>
+            )}
           </Animated.View>
         </Animated.View>
         {pins.map((pin, i) => (
@@ -270,6 +284,7 @@ export function CityMap({
             onRevealed={i === pins.length - 1 ? onRevealed : undefined}
             onPress={onPinPress}
             size={pinSize}
+            dots={dots}
           />
         ))}
       </View>
@@ -387,9 +402,10 @@ type PinProps = {
   onRevealed?: () => void;
   onPress?: (id: string) => void;
   size: number;
+  dots?: { fill: string; ink: string };
 };
 
-function MapPinView({ pin, index, camera, width, height, activeId, reveal, revealDelay, revealStagger, onRevealed, onPress, size }: PinProps) {
+function MapPinView({ pin, index, camera, width, height, activeId, reveal, revealDelay, revealStagger, onRevealed, onPress, size, dots }: PinProps) {
   const reduced = useReducedMotion();
   const drop = useSharedValue(reveal ? 0 : 1);
   const selected = useSharedValue(0);
@@ -439,6 +455,22 @@ function MapPinView({ pin, index, camera, width, height, activeId, reveal, revea
     };
   });
 
+  if (dots) {
+    // A dot on the spot, a ring of the map's own dark around it so it holds on any street; once the
+    // day has an order, a numbered disc in its place.
+    const n = pin.number;
+    const d = n ? 20 : 10;
+    return (
+      <Animated.View style={[styles.pin, styles.dotWrap, { width: size, height: size }, style]} pointerEvents="none">
+        <View style={[styles.dotHalo, { width: d + 8, height: d + 8, borderRadius: (d + 8) / 2, backgroundColor: `${dots.ink}55` }]}>
+          <View style={[styles.dot, { width: d, height: d, borderRadius: d / 2, backgroundColor: dots.fill }]}>
+            {n ? <Text style={[styles.dotText, { color: dots.ink }]}>{n}</Text> : null}
+          </View>
+        </View>
+      </Animated.View>
+    );
+  }
+
   return (
     <Animated.View style={[styles.pin, { width: size, height: size }, style]}>
       <Pressable
@@ -480,7 +512,7 @@ const styles = StyleSheet.create({
     right: -6,
     minWidth: 20,
     height: 20,
-    paddingHorizontal: 5,
+    paddingHorizontal: 4,
     borderRadius: 10,
     backgroundColor: light.ink,
     alignItems: 'center',
@@ -489,4 +521,8 @@ const styles = StyleSheet.create({
     borderColor: light.panel,
   },
   badgeText: { fontFamily: fonts.sansSemi, fontSize: 11, color: light.ctaInk, fontVariant: ['tabular-nums'] },
+  dotWrap: { alignItems: 'center', justifyContent: 'center' },
+  dotHalo: { alignItems: 'center', justifyContent: 'center' },
+  dot: { alignItems: 'center', justifyContent: 'center', boxShadow: shadows.pin },
+  dotText: { fontFamily: fonts.sansSemi, fontSize: 11, lineHeight: 13, fontVariant: ['tabular-nums'] },
 });

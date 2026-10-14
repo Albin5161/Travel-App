@@ -13,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 
+import { skyInk, skyOnInk } from '@/theme/sky';
 import { light } from '@/theme/tokens';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -58,10 +59,10 @@ export function SavedTick({ size = 64 }: Props) {
     <View style={{ width: size, height: size }} aria-hidden>
       <Animated.View style={[StyleSheet.absoluteFill, circle]}>
         <Svg width={size} height={size} viewBox="0 0 64 64">
-          <Circle cx={32} cy={32} r={24} fill={light.ink} />
+          <Circle cx={32} cy={32} r={24} fill={skyInk.strong} />
           <AnimatedPath
             d="M23 32.5 L29 38.5 L41 26.5"
-            stroke={light.ctaInk}
+            stroke={skyOnInk}
             strokeWidth={3}
             strokeLinecap="round"
             strokeLinejoin="round"

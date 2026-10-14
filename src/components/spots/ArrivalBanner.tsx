@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     gap: 12,
-    padding: 14,
+    padding: 16,
     borderRadius: 22,
     backgroundColor: skyFill.pane,
     borderWidth: 1,
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  body: { flex: 1, gap: 3 },
+  body: { flex: 1, gap: 4 },
   cta: {
     alignSelf: 'flex-start',
     marginTop: 8,

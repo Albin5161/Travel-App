@@ -79,7 +79,7 @@ export function FromThisToThis({ active, width, height }: { active: boolean; wid
       </View>
       <View style={[styles.note, styles.noteRight, { right: 6, top: H * 0.02 }]} pointerEvents="none">
         <Text style={[styles.noteText, { transform: [{ rotate: '-5deg' }] }]}>…to this</Text>
-        <Svg width={26} height={28} style={{ marginRight: 30, marginTop: -2 }}>
+        <Svg width={26} height={28} style={{ marginRight: 32, marginTop: -2 }}>
           <Path d="M22 2 C 12 4, 8 12, 8 25" stroke={NOTE_INK} strokeWidth={1.6} fill="none" strokeLinecap="round" />
           <Path d="M3 20 L 8 26 L 13 20" stroke={NOTE_INK} strokeWidth={1.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   reelSlot: { position: 'absolute', zIndex: 2 },
   reelCard: { zIndex: 2, backgroundColor: '#1B2230', boxShadow: '0 22px 40px rgba(8,12,26,0.45), 0 4px 10px rgba(8,12,26,0.25)' },
   mapCard: { zIndex: 1, backgroundColor: '#EEF2E6', boxShadow: '0 18px 36px rgba(8,12,26,0.35)' },
-  handle: { position: 'absolute', top: 12, left: 12, right: 10, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  handle: { position: 'absolute', top: 12, left: 12, right: 10, flexDirection: 'row', alignItems: 'center', gap: 4 },
   handleText: { fontFamily: fonts.sansSemi, fontSize: 11.5, color: '#FFFFFF' },
   progress: { position: 'absolute', left: 12, right: 12, bottom: 12, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.35)' },
   progressDone: { width: '62%', height: 3, borderRadius: 2, backgroundColor: '#FFFFFF' },
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     zIndex: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 6,
+    paddingLeft: 8,
     paddingRight: 12,
     height: 32,
     borderRadius: 999,
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 10px 24px rgba(8,12,26,0.3)',
     transform: [{ rotate: '-2deg' }],
   },
-  resultTick: { width: 20, height: 20, borderRadius: 10, backgroundColor: ROUTE, alignItems: 'center', justifyContent: 'center', marginRight: 7 },
+  resultTick: { width: 20, height: 20, borderRadius: 10, backgroundColor: ROUTE, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   resultStrong: { fontFamily: fonts.sansSemi, fontSize: 12.5, color: INK },
   resultSoft: { fontFamily: fonts.sans, fontSize: 12.5, color: '#4A5263' },
 });

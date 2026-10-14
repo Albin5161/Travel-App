@@ -726,7 +726,7 @@ function saveTrips(state: State) {
     ),
   };
   write(TRIPS_KEY, JSON.stringify(saved));
-  // Signed in with Google: the same copy goes to the account a moment later (lib/live/account).
+  // Signed in: the same copy goes to the account a moment later (lib/live/account).
   scheduleBackup();
 }
 

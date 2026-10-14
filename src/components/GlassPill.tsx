@@ -37,5 +37,5 @@ const styles = StyleSheet.create({
     borderColor: colors.rim,
     alignSelf: 'flex-start',
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
 });

@@ -76,9 +76,9 @@ const styles = StyleSheet.create({
     boxShadow: shadows.button,
     overflow: 'hidden',
   },
-  photos: { flexDirection: 'row', height: 104, paddingLeft: 14, paddingTop: 14, alignItems: 'center' },
+  photos: { flexDirection: 'row', height: 104, paddingLeft: 16, paddingTop: 16, alignItems: 'center' },
   photo: { width: 74, height: 84, borderRadius: 14, backgroundColor: skyFill.raised },
-  photoStacked: { marginLeft: -22, borderWidth: 2, borderColor: skyFill.pane },
+  photoStacked: { marginLeft: -24, borderWidth: 2, borderColor: skyFill.pane },
   more: { alignItems: 'center', justifyContent: 'center', backgroundColor: skyFill.pane, width: 48 },
-  body: { padding: 16, paddingTop: 12, gap: 3 },
+  body: { padding: 16, paddingTop: 12, gap: 4 },
 });

@@ -67,9 +67,9 @@ export function RecapCard() {
 const styles = StyleSheet.create({
   card: { marginTop: 4 },
   // Right padding keeps the text clear of the x in the corner.
-  main: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, paddingRight: 44 },
+  main: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 16, paddingRight: 44 },
   thumb: { width: 64, height: 64, borderRadius: radii.pane, backgroundColor: skyFill.pane },
-  text: { flex: 1, gap: 3 },
+  text: { flex: 1, gap: 4 },
   // Top-right, out of the way of the card's own tap: 44pt, as every tap target.
   stop: { position: 'absolute', top: 0, right: 0, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 });

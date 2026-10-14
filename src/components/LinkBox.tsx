@@ -314,18 +314,18 @@ const styles = css.create({
     boxShadow: shadows.cta,
   },
   goSky: { backgroundColor: skyCta, boxShadow: isLight ? 'none' : '0 6px 16px rgba(0,0,0,0.28)' },
-  icon: { width: 20, alignItems: 'center', marginRight: 10 },
+  icon: { width: 20, alignItems: 'center', marginRight: 8 },
   // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },
   // The button rides inside the field here: a long link stops short of it instead of touching it.
-  inputSky: { marginRight: 10 },
+  inputSky: { marginRight: 8 },
   // The row under the field (a hint, or the videos added): air above it, and the same air under it
   // before the card below. With nothing to say it is only that air, not an empty band.
   hintSlot: { paddingTop: 12, paddingBottom: 12, gap: 8 },
   hintRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 36 },
   hint: { flex: 1, marginLeft: 4 },
   chips: { alignItems: 'center', gap: 8, paddingRight: 4 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 7, height: 36, paddingLeft: 12, paddingRight: 6, borderRadius: 18, borderWidth: 1 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 12, paddingRight: 8, borderRadius: 18, borderWidth: 1 },
   chipClose: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   most: { marginLeft: 4 },
 });

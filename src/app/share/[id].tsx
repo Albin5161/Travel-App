@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   actions: { paddingHorizontal: space.screen, gap: 4 },
   note: { textAlign: 'center', marginBottom: 8 },
   savesHead: { textAlign: 'center', marginTop: 12 },
-  saves: { flexDirection: 'row', gap: 10, marginTop: 6 },
+  saves: { flexDirection: 'row', gap: 8, marginTop: 8 },
   save: { flex: 1 },
   // Far off to the left: laid out and drawn (so it can be pictured), never seen.
   offscreen: { position: 'absolute', left: -10000, top: 0, gap: 20 },

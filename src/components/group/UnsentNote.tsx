@@ -40,6 +40,6 @@ export function UnsentNote({ cityId }: { cityId: string }) {
 }
 
 const styles = StyleSheet.create({
-  note: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingLeft: 16, paddingRight: 6, marginBottom: 16 },
+  note: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingLeft: 16, paddingRight: 8, marginBottom: 16 },
   words: { flex: 1, gap: 2 },
 });

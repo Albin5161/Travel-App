@@ -744,16 +744,16 @@ const styles = StyleSheet.create({
   close: { marginLeft: space.screen },
   body: { flex: 1, minHeight: 0, paddingHorizontal: space.screen, paddingTop: 28 },
   // Right padding leaves room for the scanner sitting on the card's bottom-right edge.
-  previewText: { position: 'absolute', left: 18, right: ORB_INSET + 28, bottom: 36, gap: 6 },
+  previewText: { position: 'absolute', left: 18, right: ORB_INSET + 28, bottom: 36, gap: 8 },
   timeline: { position: 'absolute', left: 18, bottom: 14 },
-  sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   // Shrinks to the room left above the button; its list scrolls inside.
-  found: { marginTop: 26, padding: 14, flexGrow: 1, flexShrink: 1, minHeight: 0 },
+  found: { marginTop: 24, padding: 16, flexGrow: 1, flexShrink: 1, minHeight: 0 },
   creditsScroll: { flexShrink: 1 },
   // Down to the card's edge, through its padding. On a short screen it gives up its lower part (the
   // bodies; faces and words are at the top) well before the finds do.
   // Pushed to the foot of the card, whatever room is left above.
-  scene: { marginTop: 'auto', paddingTop: 4, marginBottom: -14, flexShrink: 4, minHeight: 0, overflow: 'hidden' },
+  scene: { marginTop: 'auto', paddingTop: 4, marginBottom: -16, flexShrink: 4, minHeight: 0, overflow: 'hidden' },
   sceneFolded: { maxHeight: 0, marginTop: 0, marginBottom: 0, opacity: 0 },
   sceneFold: {
     transitionProperty: ['maxHeight', 'marginTop', 'marginBottom', 'opacity'],
@@ -775,7 +775,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: radii.pane,
     backgroundColor: skyFill.pane,
@@ -796,7 +796,7 @@ const styles = StyleSheet.create({
   statusText: { flexShrink: 1 },
   scanner: { position: 'absolute', pointerEvents: 'none' },
   missing: { opacity: 0.45 },
-  expect: { paddingTop: 10 },
+  expect: { paddingTop: 8 },
   // An Instagram reel before anything of it is known: the card's shape, its platform's mark faint in it.
   blankCard: { overflow: 'hidden', borderRadius: radii.card, backgroundColor: colors.basalt },
   blankMark: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', paddingBottom: 40, opacity: 0.35 },
@@ -812,5 +812,5 @@ const styles = StyleSheet.create({
     backgroundColor: skyFill.raised,
     marginBottom: 4,
   },
-  failedActions: { gap: 10 },
+  failedActions: { gap: 8 },
 });

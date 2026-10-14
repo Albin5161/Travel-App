@@ -61,9 +61,9 @@ export function JoinWelcome({ ownerName, cityName, stops, days, onStart, onDismi
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 16 },
-  card: { padding: 20, gap: 6 },
+  card: { padding: 20, gap: 8 },
   title: { marginBottom: 8 },
-  steps: { gap: 14, marginVertical: 10 },
+  steps: { gap: 16, marginVertical: 8 },
   step: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   icon: {
     width: 34,

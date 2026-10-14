@@ -173,7 +173,7 @@ function roadFor(width: number) {
 const styles = StyleSheet.create({
   card: {
     padding: PAD,
-    gap: 14,
+    gap: 16,
     borderRadius: 24,
     backgroundColor: light.panel,
     borderWidth: 1,
@@ -213,5 +213,5 @@ const styles = StyleSheet.create({
     borderColor: light.panel,
     boxShadow: shadows.pin,
   },
-  text: { gap: 3 },
+  text: { gap: 4 },
 });

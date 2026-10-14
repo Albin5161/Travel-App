@@ -109,25 +109,25 @@ export function SafetyScale({ cityName, score, signals, play }: Props) {
 }
 
 const styles = StyleSheet.create({
-  numberRow: { height: 44, marginTop: 6, justifyContent: 'flex-end' },
+  numberRow: { height: 44, marginTop: 8, justifyContent: 'flex-end' },
   number: { fontFamily: fonts.sansSemi, fontSize: 34, lineHeight: 40, color: UP, fontVariant: ['tabular-nums'] },
   track: { height: 10, borderRadius: 5, backgroundColor: skyFill.raised, overflow: 'hidden', marginTop: 4 },
   fill: { height: '100%', borderRadius: 5, overflow: 'hidden' },
-  bands: { height: 20, marginTop: 10 },
+  bands: { height: 20, marginTop: 8 },
   band: { position: 'absolute', top: 0 },
   last: { right: 0 },
   timeline: { marginTop: 24, gap: 12 },
-  signal: { flexDirection: 'row', gap: 14 },
-  when: { width: 44, alignItems: 'center', paddingTop: 14 },
+  signal: { flexDirection: 'row', gap: 16 },
+  when: { width: 44, alignItems: 'center', paddingTop: 16 },
   month: { fontFamily: fonts.sansSemi, fontSize: 17, lineHeight: 22, color: skyInk.strong },
   rail: {
     flex: 1,
     width: StyleSheet.hairlineWidth * 2,
     backgroundColor: skyInk.outline,
-    marginTop: 10,
+    marginTop: 8,
     marginBottom: -8,
   },
-  card: { flex: 1, padding: 16, borderRadius: radii.pane, backgroundColor: skyFill.pane, borderWidth: StyleSheet.hairlineWidth, borderColor: skyInk.line, gap: 10 },
+  card: { flex: 1, padding: 16, borderRadius: radii.pane, backgroundColor: skyFill.pane, borderWidth: StyleSheet.hairlineWidth, borderColor: skyInk.line, gap: 8 },
   tag: { alignSelf: 'flex-end' },
-  basis: { marginTop: 14 },
+  basis: { marginTop: 16 },
 });

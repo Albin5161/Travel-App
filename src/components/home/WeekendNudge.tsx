@@ -37,6 +37,6 @@ export function WeekendNudge({ count, onPress }: { count: number; onPress: () =>
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 18, minHeight: 44 },
-  text: { flex: 1, gap: 3 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 16, paddingHorizontal: 16, minHeight: 44 },
+  text: { flex: 1, gap: 4 },
 });

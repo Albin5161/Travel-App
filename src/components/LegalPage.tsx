@@ -87,8 +87,8 @@ function Linked({ text }: { text: string }) {
 const styles = StyleSheet.create({
   header: { paddingHorizontal: space.screen },
   body: { paddingHorizontal: space.screen, paddingTop: 20, maxWidth: 720, width: '100%', alignSelf: 'center' },
-  updated: { marginTop: 6, marginBottom: 8 },
-  heading: { marginTop: 26, marginBottom: 2 },
+  updated: { marginTop: 8, marginBottom: 8 },
+  heading: { marginTop: 24, marginBottom: 2 },
   para: { marginTop: 8 },
   list: { marginTop: 8, gap: 8 },
   item: { flexDirection: 'row', gap: 8 },

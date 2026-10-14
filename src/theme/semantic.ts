@@ -86,6 +86,11 @@ export const PAPER: SkyLook = {
 // paper. Screens only ever name these, which is how the whole app changes look without any screen
 // knowing there are two. They keep the names they had when the sky was the only look.
 
+// The rule (Albin, 15 Oct 2026): black is the colour of acting and of anything chosen or on: the
+// main button, a chosen chip or tab, a switch that's on, a tick. On the sky that black would vanish,
+// so there it's the strong ink, white. Orange (accent) is only for now and progress: today, a stop
+// reached, the route being drawn, the live dot. It never marks a choice.
+
 export type Semantic = {
   ink: { strong: string; soft: string; faint: string; line: string; rim: string; outline: string; shadow: string };
   fill: { pane: string; raised: string; pressed: string; well: string };

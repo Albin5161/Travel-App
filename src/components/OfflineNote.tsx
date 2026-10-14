@@ -35,6 +35,6 @@ export function OfflineNote() {
 
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', marginBottom: 8 },
-  note: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 14 },
+  note: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 16 },
   words: { flexDirection: 'row', alignItems: 'baseline', gap: 8, flexShrink: 1 },
 });

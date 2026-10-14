@@ -220,13 +220,13 @@ const styles = StyleSheet.create({
   topRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center' },
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
   back: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44, paddingRight: 8, marginLeft: -4 },
-  body: { flex: 1, justifyContent: 'center', gap: 22, paddingVertical: 24 },
+  body: { flex: 1, justifyContent: 'center', gap: 24, paddingVertical: 24 },
   copy: { gap: 12 },
   // The display size every screen title uses, as on the name step before this one.
   title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
   input: {
     height: 54,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     borderRadius: 999,
     backgroundColor: skyFill.raised,
     borderWidth: 1,

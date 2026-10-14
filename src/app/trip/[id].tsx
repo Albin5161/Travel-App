@@ -39,7 +39,7 @@ import { findStay, newSearchSession, searchPlaces, stayFromPick, type Suggestion
 import { terrainOf, type Getting, type LatLng } from '@/lib/geo';
 import { DURATION, EASE_OUT, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { isNearHome, useCityPlaces, useTrips } from '@/state/trips';
-import { skyAccentRim, skyAccentText, skyAccentWash, skyOnInk, skyFill, skyInk } from '@/theme/sky';
+import { skyAccentText, skyOnInk, skyFill, skyInk } from '@/theme/sky';
 import { fonts, radii, space } from '@/theme/tokens';
 
 type Step = 'who' | 'when' | 'dates' | 'days' | 'pace' | 'getting' | 'stay' | 'build';
@@ -777,41 +777,41 @@ const CELL = 44;
 const DAY = 40;
 
 const styles = StyleSheet.create({
-  hint: { marginBottom: 22 },
+  hint: { marginBottom: 24 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: space.screen },
-  progress: { flex: 1, flexDirection: 'row', gap: 6, paddingRight: 8 },
+  progress: { flex: 1, flexDirection: 'row', gap: 8, paddingRight: 8 },
   segment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: skyFill.pressed, overflow: 'hidden' },
   segmentFill: { ...StyleSheet.absoluteFill, backgroundColor: skyInk.strong, transformOrigin: 'left' },
   body: { flex: 1, paddingHorizontal: space.screen, paddingTop: 28 },
-  question: { marginTop: 6, marginBottom: 22 },
+  question: { marginTop: 8, marginBottom: 24 },
   questionWithHint: { marginBottom: 8 },
-  options: { gap: 10 },
+  options: { gap: 8 },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 18,
+    padding: 16,
     borderRadius: radii.glass,
     backgroundColor: skyFill.pane,
     borderWidth: 1,
     borderColor: skyInk.line,
   },
-  // The chosen answer warms: an ember wash and rim, the one warm note on the screen.
-  optionOn: { borderColor: skyAccentRim, backgroundColor: skyAccentWash },
+  // The chosen answer takes a rim in the strong ink, matching its tick.
+  optionOn: { borderColor: skyInk.strong },
   optionText: { flex: 1, gap: 2 },
-  staySearch: { marginTop: 12, padding: 12, gap: 6 },
+  staySearch: { marginTop: 12, padding: 12, gap: 8 },
   stayInput: {
     minHeight: 48,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     borderRadius: radii.pane,
     backgroundColor: skyFill.pane,
     color: skyInk.strong,
     fontFamily: fonts.sans,
     fontSize: 16,
   },
-  stayHit: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingHorizontal: 6, borderRadius: radii.pane },
+  stayHit: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingHorizontal: 8, borderRadius: radii.pane },
   footer: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },
-  calendar: { gap: 6 },
+  calendar: { gap: 8 },
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 4 },
   monthStep: { width: CELL, height: CELL, borderRadius: CELL / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: skyFill.pane },
   monthStepOff: { opacity: 0.35 },
@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
   // Can't be picked, and looks it: well back from the days that can.
   dayOff: { opacity: 0.4 },
   build: { flex: 1, paddingHorizontal: space.screen, paddingTop: 28 },
-  buildCard: { paddingTop: 14, paddingHorizontal: 14, alignItems: 'center' },
+  buildCard: { paddingTop: 16, paddingHorizontal: 16, alignItems: 'center' },
   buildScene: { overflow: 'hidden' },
   // A quiet way out for anyone who's seen it: 44pt tall, centred under the card.
   skipTap: { alignSelf: 'center', marginTop: 12 },

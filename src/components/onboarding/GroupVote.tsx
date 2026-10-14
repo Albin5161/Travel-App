@@ -177,7 +177,7 @@ function Note({ t }: { t: SharedValue<number> }) {
 
 const styles = StyleSheet.create({
   card: {
-    padding: 14,
+    padding: 16,
     gap: 12,
     borderRadius: 22,
     backgroundColor: light.panel,
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     borderColor: light.line,
     boxShadow: shadows.card,
   },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   thumb: { width: 48, height: 48, borderRadius: 13, backgroundColor: light.canvasTop },
   headText: { flex: 1, gap: 1 },
   status: { width: 74, height: 26, alignItems: 'flex-end', justifyContent: 'center' },
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     height: 26,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -209,9 +209,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingLeft: 3,
+    paddingLeft: 4,
     paddingRight: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 999,
     backgroundColor: light.canvas,
   },
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 4,
     backgroundColor: light.canvas,
   },
-  typing: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 6 },
+  typing: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 8 },
   typingDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: light.inkSoft },
   noteName: { fontFamily: fonts.sansSemi, color: light.ink },
 });

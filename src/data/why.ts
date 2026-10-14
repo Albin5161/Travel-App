@@ -64,7 +64,7 @@ export function whyDay(plan: TripPlan, day: number): Reason[] {
   if (real.length >= 2 && spread <= COMPACT_KM) {
     out.push({
       lead: 'Close together',
-      text: `All ${real.length} stops are within ${round(spread)} km of each other${here.length ? `, around ${list(here)}` : ''}, so there are no long rides.`,
+      text: `${real.length === 2 ? 'Both' : `All ${real.length}`} stops are within ${round(spread)} km of each other${here.length ? `, around ${list(here)}` : ''}, so there are no long rides.`,
     });
   }
 

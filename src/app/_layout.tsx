@@ -39,7 +39,7 @@ const SHEET_BG = SKY.night.stops[1];
 
 export default function RootLayout() {
   const [loaded] = useFonts(firstFonts);
-  // Signed in with Google: what was saved on another phone since this one last looked comes in.
+  // Signed in: what was saved on another phone since this one last looked comes in.
   useAccountSync();
   const reduced = useReducedMotion();
   const inBrowser = useInBrowser();
@@ -87,7 +87,6 @@ export default function RootLayout() {
             <Stack.Screen name="citymap/[id]" options={{ animation: 'fade' }} />
             {/* Questions before a plan: its own back handling steps through them, so no edge swipe. */}
             <Stack.Screen name="credits" />
-            <Stack.Screen name="auth" options={{ animation: 'none' }} />
             <Stack.Screen name="signin" options={{ animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="search" options={{ animation: 'fade' }} />
             <Stack.Screen name="privacy" />
@@ -187,7 +186,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 }
 
 const crash = StyleSheet.create({
-  fill: { alignItems: 'center', justifyContent: 'center', gap: 10, padding: space.screen },
+  fill: { alignItems: 'center', justifyContent: 'center', gap: 8, padding: space.screen },
   center: { textAlign: 'center' },
-  actions: { alignSelf: 'stretch', marginTop: 18, gap: 4 },
+  actions: { alignSelf: 'stretch', marginTop: 16, gap: 4 },
 });

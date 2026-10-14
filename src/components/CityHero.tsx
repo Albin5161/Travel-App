@@ -128,12 +128,12 @@ const noop = () => {};
 const styles = StyleSheet.create({
   credit: { position: 'absolute', right: 20, maxWidth: '55%' },
   top: { position: 'absolute', left: 16 },
-  block: { position: 'absolute', left: space.screen, right: space.screen, alignItems: 'center', gap: 6 },
+  block: { position: 'absolute', left: space.screen, right: space.screen, alignItems: 'center', gap: 8 },
   name: {
     fontFamily: fonts.display,
-    fontSize: 46,
-    lineHeight: 51,
-    letterSpacing: -1.8,
+    fontSize: 44,
+    lineHeight: 49,
+    letterSpacing: -1.6,
     color: light.photoInk,
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.35)',
@@ -148,9 +148,10 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowRadius: 10,
   },
-  // The count is the news, so it takes Jakarta's weight; the rest of the line stays Geist.
-  accent: { fontFamily: fonts.displayBold, color: '#F2B48A' },
-  ctaSlot: { alignSelf: 'stretch', marginTop: 22 },
+  // The count is the news, so it takes Jakarta's weight; the rest of the line stays Geist. Same
+  // colour as the line: orange is kept for now and progress.
+  accent: { fontFamily: fonts.displayBold },
+  ctaSlot: { alignSelf: 'stretch', marginTop: 24 },
   cta: {
     height: 60,
     borderRadius: 999,

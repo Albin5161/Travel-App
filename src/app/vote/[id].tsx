@@ -20,7 +20,7 @@ import { EASE_OUT } from '@/lib/motion';
 import { useGroupVote } from '@/state/group';
 import { useLiveVote, useUnsent } from '@/state/live';
 import { useTrips } from '@/state/trips';
-import { skyAccentRim, skyAccentWash, skyOnInk, skyFill, skyInk } from '@/theme/sky';
+import { skyOnInk, skyFill, skyInk } from '@/theme/sky';
 import { fonts, radii, space } from '@/theme/tokens';
 
 const web = Platform.OS === 'web';
@@ -217,23 +217,23 @@ function Vote() {
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: space.screen, paddingTop: 28 },
   flex: { flex: 1 },
-  title: { marginTop: 6 },
-  who: { marginTop: 20, gap: 10 },
+  title: { marginTop: 8 },
+  who: { marginTop: 20, gap: 8 },
   whoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    padding: 14,
+    gap: 16,
+    padding: 16,
     borderRadius: radii.glass,
     backgroundColor: skyFill.pane,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.line,
   },
-  voterRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  voterRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   progress: { marginLeft: 'auto' },
   photo: { width: '100%', height: 190, borderRadius: radii.glass, backgroundColor: skyFill.pane },
-  placeName: { marginTop: 14 },
-  section: { marginTop: 18, marginBottom: 8 },
+  placeName: { marginTop: 16 },
+  section: { marginTop: 16, marginBottom: 8 },
   row: { flexDirection: 'row', gap: 8 },
   emojiButton: {
     width: 48,
@@ -245,14 +245,14 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
-  // Chosen, as everywhere on the sky: an ember wash and rim.
-  selected: { borderColor: skyAccentRim, backgroundColor: skyAccentWash },
+  // Chosen, as everywhere: a rim in the strong ink (black, or white on the sky).
+  selected: { borderColor: skyInk.strong },
   emoji: { fontSize: 22, lineHeight: 28 },
   notes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   noteChip: {
     minHeight: 36,
     justifyContent: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     borderRadius: 999,
     backgroundColor: skyFill.raised,
     borderWidth: StyleSheet.hairlineWidth,
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   },
   noteSelected: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
   ownNote: {
-    marginTop: 10,
+    marginTop: 8,
     height: 46,
     paddingHorizontal: 16,
     borderRadius: 999,
@@ -272,9 +272,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: skyInk.strong,
   },
-  cast: { marginTop: 22, gap: 8 },
-  done: { alignItems: 'center', gap: 10, paddingTop: 48 },
+  cast: { marginTop: 24, gap: 8 },
+  done: { alignItems: 'center', gap: 8, paddingTop: 48 },
   center: { textAlign: 'center' },
-  doneActions: { alignSelf: 'stretch', marginTop: 18, gap: 4 },
+  doneActions: { alignSelf: 'stretch', marginTop: 16, gap: 4 },
 });
 

@@ -292,11 +292,11 @@ export function FoundSheet() {
 }
 
 const styles = StyleSheet.create({
-  card: { marginTop: 4, marginBottom: 10, paddingTop: 12, paddingBottom: 4 },
-  heading: { paddingHorizontal: 14, marginBottom: 2 },
+  card: { marginTop: 4, marginBottom: 8, paddingTop: 12, paddingBottom: 4 },
+  heading: { paddingHorizontal: 16, marginBottom: 2 },
   row: { flexDirection: 'row', alignItems: 'center' },
   grow: { flex: 1 },
-  main: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 14, paddingVertical: 8, minHeight: 64 },
+  main: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 16, paddingVertical: 8, minHeight: 64 },
   thumb: {
     width: 48,
     height: 48,
@@ -321,8 +321,8 @@ const styles = StyleSheet.create({
   actionMain: { backgroundColor: skyCta, borderColor: skyInk.rim },
   remove: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 
-  sheet: { gap: 10 },
-  scene: { alignItems: 'center', overflow: 'hidden', borderRadius: radii.pane, backgroundColor: skyFill.pane, paddingTop: 10 },
+  sheet: { gap: 8 },
+  scene: { alignItems: 'center', overflow: 'hidden', borderRadius: radii.pane, backgroundColor: skyFill.pane, paddingTop: 8 },
   names: { gap: 8, marginTop: 4 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   name: { flexShrink: 1 },

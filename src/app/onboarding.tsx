@@ -1,9 +1,9 @@
-import Feather from '@expo/vector-icons/Feather';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Keyboard, Platform, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { AccessibilityInfo, Keyboard, Platform, Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, {
+  cancelAnimation,
   Extrapolation,
   interpolate,
   useAnimatedStyle,
@@ -13,18 +13,19 @@ import Animated, {
   withDelay,
   withSequence,
   withTiming,
-  type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { INTRO_CTA, INTRO_MS, IntroScene, type PickId } from '@/components/onboarding/IntroScene';
+import { scheduleOnRN } from 'react-native-worklets';
+import { INTRO_MS, IntroScene, PICK } from '@/components/onboarding/IntroScene';
 import { ProfilePreview } from '@/components/onboarding/ProfilePreview';
-import { Button } from '@/components/Button';
 import { PressableScale } from '@/components/PressableScale';
 import { Sky } from '@/components/sky/Sky';
 import { Text } from '@/components/Text';
+import { cities, reels } from '@/data/catalog';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT } from '@/lib/motion';
+import { useIntroOver } from '@/state/inbox';
 import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
 import { skyBar, skyFill, skyInk } from '@/theme/sky';
@@ -36,19 +37,29 @@ const GUTTER = space.screen;
 const ZOOM_EASE = Easing.bezier(0.5, 0, 0.25, 1);
 /** The step after the scene's four beats: your name. */
 const NAME = 4;
+/**
+ * How long each beat stays once it has arrived before the scene moves on by itself, in ms: just
+ * long enough to read its words, so the whole scene plays as one stretch rather than a set of stops.
+ */
+const HOLD_MS = [1500, 900, 1300, 2400];
+/** The trip the scene follows, named on the invite at the end. */
+const PLACE = cities[reels[PICK.reelId]?.cityId]?.name ?? 'Kochi';
 
 /**
- * One scene, then your name. The scene says what Xplore does by doing it once: you pick one of
- * three things you might have saved (a reel, a YouTube video, a photo post), the Earth turns to
- * where it is, its places land on the map, and they become a day (components/onboarding/IntroScene).
- * One tap a step, and each step grows out of the one before.
+ * One scene, then your name. The scene says what Xplore does by doing it once: something you saved
+ * (a reel, a YouTube video, an Instagram post), the Earth turning to where it is, its places landing
+ * on the map, and the day they make (components/onboarding/IntroScene).
+ *
+ * It plays by itself in one stretch once the opening animation is over: no buttons, and no bars
+ * to wait on. Holding a finger down anywhere pauses it, and Skip goes to the name.
+ * It waits while Terms or Privacy is open, and gives each beat longer with VoiceOver or TalkBack on.
  *
  * The screen sits on the sky as it is right now (state/sky), the same sky Home opens on.
  *
  * The name is required: it's how friends see you on a shared plan, so sharing never has to ask.
- * Skip goes straight to it. `?step=name` opens on it (someone who skipped it before the name was
- * required), and `&then=back` returns to where they came from instead of Home. `?again=1` is the
- * scene on its own, from Profile, for watching it again: no name, and it closes back to Profile.
+ * The keyboard's Go finishes it. `?step=name` opens on it (someone who skipped it before the name
+ * was required), and `&then=back` returns to where they came from instead of Home. `?again=1` is
+ * the scene on its own, from Profile, for watching it again: no name, and it closes by itself.
  */
 export default function Onboarding() {
   const { width: W, height: H } = useWindowDimensions();
@@ -58,7 +69,6 @@ export default function Onboarding() {
   const replay = again === '1';
   const first = asked === 'name' && !replay ? NAME : 0;
   const [step, setStep] = useState(first);
-  const [pick, setPick] = useState<PickId>('reel');
   const [name, setName] = useState(state.myName ?? '');
   const skipped = useRef(false);
   const reduced = useReducedMotion();
@@ -71,20 +81,22 @@ export default function Onboarding() {
   const phase = useHomeSky();
   useFocusEffect(lightStatusBar);
 
-  // The room the scene has, between the top bar and the button: measured, since a phone browser's
+  // The room the scene has, between the top bar and the foot: measured, since a phone browser's
   // own bars leave far less than the window height suggests.
   const [topEnd, setTopEnd] = useState(0);
   const [bottomStart, setBottomStart] = useState(0);
   // The scene keeps to that room and is clipped to it: the Earth is far larger than the screen at
-  // both ends of its move, and would otherwise run under the bar and the button.
+  // both ends of its move, and would otherwise run under the bar and the foot.
   const sceneH = bottomStart - topEnd;
   const frame = topEnd && bottomStart ? { top: 8, bottom: sceneH - 12 } : null;
 
   // With Reduce Motion nothing travels: the scene dips out, changes, and comes back.
   const veil = useSharedValue(0);
-  // A tap is never refused while the scene is moving: the move carries on from wherever it is to
-  // the new step, since every part of it reads the one value.
+  // The beat being played, for the timers, which outlive any one render.
+  const at = useRef(first);
   const go = (next: number) => {
+    const from = at.current;
+    at.current = next;
     setStep(next);
     if (reduced) {
       veil.set(withSequence(withTiming(1, { duration: 150 }), withTiming(0, { duration: 220 })));
@@ -92,41 +104,95 @@ export default function Onboarding() {
       nameOn.set(withDelay(150, withTiming(next === NAME ? 1 : 0, { duration: 220 })));
       return;
     }
-    // Forward takes its time; back is quick. Into the map the move eases in and out again: a
-    // gentle start, the fastest part through the middle of the zoom, and a long settle on the map.
-    const ms = next > step ? (INTRO_MS[next] ?? 600) : 600;
-    s.set(withTiming(next, { duration: ms, easing: next === 2 && next > step ? ZOOM_EASE : EASE_OUT }));
+    // Into the map the move eases in and out again: a gentle start, the fastest part through the
+    // middle of the zoom, and a long settle on the map.
+    const ms = INTRO_MS[next] ?? 600;
+    s.set(withTiming(next, { duration: ms, easing: next === 2 && next > from ? ZOOM_EASE : EASE_OUT }));
     nameOn.set(withTiming(next === NAME ? 1 : 0, { duration: next === NAME ? ms : 200, easing: EASE_OUT }));
   };
 
   const named = !!name.trim();
   const finish = () => {
-    if (!named) return;
+    if (!named) {
+      haptic.error();
+      return;
+    }
     haptic.success();
     dispatch({ type: 'setMyName', name });
     dispatch({ type: 'finishOnboarding' });
-    track('onboarding completed', { named: true, skipped: skipped.current, picked: pick });
+    track('onboarding completed', { named: true, skipped: skipped.current });
     if (then === 'back' && router.canGoBack()) router.back();
     else router.replace('/');
   };
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
+
+  // The clock: how far through the beat being played, 0 to 1, over its move in and its hold. It
+  // fills that beat's bar at the top, and when it runs out the next beat comes.
+  const beat = useSharedValue(0);
+  const reader = useScreenReader();
+  const slow = useRef(1);
+  useEffect(() => {
+    slow.current = reader ? 1.6 : 1;
+  }, [reader]);
+  const length = (i: number) => ((i === 0 ? 0 : (INTRO_MS[i] ?? 600)) + (HOLD_MS[i] ?? 3000)) * slow.current;
+  const ended = (i: number) => {
+    if (i !== at.current) return;
+    if (i < NAME - 1) {
+      go(i + 1);
+      play(i + 1, 0);
+    } else if (replay) close();
+    else go(NAME);
+  };
+  const play = (i: number, from: number) => {
+    beat.set(from);
+    beat.set(
+      withTiming(1, { duration: length(i) * (1 - from), easing: Easing.linear }, (done) => {
+        if (done) scheduleOnRN(ended, i);
+      }),
+    );
+  };
+
+  // It plays while the opening animation is over, this screen is in front (not Terms or Privacy),
+  // and no finger is holding it.
+  const [here, setHere] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      setHere(true);
+      return () => setHere(false);
+    }, []),
+  );
+  const introOver = useIntroOver();
+  const [held, setHeld] = useState(false);
+  const onName = step === NAME;
+  const playing = introOver && here && !held && !onName;
+  useEffect(() => {
+    if (!playing) return;
+    play(at.current, beat.get());
+    return () => cancelAnimation(beat);
+    // Only starting and stopping: each beat starts the next itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing]);
+
   // Skipping skips the scene, not the name.
   const skip = () => {
+    cancelAnimation(beat);
     if (replay) return close();
     skipped.current = true;
+    at.current = NAME;
     setStep(NAME);
     gone.set(withTiming(1, { duration: 180 }));
     s.set(withDelay(180, withTiming(NAME, { duration: 1 })));
     nameOn.set(withDelay(180, withTiming(1, { duration: 300, easing: EASE_OUT })));
   };
-  const next = () => {
-    if (step === NAME) return finish();
-    haptic.light();
-    if (step === NAME - 1 && replay) return close();
-    go(step + 1);
-  };
 
-  const onName = step === NAME;
+  // On the name, the keyboard comes up by itself: its Go is how the intro ends.
+  const field = useRef<TextInput>(null);
+  useEffect(() => {
+    if (!onName) return;
+    const t = setTimeout(() => field.current?.focus(), first === NAME ? 300 : 700);
+    return () => clearTimeout(t);
+  }, [onName, first]);
+
   const sceneStyle = useAnimatedStyle(() => ({
     opacity: (1 - gone.get()) * (1 - veil.get()) * interpolate(s.get(), [3.2, 3.8], [1, 0], Extrapolation.CLAMP),
   }));
@@ -135,16 +201,25 @@ export default function Onboarding() {
     transform: [{ translateY: lift.get() + (1 - nameOn.get()) * 16 }],
   }));
   const art = Math.round(Math.min(280, Math.max(170, H * 0.3)));
-  const label = onName ? 'Paste a link of my own' : step === NAME - 1 && replay ? 'Done' : INTRO_CTA[step];
 
   return (
     <Tone value="sky">
     <View style={styles.fill}>
       <Sky phase={phase} shade={0.35} />
 
+      {/* Holding a finger anywhere on the scene pauses it, as on a story. */}
+      {onName ? null : (
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPressIn={() => setHeld(true)}
+          onPressOut={() => setHeld(false)}
+          accessible={false}
+        />
+      )}
+
       {frame ? (
         <Animated.View style={[styles.scene, { top: topEnd, height: sceneH }, sceneStyle]} pointerEvents={onName ? 'none' : 'box-none'}>
-          <IntroScene s={s} step={step} pick={pick} onPick={setPick} width={W} height={sceneH} frame={frame} />
+          <IntroScene s={s} step={step} width={W} height={sceneH} frame={frame} />
         </Animated.View>
       ) : null}
 
@@ -154,17 +229,7 @@ export default function Onboarding() {
         pointerEvents="box-none"
       >
         <View style={styles.topRow}>
-          {/* There's no swiping between steps, so past the first there's a way back. */}
-          {step > 0 && !onName ? (
-            <PressableScale onPress={() => go(step - 1)} style={styles.back} accessibilityRole="button" accessibilityLabel="Back">
-              <Feather name="chevron-left" size={18} color={skyInk.soft} />
-              <Text variant="label" color={skyInk.soft}>
-                Back
-              </Text>
-            </PressableScale>
-          ) : (
-            <Text style={styles.wordmark}>Xplore</Text>
-          )}
+          <Text style={styles.wordmark}>Xplore</Text>
           {onName ? null : (
             <PressableScale
               onPress={skip}
@@ -178,11 +243,6 @@ export default function Onboarding() {
             </PressableScale>
           )}
         </View>
-        <View style={styles.progress} accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: replay ? NAME : NAME + 1, now: step + 1 }}>
-          {Array.from({ length: replay ? NAME : NAME + 1 }, (_, i) => (
-            <Segment key={i} index={i} s={s} />
-          ))}
-        </View>
       </View>
 
       <View style={styles.viewport} pointerEvents="box-none">
@@ -191,7 +251,7 @@ export default function Onboarding() {
           <Tone value="light">
             <View style={[styles.art, { height: art }]}>
               <Fit height={art}>
-                <ProfilePreview active={onName} name={name} />
+                <ProfilePreview active={onName} name={name} place={PLACE} />
               </Fit>
             </View>
           </Tone>
@@ -204,7 +264,12 @@ export default function Onboarding() {
                 How friends see you on a shared plan. Tap the circle for a photo.
               </Text>
             </View>
-            <NameField value={name} onChange={setName} onDone={finish} />
+            <View style={styles.fieldBlock}>
+              <NameField ref={field} value={name} onChange={setName} onDone={finish} />
+              <Text variant="label" color={skyInk.faint} style={styles.fieldHint}>
+                {Platform.OS === 'web' ? 'Press Enter to start.' : 'Tap Go on the keyboard to start.'}
+              </Text>
+            </View>
           </View>
         </Animated.View>
       </View>
@@ -213,13 +278,6 @@ export default function Onboarding() {
         style={[styles.bottom, { paddingBottom: insets.bottom + 20 }]}
         onLayout={(e) => setBottomStart(e.nativeEvent.layout.y)}
       >
-        <Button
-          trailingArrow
-          label={label}
-          onPress={next}
-          disabled={onName && !named}
-          accessibilityHint={onName ? (named ? 'Opens the app, ready for your first link' : 'Add your first name first') : undefined}
-        />
         {/* On every step, wherever someone starts reading. The two links are taps of their own,
             44pt tall, rather than words inside the sentence. Not shown when watching it again. */}
         {replay ? null : (
@@ -247,17 +305,23 @@ export default function Onboarding() {
   );
 }
 
-/** One step of the bar at the top: it fills as the scene moves into that step. */
-function Segment({ index, s }: { index: number; s: SharedValue<number> }) {
-  // Scaled from its left end, not resized: a transform costs no layout.
-  const fill = useAnimatedStyle(() => ({
-    transform: [{ scaleX: interpolate(s.get(), [index - 1, index], [0, 1], Extrapolation.CLAMP) }],
-  }));
-  return (
-    <View style={styles.segment}>
-      <Animated.View style={[styles.segmentFill, index === 0 ? null : fill]} />
-    </View>
-  );
+/**
+ * Whether VoiceOver or TalkBack is on: then nothing moves on by itself. A browser can't tell (the
+ * web's answer is always yes), so there it plays.
+ */
+function useScreenReader() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let alive = true;
+    void AccessibilityInfo.isScreenReaderEnabled().then((v) => alive && setOn(v));
+    const sub = AccessibilityInfo.addEventListener('screenReaderChanged', setOn);
+    return () => {
+      alive = false;
+      sub.remove();
+    };
+  }, []);
+  return on;
 }
 
 /** White status bar over the sky, dark again for the paper screens after. */
@@ -295,15 +359,18 @@ function useKeyboardLift() {
   return lift;
 }
 
-function NameField({ value, onChange, onDone }: { value: string; onChange: (v: string) => void; onDone: () => void }) {
+function NameField({ ref, value, onChange, onDone }: { ref: React.Ref<TextInput>; value: string; onChange: (v: string) => void; onDone: () => void }) {
   const [focused, setFocused] = useState(false);
   return (
     <TextInput
+      ref={ref}
       value={value}
       onChangeText={onChange}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onSubmitEditing={onDone}
+      // Go finishes the intro, and the keyboard stays until it does.
+      submitBehavior="submit"
       placeholder="Your first name"
       placeholderTextColor={skyInk.faint}
       selectionColor={skyInk.strong}
@@ -335,27 +402,23 @@ function Fit({ height, children }: { height: number; children: ReactNode }) {
 const styles = StyleSheet.create({
   consentBlock: { marginTop: 4 },
   consent: { textAlign: 'center' },
-  consentLinks: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: -8, marginBottom: -14 },
+  consentLinks: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: -8, marginBottom: -16 },
   consentTap: { minHeight: 44, minWidth: 44, paddingHorizontal: 8, justifyContent: 'center' },
   consentLink: { color: skyInk.soft, textDecorationLine: 'underline' },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44, paddingRight: 8, marginLeft: -4 },
   fill: { flex: 1 },
   top: { paddingHorizontal: GUTTER, paddingBottom: 4 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
   // Real padding, not hitSlop: the web ignores hitSlop, and a tap target should be 44pt tall.
   skip: { minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' },
-  progress: { flexDirection: 'row', gap: 5, marginTop: 2 },
-  segment: { flex: 1, height: 3, borderRadius: 2, overflow: 'hidden', backgroundColor: skyInk.rim },
-  segmentFill: { height: 3, width: '100%', backgroundColor: skyInk.strong, transformOrigin: 'left' },
   scene: { position: 'absolute', left: 0, right: 0, overflow: 'hidden' },
   viewport: { flex: 1, overflow: 'hidden' },
   namePage: { flex: 1, paddingHorizontal: GUTTER, justifyContent: 'center' },
   art: { alignItems: 'center', justifyContent: 'center' },
-  words: { marginTop: 26, gap: 22 },
+  words: { marginTop: 24, gap: 24 },
   nameInput: {
     height: 54,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     borderRadius: 999,
     backgroundColor: skyFill.raised,
     borderWidth: 1,
@@ -369,5 +432,7 @@ const styles = StyleSheet.create({
   // The display size every screen title uses, so the intro and the app read as one voice.
   title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
   body: { paddingRight: 8 },
+  fieldBlock: { gap: 8 },
+  fieldHint: { paddingHorizontal: 16 },
   bottom: { paddingHorizontal: GUTTER, gap: 16 },
 });

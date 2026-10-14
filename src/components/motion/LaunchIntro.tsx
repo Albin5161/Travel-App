@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   },
   fill: { width: '100%', height: '100%' },
   // Out of the flow, so the logo stays centred with or without it.
-  lineSlot: { position: 'absolute', left: 0, right: 0, top: '50%', marginTop: 70, alignItems: 'center' },
+  lineSlot: { position: 'absolute', left: 0, right: 0, top: '50%', marginTop: 72, alignItems: 'center' },
   // 6.9:1 on white.
   line: { fontFamily: fonts.sansMedium, fontSize: 15, lineHeight: 22, color: INK, opacity: 0.72 },
 });

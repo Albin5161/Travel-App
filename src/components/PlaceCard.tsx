@@ -26,7 +26,7 @@ export function PlaceCard({ place, style, overlay }: Props) {
         <View style={styles.top}>
           <GlassPill onPhoto label={typeLine(place)} />
           {place.photoCredit ? (
-            <Text variant="micro" color="rgba(238,234,227,0.72)" numberOfLines={1} style={styles.credit}>
+            <Text variant="micro" color="rgba(238,234,227,0.86)" numberOfLines={1} style={styles.credit}>
               Photo: {place.photoCredit}
             </Text>
           ) : null}
@@ -49,6 +49,14 @@ export function PlaceCard({ place, style, overlay }: Props) {
 
 const styles = StyleSheet.create({
   top: { position: 'absolute', top: 16, left: 16, right: 16, alignItems: 'flex-start', gap: 8 },
-  credit: { marginLeft: 4, maxWidth: '100%' },
+  // A faint dark backing keeps the credit readable on a bright sky or a white wall.
+  credit: {
+    maxWidth: '100%',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
   content: { position: 'absolute', left: 20, right: 20, bottom: 20, gap: 12 },
 });

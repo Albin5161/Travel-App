@@ -1,4 +1,4 @@
-import { skyAccent, skyCta } from '@/theme/sky';
+import { skyCta } from '@/theme/sky';
 import { colors, light, shadows } from '@/theme/tokens';
 
 // The page the phone apps show their Google map in (GoogleMap.tsx puts it in a web view). It draws
@@ -43,7 +43,7 @@ export function googleMapPage(key: string, mapId: string): string {
   .pin .photo { width: 100%; height: 100%; border-radius: 50%; border: 2.5px solid ${light.panel}; background: ${light.canvasTop}; box-shadow: ${shadows.pin}; overflow: hidden; box-sizing: border-box; }
   .pin img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .pin.been img { filter: grayscale(1); opacity: 0.6; }
-  .pin .tick { position: absolute; bottom: -4px; right: -4px; width: 18px; height: 18px; border-radius: 9px; background: ${skyAccent}; border: 2px solid ${light.panel}; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+  .pin .tick { position: absolute; bottom: -4px; right: -4px; width: 18px; height: 18px; border-radius: 9px; background: ${skyCta}; border: 2px solid ${light.panel}; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
   .pin .number { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: ${light.ink}; border: 2px solid ${light.panel}; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font: 600 11px -apple-system, system-ui, sans-serif; color: ${light.ctaInk}; }
 </style>
 </head>

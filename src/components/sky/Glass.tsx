@@ -80,8 +80,8 @@ const styles = StyleSheet.create({
   label: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingBottom: 10,
+    gap: 8,
+    paddingBottom: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: skyInk.line,
   },

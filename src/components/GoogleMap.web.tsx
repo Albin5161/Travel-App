@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/Text';
 import { arcRoute, type LatLng } from '@/lib/geo';
-import { skyAccent, skyCta } from '@/theme/sky';
+import { skyCta } from '@/theme/sky';
 import { colors, fonts, light, shadows } from '@/theme/tokens';
 
 import type { GoogleMapProps } from './GoogleMap';
@@ -357,7 +357,7 @@ function PhotoPin({ photo, number, active, been }: { photo: ImageSourcePropType;
             width: 18,
             height: 18,
             borderRadius: 9,
-            background: skyAccent,
+            background: skyCta,
             border: `2px solid ${light.panel}`,
             boxSizing: 'border-box',
             display: 'flex',

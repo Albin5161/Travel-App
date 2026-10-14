@@ -7,7 +7,7 @@ import { Text } from '@/components/Text';
 import { allDistricts } from '@/data/regions';
 import { haptic } from '@/lib/haptics';
 import { useTrips } from '@/state/trips';
-import { skyAccent, skyOnInk, skyInk } from '@/theme/sky';
+import { skyOnInk, skyInk } from '@/theme/sky';
 
 /**
  * "Where's home?", asked where it matters (Near Home, distances on the map) rather than assumed:
@@ -65,9 +65,9 @@ export function HomePicker({ visible, onClose }: { visible: boolean; onClose: ()
 }
 
 const styles = StyleSheet.create({
-  head: { gap: 6, paddingBottom: 12 },
+  head: { gap: 8, paddingBottom: 12 },
   list: { maxHeight: 420 },
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingVertical: 8, gap: 12 },
   rowText: { flex: 1, gap: 2 },
-  check: { width: 22, height: 22, borderRadius: 11, backgroundColor: skyAccent, alignItems: 'center', justifyContent: 'center' },
+  check: { width: 22, height: 22, borderRadius: 11, backgroundColor: skyInk.strong, alignItems: 'center', justifyContent: 'center' },
 });

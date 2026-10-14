@@ -40,4 +40,14 @@ Replace these before anything ships.
 
 ## The Earth in the intro
 
-The Earth pictures in `assets/images/intro/` are drawn from Natural Earth's public-domain coastlines.
+The Earth pictures in `assets/images/intro/` (`earth-*`) are made from NASA's Blue Marble: Next
+Generation, October, with topography and bathymetry (NASA Earth Observatory, public domain), by
+`scripts/intro-earth.py`.
+
+## The intro's street maps
+
+`src/data/introMaps.ts` is drawn from OpenStreetMap data, © OpenStreetMap contributors, under the
+Open Database License (openstreetmap.org/copyright), by `scripts/intro-maps.py`. The map shows
+"© OpenStreetMap" in its corner. The land around, for the zoom in from the Earth, is from Natural
+Earth (naturalearthdata.com, public domain), with the Kerala coast and Vembanad Lake from
+OpenStreetMap.

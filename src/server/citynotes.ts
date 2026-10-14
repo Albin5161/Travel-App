@@ -91,7 +91,7 @@ async function fromWikipedia(name: string, state: string, near: LatLng | null): 
       site: 'Wikipedia',
       title: s.title ?? title,
       url: s.content_urls?.desktop?.page ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`,
-      text: s.extract.slice(0, 2500),
+      text: clip(s.extract, 2500),
     };
   }
   return null;
@@ -126,8 +126,16 @@ async function fromWikivoyage(name: string, near: LatLng | null): Promise<Articl
     site: 'Wikivoyage',
     title: page.title,
     url: `https://en.wikivoyage.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
-    text: page.extract.slice(0, 8000),
+    text: clip(page.extract, 8000),
   };
+}
+
+/** Shortens an article to whole sentences, so a cut never leaves a half sentence for the notes to repeat. */
+function clip(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('.\n'), cut.lastIndexOf('\n'));
+  return end > max / 2 ? cut.slice(0, end + 1) : cut;
 }
 
 async function get<T>(url: string | URL): Promise<T | null> {

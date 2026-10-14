@@ -57,5 +57,5 @@ export function SourceLine({ place }: { place: Place }) {
 
 const styles = StyleSheet.create({
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  source: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  source: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 });

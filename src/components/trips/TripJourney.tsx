@@ -138,13 +138,13 @@ export function DayStrip({ plan, today }: { plan: TripPlan; today?: number }) {
 const styles = StyleSheet.create({
   strip: { flexDirection: 'row', alignItems: 'flex-start' },
   dayWrap: { flexDirection: 'row', alignItems: 'flex-start' },
-  day: { alignItems: 'flex-start', gap: 6 },
+  day: { alignItems: 'flex-start', gap: 8 },
   cluster: { flexDirection: 'row' },
   // A dotted road from one day's cluster to the next, at the photos' middle.
   road: {
     width: 14,
     marginTop: THUMB / 2,
-    marginHorizontal: 5,
+    marginHorizontal: 4,
     borderTopWidth: 1.5,
     borderStyle: 'dotted',
     borderColor: skyInk.outline,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     backgroundColor: skyFill.pane,
   },
   thumbToday: { borderColor: skyAccent },
-  overlap: { marginLeft: -10 },
+  overlap: { marginLeft: -8 },
   emptyThumb: { borderStyle: 'dashed', borderColor: skyInk.outline, backgroundColor: 'transparent' },
   moreThumb: { alignItems: 'center', justifyContent: 'center', backgroundColor: skyFill.pressed },
   moreText: { fontFamily: fonts.sansSemi, fontSize: 11, lineHeight: 14, color: skyInk.strong, fontVariant: ['tabular-nums'] },

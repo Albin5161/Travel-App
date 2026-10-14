@@ -167,8 +167,8 @@ const styles = StyleSheet.create({
   stamp: {
     position: 'absolute',
     top: 64,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 999,
   },
   stampKeep: { left: 20, backgroundColor: light.panel, transform: [{ rotate: '-8deg' }] },

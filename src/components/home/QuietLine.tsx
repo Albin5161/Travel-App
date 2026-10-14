@@ -27,7 +27,7 @@ export function QuietLine({ lead, rest, onPress }: { lead: string; rest: string;
 
 const styles = StyleSheet.create({
   // 44pt, as every tap target, though the line itself is small.
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, paddingHorizontal: 6 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, paddingHorizontal: 8 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: skyAccent },
   text: { flex: 1 },
   lead: { fontFamily: fonts.sansSemi },

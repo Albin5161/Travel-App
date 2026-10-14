@@ -154,6 +154,6 @@ const styles = StyleSheet.create({
   },
   below: { position: 'absolute', left: 0, right: 0, top: '100%', height: GIVE },
   // The whole strip takes the pull, not only the 5pt bar drawn in it.
-  handle: { alignItems: 'center', paddingTop: 10, paddingBottom: 14 },
+  handle: { alignItems: 'center', paddingTop: 8, paddingBottom: 16 },
   grabber: { width: 36, height: 5, borderRadius: 2.5, backgroundColor: skyInk.outline },
 });

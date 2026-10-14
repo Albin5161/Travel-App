@@ -45,7 +45,7 @@ export function Quip({ text, size = 56 }: { text: string; size?: number }) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   badge: {
     overflow: 'hidden',
     backgroundColor: skyFill.raised,
@@ -54,8 +54,8 @@ const styles = StyleSheet.create({
   },
   bubble: {
     flexShrink: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: radii.pane,
     backgroundColor: BUBBLE,
   },
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: -5,
     top: '50%',
-    marginTop: -6,
+    marginTop: -8,
     width: 12,
     height: 12,
     backgroundColor: BUBBLE,

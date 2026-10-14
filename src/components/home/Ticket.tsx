@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     boxShadow: shadows.card,
   },
   photo: { width: 76, alignSelf: 'stretch', backgroundColor: light.line },
-  text: { flex: 1, paddingVertical: 14, paddingHorizontal: 14, gap: 2, justifyContent: 'center' },
+  text: { flex: 1, paddingVertical: 16, paddingHorizontal: 16, gap: 2, justifyContent: 'center' },
   // Keeps the words clear of the x in the corner.
   textDismiss: { paddingRight: 40 },
   stub: {

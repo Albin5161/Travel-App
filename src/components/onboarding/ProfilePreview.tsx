@@ -24,7 +24,7 @@ const FRIENDS = [
  * You, and what a friend sees from you: the photo circle with a slow orbit around it, over the
  * invite a friend would get, which fills in with your name as you type it.
  */
-export function ProfilePreview({ active, name }: { active: boolean; name: string }) {
+export function ProfilePreview({ active, name, place = 'Gokarna' }: { active: boolean; name: string; place?: string }) {
   const reduced = useReducedMotion();
   const { state } = useTrips();
   const shown = name.trim();
@@ -89,7 +89,7 @@ export function ProfilePreview({ active, name }: { active: boolean; name: string
         <ProfilePhoto size={PHOTO} />
       </View>
 
-      <View style={styles.invite} accessibilityLabel={`What friends see: ${shown || 'your name'} invited you to plan Gokarna`}>
+      <View style={styles.invite} accessibilityLabel={`What friends see: ${shown || 'your name'} invited you to plan ${place}`}>
         <View style={styles.face}>
           {state.myPhoto ? (
             <Image source={{ uri: state.myPhoto }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
@@ -101,7 +101,7 @@ export function ProfilePreview({ active, name }: { active: boolean; name: string
           <Text variant="label" style={styles.inviteName} color={shown ? light.ink : light.inkFaint}>
             {shown || 'Your name'}
           </Text>
-          {' invited you to plan Gokarna'}
+          {` invited you to plan ${place}`}
         </Text>
       </View>
     </View>
@@ -109,7 +109,7 @@ export function ProfilePreview({ active, name }: { active: boolean; name: string
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'center', gap: 22 },
+  wrap: { alignItems: 'center', gap: 24 },
   friends: { position: 'absolute', top: 0, width: FRIENDS_W, height: RING, alignSelf: 'center' },
   friend: { position: 'absolute', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFFFFF', boxShadow: '0 6px 14px rgba(8,12,26,0.25)' },
   friendInitial: { fontFamily: fonts.displayBold, color: '#1B2230' },
@@ -127,12 +127,12 @@ const styles = StyleSheet.create({
     borderColor: light.canvas,
   },
   invite: {
-    maxWidth: 300,
+    maxWidth: 340,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingLeft: 5,
-    paddingRight: 14,
+    paddingLeft: 4,
+    paddingRight: 16,
     height: 38,
     borderRadius: 999,
     backgroundColor: light.panel,

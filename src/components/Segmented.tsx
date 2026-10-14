@@ -104,5 +104,5 @@ const styles = StyleSheet.create({
   // In the light look the well and the pressed grey are one colour, and the pane vanished into it:
   // there it is the white pane with its small shadow.
   thumbSky: isLight ? { backgroundColor: light.panel, boxShadow: shadows.button } : { backgroundColor: skyFill.pressed, boxShadow: 'none' },
-  option: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  option: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
 });

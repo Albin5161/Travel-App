@@ -75,7 +75,7 @@ const styles = css.create({
     borderRadius: 3,
     backgroundColor: skyInk.outline,
   },
-  row: { flexDirection: 'row', paddingHorizontal: 10, marginTop: 8, height: 52 },
+  row: { flexDirection: 'row', paddingHorizontal: 8, marginTop: 8, height: 52 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1 },
   label: {
     fontFamily: fonts.sansMedium,

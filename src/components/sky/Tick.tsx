@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 import { DURATION, SPRING_SETTLE } from '@/lib/motion';
-import { skyAccent, skyOnInk, skyInk } from '@/theme/sky';
+import { skyOnInk, skyInk } from '@/theme/sky';
 
 export const TICK = 26;
 const RIM = 1.5;
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
     width: TICK,
     height: TICK,
     borderRadius: TICK / 2,
-    backgroundColor: skyAccent,
+    backgroundColor: skyInk.strong,
     alignItems: 'center',
     justifyContent: 'center',
   },

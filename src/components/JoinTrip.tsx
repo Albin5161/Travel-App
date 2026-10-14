@@ -164,12 +164,12 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   top: { paddingHorizontal: space.screen, flexDirection: 'row' },
   body: { flex: 1, paddingHorizontal: space.screen, paddingTop: 20, gap: 20 },
-  title: { marginTop: 6, marginBottom: 8 },
+  title: { marginTop: 8, marginBottom: 8 },
   flex: { flex: 1 },
   field: { gap: 8 },
   input: {
     height: 54,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     borderRadius: radii.pane,
     backgroundColor: skyFill.raised,
     borderWidth: StyleSheet.hairlineWidth,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   codeEmpty: { fontFamily: fonts.sans, fontSize: 16, letterSpacing: 0 },
   offline: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     alignItems: 'flex-start',
     padding: 16,
     borderRadius: radii.glass,

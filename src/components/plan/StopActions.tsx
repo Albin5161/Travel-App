@@ -192,11 +192,11 @@ function Action({
 }
 
 const styles = StyleSheet.create({
-  head: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: skyInk.line },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: skyInk.line },
   thumb: { width: 48, height: 48, borderRadius: 12, backgroundColor: skyFill.raised },
   headText: { flex: 1, gap: 2 },
   actions: { paddingTop: 8 },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, paddingHorizontal: 4, borderRadius: 14 },
+  action: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 12, paddingHorizontal: 4, borderRadius: 14 },
   actionIcon: {
     width: 36,
     height: 36,
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pressed: { backgroundColor: skyFill.pane },
-  swapTop: { paddingTop: 14, gap: 6 },
+  swapTop: { paddingTop: 16, gap: 8 },
   search: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -221,10 +221,10 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, height: 48, fontFamily: fonts.sans, fontSize: 16, color: skyInk.strong, outlineStyle: 'none' } as object,
   clear: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   swapList: { maxHeight: 360 },
-  swapContent: { paddingTop: 8, gap: 6 },
+  swapContent: { paddingTop: 8, gap: 8 },
   swapHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   back: { textDecorationLine: 'underline' },
   backTap: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'flex-end' },
-  candidate: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 6, borderRadius: 14 },
+  candidate: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, borderRadius: 14 },
   candidateThumb: { width: 44, height: 44, borderRadius: 11, backgroundColor: skyFill.raised },
 });

@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   // A 44pt tap round a chip-sized circle, so it lines up with the filters beside it.
-  searchHit: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginHorizontal: -5 },
+  searchHit: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginHorizontal: -4 },
   searchChip: {
     width: 34,
     height: 34,
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
   wherePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     maxWidth: '55%',
     paddingHorizontal: 12,
     height: 32,
@@ -596,14 +596,14 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: skyInk.outline,
   },
-  block: { paddingHorizontal: GUTTER, paddingTop: 14, gap: 4 },
+  block: { paddingHorizontal: GUTTER, paddingTop: 16, gap: 4 },
   chips: { paddingLeft: GUTTER, paddingTop: 2 },
-  sectionHead: { paddingHorizontal: GUTTER, paddingTop: 22, gap: 4 },
+  sectionHead: { paddingHorizontal: GUTTER, paddingTop: 24, gap: 4 },
   routeRow: { gap: 12, paddingHorizontal: GUTTER, paddingTop: 12, paddingBottom: 4 },
   districtHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   foldTap: { flex: 1 },
   foldHead: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48 },
-  cluster: { paddingTop: 10, gap: 2 },
+  cluster: { paddingTop: 8, gap: 2 },
   mapLink: {
     width: 36,
     height: 36,

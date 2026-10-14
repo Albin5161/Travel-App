@@ -62,7 +62,7 @@ import { customStops } from '@/data/custom';
 import { usePlanWriter } from '@/state/live';
 import { useHomeSky } from '@/state/sky';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { deepGlass, SKY, skyAccent, skyAccentText, skyAccentWash, skyOnInk, skyFill, skyInk, withAlpha, skyVeil } from '@/theme/sky';
+import { deepGlass, SKY, skyAccent, skyAccentWash, skyOnInk, skyFill, skyInk, withAlpha, skyVeil } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
 import { colors, fonts, radii, space } from '@/theme/tokens';
 
@@ -862,8 +862,8 @@ function WhyCard({ reasons }: { reasons: Reason[] }) {
   return (
     <View style={styles.why}>
       <View style={styles.whyHead}>
-        <Feather name="compass" size={13} color={skyAccentText} />
-        <Text variant="eyebrow" color={skyAccentText} accessibilityRole="header">
+        <Feather name="compass" size={13} color={skyInk.soft} />
+        <Text variant="eyebrow" color={skyInk.soft} accessibilityRole="header">
           Why this day works
         </Text>
       </View>
@@ -963,11 +963,11 @@ function StopRow({
           {/* Why it's here, now: the plan's own reasoning, so it never reads as a random list. */}
           {why ? (
             <Text variant="label" color={skyInk.faint} numberOfLines={2} style={styles.stopWhy}>
-              {stop.suggested ? <Text variant="label" color={skyAccentText}>Suggested · </Text> : null}
+              {stop.suggested ? <Text variant="label" color={skyInk.soft}>Suggested · </Text> : null}
               {why}
             </Text>
           ) : stop.suggested ? (
-            <Text variant="micro" color={skyAccentText}>
+            <Text variant="micro" color={skyInk.soft}>
               Suggested · local pick
             </Text>
           ) : null}
@@ -1027,14 +1027,14 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 0,
     borderBottomWidth: 0,
   },
-  title: { marginTop: 6, marginBottom: 14 },
+  title: { marginTop: 8, marginBottom: 16 },
   tools: { flexDirection: 'row', gap: 8 },
   toolSlot: { flex: 1 },
   tool: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
     minHeight: 44,
     paddingHorizontal: 8,
     borderRadius: radii.pill,
@@ -1043,28 +1043,28 @@ const styles = StyleSheet.create({
     borderColor: skyInk.rim,
   },
   toolOn: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
-  note: { marginTop: 10 },
+  note: { marginTop: 8 },
   undo: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'center',
     gap: 8,
     maxWidth: '100%',
-    marginBottom: 10,
+    marginBottom: 8,
     paddingLeft: 16,
-    paddingRight: 6,
+    paddingRight: 8,
     borderRadius: 999,
     backgroundColor: skyVeil(0.72),
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
   },
   undoText: { flexShrink: 1 },
-  undoTap: { minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: 10 },
+  undoTap: { minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: 8 },
   undoAction: { textDecorationLine: 'underline' },
   thin: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 14,
+    marginTop: 16,
     padding: 12,
     borderRadius: radii.pane,
     backgroundColor: skyFill.pane,
@@ -1073,44 +1073,44 @@ const styles = StyleSheet.create({
   },
   thinText: { flex: 1 },
   thinLink: { color: skyInk.strong, textDecorationLine: 'underline' },
-  days: { marginTop: 18, marginHorizontal: -space.screen },
+  days: { marginTop: 16, marginHorizontal: -space.screen },
   daysContent: { paddingHorizontal: space.screen, gap: 8 },
   // The same pill as the sky's chips: frosted until chosen, then solid white.
   dayTab: {
     minHeight: 36,
     justifyContent: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     borderRadius: radii.pill,
     backgroundColor: skyFill.raised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
   },
   dayTabOn: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
-  list: { marginTop: 6 },
+  list: { marginTop: 8 },
   busy: { opacity: 0.4 },
-  daySummary: { marginTop: 14 },
+  daySummary: { marginTop: 16 },
   why: {
     marginTop: 12,
-    padding: 14,
-    gap: 10,
+    padding: 16,
+    gap: 8,
     borderRadius: radii.pane,
     backgroundColor: skyFill.pane,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.line,
   },
-  whyHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  whyRow: { flexDirection: 'row', gap: 10 },
-  whyTick: { marginTop: 3 },
+  whyHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  whyRow: { flexDirection: 'row', gap: 8 },
+  whyTick: { marginTop: 4 },
   whyText: { flex: 1 },
   stopWhy: { marginTop: 2 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   name: { flexShrink: 1 },
-  emptyDay: { marginTop: 14 },
-  offer: { marginTop: 14, padding: 16, gap: 8 },
-  offerActions: { flexDirection: 'row', gap: 10, marginTop: 6 },
+  emptyDay: { marginTop: 16 },
+  offer: { marginTop: 16, padding: 16, gap: 8 },
+  offerActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
   offerButton: { flex: 1 },
-  partHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 20, marginBottom: 10 },
-  stop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  partHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 20, marginBottom: 8 },
+  stop: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
   stopMainSlot: { flex: 1 },
   stopMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   glow: { position: 'absolute', left: -10, right: -10, top: 0, bottom: 0, borderRadius: radii.pane, backgroundColor: skyAccentWash },
@@ -1127,7 +1127,7 @@ const styles = StyleSheet.create({
   stopNumberText: { fontFamily: fonts.sansSemi, fontSize: 12, color: skyOnInk, fontVariant: ['tabular-nums'] },
   thumb: { width: 56, height: 56, borderRadius: radii.thumb, backgroundColor: skyFill.pane },
   stopText: { flex: 1, gap: 2 },
-  editTools: { flexDirection: 'row', gap: 6 },
+  editTools: { flexDirection: 'row', gap: 8 },
   small: {
     width: 36,
     height: 36,
@@ -1140,7 +1140,7 @@ const styles = StyleSheet.create({
   },
   smallOn: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
   smallDisabled: { opacity: 0.3 },
-  leg: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 5, paddingVertical: 8 },
+  leg: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 4, paddingVertical: 8 },
   legCompact: { paddingTop: 0 },
   legLine: { width: 2, height: 18, borderRadius: 1, backgroundColor: skyInk.line, marginRight: 4, overflow: 'hidden' },
   legLineOn: { ...StyleSheet.absoluteFill, backgroundColor: skyAccent, transformOrigin: 'top' },
@@ -1152,7 +1152,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 18,
+    marginTop: 16,
     height: 48,
     borderRadius: radii.pill,
     borderWidth: 1,

@@ -176,10 +176,10 @@ function OnGoogle({ info, onOpen }: { info: Info; onOpen: () => void }) {
 
 const styles = StyleSheet.create({
   // A 44pt row: the tick and its words both take the tap.
-  been: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, alignSelf: 'center', marginTop: 8 },
+  been: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, alignSelf: 'center', marginTop: 8 },
   googleWrap: { marginTop: 24 },
-  google: { padding: space.lg, gap: 10 },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  google: { padding: space.lg, gap: 8 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   review: { gap: 4, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: skyInk.line },
   link: { color: skyInk.strong, textDecorationLine: 'underline' },
   more: { marginTop: 4 },

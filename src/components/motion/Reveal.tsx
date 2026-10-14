@@ -67,6 +67,7 @@ export function Reveal({
   const frame = useContext(RevealContext);
   const reduced = useReducedMotion();
   const y = useSharedValue(-1);
+  const h = useSharedValue(0);
   const ownBase = useSharedValue(0);
 
   const animated = useAnimatedStyle(() => {
@@ -74,6 +75,8 @@ export function Reveal({
     const top = frame.base.get() + y.get();
     // Not measured yet: hold it hidden rather than flash it in.
     if (y.get() < 0 || frame.viewH.get() === 0) return { opacity: 0 };
+    // Wholly on the first screen: there from the start, even just above the bottom edge.
+    if (top + h.get() <= frame.viewH.get()) return { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }] };
     const entered = frame.scrollY.get() + frame.viewH.get() - LEAD - top;
     // Near the end there may not be a full DISTANCE left to scroll: the reveal then completes by
     // the bottom, so the last piece is never left half faded.
@@ -85,6 +88,7 @@ export function Reveal({
 
   const onLayout = (e: LayoutChangeEvent) => {
     y.set(e.nativeEvent.layout.y);
+    h.set(e.nativeEvent.layout.height);
     if (group && frame) ownBase.set(frame.base.get() + e.nativeEvent.layout.y);
   };
 

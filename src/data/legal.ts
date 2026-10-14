@@ -48,7 +48,7 @@ export const PRIVACY: LegalDoc = {
         {
           list: [
             'An account ID. The first time you use the app it creates a random ID; when you sign in, your email is attached to it.',
-            'Your email address, to sign you in, and a backup kept with it: your saved places, plans, shared-trip links and the name you chose, so they come back on another phone or browser. Your photo and your location are never included. If you sign in with Google instead, Google also tells me your name and profile picture link.',
+            'Your email address, to sign you in, and a backup kept with it: your saved places, plans, shared-trip links and the name you chose, so they come back on another phone or browser. Your photo and your location are never included.',
             'Links you paste, and what is read from them: a video’s public title, description, caption, location tag, tagged accounts, recent public comments and, sometimes, a machine transcript of what is said. This is about the video, not about you. Results are shared, so anyone who pastes the same link gets the same stored result.',
             'Searches you type when adding a place, and the rough area of the places you are looking at, so nearby results come first.',
             'Which place or city you open, when it came from a link: a place’s page asks Google for its rating, hours and reviews, and a city’s page asks for notes about that town. Neither is linked to you.',
@@ -68,7 +68,7 @@ export const PRIVACY: LegalDoc = {
             'Your location. If you allow it, it is used on your phone to show which town you are in, to estimate drive times and, if you switch arrival alerts on, to notice when you arrive in a district where you have saved spots. It is never sent to me or anyone else.',
             'Your photo. It is never uploaded or shared, even on a shared trip.',
             'Your name, until you share or join a trip.',
-            'Places and plans you have not shared, unless you back up with Google, and each link you have read, for up to 30 days, so pasting it again is instant.',
+            'Places and plans you have not shared (apart from the backup kept with your email), and each link you have read, for up to 30 days, so pasting it again is instant.',
           ],
         },
       ],
@@ -101,7 +101,6 @@ export const PRIVACY: LegalDoc = {
             'PostHog, which receives the usage counts described above, stored in the United States. It is set not to work out your location from your network address or keep that address. See [PostHog’s privacy policy](https://posthog.com/privacy).',
             'Supabase, for the database, signing in and the backup. See [Supabase’s privacy policy](https://supabase.com/privacy).',
             'Gmail (Google), which delivers the sign-in code to your email address. See the [Google Privacy Policy](https://policies.google.com/privacy).',
-            `Google, if you sign in with it: Google tells me your email address, name and profile picture link, and nothing else. See the ${GOOGLE_PRIVACY}.`,
             'Expo (EAS Hosting, which runs on Cloudflare), which serves the web app and its server. See [Expo’s privacy policy](https://expo.dev/privacy).',
             'Photos and thumbnails load directly from Google, YouTube and Instagram, which see your network address as any website would.',
           ],

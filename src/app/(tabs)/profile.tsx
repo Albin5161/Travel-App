@@ -13,15 +13,14 @@ import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { allDistricts } from '@/data/regions';
 import { Segmented } from '@/components/Segmented';
-import { GoogleG } from '@/components/GoogleG';
 import { haptic } from '@/lib/haptics';
-import { signInWithGoogle, signOut, useAccount } from '@/lib/live/account';
+import { signOut, useAccount } from '@/lib/live/account';
 import { liveEnabled } from '@/lib/live/client';
-import { MODE, setMode } from '@/theme/mode';
+import { MODE, isLight, setMode } from '@/theme/mode';
 import { fadeUp, REFLOW } from '@/lib/motion';
 import { useArrivalWatch, type Permissions } from '@/state/arrival';
 import { useSavedSpots, useTrips } from '@/state/trips';
-import { skyAccent, skyOnInk, skyFill, skyInk } from '@/theme/sky';
+import { skyOnInk, skyFill, skyInk } from '@/theme/sky';
 import { fonts, radii, space } from '@/theme/tokens';
 
 type IconName = ComponentProps<typeof Feather>['name'];
@@ -155,10 +154,13 @@ export default function Profile() {
                 haptic.selection();
                 dispatch({ type: 'setNotifyOnArrival', on });
               }}
-              trackColor={{ true: skyAccent, false: skyFill.pressed }}
-              thumbColor="#FFFFFF"
+              // On is the strong ink (black on paper), as every chosen thing is. On the sky that would be
+              // white, and iOS 26 draws the knob white whatever thumbColor says, so it would vanish:
+              // there the track is the 60% white outline instead, still clearly lighter than off.
+              trackColor={{ true: isLight ? skyInk.strong : skyInk.outline, false: skyFill.pressed }}
+              thumbColor={state.notifyOnArrival ? skyOnInk : '#FFFFFF'}
               // Web draws its own green thumb when on unless told otherwise.
-              {...({ activeThumbColor: '#FFFFFF' } as object)}
+              {...({ activeThumbColor: skyOnInk } as object)}
               ios_backgroundColor={skyFill.pressed}
               accessibilityLabel="Arrival alerts"
             />
@@ -211,7 +213,7 @@ export default function Profile() {
       </Animated.View>
 
       <Animated.View entering={ENTER[5]}>
-        <Section title="About" footer="Everything you save stays on this phone, or in this browser. No account needed; signing in only adds a backup.">
+        <Section title="About" footer="Everything you save is kept on this phone, or in this browser, and backed up to your account while you’re signed in.">
           <Row icon={MODE === 'light' ? 'sun' : 'moon'} label="Look" detail={lookNote ?? undefined}>
             <View style={styles.look}>
               <Segmented
@@ -264,7 +266,8 @@ function Section({ title, footer, children }: { title: string; footer?: string; 
       </Text>
       {rows.length ? <Glass style={styles.group}>{rows.map((r, i) => (i === 0 ? r : <Divided key={r.key}>{r}</Divided>))}</Glass> : null}
       {footer ? (
-        <Text variant="data" color={skyInk.faint} style={styles.sectionFooter}>
+        // With no rows, the footer is the section's only content: it sits right under the title.
+        <Text variant="data" color={skyInk.faint} style={[styles.sectionFooter, !rows.length && { marginTop: 0 }]}>
           {footer}
         </Text>
       ) : null}
@@ -339,40 +342,15 @@ function Row({
 }
 
 /**
- * Signing in with Google, offered here and nowhere else: never needed, and what it gives is said
- * plainly (your places and plans, back on a new phone). Signed in, it shows who and when it last
- * backed up, and a way out that keeps everything on the phone.
+ * Who is signed in and when this phone last backed up, and a way out that keeps everything on the
+ * phone.
  */
 function BackupSection() {
   const { account, status, backedUpAt, error } = useAccount();
   const [confirming, setConfirming] = useState(false);
   if (!liveEnabled) return null;
-  if (!account) {
-    return (
-      <Section
-        title="Backup"
-        footer={error ?? 'Optional. Your saved places and plans are kept with your Google account too, and come back when you sign in on a new phone or browser.'}
-      >
-        <Row icon="cloud" label="Back up with Google" detail="Keep your places if you change phone">
-          <PressableScale
-            onPress={() => {
-              haptic.light();
-              void signInWithGoogle();
-            }}
-            style={styles.pill}
-            disabled={status === 'signing-in'}
-            accessibilityRole="button"
-            accessibilityLabel="Continue with Google"
-          >
-            <View style={styles.google}>
-              <GoogleG size={14} />
-              <Text variant="label">{status === 'signing-in' ? 'Opening…' : 'Continue'}</Text>
-            </View>
-          </PressableScale>
-        </Row>
-      </Section>
-    );
-  }
+  // Everyone past the tabs has signed in with their email (app/signin), so there's always an account.
+  if (!account) return null;
   const when = status === 'syncing' ? 'Backing up…' : backedUpAt ? `Backed up ${ago(backedUpAt)}` : 'Backed up';
   return (
     <Section title="Backup" footer={error ?? 'Signing out keeps everything on this phone, and asks for your email again. Your backup stays with your account.'}>
@@ -497,14 +475,14 @@ const styles = StyleSheet.create({
     // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
     fontSize: 16,
     color: skyInk.soft,
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
-  stats: { flexDirection: 'row', gap: 10, paddingHorizontal: GUTTER, marginTop: 18 },
+  stats: { flexDirection: 'row', gap: 8, paddingHorizontal: GUTTER, marginTop: 16 },
   statSlot: { flex: 1 },
   stat: {
     gap: 2,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     borderRadius: radii.glass,
     backgroundColor: skyFill.pane,
     borderWidth: StyleSheet.hairlineWidth,
@@ -518,12 +496,12 @@ const styles = StyleSheet.create({
     color: skyInk.strong,
     fontVariant: ['tabular-nums'],
   },
-  section: { marginTop: 26, paddingHorizontal: GUTTER },
+  section: { marginTop: 24, paddingHorizontal: GUTTER },
   sectionTitle: { marginLeft: 4, marginBottom: 8 },
   sectionFooter: { marginTop: 8, marginHorizontal: 4, lineHeight: 18 },
   group: {},
-  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: skyInk.line, marginLeft: 56, marginRight: 14 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 10, paddingHorizontal: 14 },
+  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: skyInk.line, marginLeft: 56, marginRight: 16 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 8, paddingHorizontal: 16 },
   dimmed: { opacity: 0.45 },
   icon: {
     width: 30,
@@ -535,12 +513,11 @@ const styles = StyleSheet.create({
   },
   rowText: { flex: 1, gap: 1 },
   choice: { paddingLeft: 56, minHeight: 50 },
-  check: { width: 20, height: 20, borderRadius: 10, backgroundColor: skyAccent, alignItems: 'center', justifyContent: 'center' },
+  check: { width: 20, height: 20, borderRadius: 10, backgroundColor: skyInk.strong, alignItems: 'center', justifyContent: 'center' },
   granted: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  google: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pill: {
     height: 32,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: skyInk.outline,

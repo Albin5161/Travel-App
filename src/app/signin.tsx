@@ -6,6 +6,7 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { PasteButton } from '@/components/PasteButton';
 import { PressableScale } from '@/components/PressableScale';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
@@ -21,6 +22,8 @@ const CODE_LENGTH = 6;
 /** How long before another code can be asked for: Supabase refuses sooner anyway. */
 const RESEND_AFTER = 60;
 const looksLikeEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.trim());
+/** The code in whatever was copied: the code alone, or the email's whole text around it. */
+const codeIn = (text: string) => text.match(/(^|\D)(\d{6})(\D|$)/)?.[2] ?? (/^\d{6}$/.test(text.replace(/\s/g, '')) ? text.replace(/\s/g, '') : null);
 
 /**
  * Signing in with an email: the step after your name, and asked of everyone (Albin's choice for
@@ -35,9 +38,13 @@ export default function SignIn() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [unsent, setUnsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wait, setWait] = useState(0);
   const codeInput = useRef<TextInput>(null);
+  // Each request to send a code; an answer to an older one (Back, then another email) is ignored.
+  const asked = useRef(0);
 
   useEffect(() => {
     if (wait <= 0) return;
@@ -45,27 +52,36 @@ export default function SignIn() {
     return () => clearTimeout(t);
   }, [wait]);
 
-  const send = async () => {
+  // The code screen comes straight away: Supabase only answers once Gmail has sent the email, a
+  // few seconds, and the person would otherwise watch "Sending…". A failure shows on the code screen.
+  const send = () => {
     if (!looksLikeEmail(email)) {
       setError('That doesn’t look like an email address.');
       haptic.error();
       return;
     }
-    setBusy(true);
-    setError(null);
-    const sent = await sendEmailCode(email);
-    setBusy(false);
-    if (!sent.ok) {
-      setError(sent.message);
-      haptic.error();
-      return;
-    }
+    if (sending) return;
+    const ask = ++asked.current;
     haptic.light();
-    track('email code sent');
+    setError(null);
     setCode('');
     setWait(RESEND_AFTER);
+    setSending(true);
+    setUnsent(false);
     setStage('code');
     setTimeout(() => codeInput.current?.focus(), 350);
+    void sendEmailCode(email).then((sent) => {
+      if (ask !== asked.current) return;
+      setSending(false);
+      if (!sent.ok) {
+        setUnsent(true);
+        setError(sent.message);
+        setWait(0);
+        haptic.error();
+        return;
+      }
+      track('email code sent');
+    });
   };
 
   const check = async (value = code) => {
@@ -109,6 +125,8 @@ export default function SignIn() {
             ) : (
               <PressableScale
                 onPress={() => {
+                  asked.current++;
+                  setSending(false);
                   setStage('email');
                   setError(null);
                 }}
@@ -132,18 +150,24 @@ export default function SignIn() {
               <Text variant="body">
                 {onEmail
                   ? 'We’ll send you a 6-digit code. No password. Your places and plans are backed up to it, so they’re safe if you change phone.'
-                  : `We sent a 6-digit code to ${email.trim()}. It can take a minute, and may land in spam.`}
+                  : sending
+                    ? `Sending a 6-digit code to ${email.trim()}…`
+                    : unsent
+                      ? `We couldn’t send a code to ${email.trim()}.`
+                      : `We sent a 6-digit code to ${email.trim()}. It can take a minute, and may land in spam. Copied it? Tap paste.`}
               </Text>
             </View>
 
             {onEmail ? (
+              // Its own key: iOS keeps the code field's letter spacing on a reused field after Back.
               <TextInput
+                key="email"
                 value={email}
                 onChangeText={(t) => {
                   setEmail(t);
                   setError(null);
                 }}
-                onSubmitEditing={() => void send()}
+                onSubmitEditing={send}
                 placeholder="you@example.com"
                 placeholderTextColor={skyInk.faint}
                 selectionColor={skyInk.strong}
@@ -158,7 +182,9 @@ export default function SignIn() {
                 accessibilityLabel="Your email address"
               />
             ) : (
+              <View style={styles.codeRow}>
               <TextInput
+                key="code"
                 ref={codeInput}
                 value={code}
                 onChangeText={onCode}
@@ -169,9 +195,25 @@ export default function SignIn() {
                 autoComplete="one-time-code"
                 textContentType="oneTimeCode"
                 maxLength={CODE_LENGTH}
-                style={[styles.input, styles.code]}
+                style={[styles.input, styles.code, styles.fill]}
                 accessibilityLabel={`The ${CODE_LENGTH}-digit code from the email`}
               />
+              {/* Gmail can't fill the code in the way Apple's Mail can: copy it there, paste it here. */}
+              <PasteButton
+                shape="circle"
+                quiet
+                size={54}
+                onText={(text) => {
+                  const found = codeIn(text);
+                  if (found) onCode(found);
+                  else {
+                    setError('No 6-digit code in what you copied.');
+                    haptic.error();
+                  }
+                }}
+                onUnreadable={() => setError('Couldn’t read what you copied. Long-press the box to paste.')}
+              />
+              </View>
             )}
 
             <View style={styles.noteSlot}>
@@ -187,9 +229,9 @@ export default function SignIn() {
             {onEmail ? (
               <Button
                 trailingArrow
-                label={busy ? 'Sending…' : 'Send code'}
-                onPress={() => void send()}
-                disabled={busy || !email.trim()}
+                label="Send code"
+                onPress={send}
+                disabled={!email.trim()}
               />
             ) : (
               <>
@@ -202,8 +244,8 @@ export default function SignIn() {
                 <Button
                   kind="text"
                   label={wait > 0 ? `Send a new code in ${wait}s` : 'Send a new code'}
-                  onPress={() => void send()}
-                  disabled={busy || wait > 0}
+                  onPress={send}
+                  disabled={busy || sending || wait > 0}
                 />
               </>
             )}
@@ -236,6 +278,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: skyInk.strong,
   },
+  codeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   code: { fontSize: 24, letterSpacing: 8, textAlign: 'center', fontFamily: fonts.sansSemi },
   noteSlot: { minHeight: 20 },
   actions: { gap: 4 },

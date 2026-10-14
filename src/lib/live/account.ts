@@ -140,8 +140,9 @@ async function sendCode(email: string): Promise<CodeResult> {
   const address = email.trim().toLowerCase();
   try {
     await ensureUser();
-    const { data } = await supabase.auth.getUser();
-    if (data.user?.is_anonymous) {
+    // The session on the phone says whether this is still the anonymous account: no round trip.
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user.is_anonymous) {
       const changed = await supabase.auth.updateUser({ email: address });
       if (!changed.error) {
         codeFor = { email: address, kind: 'email_change' };

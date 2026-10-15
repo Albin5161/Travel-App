@@ -368,7 +368,7 @@ export interface DayResult {
   ok: boolean;
 }
 
-function step(ctx: DayCtx, w: Walk, i: number, restaurantInDay: boolean, earliest: number, limits: boolean): Walk | null {
+function step(ctx: DayCtx, w: Walk, i: number, restaurantInDay: boolean, earliest: number, limits: boolean, firstWaits = true): Walk | null {
   const first = w.order.length === 0;
   const prev = first ? -1 : w.order[w.order.length - 1];
   const leg = first && !ctx.hasBase ? 0 : ctx.leg(prev, i).minutes;
@@ -391,8 +391,9 @@ function step(ctx: DayCtx, w: Walk, i: number, restaurantInDay: boolean, earlies
     let m = win.extra;
     if (arrive < win.from) {
       const wait = win.from - arrive;
-      // Before the first stop there's nothing to wait through: the day simply starts later.
-      const waiting = first ? 0 : waitCost(wait, off.free, win.meal === DINNER ? DINNER_WAIT : off.wait);
+      // Before the first stop there's nothing to wait through: the day simply starts later. Unless
+      // it mustn't (`firstWaits` false): then the first stop is taken when it's reached.
+      const waiting = first ? (firstWaits ? 0 : Infinity) : waitCost(wait, off.free, win.meal === DINNER ? DINNER_WAIT : off.wait);
       const early = Math.min(off.cap, wait * (off.early ?? off.per)) * firm;
       if (waiting <= early) {
         s = win.from;
@@ -481,13 +482,16 @@ function earliestFor(ctx: DayCtx, set: number[]) {
   return set.some((i) => ctx.kinds[i] === 'sunrise') ? Math.min(pace, ctx.sunrise - 45) : pace;
 }
 
-/** The day in exactly this order, setting out at `depart` (the pace's hour when not given). */
-export function walkOrder(ctx: DayCtx, order: number[], depart?: number): DayResult {
+/**
+ * The day in exactly this order, setting out at `depart` (the pace's hour when not given). With
+ * `firstWaits` false the first stop doesn't hold the day back for its own good time.
+ */
+export function walkOrder(ctx: DayCtx, order: number[], depart?: number, firstWaits = true): DayResult {
   if (order.length === 0) return emptyDay(ctx);
   const earliest = earliestFor(ctx, order);
   const restaurant = order.some((i) => ctx.kinds[i] === 'restaurant');
   let w = start(depart ?? earliest);
-  for (const i of order) w = step(ctx, w, i, restaurant, earliest, false) as Walk;
+  for (const i of order) w = step(ctx, w, i, restaurant, earliest, false, firstWaits) as Walk;
   return finish(ctx, w);
 }
 
@@ -556,7 +560,15 @@ function settle(ctx: DayCtx, d: DayResult, limits: boolean): DayResult {
   return best;
 }
 
-/** Clock times for a day in the order given (the traveller's own, after an edit), nothing held to the pace's limits. */
+/**
+ * Clock times for a day in the order given (the traveller's own, after an edit), nothing held to the
+ * pace's limits. A first stop with a good time late in the day (dinner moved to the top) would hold
+ * the whole day back for it, and every stop after would land at night: a morning sanctuary at 8:50
+ * PM. So the day is also walked with the first stop taken when it's reached, and whichever leaves
+ * the stops nearer their good times wins.
+ */
 export function timeOrder(ctx: DayCtx, order: number[]): DayResult {
-  return settle(ctx, walkOrder(ctx, order), false);
+  const held = settle(ctx, walkOrder(ctx, order), false);
+  const now = settle(ctx, walkOrder(ctx, order, undefined, false), false);
+  return now.mistimed < held.mistimed - 1e-9 ? now : held;
 }

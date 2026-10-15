@@ -207,6 +207,23 @@ test('reshuffle: a different plan that is just as valid, and the same seed is th
   assert.deepEqual(plan(gokarna).days, plan([...gokarna]).days);
 });
 
+test('a dinner place moved to the top does not push the day into the night', () => {
+  // A tester's Kochi day on 15 Oct: Brunton Boatyard moved first put it at 7 PM, then the bird
+  // sanctuary at 8:50 PM and the basilica at 10:40 PM.
+  const day = [
+    P('Mangalavanam Bird Sanctuary', 'sight', 'morning', 90, 9.9894, 76.2737, '', 'Ernakulam'),
+    P('Brunton Boatyard', 'food', 'evening', 90, 9.9667, 76.2425, '', 'Fort Kochi'),
+    P('Santa Cruz Basilica', 'sight', 'afternoon', 30, 9.9634, 76.2424, '', 'Fort Kochi'),
+  ];
+  let p = plan(day, { prefs: prefs({ days: 1, stay: fortKochiStay }) });
+  const brunton = find(p, 'Brunton')!.place.id;
+  while (p.days[0].stops[0].place.id !== brunton) p = reorder(p, 0, brunton, -1);
+  assert.equal(p.days[0].stops[0].place.id, brunton, 'the traveller’s order is kept');
+  assert.ok(find(p, 'Mangalavanam')!.startMinutes < 13 * 60, `the sanctuary at ${find(p, 'Mangalavanam')!.startMinutes}`);
+  const last = p.days[0].stops[p.days[0].stops.length - 1];
+  assert.ok(last.startMinutes + last.place.minutes <= 18 * 60, `the day ends at ${last.startMinutes + last.place.minutes}`);
+});
+
 test('editing still works: reorder, move, remove, lock and typed-in stops keep a timed plan', () => {
   let p = plan(kochi, { prefs: prefs({ days: 2 }) });
   const all = stopsOf(p).length;

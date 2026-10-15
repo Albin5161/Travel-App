@@ -119,39 +119,55 @@ export function whyDay(plan: TripPlan, day: number): Reason[] {
   return out.slice(0, 3);
 }
 
+/** Why this stop is here, at this time: a tag of a word or two, and the full line behind it. */
+export type StopWhy = { tag: string; text: string };
+
 /** Why this stop is here, at this time: one short line, or null when there's nothing to add. */
 export function whyStop(plan: TripPlan, day: number, index: number): string | null {
+  return stopWhy(plan, day, index)?.text ?? null;
+}
+
+/**
+ * The same reason as `whyStop`, with a tag to show on the stop itself: testers found a sentence
+ * under every stop too much to read, so the plan shows the tag and the sentence waits for a tap.
+ */
+export function stopWhy(plan: TripPlan, day: number, index: number): StopWhy | null {
   const stops = plan.days[day]?.stops ?? [];
   const s = stops[index];
   if (!s) return null;
   const p = s.place;
   const part = partOf(s.startMinutes);
   const prev = stops[index - 1];
+  const why = (tag: string, text: string): StopWhy => ({ tag, text });
 
   if (s.suggested) {
-    return p.type === 'food' && part === 'evening' ? 'Dinner nearby: the day had no evening meal.' : 'A local pick close to your stops.';
+    return p.type === 'food' && part === 'evening'
+      ? why('Dinner nearby', 'Dinner nearby: the day had no evening meal.')
+      : why('Local pick', 'A local pick close to your stops.');
   }
-  if (isCustom(p)) return `Your own stop, in the ${p.bestTime} as asked.`;
-  if (s.pinned) return 'Locked by you: it stays on this day when you reshuffle.';
+  if (isCustom(p)) return why('Your own stop', `Your own stop, in the ${p.bestTime} as asked.`);
+  if (s.pinned) return why('Locked by you', 'Locked by you: it stays on this day when you reshuffle.');
   // A long wait before it is said, not hidden: it's free time, because nothing saved fills it.
   const waited = prev ? s.startMinutes - (prev.startMinutes + prev.place.minutes) - (s.legBefore?.minutes ?? 0) : 0;
   const free = waited >= FREE_TIME_MIN ? ` The ${formatDuration(Math.round(waited / 15) * 15)} before it are free: nothing you saved fits there.` : '';
   // What the clock says first: a sunset caught, a meal at its hour.
-  if (atSunset(s, sunsetOn(plan, day))) return `Timed for the sunset, about ${formatClock(sunsetOn(plan, day))}.${free}`;
+  if (atSunset(s, sunsetOn(plan, day))) return why('For the sunset', `Timed for the sunset, about ${formatClock(sunsetOn(plan, day))}.${free}`);
   if (p.type === 'food') {
-    if (within(s.startMinutes, LUNCH_WINDOW)) return index === 0 ? 'Lunch, to start the day.' : 'Lunch, between the morning and the afternoon.';
-    if (within(s.startMinutes, DINNER_WINDOW)) return `Dinner, to end the day.${free}`;
-    if (s.startMinutes < 10 * 60 && index === 0) return 'Breakfast, to start the day.';
-    return kindOf(p) === 'cafe' ? 'A break between stops.' : null;
+    if (within(s.startMinutes, LUNCH_WINDOW)) return why('Lunch', index === 0 ? 'Lunch, to start the day.' : 'Lunch, between the morning and the afternoon.');
+    if (within(s.startMinutes, DINNER_WINDOW)) return why('Dinner', `Dinner, to end the day.${free}`);
+    if (s.startMinutes < 10 * 60 && index === 0) return why('Breakfast', 'Breakfast, to start the day.');
+    return kindOf(p) === 'cafe' ? why('A break', 'A break between stops.') : null;
   }
   // Away from its best part of the day: it fitted the rest of the day better here, or was moved by hand.
-  if (RANK[p.bestTime] !== RANK[part]) return `Best in the ${p.bestTime}; it’s here to keep the day’s route short and without long waits.`;
+  if (RANK[p.bestTime] !== RANK[part]) return why(`Better in the ${p.bestTime}`, `Best in the ${p.bestTime}; it’s here to keep the day’s route short and without long waits.`);
   if (index === 0) {
-    if (plan.prefs.stay && (s.legBefore?.minutes ?? 99) <= 15) return `First: close to ${plan.prefs.stay.name}.`;
-    return `Starts the day: the ${part} is its best time.`;
+    if (plan.prefs.stay && (s.legBefore?.minutes ?? 99) <= 15) return why('Near your stay', `First: close to ${plan.prefs.stay.name}.`);
+    return why('At its best time', `Starts the day: the ${part} is its best time.`);
   }
-  if (p.bestTime === 'evening') return index === stops.length - 1 ? 'Ends the day: the evening is its best time.' : 'Saved for the evening, its best time.';
-  if (prev && (s.legBefore?.minutes ?? 99) <= 15) return `A short hop from ${prev.place.name}.`;
+  if (p.bestTime === 'evening') {
+    return why('At its best time', index === stops.length - 1 ? 'Ends the day: the evening is its best time.' : 'Saved for the evening, its best time.');
+  }
+  if (prev && (s.legBefore?.minutes ?? 99) <= 15) return why('Short hop', `A short hop from ${prev.place.name}.`);
   return null;
 }
 

@@ -55,7 +55,7 @@ import {
 import type { DayPart, Place } from '@/data/types';
 import { prebake, uriOf } from '@/lib/blur';
 import { formatClock, formatDuration, smoothPath, smoothPathStops } from '@/lib/geo';
-import { whyDay, whyStop, type Reason } from '@/data/why';
+import { stopWhy, whyDay, type Reason, type StopWhy } from '@/data/why';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_IN_OUT, FADE_IN, FADE_OUT, fadeUp, REFLOW } from '@/lib/motion';
@@ -568,7 +568,7 @@ export default function PlanScreen() {
                   ) : null}
                   <StopRow
                     stop={stop}
-                    why={whyStop(plan, dayIndex, i)}
+                    why={stopWhy(plan, dayIndex, i)}
                     number={i + 1}
                     index={i}
                     activeId={activeId}
@@ -907,7 +907,7 @@ function StopRow({
   onMore,
 }: {
   stop: TripStop;
-  why: string | null;
+  why: StopWhy | null;
   number: number;
   index: number;
   activeId: SharedValue<string | null>;
@@ -932,6 +932,8 @@ function StopRow({
     glow.set(withDelay(250, withTiming(0, { duration: 1200 })));
   }, [flash, glow]);
   const glowStyle = useAnimatedStyle(() => ({ opacity: glow.get() }));
+  // The full reason, opened from the stop's info button: the stop itself shows only its tag.
+  const [open, setOpen] = useState(false);
   // Progress through the day: stops the plan has reached fill ember; the one it's on wears a ring.
   const reached = useAnimatedStyle(() => ({
     opacity: withTiming(activeIdx.get() >= index ? 1 : 0, { duration: 300 }),
@@ -947,8 +949,9 @@ function StopRow({
   // The row's own press and its buttons are siblings, never nested: a button inside a button is
   // invalid on web and confusing to screen readers everywhere.
   return (
-    <Animated.View style={[styles.stop, dim]}>
+    <Animated.View style={dim}>
       <Animated.View pointerEvents="none" style={[styles.glow, glowStyle]} />
+      <View style={styles.stop}>
       <PressableScale
         onPress={editing ? onMore : () => router.push({ pathname: '/place/[id]', params: { id } })}
         containerStyle={styles.stopMainSlot}
@@ -972,11 +975,11 @@ function StopRow({
           <Text variant="data" numberOfLines={1}>
             {[formatClock(stop.startMinutes), formatDuration(stop.place.minutes), costLabel(stop.place.cost)].filter(Boolean).join(' · ')}
           </Text>
-          {/* Why it's here, now: the plan's own reasoning, so it never reads as a random list. */}
+          {/* Why it's here, now, in a word or two: the full line is behind the info button. */}
           {why ? (
-            <Text variant="label" color={skyInk.faint} numberOfLines={2} style={styles.stopWhy}>
+            <Text variant="label" color={skyInk.faint} numberOfLines={1} style={styles.stopWhy}>
               {stop.suggested ? <Text variant="label" color={skyInk.soft}>Suggested · </Text> : null}
-              {why}
+              {why.tag}
             </Text>
           ) : stop.suggested ? (
             <Text variant="micro" color={skyInk.soft}>
@@ -992,7 +995,29 @@ function StopRow({
             <SmallButton icon="chevron-down" label="Move later" disabled={last} onPress={() => onMove(1)} />
             <SmallButton icon="more-horizontal" label={`More for ${stop.place.name}`} onPress={onMore} />
           </View>
+        ) : why ? (
+          <PressableScale
+            onPress={() => {
+              haptic.selection();
+              setOpen((o) => !o);
+            }}
+            pressedScale={0.9}
+            style={styles.whyButton}
+            accessibilityRole="button"
+            accessibilityLabel={`Why ${stop.place.name} is here`}
+            accessibilityState={{ expanded: open }}
+          >
+            <Feather name={open ? 'x' : 'info'} size={16} color={open ? skyInk.strong : skyInk.faint} />
+          </PressableScale>
         ) : null}
+      </View>
+      {open && why && !editing ? (
+        <Animated.View entering={FADE_IN} exiting={FADE_OUT} style={styles.whyOpen}>
+          <Text variant="label" color={skyInk.soft}>
+            {why.text}
+          </Text>
+        </Animated.View>
+      ) : null}
     </Animated.View>
   );
 }
@@ -1115,6 +1140,10 @@ const styles = StyleSheet.create({
   whyTick: { marginTop: 4 },
   whyText: { flex: 1 },
   stopWhy: { marginTop: 2 },
+  // A 44pt target for a 16pt glyph, with no circle around it: one per stop would be a column of buttons.
+  whyButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -10 },
+  // Under the stop's text: past the number (24), the photo (56) and the gaps between them (12 each).
+  whyOpen: { marginLeft: 104, marginRight: 34, paddingBottom: 8 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   name: { flexShrink: 1 },
   emptyDay: { marginTop: 16 },

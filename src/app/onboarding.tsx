@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
     color: skyInk.strong,
   },
   nameInputFocused: { backgroundColor: skyFill.pressed, borderColor: skyInk.outline },
-  nameInputWrong: { borderColor: skyDanger.line, borderWidth: 1.5 },
+  nameInputWrong: { borderColor: skyDanger.line, borderWidth: 2 },
   copy: { gap: 12 },
   // The display size every screen title uses, so the intro and the app read as one voice.
   title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },

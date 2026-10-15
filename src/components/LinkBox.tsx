@@ -308,7 +308,7 @@ const styles = css.create({
     boxShadow: isLight ? '0 2px 12px rgba(0,0,0,0.06)' : 'none',
   },
   // A link that isn't one (or is already in): the border takes the error red.
-  fieldError: { borderColor: skyDanger.line, borderWidth: 1.5 },
+  fieldError: { borderColor: skyDanger.line, borderWidth: 2 },
   fieldSkyFocused: { backgroundColor: isLight ? light.panel : skyFill.pressed, borderColor: skyInk.outline },
   // The paste button's twin, so the swap reads as the same button changing job.
   go: {

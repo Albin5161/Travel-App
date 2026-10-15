@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   },
   inputFocused: { borderColor: skyInk.strong },
   // The field at fault, in the error red (Semantic.danger).
-  inputError: { borderColor: skyDanger.line, borderWidth: 1.5 },
+  inputError: { borderColor: skyDanger.line, borderWidth: 2 },
   suggestion: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   suggested: { color: skyInk.strong, textDecorationLine: 'underline' },
   boxes: { flexDirection: 'row', gap: 8 },
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   },
   // The box the next digit goes in: the strong ink, as anything chosen or on.
   boxOn: { borderColor: skyInk.strong, borderWidth: 1.5 },
-  boxWrong: { borderColor: skyDanger.line, borderWidth: 1.5 },
+  boxWrong: { borderColor: skyDanger.line, borderWidth: 2 },
   digit: { fontFamily: fonts.sansSemi, fontSize: 26, lineHeight: 32, color: skyInk.strong, fontVariant: ['tabular-nums'] },
   // Unseen but there: it takes the taps, the typing and the paste. Not opacity 0: iOS passes taps
   // through anything under 1% opaque, and the boxes could no longer bring the keyboard back. Its
@@ -402,6 +402,7 @@ const styles = StyleSheet.create({
   codeTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8 },
   resend: { minHeight: 44, justifyContent: 'center' },
   resendOn: { textDecorationLine: 'underline' },
-  noteSlot: { minHeight: 20 },
+  // Right under the field it's about, as on the name step: 8 from it, not the body's 24.
+  noteSlot: { minHeight: 20, marginTop: -16 },
   actions: { gap: 4 },
 });

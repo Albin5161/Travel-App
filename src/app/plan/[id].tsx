@@ -868,27 +868,53 @@ function Leg({
   );
 }
 
-/** Why the day is arranged as it is: the planner's reasons, a line each, lead in bold. */
+/**
+ * Why the day is arranged as it is: the planner's reasons. Folded, it's the leads on a line
+ * ("Close together · There for the sunset"); the chevron opens each one in full. Testers found the
+ * three full sentences above every day too much to read.
+ */
 function WhyCard({ reasons }: { reasons: Reason[] }) {
+  const [open, setOpen] = useState(false);
+  const turn = useAnimatedStyle(() => ({ transform: [{ rotate: withTiming(open ? '180deg' : '0deg', { duration: 200 }) }] }));
   if (reasons.length === 0) return null;
   return (
-    <View style={styles.why}>
+    <PressableScale
+      onPress={() => {
+        haptic.selection();
+        setOpen((o) => !o);
+      }}
+      pressedScale={0.99}
+      style={styles.why}
+      accessibilityRole="button"
+      accessibilityLabel="Why this day works"
+      accessibilityHint={open ? 'Hides the reasons' : 'Shows the reasons in full'}
+      accessibilityState={{ expanded: open }}
+    >
       <View style={styles.whyHead}>
         <Feather name="compass" size={13} color={skyInk.soft} />
-        <Text variant="eyebrow" color={skyInk.soft} accessibilityRole="header">
+        <Text variant="eyebrow" color={skyInk.soft} style={styles.whyTitle}>
           Why this day works
         </Text>
+        <Animated.View style={turn}>
+          <Feather name="chevron-down" size={18} color={skyInk.strong} />
+        </Animated.View>
       </View>
-      {reasons.map((r) => (
-        <View key={r.lead} style={styles.whyRow}>
-          <Feather name="check" size={13} color={skyInk.soft} style={styles.whyTick} />
-          <Text variant="label" color={skyInk.soft} style={styles.whyText}>
-            <Text variant="label">{r.lead}. </Text>
-            {r.text}
-          </Text>
-        </View>
-      ))}
-    </View>
+      {open ? (
+        reasons.map((r) => (
+          <Animated.View key={r.lead} entering={FADE_IN} style={styles.whyRow}>
+            <Feather name="check" size={13} color={skyInk.soft} style={styles.whyTick} />
+            <Text variant="label" color={skyInk.soft} style={styles.whyText}>
+              <Text variant="label">{r.lead}. </Text>
+              {r.text}
+            </Text>
+          </Animated.View>
+        ))
+      ) : (
+        <Text variant="label" color={skyInk.soft} numberOfLines={2}>
+          {reasons.map((r) => r.lead).join(' · ')}
+        </Text>
+      )}
+    </PressableScale>
   );
 }
 
@@ -1136,6 +1162,7 @@ const styles = StyleSheet.create({
     borderColor: skyInk.line,
   },
   whyHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  whyTitle: { flex: 1 },
   whyRow: { flexDirection: 'row', gap: 8 },
   whyTick: { marginTop: 4 },
   whyText: { flex: 1 },

@@ -29,6 +29,7 @@ import { usePlanPdf } from '@/components/share/usePlanPdf';
 import { StopActions } from '@/components/plan/StopActions';
 import { costLabel, typeLine } from '@/components/PlaceMeta';
 import { PressableScale } from '@/components/PressableScale';
+import { ErrorNote } from '@/components/ErrorNote';
 import { Text } from '@/components/Text';
 import { GoogleMap, type GoogleMapProps } from '@/components/GoogleMap';
 import { getCity, getLocalPicks, isLiveCity } from '@/data/api';
@@ -102,6 +103,8 @@ export default function PlanScreen() {
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<Set<string>>(new Set());
   const [note, setNote] = useState<string | null>(null);
+  // What went wrong (the PDF), said in the error red where the note goes.
+  const [failure, setFailure] = useState<string | null>(null);
   // A removed stop can be put back for a few seconds: the plan as it was, and what to say.
   const [undo, setUndo] = useState<{ plan: TripPlan; label: string } | null>(null);
   const pdf = usePlanPdf(city, plan);
@@ -208,6 +211,11 @@ export default function PlanScreen() {
     const t = setTimeout(() => setNote(null), 3600);
     return () => clearTimeout(t);
   }, [note]);
+  useEffect(() => {
+    if (!failure) return;
+    const t = setTimeout(() => setFailure(null), 5000);
+    return () => clearTimeout(t);
+  }, [failure]);
   useEffect(() => {
     if (!undo) return;
     const t = setTimeout(() => setUndo(null), 5000);
@@ -433,7 +441,11 @@ export default function PlanScreen() {
               onPress={() => router.push({ pathname: '/trip/[id]', params: { id, from: 'plan' } })}
             />
           </View>
-          {note ? (
+          {failure ? (
+            <Animated.View entering={FADE_IN} exiting={FADE_OUT}>
+              <ErrorNote style={styles.note}>{failure}</ErrorNote>
+            </Animated.View>
+          ) : note ? (
             <Animated.View entering={FADE_IN} exiting={FADE_OUT}>
               <Text variant="label" color={skyInk.soft} style={styles.note}>
                 {note}
@@ -643,7 +655,7 @@ export default function PlanScreen() {
               label={pdf.making ? 'Making the PDF…' : 'Download as PDF'}
               onPress={async () => {
                 const result = await pdf.save();
-                if (result === 'failed') setNote('Couldn’t make the PDF. Try again?');
+                if (result === 'failed') setFailure('Couldn’t make the PDF. Try again?');
                 else if (result === 'downloaded') setNote('PDF saved to your downloads.');
               }}
               style={styles.pdf}

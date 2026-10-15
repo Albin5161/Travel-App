@@ -10,6 +10,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { ProfilePhoto } from '@/components/ProfilePhoto';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
+import { ErrorNote } from '@/components/ErrorNote';
 import { Text } from '@/components/Text';
 import { allDistricts } from '@/data/regions';
 import { Segmented } from '@/components/Segmented';
@@ -257,7 +258,7 @@ function Stat({ value, label, onPress }: { value: number; label: string; onPress
 }
 
 /** A heading, a white group of rows with hairlines between them, and an optional line of help. */
-function Section({ title, footer, children }: { title: string; footer?: string; children?: ReactNode }) {
+function Section({ title, footer, footerError, children }: { title: string; footer?: string; footerError?: boolean; children?: ReactNode }) {
   const rows = Children.toArray(children).filter(isValidElement);
   return (
     <View style={styles.section}>
@@ -265,7 +266,9 @@ function Section({ title, footer, children }: { title: string; footer?: string; 
         {title}
       </Text>
       {rows.length ? <Glass style={styles.group}>{rows.map((r, i) => (i === 0 ? r : <Divided key={r.key}>{r}</Divided>))}</Glass> : null}
-      {footer ? (
+      {footer && footerError ? (
+        <ErrorNote style={styles.sectionError}>{footer}</ErrorNote>
+      ) : footer ? (
         // With no rows, the footer is the section's only content: it sits right under the title.
         <Text variant="data" color={skyInk.faint} style={[styles.sectionFooter, !rows.length && { marginTop: 0 }]}>
           {footer}
@@ -353,7 +356,7 @@ function BackupSection() {
   if (!account) return null;
   const when = status === 'syncing' ? 'Backing up…' : backedUpAt ? `Backed up ${ago(backedUpAt)}` : 'Backed up';
   return (
-    <Section title="Backup" footer={error ?? 'Signing out keeps everything on this phone, and asks for your email again. Your backup stays with your account.'}>
+    <Section title="Backup" footer={error ?? 'Signing out keeps everything on this phone, and asks for your email again. Your backup stays with your account.'} footerError={!!error}>
       <Row icon="cloud" label={account.name ?? account.email} detail={account.name ? account.email : undefined} value={when} />
       {confirming ? (
         <Row icon="log-out" label="Sign out?" detail="You’ll be asked for your email to come back in">
@@ -499,6 +502,7 @@ const styles = StyleSheet.create({
   section: { marginTop: 24, paddingHorizontal: GUTTER },
   sectionTitle: { marginLeft: 4, marginBottom: 8 },
   sectionFooter: { marginTop: 8, marginHorizontal: 4, lineHeight: 18 },
+  sectionError: { marginTop: 8 },
   group: {},
   hairline: { height: StyleSheet.hairlineWidth, backgroundColor: skyInk.line, marginLeft: 56, marginRight: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 8, paddingHorizontal: 16 },

@@ -104,6 +104,12 @@ export type Semantic = {
   accentWash: string;
   accentRim: string;
   signal: { up: string; down: string };
+  /**
+   * Something went wrong: red, and only for that (components/ErrorNote). `ink` is the words, `fill`
+   * what they sit on, `line` the border of the field at fault. On the sky no red text reads on every
+   * sky (the sunrise and sunset ones are too warm), so there the words are white on a red strip.
+   */
+  danger: { ink: string; fill: string; line: string };
 };
 
 export const ON_SKY: Semantic = {
@@ -133,6 +139,8 @@ export const ON_SKY: Semantic = {
   accentRim: 'rgba(255,168,119,0.75)',
   // Good and bad news in small type, for deep glass: saturated as far as 4.5:1 allows there.
   signal: { up: green[300], down: red[300] },
+  // White on red 700 is 6.6:1; the field border, red 300, is 3.5:1 or more on every sky.
+  danger: { ink: paper[0], fill: red[700], line: red[300] },
 };
 
 export const ON_PAPER: Semantic = {
@@ -160,5 +168,7 @@ export const ON_PAPER: Semantic = {
   accentWash: 'rgba(226,118,60,0.12)',
   accentRim: 'rgba(212,98,43,0.7)',
   signal: { up: green[700], down: red[700] },
+  // Red 700 on paper is 6.6:1: red words, no strip needed.
+  danger: { ink: red[700], fill: 'transparent', line: red[700] },
 };
 

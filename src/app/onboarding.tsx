@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 import { INTRO_MS, IntroScene, PICK } from '@/components/onboarding/IntroScene';
 import { ProfilePreview } from '@/components/onboarding/ProfilePreview';
+import { ErrorNote } from '@/components/ErrorNote';
 import { PressableScale } from '@/components/PressableScale';
 import { Sky } from '@/components/sky/Sky';
 import { Text } from '@/components/Text';
@@ -30,7 +31,7 @@ import { EASE_OUT } from '@/lib/motion';
 import { useIntroOver } from '@/state/inbox';
 import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
-import { skyBar, skyFill, skyInk } from '@/theme/sky';
+import { skyBar, skyDanger, skyFill, skyInk } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
 import { fonts, space } from '@/theme/tokens';
 
@@ -84,6 +85,8 @@ export default function Onboarding() {
   const first = asked === 'name' && !replay ? NAME : 0;
   const [step, setStep] = useState(first);
   const [name, setName] = useState(state.myName ?? '');
+  // Go with no name says so, in red, rather than only buzzing (nothing at all on the web).
+  const [nameMissing, setNameMissing] = useState(false);
   const skipped = useRef(false);
   const reduced = useReducedMotion();
   // Where the scene is, continuous: every moving part reads this one value (see IntroScene).
@@ -129,6 +132,7 @@ export default function Onboarding() {
   const finish = () => {
     if (!named) {
       haptic.error();
+      setNameMissing(true);
       return;
     }
     haptic.success();
@@ -281,10 +285,23 @@ export default function Onboarding() {
               </Text>
             </View>
             <View style={styles.fieldBlock}>
-              <NameField ref={field} value={name} onChange={setName} onDone={finish} />
-              <Text variant="label" color={skyInk.faint} style={styles.fieldHint}>
-                {Platform.OS === 'web' ? 'Press Enter to start.' : 'Tap Go on the keyboard to start.'}
-              </Text>
+              <NameField
+                ref={field}
+                value={name}
+                onChange={(v) => {
+                  setName(v);
+                  setNameMissing(false);
+                }}
+                onDone={finish}
+                wrong={nameMissing}
+              />
+              {nameMissing ? (
+                <ErrorNote style={styles.fieldHint}>Add your first name to continue.</ErrorNote>
+              ) : (
+                <Text variant="label" color={skyInk.faint} style={styles.fieldHint}>
+                  {Platform.OS === 'web' ? 'Press Enter to start.' : 'Tap Go on the keyboard to start.'}
+                </Text>
+              )}
             </View>
           </View>
         </Animated.View>
@@ -379,7 +396,20 @@ function useKeyboardLift() {
 // border shows focus instead. RN's types don't list 'none'.
 const NO_FOCUS_RING = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : null;
 
-function NameField({ ref, value, onChange, onDone }: { ref: React.Ref<TextInput>; value: string; onChange: (v: string) => void; onDone: () => void }) {
+function NameField({
+  ref,
+  value,
+  onChange,
+  onDone,
+  wrong,
+}: {
+  ref: React.Ref<TextInput>;
+  value: string;
+  onChange: (v: string) => void;
+  onDone: () => void;
+  /** Go was pressed with no name: the border takes the error red. */
+  wrong: boolean;
+}) {
   const [focused, setFocused] = useState(false);
   return (
     <TextInput
@@ -399,7 +429,7 @@ function NameField({ ref, value, onChange, onDone }: { ref: React.Ref<TextInput>
       textContentType="givenName"
       maxLength={40}
       returnKeyType="go"
-      style={[styles.nameInput, NO_FOCUS_RING, focused && styles.nameInputFocused]}
+      style={[styles.nameInput, NO_FOCUS_RING, focused && styles.nameInputFocused, wrong && styles.nameInputWrong]}
       accessibilityLabel="Your first name"
     />
   );
@@ -448,6 +478,7 @@ const styles = StyleSheet.create({
     color: skyInk.strong,
   },
   nameInputFocused: { backgroundColor: skyFill.pressed, borderColor: skyInk.outline },
+  nameInputWrong: { borderColor: skyDanger.line, borderWidth: 1.5 },
   copy: { gap: 12 },
   // The display size every screen title uses, so the intro and the app read as one voice.
   title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },

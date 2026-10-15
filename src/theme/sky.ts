@@ -42,6 +42,8 @@ export const skyOnCta = NOW.onCta;
 export const skyOnInk = NOW.onInk;
 export const skyAccent = NOW.accent;
 export const skyAccentText = NOW.accentText;
+/** Errors only: see Semantic.danger and components/ErrorNote. */
+export const skyDanger = NOW.danger;
 /** A chosen answer: an ember wash with an ember rim. */
 export const skyAccentWash = NOW.accentWash;
 export const skyAccentRim = NOW.accentRim;

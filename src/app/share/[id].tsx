@@ -10,6 +10,7 @@ import { PatternBackdrop } from '@/components/share/PatternBackdrop';
 import { TiltCard } from '@/components/share/TiltCard';
 import { usePlanPdf } from '@/components/share/usePlanPdf';
 import { SkyScreen } from '@/components/sky/SkyScreen';
+import { ErrorNote } from '@/components/ErrorNote';
 import { Text } from '@/components/Text';
 import { getCity } from '@/data/api';
 import { PARTY_COPY, swapCandidates } from '@/data/group';
@@ -54,6 +55,8 @@ export default function ShareScreen() {
   const [saving, setSaving] = useState<ImageKind | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  // What went wrong (the PDF, the picture, sending), said in the error red where the note goes.
+  const [failure, setFailure] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   // The room between the headline and the buttons, measured: a phone browser's own bars leave far
   // less than the window height suggests, so the card is fitted to this, not guessed.
@@ -81,8 +84,8 @@ export default function ShareScreen() {
 
   const savePdf = async () => {
     const result = await pdf.save();
-    if (result === 'failed') setNote('Couldn’t make the PDF. Try again?');
-    else if (result === 'downloaded') setNote('PDF saved to your downloads.');
+    setFailure(result === 'failed' ? 'Couldn’t make the PDF. Try again?' : null);
+    if (result === 'downloaded') setNote('PDF saved to your downloads.');
     else if (result === 'shared') setNote('PDF ready. Keep it for the trip.');
   };
 
@@ -101,9 +104,11 @@ export default function ShareScreen() {
       if (result === 'dismissed') return;
       haptic.success();
       track('plan image saved', { kind, how: result });
+      setFailure(null);
       setNote(result === 'downloaded' ? 'Saved to your downloads.' : kind === 'story' ? 'Story ready. Post it anywhere.' : 'Card ready. Post it anywhere.');
     } catch {
-      setNote('Couldn’t make the picture. Try again?');
+      setNote(null);
+      setFailure('Couldn’t make the picture. Try again?');
     } finally {
       setSaving(null);
     }
@@ -142,12 +147,14 @@ export default function ShareScreen() {
       // The vote starts the moment it's out: people begin joining while you're still in the chat.
       if (!live) startGroup(dispatch, plan);
       const chat = party === 'family' ? 'family chat' : party === 'partner' ? 'chat' : 'group';
+      setFailure(null);
       setNote(
         (result === 'copied' ? `Message copied. Paste it in your ${chat}.` : party === 'solo' ? 'Sent.' : 'Sent. Now get everyone to agree.') +
           (code ? ` Join code ${code}.` : ''),
       );
     } catch {
-      setNote(live ? 'Couldn’t reach Xplore’s server. Check your connection and try again.' : 'Couldn’t open sharing. Try again?');
+      setNote(null);
+      setFailure(live ? 'Couldn’t reach Xplore’s server. Check your connection and try again.' : 'Couldn’t open sharing. Try again?');
     } finally {
       setBusy(false);
     }
@@ -185,7 +192,11 @@ export default function ShareScreen() {
       </View>
 
       <View style={styles.actions}>
-        {note ? (
+        {failure ? (
+          <Animated.View entering={FADE_IN}>
+            <ErrorNote style={styles.note}>{failure}</ErrorNote>
+          </Animated.View>
+        ) : note ? (
           <Animated.View entering={FADE_IN}>
             <Text variant="label" color={skyInk.soft} style={styles.note}>
               {note}

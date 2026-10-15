@@ -7,16 +7,18 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { ErrorNote } from '@/components/ErrorNote';
 import { PasteButton } from '@/components/PasteButton';
 import { PressableScale } from '@/components/PressableScale';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { track } from '@/lib/analytics';
+import { suggestEmail } from '@/lib/emailTypos';
 import { haptic } from '@/lib/haptics';
 import { sendEmailCode, usedCode, verifyEmailCode } from '@/lib/live/account';
 import { fadeUp } from '@/lib/motion';
 import { useOffline } from '@/lib/online';
-import { skyFill, skyInk } from '@/theme/sky';
+import { skyDanger, skyFill, skyInk } from '@/theme/sky';
 import { fonts, space } from '@/theme/tokens';
 
 const CODE_LENGTH = 6;
@@ -128,8 +130,9 @@ export default function SignIn() {
     setStage('email');
     setError(null);
   };
+  // A slip in the provider ("gmial.com") means the code never arrives: offered, never forced.
+  const suggestion = onEmail && looksLikeEmail(email) ? suggestEmail(email) : null;
   const note =
-    error ??
     (offline
       ? 'You’re offline. Signing in needs the internet.'
       : !onEmail && !sending && !unsent
@@ -209,13 +212,33 @@ export default function SignIn() {
                   returnKeyType="go"
                   clearButtonMode="while-editing"
                   autoFocus
-                  style={[styles.input, NO_FOCUS_RING, emailFocused && styles.inputFocused]}
+                  style={[styles.input, NO_FOCUS_RING, emailFocused && styles.inputFocused, !!error && styles.inputError]}
                   accessibilityLabel="Your email address"
                 />
+                {suggestion ? (
+                  <PressableScale
+                    onPress={() => {
+                      haptic.selection();
+                      setEmail(suggestion);
+                      setError(null);
+                    }}
+                    style={styles.suggestion}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Did you mean ${suggestion}? Tap to use it`}
+                  >
+                    <Text variant="label" color={skyInk.soft}>
+                      Did you mean{' '}
+                      <Text variant="label" style={styles.suggested}>
+                        {suggestion}
+                      </Text>
+                      ?
+                    </Text>
+                  </PressableScale>
+                ) : null}
               </View>
             ) : (
               <View style={styles.field}>
-                <CodeBoxes value={code} inputRef={codeInput} onChange={onCode} />
+                <CodeBoxes value={code} inputRef={codeInput} onChange={onCode} wrong={!!error && !sending} />
                 <View style={styles.codeTools}>
                   <PressableScale
                     onPress={send}
@@ -251,8 +274,10 @@ export default function SignIn() {
             )}
 
             <View style={styles.noteSlot}>
-              {note ? (
-                <Text variant="label" color={error ? skyInk.strong : skyInk.faint} accessibilityLiveRegion="polite">
+              {error ? (
+                <ErrorNote>{error}</ErrorNote>
+              ) : note ? (
+                <Text variant="label" color={skyInk.faint} accessibilityLiveRegion="polite">
                   {note}
                 </Text>
               ) : null}
@@ -282,13 +307,24 @@ export default function SignIn() {
  * typing, the keyboard's code suggestion (from Messages or Mail) and long-press paste all work as
  * in any field; the boxes only show what it holds and where the next digit goes.
  */
-function CodeBoxes({ value, inputRef, onChange }: { value: string; inputRef: RefObject<TextInput | null>; onChange: (text: string) => void }) {
+function CodeBoxes({
+  value,
+  inputRef,
+  onChange,
+  wrong,
+}: {
+  value: string;
+  inputRef: RefObject<TextInput | null>;
+  onChange: (text: string) => void;
+  /** The code was refused: the boxes take the error red. */
+  wrong: boolean;
+}) {
   const [focused, setFocused] = useState(false);
   const next = Math.min(value.length, CODE_LENGTH - 1);
   return (
     <View style={styles.boxes}>
       {Array.from({ length: CODE_LENGTH }, (_, i) => (
-        <View key={i} style={[styles.box, focused && i === next && styles.boxOn]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <View key={i} style={[styles.box, focused && i === next && styles.boxOn, wrong && styles.boxWrong]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <Text style={styles.digit}>{value[i] ?? ''}</Text>
         </View>
       ))}
@@ -339,6 +375,10 @@ const styles = StyleSheet.create({
     color: skyInk.strong,
   },
   inputFocused: { borderColor: skyInk.strong },
+  // The field at fault, in the error red (Semantic.danger).
+  inputError: { borderColor: skyDanger.line, borderWidth: 1.5 },
+  suggestion: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  suggested: { color: skyInk.strong, textDecorationLine: 'underline' },
   boxes: { flexDirection: 'row', gap: 8 },
   box: {
     flex: 1,
@@ -352,6 +392,7 @@ const styles = StyleSheet.create({
   },
   // The box the next digit goes in: the strong ink, as anything chosen or on.
   boxOn: { borderColor: skyInk.strong, borderWidth: 1.5 },
+  boxWrong: { borderColor: skyDanger.line, borderWidth: 1.5 },
   digit: { fontFamily: fonts.sansSemi, fontSize: 26, lineHeight: 32, color: skyInk.strong, fontVariant: ['tabular-nums'] },
   // Unseen but there: it takes the taps, the typing and the paste. Not opacity 0: iOS passes taps
   // through anything under 1% opaque, and the boxes could no longer bring the keyboard back. Its

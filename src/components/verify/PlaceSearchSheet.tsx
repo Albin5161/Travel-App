@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/IconButton';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { typeLine } from '@/components/PlaceMeta';
+import { ErrorNote } from '@/components/ErrorNote';
 import { Text } from '@/components/Text';
 import { dims } from '@/components/pressed';
 import type { Place } from '@/data/types';
@@ -261,9 +262,10 @@ function GoogleResults({
   onPick: (s: Suggestion) => void;
 }) {
   const typed = query.trim();
+  // A failed search or pick is an error, in red; the rest are guidance.
+  const failure = error ?? state.error;
   const message =
-    error ??
-    state.error ??
+    failure ??
     (typed.length < MIN_LETTERS
       ? 'Type the name you saw or heard, and the town if you know it.'
       : !state.loading && state.results.length === 0
@@ -271,7 +273,9 @@ function GoogleResults({
         : null);
   return (
     <>
-      {message ? (
+      {failure ? (
+        <ErrorNote style={styles.none}>{failure}</ErrorNote>
+      ) : message ? (
         <Text variant="body" style={styles.none}>
           {message}
         </Text>

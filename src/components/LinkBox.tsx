@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Keyboard, Platform, ScrollView, TextInput, View, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { css, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
+import { ErrorNote } from '@/components/ErrorNote';
 import Ionicons from '@/components/Ionicons';
 import { CIRCLE, PasteButton } from '@/components/PasteButton';
 import { PressableScale } from '@/components/PressableScale';
@@ -13,7 +14,7 @@ import { haptic } from '@/lib/haptics';
 import { LINKS_AT_ONCE, linksIn } from '@/lib/links';
 import { FADE_IN, FADE_OUT } from '@/lib/motion';
 import { isLight } from '@/theme/mode';
-import { skyCta, skyFill, skyInk } from '@/theme/sky';
+import { skyCta, skyDanger, skyFill, skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
 import { fonts, light, shadows } from '@/theme/tokens';
 
@@ -177,7 +178,7 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
     <View>
       <View style={styles.row}>
         <Animated.View
-          style={[styles.field, focused && styles.fieldFocused, sky && styles.fieldSky, sky && WEB_FROST, sky && focused && styles.fieldSkyFocused, shakeStyle]}
+          style={[styles.field, focused && styles.fieldFocused, sky && styles.fieldSky, sky && WEB_FROST, sky && focused && styles.fieldSkyFocused, !!error && styles.fieldError, shakeStyle]}
         >
           <View style={styles.icon}>
             {platform ? (
@@ -244,9 +245,13 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
         {hint ? (
           <View style={styles.hintRow}>
             <Animated.View key={hint} entering={FADE_IN} exiting={FADE_OUT} style={styles.hint}>
-              <Text variant="label" color={error ? ink.strong : ink.soft}>
-                {hint}
-              </Text>
+              {error ? (
+                <ErrorNote>{hint}</ErrorNote>
+              ) : (
+                <Text variant="label" color={ink.soft}>
+                  {hint}
+                </Text>
+              )}
             </Animated.View>
             {/* Outside the fade: Apple's paste button draws itself blank while anything over it is
                 part-way see-through, and stayed blank after. */}
@@ -302,6 +307,8 @@ const styles = css.create({
     borderColor: skyInk.rim,
     boxShadow: isLight ? '0 2px 12px rgba(0,0,0,0.06)' : 'none',
   },
+  // A link that isn't one (or is already in): the border takes the error red.
+  fieldError: { borderColor: skyDanger.line, borderWidth: 1.5 },
   fieldSkyFocused: { backgroundColor: isLight ? light.panel : skyFill.pressed, borderColor: skyInk.outline },
   // The paste button's twin, so the swap reads as the same button changing job.
   go: {

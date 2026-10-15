@@ -13,6 +13,7 @@ import { PlanningScene } from '@/components/mascots/ReadingScene';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Tick } from '@/components/sky/Tick';
+import { ErrorNote } from '@/components/ErrorNote';
 import { Text } from '@/components/Text';
 import { getCity, getLocalPicks } from '@/data/api';
 import { customStops } from '@/data/custom';
@@ -500,9 +501,7 @@ function StaySearch({ cityName, near, onPick }: { cityName: string; near: LatLng
           Nothing by that name. Try the area instead.
         </Text>
       ) : status === 'failed' ? (
-        <Text variant="label" color={skyInk.soft}>
-          Couldn’t search just now. Try again, or pick “In {cityName}”.
-        </Text>
+        <ErrorNote>{`Couldn’t search just now. Try again, or pick “In ${cityName}”.`}</ErrorNote>
       ) : null}
     </Glass>
   );

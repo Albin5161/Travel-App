@@ -28,6 +28,11 @@ import { EASE_IN_OUT, EASE_OUT, SPRING_DRAG } from '@/lib/motion';
 // as if the light were fixed in the room, and its shadow shifts underneath.
 //
 // Everything runs on the UI thread; React never re-renders while it moves.
+//
+// Android keeps it flat (15 Oct 2026): a card that is never quite still, turned in 3D, is redrawn
+// soft there, and the shine over it made the ticket hard to read on testers' phones. It still deals
+// in, and keeps its shadow; it doesn't tilt, sway or shine, so its text stays sharp.
+const FLAT = Platform.OS === 'android';
 
 /** Tilt, normalised to −1…1 on each axis. x > 0: the right edge recedes. y > 0: the top edge recedes. */
 export type Tilt = { x: SharedValue<number>; y: SharedValue<number> };
@@ -115,6 +120,7 @@ export function TiltCard({ width, height, radius = 28, delay = 0, faceRef, child
     deal.set(withDelay(delay, withSpring(0, { duration: 900, dampingRatio: 0.62 })));
     // One pass of light across the card as it lands, to show it's something that catches light.
     sweep.set(withDelay(delay + 380, withTiming(1, { duration: 1100, easing: EASE_IN_OUT })));
+    if (FLAT) return;
     // No gyroscope yet: sway, so the foil is alive in the web preview and the simulator.
     // A real reading, or a finger, fades it out.
     sway.set(withRepeat(withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.sin) }), -1, true));
@@ -124,7 +130,7 @@ export function TiltCard({ width, height, radius = 28, delay = 0, faceRef, child
   }, []);
 
   const pan = Gesture.Pan()
-    .enabled(!reduced)
+    .enabled(!reduced && !FLAT)
     .onBegin(() => {
       swayAmp.set(withTiming(0, { duration: 250 }));
     })
@@ -146,6 +152,8 @@ export function TiltCard({ width, height, radius = 28, delay = 0, faceRef, child
 
   const body = useAnimatedStyle(() => {
     const e = enter.get();
+    // Flat: rising into place is all; no turn at all, not even a 0° one, so nothing is drawn in 3D.
+    if (FLAT) return { opacity: e, transform: [{ translateY: (1 - e) * 70 }, { scale: 0.92 + 0.08 * e }] };
     return {
       opacity: e,
       transform: [
@@ -207,29 +215,34 @@ export function TiltCard({ width, height, radius = 28, delay = 0, faceRef, child
               {children}
             </View>
             <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.clip, { borderRadius: radius }]}>
-              <Animated.View style={[styles.glare, { width: width * 1.8, height: width * 1.8, left: -width * 0.4, top: -width * 0.55 }, glare]}>
-                <Svg width="100%" height="100%">
-                  <Defs>
-                    <RadialGradient id="glare" cx="50%" cy="50%" r="50%">
-                      <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.42} />
-                      <Stop offset="0.45" stopColor="#FFFFFF" stopOpacity={0.1} />
-                      <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
-                    </RadialGradient>
-                  </Defs>
-                  <Rect width="100%" height="100%" fill="url(#glare)" />
-                </Svg>
-              </Animated.View>
-              <Animated.View
-                style={[styles.foil, { width: width * 3, height: height * 1.6, left: -width, top: -height * 0.3 }, foil]}
-              >
-                <LinearGradient
-                  colors={FOIL}
-                  locations={FOIL_AT}
-                  start={{ x: 0, y: 0.15 }}
-                  end={{ x: 1, y: 0.85 }}
-                  style={StyleSheet.absoluteFill}
-                />
-              </Animated.View>
+              {/* No shine on Android: it sits over the text of a card that never moves there. */}
+              {FLAT ? null : (
+                <>
+                  <Animated.View style={[styles.glare, { width: width * 1.8, height: width * 1.8, left: -width * 0.4, top: -width * 0.55 }, glare]}>
+                    <Svg width="100%" height="100%">
+                      <Defs>
+                        <RadialGradient id="glare" cx="50%" cy="50%" r="50%">
+                          <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.42} />
+                          <Stop offset="0.45" stopColor="#FFFFFF" stopOpacity={0.1} />
+                          <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
+                        </RadialGradient>
+                      </Defs>
+                      <Rect width="100%" height="100%" fill="url(#glare)" />
+                    </Svg>
+                  </Animated.View>
+                  <Animated.View
+                    style={[styles.foil, { width: width * 3, height: height * 1.6, left: -width, top: -height * 0.3 }, foil]}
+                  >
+                    <LinearGradient
+                      colors={FOIL}
+                      locations={FOIL_AT}
+                      start={{ x: 0, y: 0.15 }}
+                      end={{ x: 1, y: 0.85 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  </Animated.View>
+                </>
+              )}
               <View style={[StyleSheet.absoluteFill, styles.rim, { borderRadius: radius }]} />
             </View>
           </Animated.View>
@@ -266,7 +279,7 @@ function useNativeGravity() {
 function useNoGravity() {
   return null;
 }
-const useGravity = Platform.OS === 'web' ? useNoGravity : useNativeGravity;
+const useGravity = Platform.OS === 'web' || FLAT ? useNoGravity : useNativeGravity;
 
 const styles = StyleSheet.create({
   // Only the shadow is wanted, not a sheet: nothing is filled in.

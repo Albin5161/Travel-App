@@ -46,7 +46,9 @@ export const ember = {
 
 /** Good and bad news. The 300s are for dark glass, the 700s for paper. */
 export const green = { 300: '#4ADE80', 700: '#126E34' } as const;
-export const red = { 300: '#FFB09A', 400: '#FF453A', 700: '#B42318' } as const;
+// red 200 and 400 are the reddest that pass on every sky (searched in OKLCH, red hue): 200 for words
+// (4.5:1), 400 for borders and icons (3:1). Anything more saturated is too dark to read on blue.
+export const red = { 200: '#FFB3AE', 300: '#FFB09A', 400: '#FF7974', 700: '#B42318' } as const;
 
 /** The sky, one ramp per time of day: top, middle, bottom. */
 export const navy = {

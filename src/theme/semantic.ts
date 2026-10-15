@@ -105,8 +105,8 @@ export type Semantic = {
   accentRim: string;
   signal: { up: string; down: string };
   /**
-   * Something went wrong: red, and only for that (components/ErrorNote). `ink` is the words and
-   * their icon, `line` the border of the field at fault. Words only, never a filled box.
+   * Something went wrong: red, and only for that (components/ErrorNote). `ink` is the words, `line`
+   * the border of the field at fault and the alert icon. Words only, never a filled box.
    */
   danger: { ink: string; line: string };
 };
@@ -138,8 +138,8 @@ export const ON_SKY: Semantic = {
   accentRim: 'rgba(255,168,119,0.75)',
   // Good and bad news in small type, for deep glass: saturated as far as 4.5:1 allows there.
   signal: { up: green[300], down: red[300] },
-  // iOS's own red on dark backgrounds (systemRed, dark): a true red on the sky; the lighter reds read as coral.
-  danger: { ink: red[400], line: red[400] },
+  // The most saturated reds that still pass on every sky: words 4.5:1, border and icon 3:1.
+  danger: { ink: red[200], line: red[400] },
 };
 
 export const ON_PAPER: Semantic = {

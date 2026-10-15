@@ -1,7 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Keyboard, Platform, Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, Keyboard, Platform, Pressable, StyleSheet, TextInput, View, useWindowDimensions, type TextStyle } from 'react-native';
 import Animated, {
   cancelAnimation,
   Extrapolation,
@@ -23,6 +23,8 @@ import { Sky } from '@/components/sky/Sky';
 import { Text } from '@/components/Text';
 import { cities, reels } from '@/data/catalog';
 import { track } from '@/lib/analytics';
+import { useAccount } from '@/lib/live/account';
+import { liveEnabled } from '@/lib/live/client';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT } from '@/lib/motion';
 import { useIntroOver } from '@/state/inbox';
@@ -46,12 +48,17 @@ const HOLD_MS = [1500, 900, 1300, 2400];
 const PLACE = cities[reels[PICK.reelId]?.cityId]?.name ?? 'Kochi';
 
 /**
- * One scene, then your name. The scene says what Xplore does by doing it once: something you saved
+ * One scene, then your email (app/signin) and, after it, your name. The scene says what Xplore does by doing it once: something you saved
  * (a reel, a YouTube video, an Instagram post), the Earth turning to where it is, its places landing
  * on the map, and the day they make (components/onboarding/IntroScene).
  *
  * It plays by itself in one stretch once the opening animation is over: no buttons, and no bars
- * to wait on. Holding a finger down anywhere pauses it, and Skip goes to the name.
+ * to wait on. Holding a finger down anywhere pauses it, and Skip moves on.
+ *
+ * Email first, then the name, as sign-ups do: the email says whether this is someone new or someone
+ * back on another phone, whose name comes back with their backup and isn't asked again. So with
+ * sign-in set up, the scene hands over to the email, and the tabs ask the name afterwards, only if
+ * the account has none (`?step=name`). Without a backend there's no email: the scene goes to the name.
  * It waits while Terms or Privacy is open, and gives each beat longer with VoiceOver or TalkBack on.
  *
  * The screen sits on the sky as it is right now (state/sky), the same sky Home opens on.
@@ -67,6 +74,13 @@ export default function Onboarding() {
   const { state, dispatch } = useTrips();
   const { step: asked, then, again } = useLocalSearchParams<{ step?: string; then?: string; again?: string }>();
   const replay = again === '1';
+  const { account } = useAccount();
+  const emailNext = liveEnabled && !account && !replay;
+  const toEmail = () => {
+    dispatch({ type: 'finishOnboarding' });
+    track('intro finished', { skipped: skipped.current });
+    router.replace('/signin');
+  };
   const first = asked === 'name' && !replay ? NAME : 0;
   const [step, setStep] = useState(first);
   const [name, setName] = useState(state.myName ?? '');
@@ -141,6 +155,7 @@ export default function Onboarding() {
       go(i + 1);
       play(i + 1, 0);
     } else if (replay) close();
+    else if (emailNext) toEmail();
     else go(NAME);
   };
   const play = (i: number, from: number) => {
@@ -178,6 +193,7 @@ export default function Onboarding() {
     cancelAnimation(beat);
     if (replay) return close();
     skipped.current = true;
+    if (emailNext) return toEmail();
     at.current = NAME;
     setStep(NAME);
     gone.set(withTiming(1, { duration: 180 }));
@@ -235,7 +251,7 @@ export default function Onboarding() {
               onPress={skip}
               style={styles.skip}
               accessibilityRole="button"
-              accessibilityLabel={replay ? 'Close' : 'Skip to your name'}
+              accessibilityLabel={replay ? 'Close' : emailNext ? 'Skip the intro' : 'Skip to your name'}
             >
               <Text variant="label" color={skyInk.soft}>
                 {replay ? 'Close' : 'Skip'}
@@ -359,6 +375,10 @@ function useKeyboardLift() {
   return lift;
 }
 
+// Web only: the browser's own focus ring is the system accent (orange); the field's own focused
+// border shows focus instead. RN's types don't list 'none'.
+const NO_FOCUS_RING = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : null;
+
 function NameField({ ref, value, onChange, onDone }: { ref: React.Ref<TextInput>; value: string; onChange: (v: string) => void; onDone: () => void }) {
   const [focused, setFocused] = useState(false);
   return (
@@ -379,7 +399,7 @@ function NameField({ ref, value, onChange, onDone }: { ref: React.Ref<TextInput>
       textContentType="givenName"
       maxLength={40}
       returnKeyType="go"
-      style={[styles.nameInput, focused && styles.nameInputFocused]}
+      style={[styles.nameInput, NO_FOCUS_RING, focused && styles.nameInputFocused]}
       accessibilityLabel="Your first name"
     />
   );

@@ -1,8 +1,8 @@
 import Feather from '@expo/vector-icons/Feather';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState, type RefObject } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type TextStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,6 +20,9 @@ import { skyFill, skyInk } from '@/theme/sky';
 import { fonts, space } from '@/theme/tokens';
 
 const CODE_LENGTH = 6;
+// Web only: the browser's own focus ring is the system accent (orange) and narrower than the pill;
+// the pill's strong border shows focus instead (as LinkBox does). RN's types don't list 'none'.
+const NO_FOCUS_RING = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : null;
 /** How long before another code can be asked for: Supabase refuses sooner anyway. */
 const RESEND_AFTER = 60;
 const looksLikeEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.trim());
@@ -27,10 +30,14 @@ const looksLikeEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.tri
 const codeIn = (text: string) => text.match(/(^|\D)(\d{6})(\D|$)/)?.[2] ?? (/^\d{6}$/.test(text.replace(/\s/g, '')) ? text.replace(/\s/g, '') : null);
 
 /**
- * Signing in with an email: the step after your name, and asked of everyone (Albin's choice for
- * the testing group). An email, then the 6-digit code sent to it; no password. Signed in, the
- * phone's saved places are backed up to the account and come back on any other phone
+ * Signing in with an email: the step after the intro, before the name, and asked of everyone
+ * (Albin's choice for the testing group). An email, then the 6-digit code sent to it; no password.
+ * Signed in, the phone's saved places are backed up to the account and come back on any other phone
  * (lib/live/account). The tabs send anyone here who isn't signed in yet.
+ *
+ * Laid out as sign-ups usually are (Booking.com, Luma, Strava on Mobbin): the words and the field
+ * at the top where the keyboard can't cover them, the button just above the keyboard, the code in
+ * six boxes with the address it went to and a way to change it.
  */
 export default function SignIn() {
   const insets = useSafeAreaInsets();
@@ -43,6 +50,7 @@ export default function SignIn() {
   const [unsent, setUnsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wait, setWait] = useState(0);
+  const [emailFocused, setEmailFocused] = useState(false);
   const codeInput = useRef<TextInput>(null);
   // Each request to send a code; an answer to an older one (Back, then another email) is ignored.
   const asked = useRef(0);
@@ -114,7 +122,19 @@ export default function SignIn() {
   };
 
   const onEmail = stage === 'email';
-  const note = error ?? (offline ? 'You’re offline. Signing in needs the internet.' : null);
+  const backToEmail = () => {
+    asked.current++;
+    setSending(false);
+    setStage('email');
+    setError(null);
+  };
+  const note =
+    error ??
+    (offline
+      ? 'You’re offline. Signing in needs the internet.'
+      : !onEmail && !sending && !unsent
+        ? 'It can take a minute, and may land in spam.'
+        : null);
 
   return (
     <SkyScreen>
@@ -128,17 +148,7 @@ export default function SignIn() {
             {onEmail ? (
               <Text style={styles.wordmark}>Xplore</Text>
             ) : (
-              <PressableScale
-                onPress={() => {
-                  asked.current++;
-                  setSending(false);
-                  setStage('email');
-                  setError(null);
-                }}
-                style={styles.back}
-                accessibilityRole="button"
-                accessibilityLabel="Use a different email"
-              >
+              <PressableScale onPress={backToEmail} style={styles.back} accessibilityRole="button" accessibilityLabel="Use a different email">
                 <Feather name="chevron-left" size={18} color={skyInk.soft} />
                 <Text variant="label" color={skyInk.soft}>
                   Back
@@ -150,85 +160,99 @@ export default function SignIn() {
           <Animated.View key={stage} entering={fadeUp(0)} style={styles.body}>
             <View style={styles.copy}>
               <Text style={styles.title} accessibilityRole="header">
-                {onEmail ? 'Last step.\nYour email?' : 'Check your email.'}
+                {onEmail ? 'What’s your email?' : 'Check your email.'}
               </Text>
-              <Text variant="body">
-                {onEmail
-                  ? 'We’ll send you a 6-digit code. No password. Your places and plans are backed up to it, so they’re safe if you change phone.'
-                  : sending
-                    ? `Sending a 6-digit code to ${email.trim()}…`
-                    : unsent
-                      ? `We couldn’t send a code to ${email.trim()}.`
-                      : `We sent a 6-digit code to ${email.trim()}. It can take a minute, and may land in spam. Copy the code from the newest one and tap paste.`}
-              </Text>
+              {onEmail ? (
+                <Text variant="body">
+                  We’ll send you a 6-digit code to sign in. No password. Your places and plans are backed up to it, so they’re safe if you change phone.
+                </Text>
+              ) : (
+                <Text variant="body">
+                  {sending ? 'Sending a 6-digit code to ' : unsent ? 'We couldn’t send a code to ' : 'Enter the 6-digit code we sent to '}
+                  <Text variant="body" style={styles.address}>
+                    {email.trim()}
+                  </Text>
+                  {sending ? '…' : '. '}
+                  {sending ? null : (
+                    <Text variant="body" style={styles.change} onPress={backToEmail} accessibilityRole="link" accessibilityLabel="Change the email">
+                      Change
+                    </Text>
+                  )}
+                </Text>
+              )}
             </View>
 
             {onEmail ? (
-              // Its own key: iOS keeps the code field's letter spacing on a reused field after Back.
-              <TextInput
-                key="email"
-                value={email}
-                onChangeText={(t) => {
-                  setEmail(t);
-                  setError(null);
-                }}
-                onSubmitEditing={send}
-                placeholder="you@example.com"
-                placeholderTextColor={skyInk.faint}
-                selectionColor={skyInk.strong}
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="email"
-                textContentType="emailAddress"
-                keyboardType="email-address"
-                returnKeyType="send"
-                autoFocus
-                style={styles.input}
-                accessibilityLabel="Your email address"
-              />
+              <View style={styles.field}>
+                <Text variant="label" color={skyInk.soft}>
+                  Email
+                </Text>
+                {/* Its own key: iOS reuses text fields between the two steps. */}
+                <TextInput
+                  key="email"
+                  value={email}
+                  onChangeText={(t) => {
+                    setEmail(t);
+                    setError(null);
+                  }}
+                  onSubmitEditing={send}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => setEmailFocused(false)}
+                  placeholder="you@example.com"
+                  placeholderTextColor={skyInk.faint}
+                  selectionColor={skyInk.strong}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  textContentType="emailAddress"
+                  keyboardType="email-address"
+                  returnKeyType="go"
+                  clearButtonMode="while-editing"
+                  autoFocus
+                  style={[styles.input, NO_FOCUS_RING, emailFocused && styles.inputFocused]}
+                  accessibilityLabel="Your email address"
+                />
+              </View>
             ) : (
-              <View style={styles.codeRow}>
-              <TextInput
-                key="code"
-                ref={codeInput}
-                value={code}
-                onChangeText={onCode}
-                placeholder="000000"
-                placeholderTextColor={skyInk.faint}
-                selectionColor={skyInk.strong}
-                keyboardType="number-pad"
-                autoComplete="one-time-code"
-                textContentType="oneTimeCode"
-                maxLength={CODE_LENGTH}
-                style={[styles.input, styles.code, styles.fill]}
-                accessibilityLabel={`The ${CODE_LENGTH}-digit code from the email`}
-              />
-              {/* Gmail can't fill the code in the way Apple's Mail can: copy it there, paste it here. */}
-              <PasteButton
-                shape="circle"
-                quiet
-                size={54}
-                onText={(text) => {
-                  const found = codeIn(text);
-                  if (!found) {
-                    setError('No 6-digit code in what you copied.');
-                    haptic.error();
-                  } else if (usedCode(found)) {
-                    setError('That code is from an earlier email. Copy the one in the newest email.');
-                    haptic.error();
-                  } else {
-                    pasted.current = found;
-                    onCode(found);
-                  }
-                }}
-                onUnreadable={() => setError('Couldn’t read what you copied. Long-press the box to paste.')}
-              />
+              <View style={styles.field}>
+                <CodeBoxes value={code} inputRef={codeInput} onChange={onCode} />
+                <View style={styles.codeTools}>
+                  <PressableScale
+                    onPress={send}
+                    disabled={busy || sending || wait > 0}
+                    style={styles.resend}
+                    accessibilityRole="button"
+                    accessibilityLabel={wait > 0 ? `Send a new code in ${wait} seconds` : 'Send a new code'}
+                  >
+                    <Text variant="label" color={busy || sending || wait > 0 ? skyInk.faint : skyInk.strong} style={!(busy || sending || wait > 0) && styles.resendOn}>
+                      {wait > 0 ? `Send a new code in ${wait}s` : 'Send a new code'}
+                    </Text>
+                  </PressableScale>
+                  {/* Gmail can't fill the code in the way Apple's Mail can: copy it there, paste it here. */}
+                  <PasteButton
+                    quiet
+                    onText={(text) => {
+                      const found = codeIn(text);
+                      if (!found) {
+                        setError('No 6-digit code in what you copied.');
+                        haptic.error();
+                      } else if (usedCode(found)) {
+                        setError('That code is from an earlier email. Copy the one in the newest email.');
+                        haptic.error();
+                      } else {
+                        pasted.current = found;
+                        onCode(found);
+                      }
+                    }}
+                    onUnreadable={() => setError('Couldn’t read what you copied. Long-press the boxes to paste.')}
+                  />
+                </View>
               </View>
             )}
 
             <View style={styles.noteSlot}>
               {note ? (
-                <Text variant="label" color={error ? skyInk.strong : skyInk.soft} accessibilityLiveRegion="polite">
+                <Text variant="label" color={error ? skyInk.strong : skyInk.faint} accessibilityLiveRegion="polite">
                   {note}
                 </Text>
               ) : null}
@@ -237,32 +261,54 @@ export default function SignIn() {
 
           <View style={styles.actions}>
             {onEmail ? (
+              <Button trailingArrow label="Continue" onPress={send} disabled={!email.trim()} />
+            ) : (
               <Button
                 trailingArrow
-                label="Send code"
-                onPress={send}
-                disabled={!email.trim()}
+                label={busy ? 'Checking…' : 'Sign in'}
+                onPress={() => void check()}
+                disabled={busy || code.length < CODE_LENGTH}
               />
-            ) : (
-              <>
-                <Button
-                  trailingArrow
-                  label={busy ? 'Checking…' : 'Sign in'}
-                  onPress={() => void check()}
-                  disabled={busy || code.length < CODE_LENGTH}
-                />
-                <Button
-                  kind="text"
-                  label={wait > 0 ? `Send a new code in ${wait}s` : 'Send a new code'}
-                  onPress={send}
-                  disabled={busy || sending || wait > 0}
-                />
-              </>
             )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SkyScreen>
+  );
+}
+
+/**
+ * The code as six boxes, the way sign-ups show it. One real field lies over them, unseen, so
+ * typing, the keyboard's code suggestion (from Messages or Mail) and long-press paste all work as
+ * in any field; the boxes only show what it holds and where the next digit goes.
+ */
+function CodeBoxes({ value, inputRef, onChange }: { value: string; inputRef: RefObject<TextInput | null>; onChange: (text: string) => void }) {
+  const [focused, setFocused] = useState(false);
+  const next = Math.min(value.length, CODE_LENGTH - 1);
+  return (
+    <View style={styles.boxes}>
+      {Array.from({ length: CODE_LENGTH }, (_, i) => (
+        <View key={i} style={[styles.box, focused && i === next && styles.boxOn]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <Text style={styles.digit}>{value[i] ?? ''}</Text>
+        </View>
+      ))}
+      <TextInput
+        key="code"
+        ref={inputRef}
+        value={value}
+        onChangeText={onChange}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        keyboardType="number-pad"
+        autoComplete="one-time-code"
+        textContentType="oneTimeCode"
+        maxLength={CODE_LENGTH}
+        caretHidden
+        selectionColor="transparent"
+        style={styles.hiddenInput}
+        accessibilityLabel={`The ${CODE_LENGTH}-digit code from the email`}
+      />
+    </View>
   );
 }
 
@@ -272,10 +318,14 @@ const styles = StyleSheet.create({
   topRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center' },
   wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
   back: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44, paddingRight: 8, marginLeft: -4 },
-  body: { flex: 1, justifyContent: 'center', gap: 24, paddingVertical: 24 },
+  // From the top, so the keyboard never covers the words or the field; the button sits below.
+  body: { flex: 1, gap: 24, paddingTop: 24, paddingBottom: 16 },
   copy: { gap: 12 },
-  // The display size every screen title uses, as on the name step before this one.
+  // The display size every screen title uses, as on the name step.
   title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
+  address: { fontFamily: fonts.sansSemi, color: skyInk.strong },
+  change: { color: skyInk.strong, textDecorationLine: 'underline' },
+  field: { gap: 8 },
   input: {
     height: 54,
     paddingHorizontal: 16,
@@ -288,10 +338,29 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: skyInk.strong,
   },
-  codeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  // No letterSpacing on a text field: iOS reuses fields and carried it into others' placeholders
-  // ("Paste a video link" on Home came out spaced). Even-width digits instead.
-  code: { fontSize: 26, textAlign: 'center', fontFamily: fonts.sansSemi, fontVariant: ['tabular-nums'] },
+  inputFocused: { borderColor: skyInk.strong },
+  boxes: { flexDirection: 'row', gap: 8 },
+  box: {
+    flex: 1,
+    height: 60,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: skyFill.raised,
+    borderWidth: 1,
+    borderColor: skyInk.rim,
+  },
+  // The box the next digit goes in: the strong ink, as anything chosen or on.
+  boxOn: { borderColor: skyInk.strong, borderWidth: 1.5 },
+  digit: { fontFamily: fonts.sansSemi, fontSize: 26, lineHeight: 32, color: skyInk.strong, fontVariant: ['tabular-nums'] },
+  // Unseen but there: it takes the taps, the typing and the paste. Not opacity 0: iOS passes taps
+  // through anything under 1% opaque, and the boxes could no longer bring the keyboard back. Its
+  // text and caret are transparent anyway. No letterSpacing on a text field (iOS reuses fields and
+  // carried it into others' placeholders); 16pt so browsers don't zoom.
+  hiddenInput: { ...StyleSheet.absoluteFill, opacity: 0.02, color: 'transparent', fontSize: 16 },
+  codeTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8 },
+  resend: { minHeight: 44, justifyContent: 'center' },
+  resendOn: { textDecorationLine: 'underline' },
   noteSlot: { minHeight: 20 },
   actions: { gap: 4 },
 });

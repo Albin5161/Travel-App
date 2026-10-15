@@ -19,11 +19,13 @@ export default function TabsLayout() {
   // notification into a district, would otherwise walk straight past onboarding. Declarative, so
   // no tab paints before redirecting.
   if (!state.onboarded) return <Redirect href="/onboarding" />;
-  // The name became required after some people had skipped it: they're asked for it once, alone.
-  if (!state.myName) return <Redirect href={{ pathname: '/onboarding', params: { step: 'name' } }} />;
   // Then an email, asked of everyone (signin): it's how their places are backed up. Only where the
-  // backend is set up; without it there's nothing to sign in to.
+  // backend is set up; without it there's nothing to sign in to. It comes before the name, as in
+  // most sign-ups: someone back on a new phone gets their name with their backup.
   if (liveEnabled && !account) return <Redirect href="/signin" />;
+  // The name, asked once and alone when the account has none (someone new, or who skipped it before
+  // it was required).
+  if (!state.myName) return <Redirect href={{ pathname: '/onboarding', params: { step: 'name' } }} />;
 
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>

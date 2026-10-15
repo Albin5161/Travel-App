@@ -27,6 +27,7 @@ import { track } from '@/lib/analytics';
 import { useAccount } from '@/lib/live/account';
 import { liveEnabled } from '@/lib/live/client';
 import { haptic } from '@/lib/haptics';
+import { nameProblem } from '@/lib/names';
 import { EASE_OUT } from '@/lib/motion';
 import { useIntroOver } from '@/state/inbox';
 import { useHomeSky } from '@/state/sky';
@@ -85,8 +86,9 @@ export default function Onboarding() {
   const first = asked === 'name' && !replay ? NAME : 0;
   const [step, setStep] = useState(first);
   const [name, setName] = useState(state.myName ?? '');
-  // Go with no name says so, in red, rather than only buzzing (nothing at all on the web).
-  const [nameMissing, setNameMissing] = useState(false);
+  // What's wrong with the name (none, or numbers and symbols), said in red under the field when
+  // Go is pressed, rather than only buzzing (nothing at all on the web). See lib/names.
+  const [nameError, setNameError] = useState<string | null>(null);
   const skipped = useRef(false);
   const reduced = useReducedMotion();
   // Where the scene is, continuous: every moving part reads this one value (see IntroScene).
@@ -128,11 +130,11 @@ export default function Onboarding() {
     nameOn.set(withTiming(next === NAME ? 1 : 0, { duration: next === NAME ? ms : 200, easing: EASE_OUT }));
   };
 
-  const named = !!name.trim();
   const finish = () => {
-    if (!named) {
+    const problem = nameProblem(name);
+    if (problem) {
       haptic.error();
-      setNameMissing(true);
+      setNameError(problem);
       return;
     }
     haptic.success();
@@ -290,13 +292,13 @@ export default function Onboarding() {
                 value={name}
                 onChange={(v) => {
                   setName(v);
-                  setNameMissing(false);
+                  setNameError(null);
                 }}
                 onDone={finish}
-                wrong={nameMissing}
+                wrong={!!nameError}
               />
-              {nameMissing ? (
-                <ErrorNote style={styles.fieldHint}>Add your first name to continue.</ErrorNote>
+              {nameError ? (
+                <ErrorNote style={styles.fieldHint}>{nameError}</ErrorNote>
               ) : (
                 <Text variant="label" color={skyInk.faint} style={styles.fieldHint}>
                   {Platform.OS === 'web' ? 'Press Enter to start.' : 'Tap Go on the keyboard to start.'}

@@ -15,6 +15,7 @@ import { Text } from '@/components/Text';
 import { allDistricts } from '@/data/regions';
 import { Segmented } from '@/components/Segmented';
 import { haptic } from '@/lib/haptics';
+import { nameProblem } from '@/lib/names';
 import { signOut, useAccount } from '@/lib/live/account';
 import { liveEnabled } from '@/lib/live/client';
 import { MODE, isLight, setMode } from '@/theme/mode';
@@ -48,9 +49,18 @@ export default function Profile() {
   const [name, setName] = useState(state.myName ?? '');
   const [lookNote, setLookNote] = useState<string | null>(null);
   // The name is required, so clearing the field puts the saved one back rather than removing it.
+  // One with numbers or symbols isn't saved, and says why in red under the section (lib/names).
+  const [nameError, setNameError] = useState<string | null>(null);
   const saveName = () => {
-    if (name.trim()) dispatch({ type: 'setMyName', name });
-    else setName(state.myName ?? '');
+    if (!name.trim()) {
+      setName(state.myName ?? '');
+      setNameError(null);
+      return;
+    }
+    const problem = nameProblem(name);
+    setNameError(problem);
+    if (problem) haptic.error();
+    else dispatch({ type: 'setMyName', name });
   };
 
   const home = allDistricts.find((d) => d.id === state.homeDistrictId);
@@ -90,11 +100,18 @@ export default function Profile() {
       </Animated.View>
 
       <Animated.View entering={ENTER[2]}>
-        <Section title="You" footer="Friends see your name and photo on trips you share. Your weekend outings, and which places count as away, follow from home.">
+        <Section
+          title="You"
+          footer={nameError ?? 'Friends see your name and photo on trips you share. Your weekend outings, and which places count as away, follow from home.'}
+          footerError={!!nameError}
+        >
           <Row icon="user" label="Name">
             <TextInput
               value={name}
-              onChangeText={setName}
+              onChangeText={(v) => {
+                setName(v);
+                setNameError(null);
+              }}
               onEndEditing={saveName}
               onBlur={saveName}
               placeholder="Add your name"

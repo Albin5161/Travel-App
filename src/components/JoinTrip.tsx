@@ -12,6 +12,7 @@ import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
+import { nameProblem } from '@/lib/names';
 import { joinTrip, loadTrip, planFromRow } from '@/lib/live/api';
 import { ensureUser, liveEnabled } from '@/lib/live/client';
 import { FADE_IN, fadeUp } from '@/lib/motion';
@@ -41,6 +42,13 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
 
   const join = async () => {
     if (!ready || busy) return;
+    // The same rule as the name step: letters only (lib/names).
+    const problem = nameProblem(name);
+    if (problem) {
+      haptic.error();
+      setError(problem);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

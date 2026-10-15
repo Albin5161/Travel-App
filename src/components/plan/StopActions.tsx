@@ -30,11 +30,13 @@ type Props = {
 
 /**
  * Everything you can do to one stop, in a sheet from the bottom: lock it, move it to another day,
- * swap it for something else, or take it out. The list rows sit in thumb reach; the swap list only
- * opens when asked for, so the common actions stay one tap away.
+ * swap it for something else, or take it out. The list rows sit in thumb reach; the swap list and,
+ * on longer trips, the list of days only open when asked for, so the sheet stays four rows at most.
+ * Swap only shows when there's something to swap in, and Remove sits last, set apart.
  */
 export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap, onRemove, onClose }: Props) {
   const [swapping, setSwapping] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [query, setQuery] = useState('');
   const swapTo = (on: boolean) => {
     setSwapping(on);
@@ -42,8 +44,11 @@ export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap
   };
   const close = () => {
     swapTo(false);
+    setMoving(false);
     onClose();
   };
+  // The other days. One of them: a row of its own. More: one row that opens the list.
+  const others = days.map((label, i) => ({ label, i })).filter((d) => d.i !== day);
   // By name, area or kind: "momos", "hauz khas", "stay".
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const shown = words.length
@@ -70,7 +75,31 @@ export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap
             </View>
           </View>
 
-          {swapping ? (
+          {moving ? (
+            <View style={styles.swapTop}>
+              <View style={styles.swapHead}>
+                <Text variant="micro">Move to</Text>
+                <Pressable onPress={() => setMoving(false)} hitSlop={10} style={dims(styles.backTap)} accessibilityRole="button" accessibilityLabel="Back to actions">
+                  <Text variant="label" style={styles.back}>
+                    Back
+                  </Text>
+                </Pressable>
+              </View>
+              <ScrollView style={styles.swapList} contentContainerStyle={styles.dayList}>
+                {others.map((d) => (
+                  <Action
+                    key={d.label}
+                    icon="calendar"
+                    label={d.label}
+                    onPress={() => {
+                      setMoving(false);
+                      onMove(d.i);
+                    }}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          ) : swapping ? (
             <>
             <View style={styles.swapTop}>
               <View style={styles.swapHead}>
@@ -145,12 +174,16 @@ export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap
                   onPress={onPin}
                 />
               ) : null}
-              {days.map((label, i) =>
-                i === day ? null : <Action key={label} icon="corner-down-right" label={`Move to ${label}`} onPress={() => onMove(i)} />,
-              )}
-              {/* Remove sits above the last row, away from where the plan's Save button is. */}
-              <Action icon="x" label="Remove from plan" detail={stop.suggested ? undefined : 'It stays saved'} onPress={onRemove} danger />
-              <Action icon="repeat" label="Swap for something else" onPress={() => swapTo(true)} />
+              {others.length === 1 ? (
+                <Action icon="corner-down-right" label={`Move to ${others[0].label}`} onPress={() => onMove(others[0].i)} />
+              ) : others.length > 1 ? (
+                <Action icon="corner-down-right" label="Move to another day" onPress={() => setMoving(true)} more />
+              ) : null}
+              {candidates.length > 0 ? <Action icon="repeat" label="Swap for something else" onPress={() => swapTo(true)} more /> : null}
+              {/* Last and set apart: the one row that takes something out. Undo follows on the plan. */}
+              <View style={styles.apart}>
+                <Action icon="x" label="Remove from plan" detail={stop.suggested ? undefined : 'It stays saved'} onPress={onRemove} danger />
+              </View>
             </View>
           )}
         </>
@@ -165,12 +198,15 @@ function Action({
   detail,
   onPress,
   danger,
+  more,
 }: {
   icon: React.ComponentProps<typeof Feather>['name'];
   label: string;
   detail?: string;
   onPress: () => void;
   danger?: boolean;
+  /** Opens a list in the sheet rather than acting straight away. */
+  more?: boolean;
 }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.action, pressed && styles.pressed]} accessibilityRole="button">
@@ -187,6 +223,7 @@ function Action({
           </Text>
         ) : null}
       </View>
+      {more ? <Feather name="chevron-right" size={18} color={skyInk.soft} /> : null}
     </Pressable>
   );
 }
@@ -206,6 +243,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pressed: { backgroundColor: skyFill.pane },
+  apart: { marginTop: 8, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: skyInk.line },
+  dayList: { paddingTop: 4 },
   swapTop: { paddingTop: 16, gap: 8 },
   search: {
     flexDirection: 'row',

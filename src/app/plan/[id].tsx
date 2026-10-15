@@ -60,6 +60,7 @@ import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
 import { EASE_IN_OUT, FADE_IN, FADE_OUT, fadeUp, REFLOW } from '@/lib/motion';
 import { customStops } from '@/data/custom';
+import { deviceStorage } from '@/lib/live/storage';
 import { usePlanWriter } from '@/state/live';
 import { useHomeSky } from '@/state/sky';
 import { useCityPlaces, useTrips } from '@/state/trips';
@@ -107,6 +108,12 @@ export default function PlanScreen() {
   const [failure, setFailure] = useState<string | null>(null);
   // A removed stop can be put back for a few seconds: the plan as it was, and what to say.
   const [undo, setUndo] = useState<{ plan: TripPlan; label: string } | null>(null);
+  // The "Love a stop?" how-to shows on the first plan this phone opens, then steps aside.
+  const [firstVisit] = useState(firstPlanVisit);
+  // Remembered once shown, in an effect: a state initialiser can run twice and would hide it unseen.
+  useEffect(() => {
+    if (firstVisit) markPlanVisited();
+  }, [firstVisit]);
   const pdf = usePlanPdf(city, plan);
   const [stamping, setStamping] = useState(false);
 
@@ -265,6 +272,8 @@ export default function PlanScreen() {
       return;
     }
     haptic.success();
+    // Undo, as for Remove: a stray tap on Reshuffle shouldn't cost the day you had.
+    setUndo({ plan, label: 'Plan reshuffled' });
     update(result.next);
     setFlash(result.changed);
   };
@@ -424,11 +433,12 @@ export default function PlanScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: space.screen, paddingTop: 24, paddingBottom: insets.bottom + 130 }}
         >
-          <Text variant="eyebrow" numberOfLines={2}>
-            {meta}
-          </Text>
-          <Text variant="display" accessibilityRole="header" style={styles.title}>
+          <Text variant="display" accessibilityRole="header">
             {n === 1 ? `Your day in ${city.name}` : `Your ${n} days in ${city.name}`}
+          </Text>
+          {/* The trip's facts under the title, not a label over it. */}
+          <Text variant="label" color={skyInk.soft} numberOfLines={2} style={styles.meta}>
+            {meta}
           </Text>
 
           <View style={styles.tools}>
@@ -451,11 +461,12 @@ export default function PlanScreen() {
                 {note}
               </Text>
             </Animated.View>
-          ) : (
+          ) : editing || firstVisit ? (
+            // The how-to once, on the first plan; in Edit mode, every time, since that's when it's needed.
             <Text variant="label" color={skyInk.faint} style={styles.note}>
               {editing ? 'Move stops with the arrows. Tap ⋯ to lock one in place, swap or remove it.' : 'Love a stop? Tap Edit to lock it. Reshuffle keeps locked stops and changes the rest.'}
             </Text>
-          )}
+          ) : null}
 
           {offer ? (
             <Glass style={styles.offer}>
@@ -520,7 +531,7 @@ export default function PlanScreen() {
                     accessibilityRole="tab"
                     accessibilityState={{ selected: on }}
                   >
-                    <Text variant="label" color={on ? skyOnInk : skyInk.strong}>
+                    <Text variant="label" color={skyInk.strong}>
                       {label}
                     </Text>
                   </PressableScale>
@@ -757,8 +768,8 @@ function Tool({
   return (
     <PressableScale onPress={onPress} containerStyle={styles.toolSlot} accessibilityRole="button" accessibilityLabel={a11y ?? label}>
       <View style={[styles.tool, on && styles.toolOn]}>
-        <Feather name={icon} size={13} color={on ? skyOnInk : skyInk.strong} />
-        <Text variant="label" color={on ? skyOnInk : skyInk.strong} numberOfLines={1}>
+        <Feather name={icon} size={13} color={skyInk.strong} />
+        <Text variant="label" color={skyInk.strong} numberOfLines={1}>
           {label}
         </Text>
       </View>
@@ -910,7 +921,7 @@ function WhyCard({ reasons }: { reasons: Reason[] }) {
           </Animated.View>
         ))
       ) : (
-        <Text variant="label" color={skyInk.soft} numberOfLines={2}>
+        <Text variant="label" color={skyInk.soft} numberOfLines={1}>
           {reasons.map((r) => r.lead).join(' · ')}
         </Text>
       )}
@@ -975,7 +986,7 @@ function StopRow({
   // The row's own press and its buttons are siblings, never nested: a button inside a button is
   // invalid on web and confusing to screen readers everywhere.
   return (
-    <Animated.View style={dim}>
+    <View>
       <Animated.View pointerEvents="none" style={[styles.glow, glowStyle]} />
       <View style={styles.stop}>
       <PressableScale
@@ -990,7 +1001,10 @@ function StopRow({
           <Animated.View style={[styles.stopReached, reached]} />
           <Text style={styles.stopNumberText}>{number}</Text>
         </View>
-        <Image source={stop.place.photo} style={styles.thumb} contentFit="cover" transition={0} />
+        {/* Only the photo fades for stops away from where you are: faded words failed AA contrast. */}
+        <Animated.View style={dim}>
+          <Image source={stop.place.photo} style={styles.thumb} contentFit="cover" transition={0} />
+        </Animated.View>
         <View style={styles.stopText}>
           <View style={styles.nameRow}>
             {stop.pinned ? <Feather name="lock" size={12} color={skyInk.soft} accessibilityLabel="Locked" /> : null}
@@ -1044,7 +1058,7 @@ function StopRow({
           </Text>
         </Animated.View>
       ) : null}
-    </Animated.View>
+    </View>
   );
 }
 
@@ -1090,7 +1104,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 0,
     borderBottomWidth: 0,
   },
-  title: { marginTop: 8, marginBottom: 16 },
+  meta: { marginTop: 4, marginBottom: 16 },
   tools: { flexDirection: 'row', gap: 8 },
   toolSlot: { flex: 1 },
   tool: {
@@ -1105,7 +1119,8 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
   },
-  toolOn: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
+  // Editing: a pressed-grey pill with a tick, not black: Save stays the one black button.
+  toolOn: { backgroundColor: skyFill.pressed, borderColor: skyInk.strong },
   note: { marginTop: 8 },
   undo: {
     flexDirection: 'row',
@@ -1136,11 +1151,11 @@ const styles = StyleSheet.create({
   },
   thinText: { flex: 1 },
   thinLink: { color: skyInk.strong, textDecorationLine: 'underline' },
-  days: { marginTop: 16, marginHorizontal: -space.screen },
+  days: { marginTop: 12, marginHorizontal: -space.screen },
   daysContent: { paddingHorizontal: space.screen, gap: 8 },
   // The same pill as the sky's chips: frosted until chosen, then solid white.
   dayTab: {
-    minHeight: 36,
+    minHeight: 44,
     justifyContent: 'center',
     paddingHorizontal: 16,
     borderRadius: radii.pill,
@@ -1148,12 +1163,13 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
   },
-  dayTabOn: { backgroundColor: skyInk.strong, borderColor: skyInk.strong },
+  // Chosen: outlined in ink, not filled black, so the Save button is the screen's one black thing.
+  dayTabOn: { backgroundColor: skyFill.pane, borderColor: skyInk.strong, borderWidth: 1.5, paddingHorizontal: 15.5 },
   list: { marginTop: 8 },
   busy: { opacity: 0.4 },
-  daySummary: { marginTop: 16 },
+  daySummary: { marginTop: 12 },
   why: {
-    marginTop: 12,
+    marginTop: 8,
     padding: 16,
     gap: 8,
     borderRadius: radii.pane,
@@ -1168,7 +1184,7 @@ const styles = StyleSheet.create({
   whyText: { flex: 1 },
   stopWhy: { marginTop: 2 },
   // A 44pt target for a 16pt glyph, with no circle around it: one per stop would be a column of buttons.
-  whyButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -10 },
+  whyButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   // Under the stop's text: past the number (24), the photo (56) and the gaps between them (12 each).
   whyOpen: { marginLeft: 104, marginRight: 34, paddingBottom: 8 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -1233,3 +1249,21 @@ const styles = StyleSheet.create({
   bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   floating: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },
 });
+
+const HINT_KEY = 'xplore.planHintSeen';
+/** True until this phone has shown the plan's how-to once. */
+function firstPlanVisit() {
+  try {
+    return !deviceStorage?.getItem(HINT_KEY);
+  } catch {
+    // No storage: show it, as for a first visit.
+    return true;
+  }
+}
+function markPlanVisited() {
+  try {
+    deviceStorage?.setItem(HINT_KEY, '1');
+  } catch {
+    // No storage: it shows again next time, which is harmless.
+  }
+}

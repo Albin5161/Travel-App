@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 import { INTRO_MS, IntroScene, PICK } from '@/components/onboarding/IntroScene';
 import { ProfilePreview } from '@/components/onboarding/ProfilePreview';
+import { Button } from '@/components/Button';
 import { ErrorNote } from '@/components/ErrorNote';
 import { PressableScale } from '@/components/PressableScale';
 import { Sky } from '@/components/sky/Sky';
@@ -297,13 +298,10 @@ export default function Onboarding() {
                 onDone={finish}
                 wrong={!!nameError}
               />
-              {nameError ? (
-                <ErrorNote style={styles.fieldHint}>{nameError}</ErrorNote>
-              ) : (
-                <Text variant="label" color={skyInk.faint} style={styles.fieldHint}>
-                  {Platform.OS === 'web' ? 'Press Enter to start.' : 'Tap Go on the keyboard to start.'}
-                </Text>
-              )}
+              {nameError ? <ErrorNote style={styles.fieldHint}>{nameError}</ErrorNote> : null}
+              {/* A button to finish on, not only the keyboard's Go: on Android, once the keyboard
+                  was closed there was nothing to tap. Go still works as a shortcut. */}
+              <Button label="Start" trailingArrow onPress={finish} style={styles.start} />
             </View>
           </View>
         </Animated.View>
@@ -365,9 +363,13 @@ function lightStatusBar() {
   return () => setStatusBarStyle('dark');
 }
 
+/** The Start button and its gap under the name field: raised above the keyboard with it. */
+const BELOW_FIELD = 72;
+
 /**
- * How far to raise the pages so the focused field clears the keyboard. It follows the keyboard's
- * own timing, and only moves as much as it has to. Web leaves this to the browser.
+ * How far to raise the pages so the focused field, and the Start button under it, clear the
+ * keyboard. It follows the keyboard's own timing, and only moves as much as it has to. Web leaves
+ * this to the browser.
  */
 function useKeyboardLift() {
   const lift = useSharedValue(0);
@@ -378,7 +380,7 @@ function useKeyboardLift() {
       const field = TextInput.State.currentlyFocusedInput();
       if (!field) return;
       field.measureInWindow((_x, y, _w, h) => {
-        const bottom = y + h - lift.get();
+        const bottom = y + h + BELOW_FIELD - lift.get();
         const target = Math.min(0, e.endCoordinates.screenY - 20 - bottom);
         lift.set(withTiming(target, { duration: e.duration || 250, easing: EASE_OUT }));
       });
@@ -487,5 +489,6 @@ const styles = StyleSheet.create({
   body: { paddingRight: 8 },
   fieldBlock: { gap: 8 },
   fieldHint: { paddingHorizontal: 16 },
+  start: { marginTop: 4 },
   bottom: { paddingHorizontal: GUTTER, gap: 16 },
 });

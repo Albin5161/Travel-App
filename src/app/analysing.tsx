@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
+  css,
   Easing,
   useAnimatedStyle,
   useReducedMotion,
@@ -352,7 +353,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
             style={[
               styles.scene,
               scene === 'leaving' ? styles.sceneFolded : { maxHeight: sceneHeight(sceneW) },
-              !reduced && styles.sceneFold,
+              !reduced && fold.scene,
             ]}
           >
             <ReadingScene topic={topic} count={names.length} width={sceneW} onCheered={stepAside} />
@@ -755,11 +756,6 @@ const styles = StyleSheet.create({
   // Pushed to the foot of the card, whatever room is left above.
   scene: { marginTop: 'auto', paddingTop: 4, marginBottom: -16, flexShrink: 4, minHeight: 0, overflow: 'hidden' },
   sceneFolded: { maxHeight: 0, marginTop: 0, marginBottom: 0, opacity: 0 },
-  sceneFold: {
-    transitionProperty: ['maxHeight', 'marginTop', 'marginBottom', 'opacity'],
-    transitionDuration: FOLD_MS,
-    transitionTimingFunction: 'ease-in-out',
-  },
   statusRow: {
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -813,4 +809,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   failedActions: { gap: 8 },
+});
+
+// A CSS transition, which StyleSheet's types don't know: Reanimated's own sheet does.
+const fold = css.create({
+  scene: {
+    transitionProperty: ['maxHeight', 'marginTop', 'marginBottom', 'opacity'],
+    transitionDuration: FOLD_MS,
+    transitionTimingFunction: 'ease-in-out',
+  },
 });

@@ -150,16 +150,6 @@ function leaf(cx: number, cy: number, s: number, deg: number) {
 
 /** A closed outline through straight-edged points. */
 const poly = (pts: P[]) => `M${pts.map(([x, y]) => `${f(x)} ${f(y)}`).join('L')}Z`;
-/** A line of `n` short stitches from `a` to `b`, the gaps as long as the stitches. */
-function stitches(a: P, b: P, n: number) {
-  let d = '';
-  for (let i = 0; i < n; i++) {
-    const t0 = i / n;
-    const t1 = (i + 0.55) / n;
-    d += `M${f(a[0] + (b[0] - a[0]) * t0)} ${f(a[1] + (b[1] - a[1]) * t0)}L${f(a[0] + (b[0] - a[0]) * t1)} ${f(a[1] + (b[1] - a[1]) * t1)}`;
-  }
-  return d;
-}
 /** A ring of `n` stitches round a centre: a circle sewn in running stitch. */
 function stitchedRing(cx: number, cy: number, r: number, n: number) {
   let d = '';

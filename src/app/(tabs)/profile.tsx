@@ -18,7 +18,7 @@ import { haptic } from '@/lib/haptics';
 import { nameProblem } from '@/lib/names';
 import { signOut, useAccount } from '@/lib/live/account';
 import { liveEnabled } from '@/lib/live/client';
-import { MODE, isLight, setMode } from '@/theme/mode';
+import { MODE, SKY_AVAILABLE, isLight, setMode } from '@/theme/mode';
 import { fadeUp, REFLOW } from '@/lib/motion';
 import { useArrivalWatch, type Permissions } from '@/state/arrival';
 import { useSavedSpots, useTrips } from '@/state/trips';
@@ -232,25 +232,28 @@ export default function Profile() {
 
       <Animated.View entering={ENTER[5]}>
         <Section title="About" footer="Everything you save is kept on this phone, or in this browser, and backed up to your account while you’re signed in.">
-          <Row icon={MODE === 'light' ? 'sun' : 'moon'} label="Look" detail={lookNote ?? undefined}>
-            <View style={styles.look}>
-              <Segmented
-                value={MODE}
-                onChange={(next) => {
-                  if (next === MODE) return;
-                  haptic.selection();
-                  // The app starts again in the new look.
-                  void setMode(next).then((ok) => {
-                    if (!ok) setLookNote('Saved. Close Xplore and open it again to see it.');
-                  });
-                }}
-                options={[
-                  { key: 'sky', label: 'Sky' },
-                  { key: 'light', label: 'Light' },
-                ]}
-              />
-            </View>
-          </Row>
+          {/* Only while the Sky look is on offer (theme/mode). */}
+          {SKY_AVAILABLE ? (
+            <Row icon={MODE === 'light' ? 'sun' : 'moon'} label="Look" detail={lookNote ?? undefined}>
+              <View style={styles.look}>
+                <Segmented
+                  value={MODE}
+                  onChange={(next) => {
+                    if (next === MODE) return;
+                    haptic.selection();
+                    // The app starts again in the new look.
+                    void setMode(next).then((ok) => {
+                      if (!ok) setLookNote('Saved. Close Xplore and open it again to see it.');
+                    });
+                  }}
+                  options={[
+                    { key: 'sky', label: 'Sky' },
+                    { key: 'light', label: 'Light' },
+                  ]}
+                />
+              </View>
+            </Row>
+          ) : null}
           <Row icon="play-circle" label="Watch the intro again" onPress={() => router.push({ pathname: '/onboarding', params: { again: '1' } })} />
           <Row icon="image" label="Photo credits" onPress={() => router.push('/credits')} />
           <Row icon="shield" label="Privacy policy" onPress={() => router.push('/privacy')} />

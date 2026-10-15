@@ -11,6 +11,13 @@ export type Mode = 'sky' | 'light';
 
 const KEY = 'xplore.mode';
 
+/**
+ * The Sky look is switched off (15 Oct 2026): every change is made and checked in Light only, so
+ * everyone gets Light, whatever they chose before, and Profile hides the switch. The Sky code stays
+ * as it is; setting this back to true brings the look and the switch back.
+ */
+export const SKY_AVAILABLE = false;
+
 // For reviewing a look on the web without changing the saved choice: ?mode=light or ?mode=sky.
 const asked = (() => {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
@@ -18,6 +25,7 @@ const asked = (() => {
 })();
 
 function read(): Mode {
+  if (!SKY_AVAILABLE) return 'light';
   let saved: string | null = null;
   try {
     saved = deviceStorage?.getItem(KEY) ?? null;

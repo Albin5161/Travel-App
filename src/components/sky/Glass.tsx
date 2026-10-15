@@ -25,7 +25,11 @@ type Props = {
 };
 
 // Web draws the frost itself: expo-blur's web view caps the blur at 20px and adds its own grey,
-// where a weather card wants a wider blur and the sky's colour. Phones use the system blur.
+// where a weather card wants a wider blur and the sky's colour. iPhones use the system blur.
+// Android has no blur here (expo-blur only frosts there when the content behind is wrapped in its
+// own target view, and a sheet's Modal is a separate window), so a "blurred" pane was just see-
+// through: the list behind read straight through the sheet. Android gets the near-solid pane.
+const NO_BLUR = Platform.OS === 'android';
 const WEB_FROST =
   Platform.OS === 'web'
     ? ({ backdropFilter: 'blur(28px) saturate(150%)', WebkitBackdropFilter: 'blur(28px) saturate(150%)' } as ViewStyle)
@@ -37,12 +41,12 @@ const WEB_FROST =
  */
 export function Glass({ tint: asked, radius = radii.glass, blur = false, style, children }: Props) {
   const screen = useScreenSky();
-  const solid = useReduceTransparency();
+  const solid = useReduceTransparency() || (blur && NO_BLUR);
   const tint = asked ?? screen.glass;
   return (
     <View style={[styles.card, { borderRadius: radius }, style]}>
       {solid ? (
-        // Reduce Transparency: the same sky colour, near solid, and no blur.
+        // Reduce Transparency, or a blur Android can't draw: the same sky colour, near solid.
         <View style={[StyleSheet.absoluteFill, { backgroundColor: deepGlass(screen, 0.96) }]} pointerEvents="none" />
       ) : !blur ? (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: tint }]} pointerEvents="none" />

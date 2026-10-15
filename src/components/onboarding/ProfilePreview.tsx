@@ -21,8 +21,9 @@ const FRIENDS = [
 ];
 
 /**
- * You, and what a friend sees from you: the photo circle with a slow orbit around it, over the
- * invite a friend would get, which fills in with your name as you type it.
+ * You, and what a friend sees from you: the photo circle with a slow orbit around it, over your
+ * name tag on a shared plan, which fills in as you type. A tag, not an event: an invite line ("…
+ * invited you") read to testers as something they had already done.
  */
 export function ProfilePreview({ active, name, place = 'Gokarna' }: { active: boolean; name: string; place?: string }) {
   const reduced = useReducedMotion();
@@ -89,7 +90,7 @@ export function ProfilePreview({ active, name, place = 'Gokarna' }: { active: bo
         <ProfilePhoto size={PHOTO} />
       </View>
 
-      <View style={styles.invite} accessibilityLabel={`What friends see: ${shown || 'your name'} invited you to plan ${place}`}>
+      <View style={styles.invite} accessibilityLabel={`What friends see: ${shown || 'your name'}, planning ${place}`}>
         <View style={styles.face}>
           {state.myPhoto ? (
             <Image source={{ uri: state.myPhoto }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
@@ -101,7 +102,7 @@ export function ProfilePreview({ active, name, place = 'Gokarna' }: { active: bo
           <Text variant="label" style={styles.inviteName} color={shown ? light.ink : light.inkFaint}>
             {shown || 'Your name'}
           </Text>
-          {` invited you to plan ${place}`}
+          {` · planning ${place}`}
         </Text>
       </View>
     </View>

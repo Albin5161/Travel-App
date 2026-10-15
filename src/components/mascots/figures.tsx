@@ -263,3 +263,50 @@ export function Phone({ x, y, screen = 'play' }: { x: number; y: number; screen?
     </G>
   );
 }
+
+/** Something beside them that says what kind of wait it is. */
+export type Prop = 'suitcase' | 'tiffin' | 'chai';
+
+/**
+ * A prop on the ground at the scene's edge, in its 300 × 185 grid: a suitcase by the child's side
+ * for a trip away, a steel tiffin by Amma's for a day out near home, a glass of chai while they
+ * read. Clear of both figures, and low, where the card's edge cuts the scene.
+ */
+export function SceneProp({ kind }: { kind: Prop }) {
+  if (kind === 'suitcase') {
+    return (
+      <G>
+        <Path d="M 274 131 L 274 124 Q 274 120 278 120 L 284 120 Q 288 120 288 124 L 288 131" stroke={INK.hair} strokeWidth={3} fill="none" strokeLinecap="round" />
+        <Rect x={264} y={130} width={34} height={50} rx={6} fill="#2F6F7E" />
+        <Rect x={264} y={146} width={34} height={5} fill={INK.kasavu} />
+        <Rect x={270} y={130} width={2} height={50} fill="rgba(0,0,0,0.14)" />
+        <Rect x={290} y={130} width={2} height={50} fill="rgba(0,0,0,0.14)" />
+      </G>
+    );
+  }
+  if (kind === 'tiffin') {
+    const steel = '#CDD3DB';
+    const band = '#98A0AB';
+    return (
+      <G>
+        <Path d="M 13 142 Q 24 120 35 142" stroke={band} strokeWidth={3} fill="none" strokeLinecap="round" />
+        {[140, 153, 166].map((y) => (
+          <G key={y}>
+            <Rect x={9} y={y} width={30} height={12} rx={3} fill={steel} />
+            <Rect x={9} y={y + 10} width={30} height={2} fill={band} />
+          </G>
+        ))}
+        <Circle cx={24} cy={138} r={2.5} fill={band} />
+      </G>
+    );
+  }
+  // Chai in a glass, the way a tea shop pours it: a tapered glass, tea up to near the rim, froth on top.
+  return (
+    <G>
+      <Path d="M 22 146 Q 18 140 22 134 M 29 146 Q 25 140 29 134" stroke="#B5ADA5" strokeWidth={1.6} fill="none" strokeLinecap="round" />
+      <Path d="M 15 150 L 36 150 L 33 180 L 18 180 Z" fill="rgba(255,255,255,0.55)" stroke="#B5ADA5" strokeWidth={1.2} />
+      <Path d="M 16 155 L 35 155 L 33 180 L 18 180 Z" fill="#C4824A" />
+      <Rect x={16} y={153} width={19} height={3} rx={1.5} fill="#EBD3AE" />
+    </G>
+  );
+}

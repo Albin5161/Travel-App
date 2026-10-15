@@ -15,10 +15,12 @@ import {
   KidArm,
   KidBody,
   Phone,
+  SceneProp,
   ammaHead,
   kidHead,
   type HeadLayers,
   type Mood,
+  type Prop,
 } from './figures';
 import { BUBBLE, BUBBLE_INK, motion } from './motion';
 
@@ -27,29 +29,70 @@ export type Topic = 'play' | 'caption' | 'pin' | 'listen' | 'wait' | 'found';
 
 export type Line = { who: 'amma' | 'kid'; text: string };
 
-// Two lines a step, taking turns, then they fall quiet and watch. English only for now.
-const LINES: Record<Exclude<Topic, 'found'>, Line[]> = {
+// Two lines a step, taking turns, then they fall quiet and watch. A few ways of saying each step,
+// one picked per reading, so the tenth video doesn't sound like the first. English only for now.
+const LINES: Record<Exclude<Topic, 'found'>, Line[][]> = {
   play: [
-    { who: 'kid', text: 'Amma, look at this reel!' },
-    { who: 'amma', text: 'Ooh, show me!' },
+    [
+      { who: 'kid', text: 'Amma, look at this reel!' },
+      { who: 'amma', text: 'Ooh, show me!' },
+    ],
+    [
+      { who: 'kid', text: 'Amma! Watch this one!' },
+      { who: 'amma', text: 'Where is that? Let’s see.' },
+    ],
+    [
+      { who: 'amma', text: 'What did you find now?' },
+      { who: 'kid', text: 'A trip! Look, look!' },
+    ],
   ],
   caption: [
-    { who: 'amma', text: 'Let’s read what it says.' },
-    { who: 'kid', text: 'Does it say where?' },
+    [
+      { who: 'amma', text: 'Let’s read what it says.' },
+      { who: 'kid', text: 'Does it say where?' },
+    ],
+    [
+      { who: 'kid', text: 'What does the writing say?' },
+      { who: 'amma', text: 'Reading it now…' },
+    ],
   ],
   pin: [
-    { who: 'kid', text: 'Write the places down, Amma!' },
-    { who: 'amma', text: 'Writing them down.' },
+    [
+      { who: 'kid', text: 'Write the places down, Amma!' },
+      { who: 'amma', text: 'Writing them down.' },
+    ],
+    [
+      { who: 'amma', text: 'Let’s note these places.' },
+      { who: 'kid', text: 'I’ll remember them too!' },
+    ],
   ],
   listen: [
-    { who: 'amma', text: 'Shh… they’re saying names.' },
-    { who: 'kid', text: 'I’m listening too!' },
+    [
+      { who: 'amma', text: 'Shh… they’re saying names.' },
+      { who: 'kid', text: 'I’m listening too!' },
+    ],
+    [
+      { who: 'kid', text: 'Did they say a beach?' },
+      { who: 'amma', text: 'Listening for the names.' },
+    ],
   ],
   wait: [
-    { who: 'kid', text: 'Is it done yet?' },
-    { who: 'amma', text: 'Good places take a moment.' },
+    [
+      { who: 'kid', text: 'Is it done yet?' },
+      { who: 'amma', text: 'Good places take a moment.' },
+    ],
+    [
+      { who: 'amma', text: 'This one’s a long video.' },
+      { who: 'kid', text: 'I can wait. I think.' },
+    ],
+    [
+      { who: 'kid', text: 'Amma, I’m getting hungry…' },
+      { who: 'amma', text: 'Almost there. Then snacks.' },
+    ],
   ],
 };
+const pick = <T,>(options: T[]) => options[Math.floor(Math.random() * options.length)];
+
 /**
  * How long a line stays up: by its length, long enough to read it twice without hurrying ("Ooh,
  * show me!" 2.4 s, "Write the places down, Amma!" 3.3 s). Lines are never cut short, and a question
@@ -90,8 +133,10 @@ export const ReadingScene = memo(function ReadingScene({
   // The scene's own step, which trails the reading's so every exchange is finished.
   const cheer = current === 'found';
   useCheer(cheer, onCheered);
+  // Now and then a glass of chai beside them: the same two, a different afternoon.
+  const [chai] = useState(() => Math.random() < 0.5);
   return (
-    <Scene width={width} line={line} n={n} prev={prev} cheer={cheer} waiting={current === 'wait'} screen="play" about="Amma and a child watch the video together." />
+    <Scene width={width} line={line} n={n} prev={prev} cheer={cheer} waiting={current === 'wait'} screen="play" prop={chai ? 'chai' : undefined} about="Amma and a child watch the video together." />
   );
 });
 
@@ -103,19 +148,21 @@ export const ReadingScene = memo(function ReadingScene({
 export const PlanningScene = memo(function PlanningScene({
   script,
   finale,
+  prop,
   ready,
   width,
   onCheered,
 }: {
   script: Line[];
   finale: Line;
+  prop?: Prop;
   ready: boolean;
   width: number;
   onCheered: () => void;
 }) {
   const { line, n, prev, cheer } = useScript(script, finale, ready);
   useCheer(cheer, onCheered);
-  return <Scene width={width} line={line} n={n} prev={prev} cheer={cheer} waiting={false} screen="map" about="Amma and a child plan the trip together." />;
+  return <Scene width={width} line={line} n={n} prev={prev} cheer={cheer} waiting={false} screen="map" prop={prop} about="Amma and a child plan the trip together." />;
 });
 
 /**
@@ -159,6 +206,7 @@ function Scene({
   cheer,
   waiting,
   screen,
+  prop,
   about,
 }: {
   width: number;
@@ -168,6 +216,7 @@ function Scene({
   cheer: boolean;
   waiting: boolean;
   screen: 'play' | 'map';
+  prop?: Prop;
   about: string;
 }) {
   const reduced = useReducedMotion();
@@ -205,6 +254,12 @@ function Scene({
         </Svg>
       </Animated.View>
 
+      {/* What they've brought, on the ground behind them. */}
+      {prop ? (
+        <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} style={StyleSheet.absoluteFill}>
+          <SceneProp kind={prop} />
+        </Svg>
+      ) : null}
       {/* Amma, then the phone in her hand, then the child leaning in to point at it. */}
       <Animated.View style={[StyleSheet.absoluteFill, !reduced && motion.ammaBreath]}>
         <Body at={AMMA} box={AMMA_BODY} k={k}>
@@ -249,6 +304,14 @@ type Chat = { topic: Topic; i: number; n: number; since: number; line: Line | nu
 function useChat(topic: Topic, count: number): { line: Line | null; n: number; prev: Said | null; current: Topic | null } {
   const [at, setAt] = useState<Chat | null>(null);
   const found = useMemo<Line>(() => ({ who: 'kid', text: `${count} ${count === 1 ? 'place' : 'places'}!` }), [count]);
+  // One way of saying each step, chosen once for this reading.
+  const [said] = useState(() => ({
+    play: pick(LINES.play),
+    caption: pick(LINES.caption),
+    pin: pick(LINES.pin),
+    listen: pick(LINES.listen),
+    wait: pick(LINES.wait),
+  }));
 
   useEffect(() => {
     if (at?.topic === 'found') return;
@@ -261,7 +324,7 @@ function useChat(topic: Topic, count: number): { line: Line | null; n: number; p
         const n = (a?.n ?? 0) + 1;
         const prev = a?.line ? { line: a.line, n: a.n } : null;
         const since = Date.now();
-        const lines = (of: Topic) => (of === 'found' ? [found] : LINES[of]);
+        const lines = (of: Topic) => (of === 'found' ? [found] : said[of]);
         // The answer to what was just said.
         if (a && a.line && a.i + 1 < lines(a.topic).length) {
           return { topic: a.topic, i: a.i + 1, n, since, line: lines(a.topic)[a.i + 1], prev };
@@ -272,7 +335,7 @@ function useChat(topic: Topic, count: number): { line: Line | null; n: number; p
       });
     }, wait);
     return () => clearTimeout(t);
-  }, [at, topic, found]);
+  }, [at, topic, found, said]);
 
   return { line: at?.line ?? null, n: at?.n ?? 0, prev: at?.prev ?? null, current: at?.topic ?? null };
 }

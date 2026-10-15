@@ -9,6 +9,7 @@ import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
 import { PressableScale } from '@/components/PressableScale';
 import { planningScript } from '@/components/mascots/planScript';
+import { countShowing } from '@/components/mascots/seen';
 import { PlanningScene } from '@/components/mascots/ReadingScene';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
@@ -717,7 +718,8 @@ function Build({
   const [cheered, setCheered] = useState(false);
   const [skipped, setSkipped] = useState(false);
   // Written once: the answers don't change while it plays, and a re-render mustn't re-roll the lines.
-  const [{ script, finale }] = useState(() => planningScript({ city: cityName, count, prefs, nearHome }));
+  // From the fourth plan on, a shorter scene: the opener, then the finale.
+  const [{ script, finale, prop }] = useState(() => planningScript({ city: cityName, count, prefs, nearHome, short: countShowing('planning') > 3 }));
   // Held in refs: the parent passes new functions each render, and neither the build nor the
   // hand-off may start twice because of one.
   const calls = useRef({ make, onDone });
@@ -750,7 +752,7 @@ function Build({
       {/* The scene on glass, cut off by the card's foot, as on the reading screen. */}
       <Glass style={styles.buildCard}>
         <View style={styles.buildScene}>
-          <PlanningScene script={script} finale={finale} ready={!!plan} width={sceneW} onCheered={cheer} />
+          <PlanningScene script={script} finale={finale} prop={prop} ready={!!plan} width={sceneW} onCheered={cheer} />
         </View>
       </Glass>
       <PressableScale

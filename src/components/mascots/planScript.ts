@@ -1,17 +1,19 @@
 import type { TripPrefs } from '@/data/planner';
 
+import type { Prop } from './figures';
 import type { Line } from './ReadingScene';
 
 // What Amma and the child say while a plan is put together: three lines from the traveller's own
 // answers (who's going, how many spots over how many days, how they'll get around), then the
 // finale. A few ways of saying each, picked at random, so a second plan doesn't sound canned.
-// Short on purpose: a bubble is one line, with the city's name in it.
+// Short on purpose: a bubble is one line, with the city's name in it. `short` (someone who has
+// watched it a few times already) keeps only the opener before the finale.
 
-type Input = { city: string; count: number; prefs: TripPrefs; nearHome: boolean };
+type Input = { city: string; count: number; prefs: TripPrefs; nearHome: boolean; short?: boolean };
 
 const pick = <T,>(options: T[]) => options[Math.floor(Math.random() * options.length)];
 
-export function planningScript({ city, count, prefs, nearHome }: Input): { script: Line[]; finale: Line } {
+export function planningScript({ city, count, prefs, nearHome, short = false }: Input): { script: Line[]; finale: Line; prop: Prop } {
   const party = prefs.party ?? 'friends';
   const opener = pick(
     {
@@ -42,12 +44,15 @@ export function planningScript({ city, count, prefs, nearHome }: Input): { scrip
         ? pick(['Window seat on the bus is mine!', 'Bus snacks are the best snacks!'])
         : pick(['Autos and walks, like locals!', 'I can walk a lot, Amma!']);
 
+  const script: Line[] = [
+    { who: 'kid', text: opener },
+    { who: 'amma', text: planning },
+    { who: 'kid', text: getting },
+  ];
   return {
-    script: [
-      { who: 'kid', text: opener },
-      { who: 'amma', text: planning },
-      { who: 'kid', text: getting },
-    ],
-    finale: { who: 'amma', text: pick(["Ta-da! Your plan's ready.", 'Done! Have a look.']) },
+    script: short ? script.slice(0, 1) : script,
+    finale: { who: 'amma', text: pick(["Ta-da! Your plan's ready.", 'Done! Have a look.', 'All planned. Off you go!']) },
+    // What they've brought: a tiffin for a day out near home, a suitcase for a trip away.
+    prop: nearHome ? 'tiffin' : 'suitcase',
   };
 }

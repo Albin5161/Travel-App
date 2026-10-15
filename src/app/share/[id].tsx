@@ -28,7 +28,7 @@ import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
 import { isLight } from '@/theme/mode';
 import { SKY, skyInk } from '@/theme/sky';
-import { space } from '@/theme/tokens';
+import { radii, space } from '@/theme/tokens';
 
 const HEAD_IN = fadeUp(0);
 const TITLE_IN = fadeUp(60);
@@ -78,9 +78,10 @@ export default function ShareScreen() {
 
   // The card is laid out at its natural size (so the shared image is always full size) and scaled
   // down as a whole when the stage is shorter than that.
-  const cardW = Math.min(W - 64, 340);
+  // In the light look the card sits on a swatch of the state's cloth, so it leaves a border of it.
+  const cardW = Math.min(W - (isLight ? 104 : 64), 340);
   const cardH = Math.round(cardW * CARD_RATIO);
-  const fit = stageH ? Math.min(1, (stageH - 20) / cardH) : 1;
+  const fit = stageH ? Math.min(1, (stageH - (isLight ? 56 : 20)) / cardH) : 1;
 
   const savePdf = async () => {
     const result = await pdf.save();
@@ -162,11 +163,11 @@ export default function ShareScreen() {
 
   return (
     <SkyScreen style={{ paddingTop: insets.top + 24, paddingBottom: insets.bottom + 12 }}>
-      {/* The state's own cloth, as the saved story prints it: what's on screen is what gets posted. */}
-      {/* The cloth is dark, and belongs under white type: in the light look the page stays paper and
-          the card alone carries it. */}
+      {/* The state's own cloth, as the saved story prints it: what's on screen is what gets posted.
+          It's dark, and belongs under white type: in the light look the page stays paper and the
+          cloth is a swatch under the card instead (below). */}
       {isLight ? null : (
-  <PatternBackdrop look={backdrop} ground calm={{ top: backdrop.ground, height: insets.top + 150 }} />
+        <PatternBackdrop look={backdrop} ground calm={{ top: backdrop.ground, height: insets.top + 150 }} />
       )}
       <View style={styles.head}>
         <Animated.View entering={HEAD_IN}>
@@ -182,6 +183,11 @@ export default function ShareScreen() {
       </View>
 
       <View style={styles.stage} onLayout={(e) => setStageH(e.nativeEvent.layout.height)}>
+        {isLight ? (
+          <Animated.View entering={FADE_IN} style={styles.swatch} pointerEvents="none">
+            <PatternBackdrop look={backdrop} ground />
+          </Animated.View>
+        ) : null}
         {stageH ? (
           <View style={{ transform: [{ scale: fit }] }}>
             <TiltCard width={cardW} height={cardH} delay={160}>
@@ -294,7 +300,9 @@ function useReadyImages(data: CardData | null, name: string) {
 const styles = StyleSheet.create({
   head: { paddingHorizontal: space.screen },
   title: { marginTop: 8 },
-  stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  stage: { flex: 1, alignItems: 'center', justifyContent: 'center', marginVertical: 8 },
+  // The state's cloth under the card in the light look, as the story picture has it.
+  swatch: { ...StyleSheet.absoluteFill, left: space.screen, right: space.screen, borderRadius: radii.card, overflow: 'hidden' },
   actions: { paddingHorizontal: space.screen, gap: 4 },
   note: { textAlign: 'center', marginBottom: 8 },
   savesHead: { textAlign: 'center', marginTop: 12 },

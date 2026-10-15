@@ -16,7 +16,7 @@ import { FADE_IN, FADE_OUT } from '@/lib/motion';
 import { isLight } from '@/theme/mode';
 import { skyCta, skyDanger, skyFill, skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
-import { fonts, light, shadows } from '@/theme/tokens';
+import { fonts, light, radii, shadows } from '@/theme/tokens';
 
 type Props = {
   onSubmit: (url: string) => void;
@@ -283,7 +283,7 @@ const styles = css.create({
   field: {
     flex: 1,
     height: HEIGHT,
-    borderRadius: HEIGHT / 2,
+    borderRadius: radii.field,
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: 16,
@@ -299,7 +299,7 @@ const styles = css.create({
   // Over the sky: frosted white, a lighter pane of the same glass as the cards around it.
   fieldSky: {
     height: SKY_HEIGHT,
-    borderRadius: SKY_HEIGHT / 2,
+    borderRadius: radii.field,
     paddingRight: (SKY_HEIGHT - CIRCLE) / 2,
     // In the light look the field is the page's own white inside a grey line, lifted by a faint
     // shadow: a grey slab on a white page read as a box of another colour set into it.

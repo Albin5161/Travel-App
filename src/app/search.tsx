@@ -61,7 +61,7 @@ export default function Search() {
     <SkyScreen style={{ paddingTop: insets.top + 8 }}>
       <View style={styles.bar}>
         <IconButton icon="chevron-left" onPress={close} accessibilityLabel="Back" style={styles.back} />
-        <Glass style={styles.field} radius={999}>
+        <Glass style={styles.field} radius={radii.field}>
           <Feather name="search" size={16} color={skyInk.soft} />
           <TextInput
             value={query}

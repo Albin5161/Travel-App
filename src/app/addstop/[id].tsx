@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   title: { marginTop: 8, marginBottom: 16 },
   input: {
     paddingHorizontal: 16,
-    borderRadius: radii.pane,
+    borderRadius: radii.field,
     backgroundColor: skyFill.raised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,

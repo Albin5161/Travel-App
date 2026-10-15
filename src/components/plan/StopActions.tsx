@@ -10,7 +10,7 @@ import { dims } from '@/components/pressed';
 import type { TripStop } from '@/data/planner';
 import type { Place } from '@/data/types';
 import { skyFill, skyInk, skySignal } from '@/theme/sky';
-import { fonts } from '@/theme/tokens';
+import { fonts, radii } from '@/theme/tokens';
 
 /** From this many places, scrolling for one is a chore: the swap list gets a search. */
 const SEARCH_FROM = 9;
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     height: 48,
     paddingLeft: 16,
     paddingRight: 4,
-    borderRadius: 999,
+    borderRadius: radii.field,
     backgroundColor: skyFill.pane,
   },
   // 16pt: an iPhone zooms the page into any smaller field.

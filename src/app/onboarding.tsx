@@ -34,7 +34,7 @@ import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
 import { skyBar, skyDanger, skyFill, skyInk } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
-import { fonts, space } from '@/theme/tokens';
+import { fonts, radii, space } from '@/theme/tokens';
 
 const GUTTER = space.screen;
 /** The zoom from the Earth into the map: slow away, slow to land. */
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
   nameInput: {
     height: 54,
     paddingHorizontal: 16,
-    borderRadius: 999,
+    borderRadius: radii.field,
     backgroundColor: skyFill.raised,
     borderWidth: 1,
     borderColor: skyInk.rim,

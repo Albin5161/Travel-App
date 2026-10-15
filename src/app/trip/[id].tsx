@@ -802,7 +802,7 @@ const styles = StyleSheet.create({
   stayInput: {
     minHeight: 48,
     paddingHorizontal: 16,
-    borderRadius: radii.pane,
+    borderRadius: radii.field,
     backgroundColor: skyFill.pane,
     color: skyInk.strong,
     fontFamily: fonts.sans,

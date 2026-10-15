@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   field: {
     marginTop: 16,
     height: 48,
-    borderRadius: 24,
+    borderRadius: radii.field,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',

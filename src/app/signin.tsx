@@ -19,7 +19,7 @@ import { sendEmailCode, usedCode, verifyEmailCode } from '@/lib/live/account';
 import { fadeUp } from '@/lib/motion';
 import { useOffline } from '@/lib/online';
 import { skyDanger, skyFill, skyInk } from '@/theme/sky';
-import { fonts, space } from '@/theme/tokens';
+import { fonts, radii, space } from '@/theme/tokens';
 
 const CODE_LENGTH = 6;
 // Web only: the browser's own focus ring is the system accent (orange) and narrower than the pill;
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
   input: {
     height: 54,
     paddingHorizontal: 16,
-    borderRadius: 999,
+    borderRadius: radii.field,
     backgroundColor: skyFill.raised,
     borderWidth: 1,
     borderColor: skyInk.rim,
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   box: {
     flex: 1,
     height: 60,
-    borderRadius: 14,
+    borderRadius: radii.field,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: skyFill.raised,

@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   input: {
     height: 54,
     paddingHorizontal: 16,
-    borderRadius: radii.pane,
+    borderRadius: radii.field,
     backgroundColor: skyFill.raised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,

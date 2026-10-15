@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     height: 46,
     paddingHorizontal: 16,
-    borderRadius: 999,
+    borderRadius: radii.field,
     backgroundColor: skyFill.raised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,

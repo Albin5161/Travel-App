@@ -42,7 +42,7 @@ export function RecapCard() {
         >
           <Image source={city.hero} style={styles.thumb} contentFit="cover" transition={0} />
           <View style={styles.text}>
-            <Text variant="eyebrow">Back from {city.name}?</Text>
+            <Text variant="label" ink="faint">Back from {city.name}?</Text>
             <Text variant="title" numberOfLines={2}>
               Tick the places you made it to
             </Text>

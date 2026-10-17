@@ -50,11 +50,11 @@ export function WeekendRoute({ active, width, homeName }: { active: boolean; wid
         <Tip t={t} road={road} />
       </View>
       <View style={styles.text}>
-        <Text variant="micro">Saturday · from {homeName}</Text>
+        <Text variant="label" ink="faint">Saturday · from {homeName}</Text>
         <Text variant="title">
           {STOPS[0].name} and {STOPS[1].name}
         </Text>
-        <Text variant="data">2 stops · back by dinner · about ₹250</Text>
+        <Text variant="label" ink="soft" tabular>2 stops · back by dinner · about ₹250</Text>
       </View>
     </View>
   );

@@ -17,6 +17,7 @@ import { CityTile } from '@/components/CityTile';
 import { LinkBox } from '@/components/LinkBox';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
+import { Wordmark } from '@/components/Wordmark';
 import { Segmented } from '@/components/Segmented';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
@@ -38,7 +39,7 @@ import { isNearHome, useTrips, type HomeTab } from '@/state/trips';
 import { useHomeSky } from '@/state/sky';
 import { useHere } from '@/state/where';
 import { SKY, skyFill, skyInk } from '@/theme/sky';
-import { fonts, space } from '@/theme/tokens';
+import { fonts, space, textSize } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
 const GUTTER = space.screen;
@@ -188,7 +189,7 @@ export default function Home() {
           <View style={styles.header} onLayout={(e) => setStickAt(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
             {/* The wordmark left, search right, and where you are in the middle, so the row balances. */}
             <View style={styles.topRow} onLayout={measure('top')}>
-              <Text style={styles.wordmark}>Xplore</Text>
+              <Wordmark />
               {collections.length > 0 ? <SearchButton /> : null}
               <View style={styles.hereSlot} pointerEvents="box-none">
                 <HereChip maxWidth={W - GUTTER * 2 - TOP_SIDE * 2} />
@@ -505,24 +506,22 @@ const styles = StyleSheet.create({
     borderColor: skyInk.rim,
     backgroundColor: skyFill.raised,
   },
-  wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
   // Two weights, one colour: a quiet Medium lead-in, then the name and the ask in ExtraBold. The
   // weight does the emphasis; a second colour on the last line is every generated landing page.
   question: {
     fontFamily: fonts.displayMedium,
-    fontSize: 34,
-    lineHeight: 38,
+    ...textSize.display,
     color: skyInk.soft,
     // Lighter weights need more air than heavy ones or the word spaces close up.
     letterSpacing: -0.5,
   },
   // Sized again on purpose: the nested Text is our own component, which would otherwise reset it
-  // to body's 15/22 rather than inherit from the line around it.
-  questionStrong: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
-  questionName: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
+  // to body's size rather than inherit from the line around it.
+  questionStrong: { fontFamily: fonts.display, ...textSize.display, color: skyInk.strong, letterSpacing: -1 },
+  questionName: { fontFamily: fonts.display, ...textSize.display, color: skyInk.strong, letterSpacing: -1 },
   // One line, once there are places of your own below: the same two weights, a third of the room.
-  questionSmall: { fontFamily: fonts.displayMedium, fontSize: 22, lineHeight: 28, color: skyInk.soft, letterSpacing: -0.4 },
-  questionSmallStrong: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, color: skyInk.strong, letterSpacing: -0.6 },
+  questionSmall: { fontFamily: fonts.displayMedium, ...textSize.headline, color: skyInk.soft, letterSpacing: -0.35 },
+  questionSmallStrong: { fontFamily: fonts.display, ...textSize.headline, color: skyInk.strong, letterSpacing: -0.55 },
   compactGap: { height: 14 },
   nudge: { marginTop: 12 },
   hidden: { opacity: 0 },

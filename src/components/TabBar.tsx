@@ -15,7 +15,7 @@ import { haptic } from '@/lib/haptics';
 import { DURATION, EASE_OUT, SPRING_SETTLE } from '@/lib/motion';
 import { useHomeSky } from '@/state/sky';
 import { SKY, skyInk } from '@/theme/sky';
-import { fonts, light, shadows } from '@/theme/tokens';
+import { fonts, fontSize, light, shadows } from '@/theme/tokens';
 
 type IconName = React.ComponentProps<typeof Feather>['name'];
 
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   barSky: { flexDirection: 'row', height: 60, boxShadow: '0 10px 30px rgba(4,10,30,0.25)' },
   // Icon and label sit a little high, leaving the foot of the tab to the dot.
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, paddingBottom: 8 },
-  label: { fontFamily: fonts.sansMedium, fontSize: 11 },
+  label: { fontFamily: fonts.sansMedium, fontSize: fontSize.tag },
   dot: { position: 'absolute', bottom: 6, width: 4, height: 4, borderRadius: 2, backgroundColor: light.ink },
   dotSky: { backgroundColor: skyInk.strong },
 });

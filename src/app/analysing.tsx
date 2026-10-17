@@ -260,7 +260,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
                         size={14}
                         color={colors.mist}
                       />
-                      <Text variant="micro" color={colors.mist}>
+                      <Text variant="label" ink="faint" color={colors.mist}>
                         {[card.creator, lengthLabel(card)].filter(Boolean).join(' · ')}
                       </Text>
                     </View>
@@ -303,10 +303,10 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
           </Animated.View>
           {/* The count starts with the first name in the list, not while the scene still cheers. */}
           {phase === 'done' ? null : shown > 0 ? (
-            <Text variant="data">{`Found ${shown} ${shown === 1 ? 'place' : 'places'}`}</Text>
+            <Text variant="label" ink="soft" tabular>{`Found ${shown} ${shown === 1 ? 'place' : 'places'}`}</Text>
           ) : script.expect ? (
             // A running clock: a wait that visibly moves reads as work, not as stuck.
-            <Text variant="data" color={skyInk.soft} accessibilityLabel={`${Math.floor(elapsed / 1000)} seconds so far`}>
+            <Text variant="label" ink="soft" tabular color={skyInk.soft} accessibilityLabel={`${Math.floor(elapsed / 1000)} seconds so far`}>
               {clock(elapsed)}
             </Text>
           ) : null}
@@ -334,12 +334,12 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
                   <Text variant="title" numberOfLines={1}>
                     {p.name}
                   </Text>
-                  <Text variant="micro" numberOfLines={1}>
+                  <Text variant="label" ink="faint" numberOfLines={1}>
                     {missing ? 'Couldn’t find it on the map' : p.area}
                   </Text>
                 </View>
                 {/* Where in the video it was said: the same moment its marker sits at above. */}
-                <Text variant="data" color={skyInk.faint} style={styles.creditTime}>
+                <Text variant="label" ink="soft" tabular color={skyInk.faint} style={styles.creditTime}>
                   {p.stamp ?? ''}
                 </Text>
               </Animated.View>
@@ -523,7 +523,7 @@ function MoreCredits({ rest, placed, done }: { rest: Credit[]; placed: Set<strin
   return (
     <Animated.View entering={CREDIT_IN} style={styles.creditRow}>
       <View style={styles.moreDot}>
-        <Text variant="data" color={skyInk.soft}>
+        <Text variant="label" ink="soft" tabular color={skyInk.soft}>
           +{rest.length}
         </Text>
       </View>
@@ -531,7 +531,7 @@ function MoreCredits({ rest, placed, done }: { rest: Credit[]; placed: Set<strin
         <Text variant="title" numberOfLines={1}>
           {rest.length} more {rest.length === 1 ? 'place' : 'places'}
         </Text>
-        <Text variant="micro" numberOfLines={1}>
+        <Text variant="label" ink="faint" numberOfLines={1}>
           {missing > 0
             ? `${missing} couldn’t be found on the map`
             : rest

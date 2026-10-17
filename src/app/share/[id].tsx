@@ -171,7 +171,7 @@ export default function ShareScreen() {
       )}
       <View style={styles.head}>
         <Animated.View entering={HEAD_IN}>
-          <Text variant="eyebrow">
+          <Text variant="label" ink="faint">
             {city.name} · {plan.days.length === 1 ? 'day planned' : `${plan.days.length} days planned`}
           </Text>
         </Animated.View>

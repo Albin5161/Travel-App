@@ -23,7 +23,7 @@ export function UnsentNote({ cityId }: { cityId: string }) {
       <Feather name="wifi-off" size={18} color={skyInk.soft} />
       <View style={styles.words}>
         <Text variant="label">{count === 1 ? '1 change not sent yet' : `${count} changes not sent yet`}</Text>
-        <Text variant="data">Saved on this phone. The others see them once you’re back online.</Text>
+        <Text variant="label" ink="soft" tabular>Saved on this phone. The others see them once you’re back online.</Text>
       </View>
       <Button
         kind="text"

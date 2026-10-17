@@ -12,7 +12,7 @@ import Animated, {
 import { Text } from '@/components/Text';
 import { SAFETY_BAND_STARTS, SAFETY_BANDS, safetyBand, type SafetySignal } from '@/data/cityInfo';
 import { skyFill, skyInk, skySignal } from '@/theme/sky';
-import { fonts, radii } from '@/theme/tokens';
+import { fonts, radii, textSize } from '@/theme/tokens';
 
 const UP = skySignal.up;
 const DOWN = skySignal.down;
@@ -87,7 +87,7 @@ export function SafetyScale({ cityName, score, signals, play }: Props) {
           <View key={`${s.month}${s.year}`} style={styles.signal}>
             <View style={styles.when}>
               <Text style={styles.month}>{s.month}</Text>
-              <Text variant="data">{s.year}</Text>
+              <Text variant="label" ink="soft" tabular>{s.year}</Text>
               {i < signals.length - 1 ? <View style={styles.rail} /> : null}
             </View>
             <View style={styles.card}>
@@ -101,7 +101,7 @@ export function SafetyScale({ cityName, score, signals, play }: Props) {
           </View>
         ))}
       </View>
-      <Text variant="data" color={skyInk.faint} style={styles.basis}>
+      <Text variant="label" ink="soft" tabular color={skyInk.faint} style={styles.basis}>
         Based on traveller reports and local news. Sample data for the demo.
       </Text>
     </View>
@@ -110,7 +110,7 @@ export function SafetyScale({ cityName, score, signals, play }: Props) {
 
 const styles = StyleSheet.create({
   numberRow: { height: 44, marginTop: 8, justifyContent: 'flex-end' },
-  number: { fontFamily: fonts.sansSemi, fontSize: 34, lineHeight: 40, color: UP, fontVariant: ['tabular-nums'] },
+  number: { fontFamily: fonts.sansSemi, ...textSize.display, color: UP, fontVariant: ['tabular-nums'] },
   track: { height: 10, borderRadius: 5, backgroundColor: skyFill.raised, overflow: 'hidden', marginTop: 4 },
   fill: { height: '100%', borderRadius: 5, overflow: 'hidden' },
   bands: { height: 20, marginTop: 8 },
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   timeline: { marginTop: 24, gap: 12 },
   signal: { flexDirection: 'row', gap: 16 },
   when: { width: 44, alignItems: 'center', paddingTop: 16 },
-  month: { fontFamily: fonts.sansSemi, fontSize: 17, lineHeight: 22, color: skyInk.strong },
+  month: { fontFamily: fonts.sansSemi, ...textSize.title, color: skyInk.strong },
   rail: {
     flex: 1,
     width: StyleSheet.hairlineWidth * 2,

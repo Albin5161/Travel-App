@@ -33,7 +33,7 @@ import { SPRING_DRAG } from '@/lib/motion';
 import { useHomeSky } from '@/state/sky';
 import { SKY, skyAccent, skyInk } from '@/theme/sky';
 import { isLight } from '@/theme/mode';
-import { fonts, light, radii, shadows, space } from '@/theme/tokens';
+import { fonts, fontSize, light, radii, shadows, space, textSize } from '@/theme/tokens';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedG = Animated.createAnimatedComponent(G);
@@ -428,7 +428,7 @@ function SavedCard({
           </View>
         )}
         <View style={[styles.kind, styles.bottomLeft]}>
-          <Text variant="micro" color="#FFFFFF" style={styles.kindText} numberOfLines={1}>
+          <Text variant="label" ink="faint" color="#FFFFFF" style={styles.kindText} numberOfLines={1}>
             {k.label}
           </Text>
         </View>
@@ -617,7 +617,7 @@ function MapStage({
       }
     />
     {streets ? (
-      <Text variant="micro" style={[styles.credit, { color: isLight ? light.inkSoft : skyInk.faint }]}>
+      <Text variant="label" ink="faint" style={[styles.credit, { color: isLight ? light.inkSoft : skyInk.faint }]}>
         © OpenStreetMap
       </Text>
     ) : null}
@@ -684,7 +684,7 @@ function DayTicket({ s, stops, city, left, width, top }: { s: SharedValue<number
         stub={
           <View style={styles.stubCount}>
             <Text style={styles.stubNumber}>{stops.length}</Text>
-            <Text variant="micro" color={light.inkSoft}>
+            <Text variant="label" ink="faint" color={light.inkSoft}>
               {stops.length === 1 ? 'stop' : 'stops'}
             </Text>
           </View>
@@ -696,7 +696,7 @@ function DayTicket({ s, stops, city, left, width, top }: { s: SharedValue<number
         <View style={styles.rows}>
           {shown.map((p, i) => (
             <View key={p.id} style={styles.row}>
-              <Text variant="data" color={light.inkSoft} style={styles.time}>
+              <Text variant="label" ink="soft" tabular color={light.inkSoft} style={styles.time}>
                 {formatClock(540 + i * 120)}
               </Text>
               <Text variant="label" numberOfLines={1} style={styles.rowName}>
@@ -770,13 +770,13 @@ const styles = StyleSheet.create({
   map: { position: 'absolute' },
   ticket: { position: 'absolute' },
   stubCount: { alignItems: 'center' },
-  stubNumber: { fontFamily: fonts.display, fontSize: 30, lineHeight: 34, letterSpacing: -1, color: light.ink, fontVariant: ['tabular-nums'] },
+  stubNumber: { fontFamily: fonts.display, ...textSize.display, letterSpacing: -1, color: light.ink, fontVariant: ['tabular-nums'] },
   rows: { marginTop: 8, gap: 4 },
   row: { flexDirection: 'row', gap: 8 },
   time: { width: 64 },
   rowName: { flex: 1 },
   words: { position: 'absolute', left: GUTTER, right: GUTTER, gap: 8 },
-  credit: { position: 'absolute', top: 8, right: 12, fontSize: 9 },
+  credit: { position: 'absolute', top: 8, right: 12, fontSize: fontSize.tag },
   // The page title's size, as on every screen.
-  title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, letterSpacing: -1.1, color: skyInk.strong },
+  title: { fontFamily: fonts.display, ...textSize.display, letterSpacing: -1, color: skyInk.strong },
 });

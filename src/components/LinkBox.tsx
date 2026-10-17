@@ -16,7 +16,7 @@ import { FADE_IN, FADE_OUT } from '@/lib/motion';
 import { isLight } from '@/theme/mode';
 import { skyCta, skyDanger, skyFill, skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
-import { fonts, light, radii, shadows } from '@/theme/tokens';
+import { fonts, fontSize, light, radii, shadows } from '@/theme/tokens';
 
 type Props = {
   onSubmit: (url: string) => void;
@@ -323,7 +323,7 @@ const styles = css.create({
   goSky: { backgroundColor: skyCta, boxShadow: isLight ? 'none' : '0 6px 16px rgba(0,0,0,0.28)' },
   icon: { width: 20, alignItems: 'center', marginRight: 8 },
   // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
-  input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: light.ink },
+  input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: fontSize.title, color: light.ink },
   // The button rides inside the field here: a long link stops short of it instead of touching it.
   inputSky: { marginRight: 8 },
   // The row under the field (a hint, or the videos added): air above it, and the same air under it

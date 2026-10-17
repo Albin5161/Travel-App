@@ -2,83 +2,71 @@ import { StyleSheet, Text as RNText, type TextProps } from 'react-native';
 
 import { useTone } from '@/theme/tone';
 import { skyInk } from '@/theme/sky';
-import { colors, fonts, light } from '@/theme/tokens';
+import { colors, fonts, light, textSize } from '@/theme/tokens';
 
-export type TextVariant =
-  | 'displayXL'
-  | 'display'
-  | 'headline'
-  | 'title'
-  | 'body'
-  | 'bodyStrong'
-  | 'label'
-  | 'micro'
-  | 'eyebrow'
-  | 'data';
+// Six styles on six sizes (see fontSize in tokens). hero is the one exception: a city or place name.
+export type TextVariant = 'hero' | 'display' | 'headline' | 'title' | 'body' | 'bodyStrong' | 'label' | 'tag';
 
-type Props = TextProps & { variant?: TextVariant; color?: string };
+/** strong for what you read first, soft for reading text, faint for what can be skipped. */
+export type Ink = 'strong' | 'soft' | 'faint';
 
-// Default colour per variant for each tone. An explicit `color` always wins.
-const INK: Record<'dark' | 'light' | 'sky', Record<TextVariant, string>> = {
-  dark: {
-    displayXL: colors.mist,
-    display: colors.mist,
-    headline: colors.mist,
-    title: colors.mist,
-    body: colors.stone,
-    bodyStrong: colors.mist,
-    label: colors.mist,
-    micro: colors.ash,
-    eyebrow: colors.ash,
-    data: colors.ash,
-  },
-  light: {
-    displayXL: light.ink,
-    display: light.ink,
-    headline: light.ink,
-    title: light.ink,
-    body: light.inkSoft,
-    bodyStrong: light.ink,
-    label: light.ink,
-    micro: light.inkFaint,
-    eyebrow: light.inkFaint,
-    data: light.inkSoft,
-  },
-  sky: {
-    displayXL: skyInk.strong,
-    display: skyInk.strong,
-    headline: skyInk.strong,
-    title: skyInk.strong,
-    body: skyInk.soft,
-    bodyStrong: skyInk.strong,
-    label: skyInk.strong,
-    micro: skyInk.faint,
-    eyebrow: skyInk.faint,
-    data: skyInk.soft,
-  },
+type Props = TextProps & {
+  variant?: TextVariant;
+  /** Which of the three inks; each variant has its own default. An explicit `color` always wins. */
+  ink?: Ink;
+  /** Even-width figures, so counts, dates and prices line up and don't jiggle as they change. */
+  tabular?: boolean;
+  color?: string;
 };
 
-export function Text({ variant = 'body', color, style, ...rest }: Props) {
+const INK: Record<'dark' | 'light' | 'sky', Record<Ink, string>> = {
+  dark: { strong: colors.mist, soft: colors.stone, faint: colors.ash },
+  light: { strong: light.ink, soft: light.inkSoft, faint: light.inkFaint },
+  sky: { strong: skyInk.strong, soft: skyInk.soft, faint: skyInk.faint },
+};
+
+const DEFAULT_INK: Record<TextVariant, Ink> = {
+  hero: 'strong',
+  display: 'strong',
+  headline: 'strong',
+  title: 'strong',
+  body: 'soft',
+  bodyStrong: 'strong',
+  label: 'strong',
+  // A tag is already as small as type gets, so it never goes quieter than the darkest ink.
+  tag: 'strong',
+};
+
+export function Text({ variant = 'body', ink, tabular, color, style, ...rest }: Props) {
   const tone = useTone();
-  return <RNText {...rest} style={[styles[variant], { color: color ?? INK[tone][variant] }, style]} />;
+  return (
+    <RNText
+      {...rest}
+      style={[
+        styles[variant],
+        { color: color ?? INK[tone][ink ?? DEFAULT_INK[variant]] },
+        tabular && styles.tabular,
+        style,
+      ]}
+    />
+  );
 }
 
 // Two voices. Jakarta carries every heading: the bigger it gets, the heavier and tighter it sets
-// (tracking runs from -0.017 em at title size to -0.036 em at displayXL), so large type reads as
-// one shape instead of a row of letters. Geist carries everything you read, at its own spacing.
-// Every style sets a line height: without one, Text inherits body's 22 and iOS crops the tops.
+// (tracking runs from -0.017 em at title size to -0.036 em at hero), so large type reads as one
+// shape instead of a row of letters. Geist carries everything you read, at its own spacing.
+// Every style sets a line height: without one, Text inherits body's and iOS crops the tops.
+// Jakarta sits tall, so its line heights stay at 1.1x the size or more.
 const styles = StyleSheet.create({
-  displayXL: { fontFamily: fonts.display, fontSize: 44, lineHeight: 49, letterSpacing: -1.6 },
-  display: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, letterSpacing: -1.1 },
-  headline: { fontFamily: fonts.displayBold, fontSize: 22, lineHeight: 27, letterSpacing: -0.5 },
-  title: { fontFamily: fonts.displaySemi, fontSize: 18, lineHeight: 24, letterSpacing: -0.3 },
-  body: { fontFamily: fonts.sans, fontSize: 15, lineHeight: 22 },
-  bodyStrong: { fontFamily: fonts.sansMedium, fontSize: 15, lineHeight: 22 },
-  label: { fontFamily: fonts.sansMedium, fontSize: 13, lineHeight: 18 },
+  hero: { fontFamily: fonts.display, ...textSize.hero, letterSpacing: -1.4 },
+  display: { fontFamily: fonts.display, ...textSize.display, letterSpacing: -1 },
+  headline: { fontFamily: fonts.displayBold, ...textSize.headline, letterSpacing: -0.45 },
+  title: { fontFamily: fonts.displaySemi, ...textSize.title, letterSpacing: -0.25 },
+  body: { fontFamily: fonts.sans, ...textSize.body },
+  bodyStrong: { fontFamily: fonts.sansMedium, ...textSize.body },
   // Small print, set as it's written. Not in spaced-out capitals: a small capital label over
   // every block is the mark of a generated screen, and it reads slower than plain words.
-  micro: { fontFamily: fonts.sansMedium, fontSize: 12, lineHeight: 16, letterSpacing: 0.1 },
-  // The quiet line above a screen's title: who or where this is about, in ordinary words.
-  eyebrow: { fontFamily: fonts.sansMedium, fontSize: 13, lineHeight: 18 },
-  data: { fontFamily: fonts.sansMedium, fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums'] },
+  label: { fontFamily: fonts.sansMedium, ...textSize.label },
+  tag: { fontFamily: fonts.sansSemi, ...textSize.tag, letterSpacing: 0.1 },
+  tabular: { fontVariant: ['tabular-nums'] },
 });

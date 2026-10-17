@@ -21,7 +21,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import type { City, CityMapArt, Place } from '@/data/types';
 import { smoothPath, type Point } from '@/lib/geo';
 import { EASE_IN_OUT, EASE_OUT, SPRING_LAND, SPRING_SETTLE } from '@/lib/motion';
-import { fonts, light, shadows } from '@/theme/tokens';
+import { fonts, light, shadows, textSize } from '@/theme/tokens';
 
 import { Text } from './Text';
 
@@ -520,9 +520,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: light.panel,
   },
-  badgeText: { fontFamily: fonts.sansSemi, fontSize: 11, color: light.ctaInk, fontVariant: ['tabular-nums'] },
+  badgeText: { fontFamily: fonts.sansSemi, ...textSize.tag, color: light.ctaInk, fontVariant: ['tabular-nums'] },
   dotWrap: { alignItems: 'center', justifyContent: 'center' },
   dotHalo: { alignItems: 'center', justifyContent: 'center' },
   dot: { alignItems: 'center', justifyContent: 'center', boxShadow: shadows.pin },
-  dotText: { fontFamily: fonts.sansSemi, fontSize: 11, lineHeight: 13, fontVariant: ['tabular-nums'] },
+  dotText: { fontFamily: fonts.sansSemi, ...textSize.tag, fontVariant: ['tabular-nums'] },
 });

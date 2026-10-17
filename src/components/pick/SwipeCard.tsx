@@ -17,7 +17,7 @@ import { PlaceCard } from '@/components/PlaceCard';
 import { Text } from '@/components/Text';
 import type { Place } from '@/data/types';
 import { EASE_OUT, project, SPRING_DRAG, SPRING_SETTLE } from '@/lib/motion';
-import { colors, fonts, light } from '@/theme/tokens';
+import { colors, fonts, fontSize, light } from '@/theme/tokens';
 
 /** Right is 'keep', left is 'skip'. What those mean is the screen's business: Pick keeps places for
  *  the day, Verify confirms what the extraction found. */
@@ -179,5 +179,5 @@ const styles = StyleSheet.create({
     borderColor: colors.rimStrong,
     transform: [{ rotate: '8deg' }],
   },
-  stampText: { fontFamily: fonts.sansSemi, fontSize: 18, letterSpacing: 0.5 },
+  stampText: { fontFamily: fonts.sansSemi, fontSize: fontSize.headline, letterSpacing: 0.5 },
 });

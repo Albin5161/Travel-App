@@ -42,7 +42,7 @@ import { terrainOf, type Getting, type LatLng } from '@/lib/geo';
 import { DURATION, EASE_OUT, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { isNearHome, useCityPlaces, useTrips } from '@/state/trips';
 import { skyAccentText, skyOnInk, skyFill, skyInk } from '@/theme/sky';
-import { fonts, radii, space } from '@/theme/tokens';
+import { fonts, fontSize, radii, space } from '@/theme/tokens';
 
 type Step = 'who' | 'when' | 'dates' | 'days' | 'pace' | 'getting' | 'stay' | 'build';
 const STEPS: Step[] = ['who', 'when', 'dates', 'days', 'pace', 'getting', 'stay'];
@@ -226,7 +226,7 @@ export default function TripSetup() {
             alwaysBounceVertical={step !== 'dates'}
           >
             <Animated.View entering={ENTER[0]}>
-              <Text variant="eyebrow">Plan your trip · {city.name}</Text>
+              <Text variant="label" ink="faint">Plan your trip · {city.name}</Text>
             </Animated.View>
             <Animated.View entering={ENTER[1]}>
               <Text variant="display" accessibilityRole="header" style={[styles.question, showHint && styles.questionWithHint]}>
@@ -627,7 +627,7 @@ function Calendar({
       </View>
       <View style={styles.week}>
         {WEEKDAYS.map((d, i) => (
-          <Text key={i} variant="micro" style={styles.weekday}>
+          <Text key={i} variant="label" ink="faint" style={styles.weekday}>
             {d}
           </Text>
         ))}
@@ -657,7 +657,7 @@ function Calendar({
                     {/* The day answers the finger at once, so a tap that landed is seen to land. */}
                     <View style={[styles.day, pressed && !edge && styles.dayPressed, edge && styles.dayEdge, off && styles.dayOff]}>
                       <Text
-                        variant="data"
+                        variant="label" ink="soft" tabular
                         color={edge ? skyOnInk : off ? skyInk.faint : iso === first ? skyAccentText : skyInk.strong}
                       >
                         {fromIso(iso).getDate()}
@@ -745,7 +745,7 @@ function Build({
 
   return (
     <View style={styles.build}>
-      <Text variant="eyebrow">Plan your trip · {cityName}</Text>
+      <Text variant="label" ink="faint">Plan your trip · {cityName}</Text>
       <Text variant="display" accessibilityRole="header" style={styles.question}>
         Building your plan
       </Text>
@@ -808,7 +808,7 @@ const styles = StyleSheet.create({
     backgroundColor: skyFill.pane,
     color: skyInk.strong,
     fontFamily: fonts.sans,
-    fontSize: 16,
+    fontSize: fontSize.title,
   },
   stayHit: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingHorizontal: 8, borderRadius: radii.pane },
   footer: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },

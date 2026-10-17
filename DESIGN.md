@@ -8,12 +8,14 @@ tiers:
   primitives: "src/theme/primitives.ts — raw colours, named for what they are (paper/0, grey/900, ember/600)."
   semantic: "src/theme/semantic.ts — what a colour is for (ink/strong, fill/raised, cta). src/theme/sky.ts hands screens the set under its older names (skyInk, skyFill, skyCta)."
 typography:
-  display: { fontFamily: "Plus Jakarta Sans ExtraBold", fontSize: 34, lineHeight: 38, letterSpacing: -1.1 }
-  headline: { fontFamily: "Plus Jakarta Sans Bold", fontSize: 22, lineHeight: 27, letterSpacing: -0.5 }
-  title: { fontFamily: "Plus Jakarta Sans SemiBold", fontSize: 18, lineHeight: 24, letterSpacing: -0.3 }
-  body: { fontFamily: "Geist", fontSize: 15, lineHeight: 22 }
-  label: { fontFamily: "Geist Medium", fontSize: 13, lineHeight: 18 }
-  micro: { fontFamily: "Geist Medium", fontSize: 12, lineHeight: 16 }
+  hero: { fontFamily: "Plus Jakarta Sans ExtraBold", fontSize: 40, lineHeight: 44, letterSpacing: -1.4, note: "the one exception: a city or place name" }
+  display: { fontFamily: "Plus Jakarta Sans ExtraBold", fontSize: 32, lineHeight: 36, letterSpacing: -1 }
+  headline: { fontFamily: "Plus Jakarta Sans Bold", fontSize: 20, lineHeight: 24, letterSpacing: -0.45 }
+  title: { fontFamily: "Plus Jakarta Sans SemiBold", fontSize: 16, lineHeight: 24, letterSpacing: -0.25 }
+  body: { fontFamily: "Geist", fontSize: 14, lineHeight: 20 }
+  bodyStrong: { fontFamily: "Geist Medium", fontSize: 14, lineHeight: 20 }
+  label: { fontFamily: "Geist Medium", fontSize: 12, lineHeight: 16 }
+  tag: { fontFamily: "Geist SemiBold", fontSize: 10, lineHeight: 12, letterSpacing: 0.1 }
 rounded: { thumb: 14, pane: 16, glass: 24, card: 28, sheet: 32, pill: 999 }
 spacing: { xs: 4, sm: 8, md: 12, lg: 16, screen: 20, xl: 24, xxl: 32 }
 ---
@@ -75,6 +77,32 @@ Defined in `src/theme/semantic.ts`, handed out by `src/theme/sky.ts`. Light's va
 
 Paper cards (tickets, the map's art, legal pages) use `light` in `src/theme/tokens.ts`; type over
 photographs uses its `photoInk` values.
+
+## Type
+
+Six sizes, all even, every line height on the 4pt grid: **10 · 12 · 14 · 16 · 20 · 32**, plus
+40 for the big name on a city or place. Agreed with Albin on 17 Oct 2026; it replaced 14 styles on
+9 sizes. The sizes live in `fontSize`, `lineHeight` and `textSize` in `src/theme/tokens.ts`; the
+`Text` component's variants are the styles.
+
+| Style | Size / line | Font | For |
+|---|---|---|---|
+| `display` | 32/36 | Jakarta ExtraBold | Screen titles |
+| `headline` | 20/24 | Jakarta Bold | Sections, sheet titles, code digits |
+| `title` | 16/24 | Jakarta SemiBold | Card titles; buttons and fields use this size in Geist |
+| `body` / `bodyStrong` | 14/20 | Geist Regular / Medium | Reading text |
+| `label` | 12/16 | Geist Medium | Meta, chips, small print |
+| `tag` | 10/12 | Geist SemiBold | Badges, pin numbers, tab labels, credits |
+
+- Colour and figures are switches, not styles: `ink="soft" | "faint"` for a quieter line,
+  `tabular` for counts, dates and prices.
+- `tag` is a few words or a number, never a sentence, and always in the darkest ink. Nothing goes
+  below 10.
+- Fields stay at 16 or more, or iPhone browsers zoom the page into the box.
+- Never write a font size in a screen: spread `textSize.x` or use `fontSize.x`. Jakarta needs a
+  line height of 1.1x its size or more, or iOS crops the tops of the capitals.
+- Allowed off the scale: the logo (`Wordmark`), drawings sized to their own art (map labels,
+  passport stamp, intro scenes, avatar initials), the share picture (it scales as one) and the PDF.
 
 ## Rules
 

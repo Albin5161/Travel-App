@@ -26,13 +26,13 @@ export function PlaceCard({ place, style, overlay }: Props) {
         <View style={styles.top}>
           <GlassPill onPhoto label={typeLine(place)} />
           {place.photoCredit ? (
-            <Text variant="micro" color="rgba(238,234,227,0.86)" numberOfLines={1} style={styles.credit}>
+            <Text variant="label" ink="faint" color="rgba(238,234,227,0.86)" numberOfLines={1} style={styles.credit}>
               Photo: {place.photoCredit}
             </Text>
           ) : null}
         </View>
         <View style={styles.content}>
-          <Text variant="displayXL" numberOfLines={2}>
+          <Text variant="hero" numberOfLines={2}>
             {place.name}
           </Text>
           <Text variant="body" color="rgba(238,234,227,0.88)">

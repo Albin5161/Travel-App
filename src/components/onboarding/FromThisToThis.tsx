@@ -17,7 +17,7 @@ import Svg, { Path } from 'react-native-svg';
 import Ionicons from '@/components/Ionicons';
 import { Text } from '@/components/Text';
 import { places, smallPhoto } from '@/data/catalog';
-import { fonts } from '@/theme/tokens';
+import { fonts, fontSize, textSize } from '@/theme/tokens';
 
 // The whole product as one still picture: a reel on the left, the map it became on the right, both
 // cards tilted towards each other in depth, with a note in handwriting over each ("From this…",
@@ -179,8 +179,7 @@ const styles = StyleSheet.create({
   noteRight: { alignItems: 'flex-end' },
   noteText: {
     fontFamily: NOTE_FONT,
-    fontSize: 21,
-    lineHeight: 24,
+    ...textSize.headline,
     color: NOTE_INK,
     // A soft dark halo keeps the handwriting clear on the brightest skies.
     textShadowColor: 'rgba(4,10,30,0.35)',
@@ -192,7 +191,7 @@ const styles = StyleSheet.create({
   reelCard: { zIndex: 2, backgroundColor: '#1B2230', boxShadow: '0 22px 40px rgba(8,12,26,0.45), 0 4px 10px rgba(8,12,26,0.25)' },
   mapCard: { zIndex: 1, backgroundColor: '#EEF2E6', boxShadow: '0 18px 36px rgba(8,12,26,0.35)' },
   handle: { position: 'absolute', top: 12, left: 12, right: 10, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  handleText: { fontFamily: fonts.sansSemi, fontSize: 11.5, color: '#FFFFFF' },
+  handleText: { fontFamily: fonts.sansSemi, fontSize: fontSize.label, color: '#FFFFFF' },
   progress: { position: 'absolute', left: 12, right: 12, bottom: 12, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.35)' },
   progressDone: { width: '62%', height: 3, borderRadius: 2, backgroundColor: '#FFFFFF' },
   place: {
@@ -208,7 +207,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     boxShadow: '0 2px 6px rgba(8,12,26,0.12)',
   },
-  placeText: { fontFamily: fonts.sansSemi, fontSize: 9.5, letterSpacing: 1, color: INK },
+  placeText: { fontFamily: fonts.sansSemi, fontSize: fontSize.tag, letterSpacing: 1, color: INK },
   pin: { position: 'absolute', width: PIN, height: PIN },
   pinPhoto: { width: PIN, height: PIN, borderRadius: PIN / 2, borderWidth: 2.5, borderColor: ROUTE },
   pinNumber: {
@@ -224,7 +223,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pinNumberText: { fontFamily: fonts.sansSemi, fontSize: 9, lineHeight: 11, color: '#FFFFFF' },
+  pinNumberText: { fontFamily: fonts.sansSemi, ...textSize.tag, color: '#FFFFFF' },
   result: {
     position: 'absolute',
     zIndex: 4,
@@ -239,6 +238,6 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-2deg' }],
   },
   resultTick: { width: 20, height: 20, borderRadius: 10, backgroundColor: ROUTE, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  resultStrong: { fontFamily: fonts.sansSemi, fontSize: 12.5, color: INK },
-  resultSoft: { fontFamily: fonts.sans, fontSize: 12.5, color: '#4A5263' },
+  resultStrong: { fontFamily: fonts.sansSemi, fontSize: fontSize.label, color: INK },
+  resultSoft: { fontFamily: fonts.sans, fontSize: fontSize.label, color: '#4A5263' },
 });

@@ -23,7 +23,7 @@ import { summarize } from '@/state/group';
 import { useTrips } from '@/state/trips';
 import { Tone } from '@/theme/tone';
 import { skyAccent, skyAccentText, skyAccentWash, skyFill, skyInk, skyOnInk } from '@/theme/sky';
-import { colors, fonts, light, space } from '@/theme/tokens';
+import { colors, fonts, light, space, textSize } from '@/theme/tokens';
 
 const CARD_IN = [0, 1, 2, 3, 4, 5].map((i) => fadeUp(80 + i * 60));
 
@@ -57,7 +57,7 @@ export default function TripsScreen() {
     >
       <View style={styles.headRow}>
         <View style={styles.flex}>
-          <Text variant="eyebrow">{trips.length ? `${trips.length} planned${voting ? ` · ${voting} voting` : ''}` : 'Trips'}</Text>
+          <Text variant="label" ink="faint">{trips.length ? `${trips.length} planned${voting ? ` · ${voting} voting` : ''}` : 'Trips'}</Text>
           <Text variant="display" accessibilityRole="header" style={styles.title}>
             Your trips
           </Text>
@@ -143,7 +143,7 @@ function TripCard({ city, plan }: { city: City; plan: TripPlan }) {
           </View>
           <View style={styles.photoRow}>
             <View style={[styles.photoText, styles.flex]}>
-              <Text variant="micro" color={light.photoInkSoft}>
+              <Text variant="label" ink="faint" color={light.photoInkSoft}>
                 {when} · {stops} stops
               </Text>
               <Text style={styles.city} numberOfLines={1}>
@@ -248,18 +248,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.38)',
   },
   whenNow: { backgroundColor: skyAccent },
-  whenText: { fontFamily: fonts.sansSemi, fontSize: 12, lineHeight: 15, color: light.photoInk },
+  whenText: { fontFamily: fonts.sansSemi, ...textSize.label, color: light.photoInk },
   whenTextNow: { color: colors.night },
   days: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 2 },
   daysSolo: { paddingBottom: 16 },
   // A name on a photo card: the same size as Home's city tiles.
-  city: { fontFamily: fonts.display, fontSize: 22, lineHeight: 25, letterSpacing: -0.7, color: light.photoInk },
+  city: { fontFamily: fonts.display, ...textSize.headline, letterSpacing: -0.6, color: light.photoInk },
   footer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12 },
   people: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   avatars: { flexDirection: 'row' },
   overlap: { marginLeft: -8 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
-  chipText: { fontFamily: fonts.sansSemi, fontSize: 12, lineHeight: 15 },
+  chipText: { fontFamily: fonts.sansSemi, ...textSize.label },
   track: { height: 3, backgroundColor: skyInk.line },
   trackFill: { ...StyleSheet.absoluteFill, backgroundColor: skyAccent, transformOrigin: 'left' },
   empty: { alignItems: 'center', gap: 8, marginTop: 60 },

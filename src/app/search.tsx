@@ -20,7 +20,7 @@ import { FADE_IN } from '@/lib/motion';
 import { search, type Hit } from '@/lib/search';
 import { useSavedSpots, useTrips } from '@/state/trips';
 import { skyFill, skyInk } from '@/theme/sky';
-import { fonts, radii, space } from '@/theme/tokens';
+import { fonts, fontSize, radii, space } from '@/theme/tokens';
 
 const KIND: Record<string, string> = { food: 'Food', stay: 'Stay', sight: 'Sight', experience: 'Experience' };
 /** Past this many places, the list says how many more rather than growing without end. */
@@ -97,7 +97,7 @@ export default function Search() {
             </Text>
             {cities.length ? (
               <>
-                <Text variant="eyebrow" accessibilityRole="header" style={styles.heading}>
+                <Text variant="label" ink="faint" accessibilityRole="header" style={styles.heading}>
                   Your cities
                 </Text>
                 {cities.map(({ city, places }) => (
@@ -143,7 +143,7 @@ function Section({
 }) {
   return (
     <View style={styles.group}>
-      <Text variant="eyebrow" accessibilityRole="header" style={styles.heading}>
+      <Text variant="label" ink="faint" accessibilityRole="header" style={styles.heading}>
         {title}
       </Text>
       {hits.map((hit) => {
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   back: { width: 44, height: 44, borderRadius: 22 },
   field: { flex: 1, height: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 16, paddingRight: 4 },
   // 16pt: an iPhone zooms the page into any smaller field.
-  input: { flex: 1, height: 48, fontFamily: fonts.sans, fontSize: 16, color: skyInk.strong, outlineStyle: 'none' } as object,
+  input: { flex: 1, height: 48, fontFamily: fonts.sans, fontSize: fontSize.title, color: skyInk.strong, outlineStyle: 'none' } as object,
   clear: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   body: { paddingHorizontal: space.screen, paddingTop: 20 },
   section: { gap: 8 },

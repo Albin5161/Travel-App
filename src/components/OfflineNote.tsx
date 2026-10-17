@@ -24,7 +24,7 @@ export function OfflineNote() {
           <Text variant="label" numberOfLines={1}>
             You’re offline
           </Text>
-          <Text variant="data" color={skyInk.soft} numberOfLines={1}>
+          <Text variant="label" ink="soft" tabular color={skyInk.soft} numberOfLines={1}>
             Saved places and plans still work
           </Text>
         </View>

@@ -194,7 +194,7 @@ export default function Verify() {
         {!done && !listMode ? (
           <View style={styles.headerRight}>
             <Animated.View key={index} entering={FADE_IN}>
-              <Text variant="data">
+              <Text variant="label" ink="soft" tabular>
                 {index + 1} of {places.length}
               </Text>
             </Animated.View>
@@ -250,7 +250,7 @@ export default function Verify() {
                 size={13}
                 color={skyInk.faint}
               />
-              <Text variant="micro">
+              <Text variant="label" ink="faint">
                 {reel.creator} · {city.name}
               </Text>
             </View>
@@ -361,7 +361,7 @@ function CheckList({
         <View style={styles.titleBlock}>
           <View style={styles.source}>
             <Ionicons name={platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'} size={13} color={skyInk.faint} />
-            <Text variant="micro" numberOfLines={1}>
+            <Text variant="label" ink="faint" numberOfLines={1}>
               {creator} · {city}
             </Text>
           </View>
@@ -489,7 +489,7 @@ function Done({
       {left.length > 0 ? (
         <Animated.View entering={DONE_ENTER[3]}>
           <Glass style={styles.leftOut}>
-          <Text variant="micro">Left out</Text>
+          <Text variant="label" ink="faint">Left out</Text>
           {left.map((p) => {
             const fix = fixes[p.id];
             return (

@@ -23,6 +23,7 @@ import { ErrorNote } from '@/components/ErrorNote';
 import { PressableScale } from '@/components/PressableScale';
 import { Sky } from '@/components/sky/Sky';
 import { Text } from '@/components/Text';
+import { Wordmark } from '@/components/Wordmark';
 import { cities, reels } from '@/data/catalog';
 import { track } from '@/lib/analytics';
 import { useAccount } from '@/lib/live/account';
@@ -35,7 +36,7 @@ import { useHomeSky } from '@/state/sky';
 import { useTrips } from '@/state/trips';
 import { skyBar, skyDanger, skyFill, skyInk } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
-import { fonts, radii, space } from '@/theme/tokens';
+import { fonts, fontSize, radii, space, textSize } from '@/theme/tokens';
 
 const GUTTER = space.screen;
 /** The zoom from the Earth into the map: slow away, slow to land. */
@@ -252,7 +253,7 @@ export default function Onboarding() {
         pointerEvents="box-none"
       >
         <View style={styles.topRow}>
-          <Text style={styles.wordmark}>Xplore</Text>
+          <Wordmark />
           {onName ? null : (
             <PressableScale
               onPress={skip}
@@ -462,7 +463,6 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   top: { paddingHorizontal: GUTTER, paddingBottom: 4 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
-  wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
   // Real padding, not hitSlop: the web ignores hitSlop, and a tap target should be 44pt tall.
   skip: { minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' },
   scene: { position: 'absolute', left: 0, right: 0, overflow: 'hidden' },
@@ -478,14 +478,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: skyInk.rim,
     fontFamily: fonts.sansMedium,
-    fontSize: 17,
+    fontSize: fontSize.title,
     color: skyInk.strong,
   },
   nameInputFocused: { backgroundColor: skyFill.pressed, borderColor: skyInk.outline },
   nameInputWrong: { borderColor: skyDanger.line, borderWidth: 2 },
   copy: { gap: 12 },
   // The display size every screen title uses, so the intro and the app read as one voice.
-  title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
+  title: { fontFamily: fonts.display, ...textSize.display, color: skyInk.strong, letterSpacing: -1 },
   body: { paddingRight: 8 },
   fieldBlock: { gap: 8 },
   fieldHint: { paddingHorizontal: 16 },

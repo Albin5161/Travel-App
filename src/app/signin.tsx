@@ -12,6 +12,7 @@ import { PasteButton } from '@/components/PasteButton';
 import { PressableScale } from '@/components/PressableScale';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
+import { Wordmark } from '@/components/Wordmark';
 import { track } from '@/lib/analytics';
 import { suggestEmail } from '@/lib/emailTypos';
 import { haptic } from '@/lib/haptics';
@@ -19,7 +20,7 @@ import { sendEmailCode, usedCode, verifyEmailCode } from '@/lib/live/account';
 import { fadeUp } from '@/lib/motion';
 import { useOffline } from '@/lib/online';
 import { skyDanger, skyFill, skyInk } from '@/theme/sky';
-import { fonts, radii, space } from '@/theme/tokens';
+import { fonts, fontSize, radii, space, textSize } from '@/theme/tokens';
 
 const CODE_LENGTH = 6;
 // Web only: the browser's own focus ring is the system accent (orange) and narrower than the pill;
@@ -149,7 +150,7 @@ export default function SignIn() {
         >
           <View style={styles.topRow}>
             {onEmail ? (
-              <Text style={styles.wordmark}>Xplore</Text>
+              <Wordmark />
             ) : (
               <PressableScale onPress={backToEmail} style={styles.back} accessibilityRole="button" accessibilityLabel="Use a different email">
                 <Feather name="chevron-left" size={18} color={skyInk.soft} />
@@ -352,13 +353,12 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   page: { flexGrow: 1, paddingHorizontal: space.screen },
   topRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center' },
-  wordmark: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.9, color: skyInk.strong },
   back: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 44, paddingRight: 8, marginLeft: -4 },
   // From the top, so the keyboard never covers the words or the field; the button sits below.
   body: { flex: 1, gap: 24, paddingTop: 24, paddingBottom: 16 },
   copy: { gap: 12 },
   // The display size every screen title uses, as on the name step.
-  title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: skyInk.strong, letterSpacing: -1.1 },
+  title: { fontFamily: fonts.display, ...textSize.display, color: skyInk.strong, letterSpacing: -1 },
   address: { fontFamily: fonts.sansSemi, color: skyInk.strong },
   change: { color: skyInk.strong, textDecorationLine: 'underline' },
   field: { gap: 8 },
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     borderColor: skyInk.rim,
     fontFamily: fonts.sansMedium,
     // 16 or more: iPhone browsers zoom the page into a smaller text box.
-    fontSize: 17,
+    fontSize: fontSize.title,
     color: skyInk.strong,
   },
   inputFocused: { borderColor: skyInk.strong },
@@ -393,12 +393,12 @@ const styles = StyleSheet.create({
   // The box the next digit goes in: the strong ink, as anything chosen or on.
   boxOn: { borderColor: skyInk.strong, borderWidth: 1.5 },
   boxWrong: { borderColor: skyDanger.line, borderWidth: 2 },
-  digit: { fontFamily: fonts.sansSemi, fontSize: 26, lineHeight: 32, color: skyInk.strong, fontVariant: ['tabular-nums'] },
+  digit: { fontFamily: fonts.sansSemi, ...textSize.headline, color: skyInk.strong, fontVariant: ['tabular-nums'] },
   // Unseen but there: it takes the taps, the typing and the paste. Not opacity 0: iOS passes taps
   // through anything under 1% opaque, and the boxes could no longer bring the keyboard back. Its
   // text and caret are transparent anyway. No letterSpacing on a text field (iOS reuses fields and
   // carried it into others' placeholders); 16pt so browsers don't zoom.
-  hiddenInput: { ...StyleSheet.absoluteFill, opacity: 0.02, color: 'transparent', fontSize: 16 },
+  hiddenInput: { ...StyleSheet.absoluteFill, opacity: 0.02, color: 'transparent', fontSize: fontSize.title },
   codeTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8 },
   resend: { minHeight: 44, justifyContent: 'center' },
   resendOn: { textDecorationLine: 'underline' },

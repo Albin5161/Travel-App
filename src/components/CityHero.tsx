@@ -10,7 +10,7 @@ import { cityPlaceLine } from '@/data/api';
 import type { City } from '@/data/types';
 import { Tone } from '@/theme/tone';
 import { skyCta, skyInk } from '@/theme/sky';
-import { fonts, light, space } from '@/theme/tokens';
+import { fonts, fontSize, light, space, textSize } from '@/theme/tokens';
 
 export type HeroStats = { places: number; reels: number; planned: boolean };
 
@@ -81,13 +81,13 @@ export function CityHeroContent({
         )}
 
         {city.heroCredit ? (
-          <Text variant="micro" color={light.photoInkSoft} numberOfLines={1} style={[styles.credit, { top: insetTop + 22 }]}>
+          <Text variant="label" ink="faint" color={light.photoInkSoft} numberOfLines={1} style={[styles.credit, { top: insetTop + 22 }]}>
             Photo: {city.heroCredit}
           </Text>
         ) : null}
 
         <View style={[styles.block, { bottom: restPeek(insetBottom) + 26 }]}>
-          <Text variant="micro" color={light.photoInkSoft}>
+          <Text variant="label" ink="faint" color={light.photoInkSoft}>
             {cityPlaceLine(city)}
           </Text>
           <Text style={styles.name} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
@@ -131,9 +131,8 @@ const styles = StyleSheet.create({
   block: { position: 'absolute', left: space.screen, right: space.screen, alignItems: 'center', gap: 8 },
   name: {
     fontFamily: fonts.display,
-    fontSize: 44,
-    lineHeight: 49,
-    letterSpacing: -1.6,
+    ...textSize.hero,
+    letterSpacing: -1.4,
     color: light.photoInk,
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.35)',
@@ -141,8 +140,7 @@ const styles = StyleSheet.create({
   },
   line: {
     fontFamily: fonts.sansMedium,
-    fontSize: 16,
-    lineHeight: 22,
+    ...textSize.title,
     color: 'rgba(255,255,255,0.86)',
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.4)',
@@ -162,7 +160,7 @@ const styles = StyleSheet.create({
     borderColor: skyInk.rim,
     boxShadow: '0 10px 30px rgba(0,0,0,0.32)',
   },
-  ctaLabel: { fontFamily: fonts.sansSemi, fontSize: 17, letterSpacing: 0.1, color: '#FFFFFF' },
+  ctaLabel: { fontFamily: fonts.sansSemi, fontSize: fontSize.title, letterSpacing: 0.1, color: '#FFFFFF' },
   ctaArrow: { position: 'absolute', right: 24 },
   peek: {
     position: 'absolute',

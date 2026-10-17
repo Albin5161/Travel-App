@@ -148,13 +148,13 @@ export default function GroupScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={HEAD_IN} style={styles.head}>
-          <Text variant="eyebrow">
+          <Text variant="label" ink="faint">
             {city.name} · {copy.vote}
           </Text>
           <Text variant="display" accessibilityRole="header" style={styles.title}>
             {title}
           </Text>
-          <Text variant="data">{sub}</Text>
+          <Text variant="label" ink="soft" tabular>{sub}</Text>
         </Animated.View>
 
         <UnsentNote cityId={id} />
@@ -219,13 +219,13 @@ export default function GroupScreen() {
                       <Text variant="bodyStrong" numberOfLines={1}>
                         {s.place.name}
                       </Text>
-                      <Text variant="data">
+                      <Text variant="label" ink="soft" tabular>
                         {multiDay ? `Day ${day + 1} · ` : ''}
                         {formatClock(s.startMinutes)}
                       </Text>
                     </View>
                     {Object.values(group?.swapFor ?? {}).includes(s.place.id) ? (
-                      <Text variant="micro" color={skyAccentText}>
+                      <Text variant="label" ink="faint" color={skyAccentText}>
                         Swapped in
                       </Text>
                     ) : null}

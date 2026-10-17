@@ -68,7 +68,7 @@ export function GlassLabel({ icon, children }: { icon: React.ComponentProps<type
   return (
     <View style={styles.label}>
       <Feather name={icon} size={12} color={skyInk.faint} />
-      <Text variant="micro" color={skyInk.faint}>
+      <Text variant="label" ink="faint" color={skyInk.faint}>
         {children}
       </Text>
     </View>

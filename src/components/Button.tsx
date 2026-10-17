@@ -3,7 +3,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTone } from '@/theme/tone';
 import { skyCta, skyFill, skyInk, skyOnCta } from '@/theme/sky';
-import { colors, fonts, light, shadows } from '@/theme/tokens';
+import { colors, fonts, fontSize, light, shadows } from '@/theme/tokens';
 
 import { PressableScale } from './PressableScale';
 import { Text } from './Text';
@@ -65,7 +65,7 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
       >
         <Text
           numberOfLines={1}
-          style={[styles.label, skyArrow && styles.labelSky, { color: LABEL[tone][primary ? 'primary' : 'secondary'] }]}
+          style={[styles.label, { color: LABEL[tone][primary ? 'primary' : 'secondary'] }]}
         >
           {text}
         </Text>
@@ -117,12 +117,11 @@ const styles = StyleSheet.create({
   },
   // Room either side so a long label never runs under the arrow.
   tall: { height: 60, paddingHorizontal: 56 },
-  labelSky: { fontSize: 17 },
   arrow: { position: 'absolute', right: 24 },
   disabled: { opacity: 0.4, boxShadow: 'none' },
-  label: { fontFamily: fonts.sansSemi, fontSize: 16, letterSpacing: 0.1 },
+  label: { fontFamily: fonts.sansSemi, fontSize: fontSize.title, letterSpacing: 0.1 },
   textWrap: { alignItems: 'center' },
   // 44pt tall: the web ignores hitSlop, so the tap has to be the button itself.
   textButton: { minHeight: 44, justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 4 },
-  textLabel: { fontFamily: fonts.sansMedium, fontSize: 14, color: colors.ash },
+  textLabel: { fontFamily: fonts.sansMedium, fontSize: fontSize.body, color: colors.ash },
 });

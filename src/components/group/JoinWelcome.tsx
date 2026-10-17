@@ -33,7 +33,7 @@ export function JoinWelcome({ ownerName, cityName, stops, days, onStart, onDismi
   return (
     <Animated.View entering={fadeUp(0)} style={styles.wrap} accessibilityRole="summary">
       <Glass style={styles.card}>
-      <Text variant="eyebrow">You’re in</Text>
+      <Text variant="label" ink="faint">You’re in</Text>
       <Text variant="headline" accessibilityRole="header" style={styles.title}>
         {ownerName} picked {stops} {stops === 1 ? 'place' : 'places'} for {span} in {cityName}
       </Text>

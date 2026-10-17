@@ -6,7 +6,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { ProfilePhoto } from '@/components/ProfilePhoto';
 import { Text } from '@/components/Text';
 import { useTrips } from '@/state/trips';
-import { fonts, light, shadows } from '@/theme/tokens';
+import { fonts, light, shadows, textSize } from '@/theme/tokens';
 
 const PHOTO = 96;
 const RING = PHOTO + 26;
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: light.canvasTop,
   },
-  initial: { fontFamily: fonts.displayBold, fontSize: 13, lineHeight: 17, color: light.ink },
+  initial: { fontFamily: fonts.displayBold, ...textSize.label, color: light.ink },
   inviteText: { flexShrink: 1 },
   inviteName: { fontFamily: fonts.sansSemi },
 });

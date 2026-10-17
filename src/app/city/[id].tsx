@@ -251,7 +251,7 @@ export default function CityScreen() {
             {places} {places === 1 ? 'place' : 'places'} from {reels} {reels === 1 ? 'video' : 'videos'}
           </Text>
           {info ? (
-            <Text variant="data">
+            <Text variant="label" ink="soft" tabular>
               {formatRupees(info.costPerDay.low)} – {formatRupees(info.costPerDay.high)} a day
             </Text>
           ) : null}

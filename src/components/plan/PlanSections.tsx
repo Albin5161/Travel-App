@@ -16,7 +16,7 @@ import type { DayPart, Place } from '@/data/types';
 import { formatClock } from '@/lib/geo';
 import type { CityNotes } from '@/server/types';
 import { skyFill, skyInk } from '@/theme/sky';
-import { fonts, radii, space } from '@/theme/tokens';
+import { fonts, fontSize, radii, space, textSize } from '@/theme/tokens';
 
 type SectionProps = { onLayout: (e: LayoutChangeEvent) => void };
 
@@ -30,7 +30,7 @@ function Section({
     <View style={styles.section} onLayout={onLayout}>
       <View style={styles.sectionHead}>
         <Text variant="headline" accessibilityRole="header">{title}</Text>
-        {meta ? <Text variant="micro">{meta}</Text> : null}
+        {meta ? <Text variant="label" ink="faint">{meta}</Text> : null}
       </View>
       {children}
     </View>
@@ -63,7 +63,7 @@ export function OverviewSection({
         ) : null}
         {notes.tips.length ? (
           <>
-            <Text variant="micro" style={styles.group}>
+            <Text variant="label" ink="faint" style={styles.group}>
               Good to know before you go
             </Text>
             <Tips items={notes.tips} />
@@ -86,7 +86,7 @@ export function OverviewSection({
       <Text variant="bodyStrong" style={styles.subhead}>
         Cost per day
       </Text>
-      <Text variant="data">
+      <Text variant="label" ink="soft" tabular>
         {formatRupees(info.costPerDay.low)} – {formatRupees(info.costPerDay.high)} a person, mid-range
       </Text>
       <View style={styles.bars}>
@@ -96,7 +96,7 @@ export function OverviewSection({
               <Text variant="label" color={skyInk.soft}>
                 {c.label}
               </Text>
-              <Text variant="data" color={skyInk.strong}>
+              <Text variant="label" ink="soft" tabular color={skyInk.strong}>
                 {formatRupees(c.amount)}
               </Text>
             </View>
@@ -114,7 +114,7 @@ export function OverviewSection({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.stat}>
-      <Text variant="micro" numberOfLines={1} style={styles.statLabel}>
+      <Text variant="label" ink="faint" numberOfLines={1} style={styles.statLabel}>
         {label}
       </Text>
       <Text variant="bodyStrong">{value}</Text>
@@ -225,7 +225,7 @@ function AreaGroup({ area, places }: { area: string; places: Place[] }) {
   const more = places.length - shown.length;
   return (
     <View style={styles.places}>
-      <Text variant="micro" accessibilityRole="header">
+      <Text variant="label" ink="faint" accessibilityRole="header">
         {area} · {places.length}
       </Text>
       {shown.map((p) => (
@@ -250,7 +250,7 @@ function PlaceRow({ place }: { place: Place }) {
         <Text variant="bodyStrong" numberOfLines={1}>
           {place.name}
         </Text>
-        <Text variant="data" numberOfLines={1}>
+        <Text variant="label" ink="soft" tabular numberOfLines={1}>
           {typeLine(place)}
         </Text>
         {rating ? (
@@ -259,12 +259,12 @@ function PlaceRow({ place }: { place: Place }) {
               <Text variant="label" color={skyInk.soft}>
                 ★ {rating.score.toFixed(1)}
               </Text>
-              <Text variant="data">· {formatCount(rating.count)} reviews</Text>
+              <Text variant="label" ink="soft" tabular>· {formatCount(rating.count)} reviews</Text>
             </View>
             <Text variant="body" numberOfLines={2} style={styles.review}>
               “{rating.review.text}”
             </Text>
-            <Text variant="data" color={skyInk.faint}>
+            <Text variant="label" ink="soft" tabular color={skyInk.faint}>
               {rating.review.author} · {rating.review.when}
             </Text>
           </>
@@ -314,7 +314,7 @@ export function PlanSection({
           <View key={part.part} style={styles.part}>
             <View style={styles.partText}>
               <Text variant="bodyStrong">{PART_TITLE[part.part]}</Text>
-              <Text variant="data">
+              <Text variant="label" ink="soft" tabular>
                 {formatClock(part.stops[0].startMinutes)} · {part.stops.length}{' '}
                 {part.stops.length === 1 ? 'stop' : 'stops'}
               </Text>
@@ -373,18 +373,18 @@ function Tips({ items }: { items: string[] }) {
 function Sources({ notes }: { notes: CityNotes }) {
   const open = (url: string) => void Linking.openURL(url).catch(() => {});
   return (
-    <Text variant="data" color={skyInk.faint} style={styles.note}>
+    <Text variant="label" ink="soft" tabular color={skyInk.faint} style={styles.note}>
       Summarised from{' '}
       {notes.sources.map((src, i) => (
-        <Text key={src.url} variant="data" color={skyInk.faint}>
+        <Text key={src.url} variant="label" ink="soft" tabular color={skyInk.faint}>
           {i > 0 ? ' and ' : ''}
-          <Text variant="data" style={styles.sourceLink} onPress={() => open(src.url)}>
+          <Text variant="label" ink="soft" tabular style={styles.sourceLink} onPress={() => open(src.url)}>
             {src.site}
           </Text>
         </Text>
       ))}
       ,{' '}
-      <Text variant="data" style={styles.sourceLink} onPress={() => open('https://creativecommons.org/licenses/by-sa/4.0/')}>
+      <Text variant="label" ink="soft" tabular style={styles.sourceLink} onPress={() => open('https://creativecommons.org/licenses/by-sa/4.0/')}>
         CC BY-SA 4.0
       </Text>
       .
@@ -416,7 +416,7 @@ export function GoodToKnowSection({
     }
     return (
       <Section title="Good to know" onLayout={onLayout}>
-        <Text variant="micro" style={styles.group}>
+        <Text variant="label" ink="faint" style={styles.group}>
           Staying safe
         </Text>
         <Tips items={notes.safety} />
@@ -426,12 +426,12 @@ export function GoodToKnowSection({
   }
   return (
     <Section title="Good to know" onLayout={onLayout}>
-      <Text variant="micro" style={styles.group}>
+      <Text variant="label" ink="faint" style={styles.group}>
         Safety today
       </Text>
       <SafetyScale cityName={cityName} score={info.safetyScore.score} signals={info.safetyScore.signals} play={play} />
 
-      <Text variant="micro" style={[styles.group, styles.groupGap]}>
+      <Text variant="label" ink="faint" style={[styles.group, styles.groupGap]}>
         Staying safe
       </Text>
       <View style={styles.facts}>
@@ -452,7 +452,7 @@ export function GoodToKnowSection({
         ))}
       </View>
 
-      <Text variant="micro" style={styles.group}>
+      <Text variant="label" ink="faint" style={styles.group}>
         From locals
       </Text>
       <View style={styles.tips}>
@@ -472,7 +472,7 @@ export function GoodToKnowSection({
 
 function Note({ children }: { children: string }) {
   return (
-    <Text variant="data" color={skyInk.faint} style={styles.note}>
+    <Text variant="label" ink="soft" tabular color={skyInk.faint} style={styles.note}>
       {children}
     </Text>
   );
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row', gap: 8, marginTop: 16 },
   // Inner panes: a lighter frost on the sky, with the same thin rim as the cards.
   stat: { flex: 1, gap: 4, padding: 12, borderRadius: radii.pane, backgroundColor: skyFill.pane, borderWidth: StyleSheet.hairlineWidth, borderColor: skyInk.line },
-  statLabel: { fontSize: 10, letterSpacing: 0.6 },
+  statLabel: { ...textSize.tag, letterSpacing: 0.6 },
 
   bars: { marginTop: 16, gap: 12 },
   barRow: { gap: 8 },
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
     borderColor: skyInk.rim,
   },
   // 16 or more: iPhone browsers zoom the page into a smaller text box.
-  searchInput: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: skyInk.strong },
+  searchInput: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: fontSize.title, color: skyInk.strong },
   searchClear: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   noHits: { paddingVertical: 8 },
   places: { gap: 8 },

@@ -130,7 +130,7 @@ export default function AddPlaces() {
       <IconButton icon="x" onPress={close} accessibilityLabel="Close without saving" style={styles.close} />
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 140 }]}>
         <Animated.View entering={ENTER[0]} style={styles.titles}>
-          <Text variant="eyebrow">{[instagram ? 'Instagram reel' : 'YouTube video', city].filter(Boolean).join(' · ')}</Text>
+          <Text variant="label" ink="faint">{[instagram ? 'Instagram reel' : 'YouTube video', city].filter(Boolean).join(' · ')}</Text>
           <Text variant="display" accessibilityRole="header">
             {city ? `Your ${city} spots` : 'Add the places yourself'}
           </Text>
@@ -148,7 +148,7 @@ export default function AddPlaces() {
                 <View style={styles.reelText}>
                   <View style={styles.sourceRow}>
                     <Ionicons name={instagram ? 'logo-instagram' : 'logo-youtube'} size={14} color={colors.mist} />
-                    <Text variant="micro" color={colors.mist} numberOfLines={1}>
+                    <Text variant="label" ink="faint" color={colors.mist} numberOfLines={1}>
                       {reel.creator}
                       {lengthLabel(reel) ? ` · ${lengthLabel(reel)}` : ''}
                     </Text>
@@ -173,7 +173,7 @@ export default function AddPlaces() {
         {spots ? (
           <Animated.View entering={ENTER[2]} style={styles.list}>
             <View style={styles.spotsHead}>
-              <Text variant="eyebrow" accessibilityRole="header">
+              <Text variant="label" ink="faint" accessibilityRole="header">
                 Well known in {city}
               </Text>
               <Text variant="label" color={skyInk.soft}>
@@ -225,7 +225,7 @@ export default function AddPlaces() {
 
         <Animated.View entering={ENTER[2]} style={styles.list}>
           {city && added.some((a) => !Array.isArray(spots) || !spots.some((s) => s.id === a.place.id)) ? (
-            <Text variant="eyebrow">Added by you</Text>
+            <Text variant="label" ink="faint">Added by you</Text>
           ) : null}
           {added
             .filter((a) => !Array.isArray(spots) || !spots.some((s) => s.id === a.place.id))

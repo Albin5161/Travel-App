@@ -10,7 +10,7 @@ import { dims } from '@/components/pressed';
 import type { TripStop } from '@/data/planner';
 import type { Place } from '@/data/types';
 import { skyFill, skyInk, skySignal } from '@/theme/sky';
-import { fonts, radii } from '@/theme/tokens';
+import { fonts, fontSize, radii } from '@/theme/tokens';
 
 /** From this many places, scrolling for one is a chore: the swap list gets a search. */
 const SEARCH_FROM = 9;
@@ -78,7 +78,7 @@ export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap
           {moving ? (
             <View style={styles.swapTop}>
               <View style={styles.swapHead}>
-                <Text variant="micro">Move to</Text>
+                <Text variant="label" ink="faint">Move to</Text>
                 <Pressable onPress={() => setMoving(false)} hitSlop={10} style={dims(styles.backTap)} accessibilityRole="button" accessibilityLabel="Back to actions">
                   <Text variant="label" style={styles.back}>
                     Back
@@ -103,7 +103,7 @@ export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap
             <>
             <View style={styles.swapTop}>
               <View style={styles.swapHead}>
-                <Text variant="micro">Swap for</Text>
+                <Text variant="label" ink="faint">Swap for</Text>
                 <Pressable onPress={() => swapTo(false)} hitSlop={10} style={dims(styles.backTap)} accessibilityRole="button" accessibilityLabel="Back to actions">
                   <Text variant="label" style={styles.back}>
                     Back
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     backgroundColor: skyFill.pane,
   },
   // 16pt: an iPhone zooms the page into any smaller field.
-  searchInput: { flex: 1, height: 48, fontFamily: fonts.sans, fontSize: 16, color: skyInk.strong, outlineStyle: 'none' } as object,
+  searchInput: { flex: 1, height: 48, fontFamily: fonts.sans, fontSize: fontSize.title, color: skyInk.strong, outlineStyle: 'none' } as object,
   clear: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   swapList: { maxHeight: 360 },
   swapContent: { paddingTop: 8, gap: 8 },

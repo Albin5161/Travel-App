@@ -69,7 +69,7 @@ export function Segmented<K extends string>({ value, options, onChange }: Props<
               {o.label}
             </Text>
             {o.count != null ? (
-              <Text variant="data" color={sky ? skyInk.faint : on ? light.inkSoft : light.inkFaint}>
+              <Text variant="label" ink="soft" tabular color={sky ? skyInk.faint : on ? light.inkSoft : light.inkFaint}>
                 {o.count}
               </Text>
             ) : null}

@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { Text } from '@/components/Text';
 import { arcRoute, type LatLng } from '@/lib/geo';
 import { skyCta } from '@/theme/sky';
-import { colors, fonts, light, shadows } from '@/theme/tokens';
+import { colors, fonts, fontSize, light, shadows } from '@/theme/tokens';
 
 import type { GoogleMapProps } from './GoogleMap';
 
@@ -387,7 +387,7 @@ function PhotoPin({ photo, number, active, been }: { photo: ImageSourcePropType;
             alignItems: 'center',
             justifyContent: 'center',
             fontFamily: fonts.sansSemi,
-            fontSize: 11,
+            fontSize: fontSize.tag,
             color: light.ctaInk,
           }}
         >

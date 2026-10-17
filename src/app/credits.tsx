@@ -33,7 +33,7 @@ export default function Credits() {
           The photos in this prototype come from Wikimedia Commons and Unsplash. {CHANGES}
         </Text>
 
-        <Text variant="eyebrow" accessibilityRole="header" style={styles.section}>
+        <Text variant="label" ink="faint" accessibilityRole="header" style={styles.section}>
           Wikimedia Commons
         </Text>
         {CREDITS.map((c) => (
@@ -62,7 +62,7 @@ export default function Credits() {
           </View>
         ))}
 
-        <Text variant="eyebrow" accessibilityRole="header" style={styles.section}>
+        <Text variant="label" ink="faint" accessibilityRole="header" style={styles.section}>
           Unsplash
         </Text>
         <Text variant="body">
@@ -73,7 +73,7 @@ export default function Credits() {
         </Text>
         <Text variant="body">{FROM_VIDEOS}</Text>
 
-        <Text variant="eyebrow" accessibilityRole="header" style={styles.section}>
+        <Text variant="label" ink="faint" accessibilityRole="header" style={styles.section}>
           Stand-in photos
         </Text>
         <Text variant="body" style={styles.standLead}>

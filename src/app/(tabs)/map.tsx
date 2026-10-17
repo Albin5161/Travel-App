@@ -172,7 +172,7 @@ export default function SpotsMap() {
               size={12}
               color={skyInk.soft}
             />
-            <Text variant="data" numberOfLines={1}>
+            <Text variant="label" ink="soft" tabular numberOfLines={1}>
               {where.label}
             </Text>
           </View>
@@ -181,7 +181,7 @@ export default function SpotsMap() {
           <PressableScale onPress={() => setPickingHome(true)} style={styles.setHome} accessibilityRole="button" accessibilityLabel="Set your home">
             <View style={styles.wherePill}>
               <Feather name="home" size={12} color={skyInk.strong} />
-              <Text variant="data" color={skyInk.strong} numberOfLines={1}>
+              <Text variant="label" ink="soft" tabular color={skyInk.strong} numberOfLines={1}>
                 {where.label}
               </Text>
             </View>
@@ -320,7 +320,7 @@ function Fold({
         >
           <View style={{ flex: 1 }}>
             <Text variant="headline">{title}</Text>
-            <Text variant="data">{detail}</Text>
+            <Text variant="label" ink="soft" tabular>{detail}</Text>
           </View>
           <Animated.View style={[fold.chevron, open && fold.chevronOpen]}>
             <Feather name="chevron-down" size={18} color={skyInk.soft} />
@@ -384,7 +384,7 @@ function HomeScope({
       {routes.length > 0 ? (
         <Animated.View entering={fadeUp(60)}>
           <View style={styles.sectionHead}>
-            <Text variant="micro">This weekend</Text>
+            <Text variant="label" ink="faint">This weekend</Text>
             <Text variant="headline" accessibilityRole="header">Ready-made outings</Text>
           </View>
           <ScrollView
@@ -473,7 +473,7 @@ function AwayScope({
     <>
       {labelled ? (
         <View style={styles.sectionHead}>
-          <Text variant="micro">Away from home</Text>
+          <Text variant="label" ink="faint">Away from home</Text>
         </View>
       ) : null}
       {shown.map((g, i) => {

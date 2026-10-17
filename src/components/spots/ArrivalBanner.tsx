@@ -33,7 +33,7 @@ export function ArrivalBanner({
       </View>
       <View style={styles.body}>
         <Text variant="bodyStrong">You&rsquo;re in {district}</Text>
-        <Text variant="data">
+        <Text variant="label" ink="soft" tabular>
           {spots} {spots === 1 ? 'spot you saved is' : 'spots you saved are'} here
           {topArea ? ` · around ${topArea}` : ''}
         </Text>

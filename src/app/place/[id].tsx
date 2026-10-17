@@ -121,7 +121,7 @@ function OnGoogle({ info, onOpen }: { info: Info; onOpen: () => void }) {
     <Reveal group style={styles.googleWrap}>
     <Glass style={styles.google}>
       <Reveal>
-        <Text variant="eyebrow">On Google</Text>
+        <Text variant="label" ink="faint">On Google</Text>
       </Reveal>
       {info.rating !== null ? (
         <Reveal style={styles.ratingRow}>

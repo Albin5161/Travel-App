@@ -33,20 +33,20 @@ export function MetaPills({ place, onPhoto }: { place: Place; onPhoto?: boolean 
 export function SourceLine({ place }: { place: Place }) {
   if (place.source.kind === 'local') {
     return (
-      <Text variant="micro" color={colors.ember}>
+      <Text variant="label" ink="faint" color={colors.ember}>
         Recommended by locals
       </Text>
     );
   }
   if (place.source.kind === 'custom') {
-    return <Text variant="data">Added by {place.source.by}</Text>;
+    return <Text variant="label" ink="soft" tabular>Added by {place.source.by}</Text>;
   }
   const reel = getReel(place.source.reelId);
   if (!reel) return null;
   return (
     <View style={styles.source}>
       <Ionicons name={reel.platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'} size={14} color={colors.ash} />
-      <Text variant="data">
+      <Text variant="label" ink="soft" tabular>
         {/* The moment in the video only when the description gave one: "From X · in the video" said nothing. */}
         From {reel.creator}
         {place.source.timestamp ? ` · ${place.source.timestamp} in the ${reel.platform === 'youtube' ? 'video' : 'reel'}` : ''}

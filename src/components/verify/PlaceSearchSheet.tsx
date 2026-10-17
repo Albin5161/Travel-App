@@ -25,7 +25,7 @@ import { ApiFailure } from '@/lib/api';
 import { newSearchSession, searchPlaces, type Suggestion } from '@/lib/extract';
 import type { LatLng } from '@/lib/geo';
 import { skyFill, skyInk } from '@/theme/sky';
-import { fonts, radii, space } from '@/theme/tokens';
+import { fonts, fontSize, radii, space } from '@/theme/tokens';
 
 type Props = {
   visible: boolean;
@@ -92,7 +92,7 @@ export function PlaceSearchSheet({ visible, wrong, cityName, candidates, live, o
       <SkyScreen style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.head}>
           <View style={styles.titles}>
-            <Text variant="eyebrow">{wrong ? `Instead of ${wrong.name}` : `Add to ${cityName}`}</Text>
+            <Text variant="label" ink="faint">{wrong ? `Instead of ${wrong.name}` : `Add to ${cityName}`}</Text>
             <Text variant="display" accessibilityRole="header">
               {wrong ? 'What was it?' : 'Missed one?'}
             </Text>
@@ -308,7 +308,7 @@ function GoogleResults({
         </Pressable>
       ))}
       {state.results.length > 0 ? (
-        <Text variant="micro" style={styles.powered}>
+        <Text variant="label" ink="faint" style={styles.powered}>
           Results from Google
         </Text>
       ) : null}
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     borderColor: skyInk.rim,
   },
   // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
-  input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: 16, color: skyInk.strong },
+  input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: fontSize.title, color: skyInk.strong },
   list: { paddingVertical: 16, gap: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingHorizontal: 8, borderRadius: radii.pane },
   rowPressed: { backgroundColor: skyFill.pane },

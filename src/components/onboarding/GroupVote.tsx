@@ -5,7 +5,7 @@ import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reani
 import { Avatar } from '@/components/group/Avatar';
 import { Text } from '@/components/Text';
 import { places, smallPhoto } from '@/data/catalog';
-import { fonts, light, shadows } from '@/theme/tokens';
+import { fonts, light, shadows, textSize } from '@/theme/tokens';
 
 import { cleared, EASE, hold, LAND, seg, useLoop } from './loop';
 
@@ -40,7 +40,7 @@ export function GroupVote({ active, width }: { active: boolean; width: number })
         <Image source={smallPhoto(stop)} style={styles.thumb} contentFit="cover" transition={0} />
         <View style={styles.headText}>
           <Text variant="bodyStrong">{stop.name}</Text>
-          <Text variant="data">Sat · 5:30 PM</Text>
+          <Text variant="label" ink="soft" tabular>Sat · 5:30 PM</Text>
         </View>
         <Status t={t} />
       </View>
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   },
   pillVoting: { backgroundColor: light.canvas, borderWidth: 1, borderColor: light.line },
   pillKept: { backgroundColor: light.ink },
-  pillText: { fontFamily: fonts.sansSemi, fontSize: 12, lineHeight: 15, color: light.ctaInk },
+  pillText: { fontFamily: fonts.sansSemi, ...textSize.label, color: light.ctaInk },
   bar: { flexDirection: 'row', gap: 4, height: 6 },
   slot: { flex: 1, borderRadius: 3, overflow: 'hidden', backgroundColor: light.canvas },
   fill: { flex: 1, transformOrigin: 'left' },
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: light.canvas,
   },
-  emoji: { fontSize: 14, lineHeight: 18 },
+  emoji: { ...textSize.body },
   noteSlot: { height: 34 },
   bubble: {
     position: 'absolute',

@@ -23,7 +23,7 @@ import { fadeUp, REFLOW } from '@/lib/motion';
 import { useArrivalWatch, type Permissions } from '@/state/arrival';
 import { useSavedSpots, useTrips } from '@/state/trips';
 import { skyOnInk, skyFill, skyInk } from '@/theme/sky';
-import { fonts, radii, space } from '@/theme/tokens';
+import { fonts, fontSize, radii, space, textSize } from '@/theme/tokens';
 
 type IconName = ComponentProps<typeof Feather>['name'];
 
@@ -89,7 +89,7 @@ export default function Profile() {
           <Text variant="display" accessibilityRole="header" numberOfLines={1}>
             {state.myName ?? 'Profile'}
           </Text>
-          <Text variant="data">{home ? `Home in ${home.name}` : 'No home district yet'}</Text>
+          <Text variant="label" ink="soft" tabular>{home ? `Home in ${home.name}` : 'No home district yet'}</Text>
         </View>
       </Animated.View>
 
@@ -282,7 +282,7 @@ function Section({ title, footer, footerError, children }: { title: string; foot
   const rows = Children.toArray(children).filter(isValidElement);
   return (
     <View style={styles.section}>
-      <Text variant="micro" style={styles.sectionTitle}>
+      <Text variant="label" ink="faint" style={styles.sectionTitle}>
         {title}
       </Text>
       {rows.length ? <Glass style={styles.group}>{rows.map((r, i) => (i === 0 ? r : <Divided key={r.key}>{r}</Divided>))}</Glass> : null}
@@ -290,7 +290,7 @@ function Section({ title, footer, footerError, children }: { title: string; foot
         <ErrorNote style={styles.sectionError}>{footer}</ErrorNote>
       ) : footer ? (
         // With no rows, the footer is the section's only content: it sits right under the title.
-        <Text variant="data" color={skyInk.faint} style={[styles.sectionFooter, !rows.length && { marginTop: 0 }]}>
+        <Text variant="label" ink="soft" tabular color={skyInk.faint} style={[styles.sectionFooter, !rows.length && { marginTop: 0 }]}>
           {footer}
         </Text>
       ) : null}
@@ -341,13 +341,13 @@ function Row({
           {label}
         </Text>
         {detail ? (
-          <Text variant="data" numberOfLines={2}>
+          <Text variant="label" ink="soft" tabular numberOfLines={2}>
             {detail}
           </Text>
         ) : null}
       </View>
       {value ? (
-        <Text variant="data" color={skyInk.soft} numberOfLines={1}>
+        <Text variant="label" ink="soft" tabular color={skyInk.soft} numberOfLines={1}>
           {value}
         </Text>
       ) : null}
@@ -418,7 +418,7 @@ function Choice({ label, detail, on, onPress }: { label: string; detail: string;
           <Text variant="body" color={skyInk.strong}>
             {label}
           </Text>
-          <Text variant="data" color={skyInk.faint}>
+          <Text variant="label" ink="soft" tabular color={skyInk.faint}>
             {detail}
           </Text>
         </View>
@@ -461,7 +461,7 @@ function PermissionRow({
       {granted ? (
         <View style={styles.granted}>
           <Feather name="check" size={13} color={skyInk.soft} />
-          <Text variant="data">Allowed</Text>
+          <Text variant="label" ink="soft" tabular>Allowed</Text>
         </View>
       ) : (
         <PressableScale
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontFamily: fonts.sansMedium,
     // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
-    fontSize: 16,
+    fontSize: fontSize.title,
     color: skyInk.soft,
     paddingVertical: 8,
   },
@@ -513,15 +513,14 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontFamily: fonts.display,
-    fontSize: 28,
-    lineHeight: 33,
+    ...textSize.display,
     letterSpacing: -1,
     color: skyInk.strong,
     fontVariant: ['tabular-nums'],
   },
   section: { marginTop: 24, paddingHorizontal: GUTTER },
   sectionTitle: { marginLeft: 4, marginBottom: 8 },
-  sectionFooter: { marginTop: 8, marginHorizontal: 4, lineHeight: 18 },
+  sectionFooter: { marginTop: 8, marginHorizontal: 4 },
   sectionError: { marginTop: 8 },
   group: {},
   hairline: { height: StyleSheet.hairlineWidth, backgroundColor: skyInk.line, marginLeft: 56, marginRight: 16 },

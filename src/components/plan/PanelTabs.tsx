@@ -4,7 +4,7 @@ import Animated, { css } from 'react-native-reanimated';
 import { Glass } from '@/components/sky/Glass';
 import { Tone } from '@/theme/tone';
 import { skyInk } from '@/theme/sky';
-import { fonts, radii } from '@/theme/tokens';
+import { fonts, radii, textSize } from '@/theme/tokens';
 
 import { TabIcon, type TabIconName } from './TabIcon';
 
@@ -79,8 +79,7 @@ const styles = css.create({
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1 },
   label: {
     fontFamily: fonts.sansMedium,
-    fontSize: 11,
-    lineHeight: 15,
+    ...textSize.label,
     transitionProperty: 'color',
     transitionDuration: '200ms',
   },

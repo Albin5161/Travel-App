@@ -46,7 +46,7 @@ export function HomePicker({ visible, onClose }: { visible: boolean; onClose: ()
                   <Text variant="body" color={skyInk.strong}>
                     {d.name}
                   </Text>
-                  <Text variant="data" color={skyInk.faint}>
+                  <Text variant="label" ink="soft" tabular color={skyInk.faint}>
                     {d.state}
                   </Text>
                 </View>

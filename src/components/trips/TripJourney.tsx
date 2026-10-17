@@ -6,7 +6,7 @@ import { Text } from '@/components/Text';
 import { formatDay, fromIso, type TripPlan } from '@/data/planner';
 import { smoothPath, type Point } from '@/lib/geo';
 import { skyAccent, skyAccentText, skyFill, skyInk } from '@/theme/sky';
-import { colors, fonts, light } from '@/theme/tokens';
+import { colors, fonts, light, textSize } from '@/theme/tokens';
 
 // The pieces that make a trip card read as a journey rather than a list: the shape of the route,
 // the days as photos, and where you are in it.
@@ -116,7 +116,7 @@ export function DayStrip({ plan, today }: { plan: TripPlan; today?: number }) {
                 ) : null}
               </View>
               {/* The date, where there is one; today's in ember, matching the chip on the photo. */}
-              <Text variant="micro" color={on ? skyAccentText : skyInk.faint}>
+              <Text variant="label" ink="faint" color={on ? skyAccentText : skyInk.faint}>
                 {day.date ? formatDay(day.date).replace(/ \w+$/, '') : `Day ${d + 1}`}
               </Text>
             </View>
@@ -126,7 +126,7 @@ export function DayStrip({ plan, today }: { plan: TripPlan; today?: number }) {
       {more > 0 ? (
         <View style={styles.dayWrap}>
           <View style={styles.road} />
-          <Text variant="micro" style={styles.moreDays}>
+          <Text variant="label" ink="faint" style={styles.moreDays}>
             +{more} {more === 1 ? 'day' : 'days'}
           </Text>
         </View>
@@ -161,6 +161,6 @@ const styles = StyleSheet.create({
   overlap: { marginLeft: -8 },
   emptyThumb: { borderStyle: 'dashed', borderColor: skyInk.outline, backgroundColor: 'transparent' },
   moreThumb: { alignItems: 'center', justifyContent: 'center', backgroundColor: skyFill.pressed },
-  moreText: { fontFamily: fonts.sansSemi, fontSize: 11, lineHeight: 14, color: skyInk.strong, fontVariant: ['tabular-nums'] },
+  moreText: { fontFamily: fonts.sansSemi, ...textSize.tag, color: skyInk.strong, fontVariant: ['tabular-nums'] },
   moreDays: { marginTop: THUMB / 2 - 8 },
 });

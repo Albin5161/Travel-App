@@ -7,6 +7,7 @@ import { getReel } from '@/data/api';
 import type { Place, SpotStatus } from '@/data/types';
 import { formatDuration } from '@/lib/geo';
 import { skyFill, skyInk } from '@/theme/sky';
+import { textSize } from '@/theme/tokens';
 
 /**
  * One saved spot. The line under the name is what makes it actionable: how long the drive is, and
@@ -38,7 +39,7 @@ export function SpotRow({
         <Text variant="bodyStrong" numberOfLines={1} color={been ? skyInk.faint : skyInk.strong}>
           {spot.name}
         </Text>
-        <Text variant="data" numberOfLines={1}>
+        <Text variant="label" ink="soft" tabular numberOfLines={1}>
           {/* The cluster heading above already names the area, so the second half of this line
               goes to the creator — which is what makes you remember why you saved it. */}
           {[minutes === null ? null : `${formatDuration(minutes)} away`, (showCreator && creator) || TYPE[spot.type]].filter(Boolean).join(' · ')}
@@ -46,7 +47,7 @@ export function SpotRow({
       </View>
       {/* Been is set after a trip (its recap) or on a place's page; here it's only shown. */}
       {been ? (
-        <Text variant="micro" color={skyInk.soft} style={styles.beenLabel} accessibilityLabel="Been here">
+        <Text variant="label" ink="faint" color={skyInk.soft} style={styles.beenLabel} accessibilityLabel="Been here">
           Been
         </Text>
       ) : null}
@@ -59,5 +60,5 @@ const styles = StyleSheet.create({
   thumb: { width: 52, height: 52, borderRadius: 14, backgroundColor: skyFill.raised },
   thumbBeen: { opacity: 0.45 },
   body: { flex: 1, gap: 2 },
-  beenLabel: { fontSize: 10, lineHeight: 12, letterSpacing: 0.6 },
+  beenLabel: { ...textSize.tag, letterSpacing: 0.6 },
 });

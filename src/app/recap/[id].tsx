@@ -71,7 +71,7 @@ export default function Recap() {
     <SkyScreen style={{ paddingTop: insets.top + 8 }}>
       <IconButton icon="x" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} accessibilityLabel="Close" style={styles.close} />
       <ScrollView contentContainerStyle={[styles.pad, { paddingBottom: insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
-        <Text variant="eyebrow">
+        <Text variant="label" ink="faint">
           {city.name}
           {start ? ` · ${formatRange(start, plan.days.length)}` : ''}
         </Text>
@@ -114,7 +114,7 @@ export default function Recap() {
                   <Text variant="bodyStrong" numberOfLines={1}>
                     {place.name}
                   </Text>
-                  <Text variant="data" numberOfLines={1}>
+                  <Text variant="label" ink="soft" tabular numberOfLines={1}>
                     {day}
                   </Text>
                 </View>

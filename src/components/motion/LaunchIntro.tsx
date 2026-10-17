@@ -9,7 +9,7 @@ import { Sky } from '@/components/sky/Sky';
 import { haptic } from '@/lib/haptics';
 import { useHomeSky } from '@/state/sky';
 import { isLight } from '@/theme/mode';
-import { fonts } from '@/theme/tokens';
+import { fonts, textSize } from '@/theme/tokens';
 
 // The opening screen: Albin's logo on what the app opens onto, so nothing flashes between them: on
 // white for the Light look, and on the Sky look the same sky as Home, with the letters in white.
@@ -116,6 +116,6 @@ const styles = StyleSheet.create({
   // Out of the flow, so the logo stays centred with or without it.
   lineSlot: { position: 'absolute', left: 0, right: 0, top: '50%', marginTop: 72, alignItems: 'center' },
   // 6.9:1 on white.
-  line: { fontFamily: fonts.sansMedium, fontSize: 15, lineHeight: 22, color: INK, opacity: 0.72 },
+  line: { fontFamily: fonts.sansMedium, ...textSize.title, color: INK, opacity: 0.72 },
   lineSky: { color: SKY_INK, opacity: 0.9 },
 });

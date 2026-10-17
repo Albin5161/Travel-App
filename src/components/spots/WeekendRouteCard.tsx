@@ -41,24 +41,24 @@ export function WeekendRouteCard({
         ))}
         {n > 3 ? (
           <View style={[styles.photo, styles.photoStacked, styles.more]}>
-            <Text variant="data" color={skyInk.soft}>
+            <Text variant="label" ink="soft" tabular color={skyInk.soft}>
               +{n - 3}
             </Text>
           </View>
         ) : null}
       </View>
       <View style={styles.body}>
-        <Text variant="micro">
+        <Text variant="label" ink="faint">
           {n} {n === 1 ? 'stop' : 'stops'}
         </Text>
         <Text variant="headline" numberOfLines={1}>
           {route.label}
         </Text>
-        <Text variant="data">
+        <Text variant="label" ink="soft" tabular>
           {formatDuration(route.totalMinutes)} out and back · {formatDuration(route.driveMinutes)} driving
         </Text>
         {route.cost === null ? null : (
-          <Text variant="data" color={skyInk.faint}>
+          <Text variant="label" ink="soft" tabular color={skyInk.faint}>
             {route.cost === 0 ? 'Free' : `About ₹${route.cost.toLocaleString('en-IN')}`}
           </Text>
         )}

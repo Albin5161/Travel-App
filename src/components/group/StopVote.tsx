@@ -16,7 +16,7 @@ import type { Place } from '@/data/types';
 import { haptic } from '@/lib/haptics';
 import { EASE_IN_OUT, EASE_OUT } from '@/lib/motion';
 import { skyAccent, skyAccentText, skyOnInk, skyFill, skyInk } from '@/theme/sky';
-import { fonts } from '@/theme/tokens';
+import { fonts, textSize } from '@/theme/tokens';
 
 import { Glass } from '@/components/sky/Glass';
 
@@ -111,7 +111,7 @@ export function StopVote({ place, meta, votes, verdict, swap, members }: Props) 
 
       <View style={styles.votes}>
         {list.length === 0 ? (
-          <Text variant="data" color={skyInk.faint}>
+          <Text variant="label" ink="soft" tabular color={skyInk.faint}>
             Waiting for votes…
           </Text>
         ) : (
@@ -145,14 +145,14 @@ function Head({ place, meta, dropped, kicker }: { place: Place; meta: string; dr
       <Image source={place.photo} style={styles.thumb} contentFit="cover" transition={0} />
       <View style={styles.headText}>
         {kicker ? (
-          <Text variant="micro" color={skyAccentText}>
+          <Text variant="label" ink="faint" color={skyAccentText}>
             {kicker}
           </Text>
         ) : null}
         <Text variant="bodyStrong" numberOfLines={1} style={dropped && styles.struck}>
           {place.name}
         </Text>
-        <Text variant="data" numberOfLines={1}>
+        <Text variant="label" ink="soft" tabular numberOfLines={1}>
           {meta}
         </Text>
       </View>
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   headText: { flex: 1, gap: 1 },
   struck: { textDecorationLine: 'line-through', color: skyInk.soft },
   pill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
-  pillText: { fontFamily: fonts.sansSemi, fontSize: 12, lineHeight: 15 },
+  pillText: { fontFamily: fonts.sansSemi, ...textSize.label },
   bar: { flexDirection: 'row', gap: 4, height: 6 },
   slot: { flex: 1, borderRadius: 3, backgroundColor: skyInk.line, overflow: 'hidden' },
   fill: { transformOrigin: 'left' },
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: skyFill.pane,
   },
-  emoji: { fontSize: 14, lineHeight: 18 },
+  emoji: { ...textSize.body },
   note: {
     alignSelf: 'flex-start',
     maxWidth: '100%',

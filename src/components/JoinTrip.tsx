@@ -19,7 +19,7 @@ import { FADE_IN, fadeUp } from '@/lib/motion';
 import { startGroup } from '@/state/group';
 import { useTrips } from '@/state/trips';
 import { skyFill, skyInk } from '@/theme/sky';
-import { fonts, radii, space } from '@/theme/tokens';
+import { fonts, fontSize, radii, space } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(60 + i * 60));
 
@@ -93,7 +93,7 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
 
       <View style={styles.body}>
         <Animated.View entering={ENTER[0]}>
-          <Text variant="eyebrow">Plan it together</Text>
+          <Text variant="label" ink="faint">Plan it together</Text>
           <Text variant="display" accessibilityRole="header" style={styles.title}>
             {invited ? 'You’re invited' : 'Join a trip'}
           </Text>
@@ -107,14 +107,14 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
         {!liveEnabled ? (
           <Animated.View entering={ENTER[1]} style={styles.offline}>
             <Feather name="cloud-off" size={16} color={skyInk.soft} />
-            <Text variant="data" style={styles.flex}>
+            <Text variant="label" ink="soft" tabular style={styles.flex}>
               Joining needs Xplore&rsquo;s server, and this build isn&rsquo;t connected to one yet.
             </Text>
           </Animated.View>
         ) : (
           <>
             <Animated.View entering={ENTER[1]} style={styles.field}>
-              <Text variant="micro">Trip code</Text>
+              <Text variant="label" ink="faint">Trip code</Text>
               <TextInput
                 value={code}
                 onChangeText={(t) => setCode(t.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 6))}
@@ -132,7 +132,7 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
               </Text>
             </Animated.View>
             <Animated.View entering={ENTER[2]} style={styles.field}>
-              <Text variant="micro">Your name</Text>
+              <Text variant="label" ink="faint">Your name</Text>
               <TextInput
                 value={name}
                 onChangeText={setName}
@@ -182,13 +182,13 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
     fontFamily: fonts.sansMedium,
-    fontSize: 17,
+    fontSize: fontSize.title,
     color: skyInk.strong,
   },
   // No letterSpacing on a text field: iOS reuses fields and carried it into others' placeholders.
-  code: { fontFamily: fonts.displayBold, fontSize: 24, fontVariant: ['tabular-nums'] },
+  code: { fontFamily: fonts.displayBold, fontSize: fontSize.headline, fontVariant: ['tabular-nums'] },
   // Until a code is typed, the words in the box are ordinary type, not spaced like a code.
-  codeEmpty: { fontFamily: fonts.sans, fontSize: 16, letterSpacing: 0 },
+  codeEmpty: { fontFamily: fonts.sans, fontSize: fontSize.title, letterSpacing: 0 },
   offline: {
     flexDirection: 'row',
     gap: 8,

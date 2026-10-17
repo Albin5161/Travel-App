@@ -21,7 +21,7 @@ import { useGroupVote } from '@/state/group';
 import { useLiveVote, useUnsent } from '@/state/live';
 import { useTrips } from '@/state/trips';
 import { skyOnInk, skyFill, skyInk } from '@/theme/sky';
-import { fonts, radii, space } from '@/theme/tokens';
+import { fonts, fontSize, radii, space, textSize } from '@/theme/tokens';
 
 const web = Platform.OS === 'web';
 const NEXT_IN = web ? undefined : SlideInRight.duration(280).easing(EASE_OUT);
@@ -84,7 +84,7 @@ function Vote() {
   if (!voter) {
     return (
       <ScrollView contentContainerStyle={[styles.pad, { paddingBottom: insets.bottom + 24 }]}>
-        <Text variant="eyebrow">Pass the phone</Text>
+        <Text variant="label" ink="faint">Pass the phone</Text>
         <Text variant="display" accessibilityRole="header" style={styles.title}>
           Who’s voting?
         </Text>
@@ -96,7 +96,7 @@ function Vote() {
                 <Avatar person={f} size={44} />
                 <View style={styles.flex}>
                   <Text variant="title">{f.name}</Text>
-                  <Text variant="data">
+                  <Text variant="label" ink="soft" tabular>
                     {done === stops.length ? 'Voted on everything · change their votes' : `${done} of ${stops.length} voted`}
                   </Text>
                 </View>
@@ -143,7 +143,7 @@ function Vote() {
       <View style={styles.voterRow}>
         <Avatar person={me} size={28} />
         <Text variant="label">Voting as {me.name}</Text>
-        <Text variant="data" style={styles.progress}>
+        <Text variant="label" ink="soft" tabular style={styles.progress}>
           {index + 1} / {stops.length}
         </Text>
       </View>
@@ -153,12 +153,12 @@ function Vote() {
         <Text variant="headline" accessibilityRole="header" style={styles.placeName}>
           {stop.place.name}
         </Text>
-        <Text variant="data">
+        <Text variant="label" ink="soft" tabular>
           {multiDay ? `Day ${day + 1} · ` : ''}
           {[formatClock(stop.startMinutes), stop.place.area.trim()].filter(Boolean).join(' · ')}
         </Text>
 
-        <Text variant="micro" style={styles.section}>
+        <Text variant="label" ink="faint" style={styles.section}>
           React
         </Text>
         <View style={styles.row}>
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   },
   // Chosen, as everywhere: a rim in the strong ink (black, or white on the sky).
   selected: { borderColor: skyInk.strong },
-  emoji: { fontSize: 22, lineHeight: 28 },
+  emoji: { ...textSize.headline },
   notes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   noteChip: {
     minHeight: 36,
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     borderColor: skyInk.rim,
     fontFamily: fonts.sans,
     // 16 or more: iPhone browsers zoom the whole page into a smaller text box and stay zoomed.
-    fontSize: 16,
+    fontSize: fontSize.title,
     color: skyInk.strong,
   },
   cast: { marginTop: 24, gap: 8 },

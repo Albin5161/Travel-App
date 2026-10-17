@@ -67,6 +67,17 @@ export const fonts = {
   sansSemi: 'Geist_600SemiBold',
 } as const;
 
+// The type scale: six sizes, all even, every line height on the 4pt grid. Nothing in the app sets
+// a size off this list. tag is for a few words or a number (badges, pin numbers, tab labels,
+// credits), never a sentence. hero is the one exception: the big name on a city or place.
+export const fontSize = { tag: 10, label: 12, body: 14, title: 16, headline: 20, display: 32, hero: 40 } as const;
+export const lineHeight = { tag: 12, label: 16, body: 20, title: 24, headline: 24, display: 36, hero: 44 } as const;
+type Step = keyof typeof fontSize;
+/** A size with its line height, to spread into a style: `{ ...textSize.label }`. */
+export const textSize = Object.fromEntries(
+  (Object.keys(fontSize) as Step[]).map((k) => [k, { fontSize: fontSize[k], lineHeight: lineHeight[k] }]),
+) as { [K in Step]: { fontSize: (typeof fontSize)[K]; lineHeight: (typeof lineHeight)[K] } };
+
 // glass: every frosted card; pane: a lighter panel or row inside one.
 // field: every text box (and the code's digit boxes), 16 everywhere.
 export const radii = { thumb: 14, pane: 16, field: 16, glass: 24, card: 28, sheet: 32, pill: 999 } as const;

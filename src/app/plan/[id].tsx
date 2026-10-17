@@ -66,7 +66,7 @@ import { useHomeSky } from '@/state/sky';
 import { useCityPlaces, useTrips } from '@/state/trips';
 import { deepGlass, SKY, skyAccent, skyAccentWash, skyOnInk, skyFill, skyInk, withAlpha, skyVeil } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
-import { colors, fonts, radii, space } from '@/theme/tokens';
+import { colors, fonts, radii, space, textSize } from '@/theme/tokens';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const PART_TITLE: Record<DayPart, string> = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening' };
@@ -541,7 +541,7 @@ export default function PlanScreen() {
           ) : null}
 
           <View style={[styles.list, busy && styles.busy]} onLayout={(e) => listY.set(e.nativeEvent.layout.y)}>
-            <Text variant="data" style={styles.daySummary}>
+            <Text variant="label" ink="soft" tabular style={styles.daySummary}>
               {stops.length} {stops.length === 1 ? 'stop' : 'stops'}
               {today.totalKm > 0 ? ` · ${today.totalKm.toFixed(1)} km` : ''}
             </Text>
@@ -559,7 +559,7 @@ export default function PlanScreen() {
             {parts.flatMap((part) => [
               <Animated.View key={`h-${part.part}-${part.stops[0].i}`} layout={REFLOW} style={styles.partHeader}>
                 <Text variant="headline" accessibilityRole="header">{PART_TITLE[part.part]}</Text>
-                <Text variant="data">{formatClock(part.stops[0].stop.startMinutes)}</Text>
+                <Text variant="label" ink="soft" tabular>{formatClock(part.stops[0].stop.startMinutes)}</Text>
               </Animated.View>,
               ...part.stops.map(({ stop, i }, j) => (
                 <Animated.View
@@ -612,7 +612,7 @@ export default function PlanScreen() {
 
             {left.length > 0 ? (
               <View style={styles.left}>
-                <Text variant="micro">Not in this plan · {left.length}</Text>
+                <Text variant="label" ink="faint">Not in this plan · {left.length}</Text>
                 {unfit.some((p) => !plan.leftWhy?.[p.id]) ? (
                   <Text variant="label" color={skyInk.soft}>
                     {`The days are full at a ${prefs.pace} pace.${gain > 0 ? '' : ' Pick a faster pace, or take a stop out to make room.'}`}
@@ -874,7 +874,7 @@ function Leg({
         <Animated.View style={[styles.legLineOn, travelled]} />
       </View>
       <Feather name={leg.mode === 'walk' ? 'navigation' : 'truck'} size={12} color={skyInk.faint} />
-      <Text variant="data">{label}</Text>
+      <Text variant="label" ink="soft" tabular>{label}</Text>
     </View>
   );
 }
@@ -903,7 +903,7 @@ function WhyCard({ reasons }: { reasons: Reason[] }) {
     >
       <View style={styles.whyHead}>
         <Feather name="compass" size={13} color={skyInk.soft} />
-        <Text variant="eyebrow" color={skyInk.soft} style={styles.whyTitle}>
+        <Text variant="label" ink="faint" color={skyInk.soft} style={styles.whyTitle}>
           Why this day works
         </Text>
         <Animated.View style={turn}>
@@ -1012,7 +1012,7 @@ function StopRow({
               {stop.place.name}
             </Text>
           </View>
-          <Text variant="data" numberOfLines={1}>
+          <Text variant="label" ink="soft" tabular numberOfLines={1}>
             {[formatClock(stop.startMinutes), formatDuration(stop.place.minutes), costLabel(stop.place.cost)].filter(Boolean).join(' · ')}
           </Text>
           {/* Why it's here, now, in a word or two: the full line is behind the info button. */}
@@ -1022,7 +1022,7 @@ function StopRow({
               {why.tag}
             </Text>
           ) : stop.suggested ? (
-            <Text variant="micro" color={skyInk.soft}>
+            <Text variant="label" ink="faint" color={skyInk.soft}>
               Suggested · local pick
             </Text>
           ) : null}
@@ -1208,7 +1208,7 @@ const styles = StyleSheet.create({
   },
   stopReached: { ...StyleSheet.absoluteFill, borderRadius: 12, backgroundColor: skyAccent },
   stopRing: { position: 'absolute', left: -5, top: -5, right: -5, bottom: -5, borderRadius: 17, borderWidth: 2, borderColor: skyAccent },
-  stopNumberText: { fontFamily: fonts.sansSemi, fontSize: 12, color: skyOnInk, fontVariant: ['tabular-nums'] },
+  stopNumberText: { fontFamily: fonts.sansSemi, ...textSize.label, color: skyOnInk, fontVariant: ['tabular-nums'] },
   thumb: { width: 56, height: 56, borderRadius: radii.thumb, backgroundColor: skyFill.pane },
   stopText: { flex: 1, gap: 2 },
   editTools: { flexDirection: 'row', gap: 8 },

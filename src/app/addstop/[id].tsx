@@ -15,7 +15,7 @@ import { haptic } from '@/lib/haptics';
 import { usePlanWriter } from '@/state/live';
 import { useTrips } from '@/state/trips';
 import { skyFill, skyInk } from '@/theme/sky';
-import { fonts, radii, space } from '@/theme/tokens';
+import { fonts, fontSize, radii, space } from '@/theme/tokens';
 
 const PARTS: { key: DayPart; label: string }[] = [
   { key: 'morning', label: 'Morning' },
@@ -79,7 +79,7 @@ function AddStopForm() {
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <Text variant="eyebrow">Your own stop</Text>
+      <Text variant="label" ink="faint">Your own stop</Text>
       <Text variant="display" accessibilityRole="header" style={styles.title}>
         Add a stop
       </Text>
@@ -108,7 +108,7 @@ function AddStopForm() {
 
       {multiDay ? (
         <>
-          <Text variant="micro" style={styles.label}>
+          <Text variant="label" ink="faint" style={styles.label}>
             Which day
           </Text>
           <Chips
@@ -119,12 +119,12 @@ function AddStopForm() {
         </>
       ) : null}
 
-      <Text variant="micro" style={styles.label}>
+      <Text variant="label" ink="faint" style={styles.label}>
         When
       </Text>
       <Chips value={part} onChange={setPart} options={PARTS} />
 
-      <Text variant="micro" style={styles.label}>
+      <Text variant="label" ink="faint" style={styles.label}>
         How long
       </Text>
       <Chips value={minutes} onChange={setMinutes} options={LENGTHS} />
@@ -144,10 +144,10 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
     fontFamily: fonts.sans,
-    fontSize: 16,
+    fontSize: fontSize.title,
     color: skyInk.strong,
   },
-  titleInput: { height: 54, fontFamily: fonts.sansMedium, fontSize: 17 },
+  titleInput: { height: 54, fontFamily: fonts.sansMedium, fontSize: fontSize.title },
   noteInput: { marginTop: 8, minHeight: 70, paddingTop: 16, textAlignVertical: 'top' },
   label: { marginTop: 24, marginBottom: 8 },
   cta: { marginTop: 28 },

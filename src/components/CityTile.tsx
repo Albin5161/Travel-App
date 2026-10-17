@@ -8,7 +8,7 @@ import { Text } from '@/components/Text';
 import type { Platform } from '@/data/types';
 import { skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
-import { fonts, light, shadows } from '@/theme/tokens';
+import { fonts, fontSize, light, lineHeight, shadows, textSize } from '@/theme/tokens';
 
 export type Rect = { x: number; y: number; width: number; height: number };
 
@@ -54,11 +54,11 @@ function faceScale(width: number | undefined) {
   const compact = (width ?? 999) < COMPACT_W;
   return {
     compact,
-    name: compact ? 15 : 22,
-    nameLine: compact ? 18 : 25,
-    nameTrack: compact ? -0.4 : -0.7,
+    name: compact ? fontSize.title : fontSize.headline,
+    nameLine: compact ? 20 : lineHeight.headline,
+    nameTrack: compact ? -0.4 : -0.6,
     inset: compact ? 9 : 14,
-    stat: compact ? 11 : 13,
+    stat: compact ? textSize.tag : textSize.label,
     radius: tileRadius(width),
   };
 }
@@ -138,7 +138,7 @@ export function CityTileFace({ name, statLabel, statValue, badge, width, photoCr
     <>
       {badge ? (
         <View style={[styles.badge, f.compact && styles.badgeCompact]}>
-          <Text variant="micro" color={light.photoInk} style={[styles.badgeText, f.compact && styles.badgeTextCompact]}>
+          <Text variant="label" ink="faint" color={light.photoInk} style={[styles.badgeText, f.compact && styles.badgeTextCompact]}>
             {badge}
           </Text>
         </View>
@@ -151,14 +151,14 @@ export function CityTileFace({ name, statLabel, statValue, badge, width, photoCr
           {name}
         </Text>
         {/* The count as words under the name ("7 spots"), not a label and a figure on a ruled row. */}
-        <Text variant="micro" color={light.photoInk} style={{ fontSize: f.stat, lineHeight: f.stat + 4, marginTop: f.compact ? 2 : 4 }}>
+        <Text variant="label" ink="faint" color={light.photoInk} style={{ ...f.stat, marginTop: f.compact ? 2 : 4 }}>
           {statValue} {statLabel.toLowerCase()}
         </Text>
         {/* Google asks for the photographer's credit wherever its photo shows: on the photo, so the
             caption below the card keeps to its two lines. */}
         {photoCredit ? (
           <Text
-            variant="micro"
+            variant="label" ink="faint"
             color={light.photoInkSoft}
             numberOfLines={1}
             style={[styles.creditText, f.compact && styles.creditTextCompact]}
@@ -187,22 +187,21 @@ const styles = StyleSheet.create({
     borderColor: light.photoLine,
   },
   badgeCompact: { top: 7, left: 7, paddingHorizontal: 8, paddingVertical: 4 },
-  badgeText: { fontSize: 9, letterSpacing: 0.6 },
-  badgeTextCompact: { fontSize: 7, letterSpacing: 0.4 },
+  badgeText: { ...textSize.tag, letterSpacing: 0.4 },
+  badgeTextCompact: { letterSpacing: 0.2 },
   // Under the stat row, across the tile's width, over the photo's darkened foot.
-  creditText: { fontSize: 9, lineHeight: 12, letterSpacing: 0.2, textTransform: 'none', marginTop: 8 },
-  creditTextCompact: { fontSize: 7, lineHeight: 9, marginTop: 4 },
+  creditText: { ...textSize.tag, letterSpacing: 0.1, textTransform: 'none', marginTop: 8 },
+  creditTextCompact: { marginTop: 4 },
   body: { position: 'absolute' },
   name: {
     fontFamily: fonts.display,
-    fontSize: 22,
-    lineHeight: 25,
+    ...textSize.headline,
     letterSpacing: -0.7,
     color: light.photoInk,
   },
   caption: { paddingHorizontal: 4, paddingTop: 8, gap: 1 },
   captionCompact: { paddingHorizontal: 2, paddingTop: 8 },
-  captionText: { fontSize: 11, lineHeight: 15 },
+  captionText: { ...textSize.tag },
   // Same monochrome logos the link box swaps in, so the source reads at a glance without brand colour.
   captionRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   captionShrink: { flexShrink: 1 },

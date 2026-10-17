@@ -12,7 +12,7 @@ import { haptic } from '@/lib/haptics';
 import { fadeUp } from '@/lib/motion';
 import { useTrips, type TripAhead } from '@/state/trips';
 import { skyCta } from '@/theme/sky';
-import { fonts, light, radii } from '@/theme/tokens';
+import { fonts, light, radii, textSize } from '@/theme/tokens';
 
 const ENTER = fadeUp(80);
 
@@ -66,12 +66,12 @@ export function TripTicket({ ahead }: { ahead: TripAhead }) {
           ) : (
             <View style={styles.count}>
               {on ? (
-                <Text variant="micro" color={light.inkSoft}>
+                <Text variant="label" ink="faint" color={light.inkSoft}>
                   Day
                 </Text>
               ) : null}
               <Text style={styles.number}>{on ? ahead.day + 1 : ahead.inDays}</Text>
-              <Text variant="micro" color={light.inkSoft}>
+              <Text variant="label" ink="faint" color={light.inkSoft}>
                 {on ? `of ${plan.days.length}` : ahead.inDays === 1 ? 'day' : 'days'}
               </Text>
             </View>
@@ -103,7 +103,7 @@ export function TripTicket({ ahead }: { ahead: TripAhead }) {
 
 const styles = StyleSheet.create({
   count: { alignItems: 'center' },
-  number: { fontFamily: fonts.display, fontSize: 30, lineHeight: 34, letterSpacing: -1, color: light.ink, fontVariant: ['tabular-nums'] },
+  number: { fontFamily: fonts.display, ...textSize.display, letterSpacing: -1, color: light.ink, fontVariant: ['tabular-nums'] },
   unit: { fontFamily: fonts.sansSemi },
   line: { marginTop: 8 },
   cta: {

@@ -126,7 +126,11 @@ export default function PlanScreen() {
   const today = plan?.days[dayIndex];
   const stops = today?.stops ?? [];
 
-  const MAP_H = Math.round(H * 0.4);
+  // The map gives up height before the first stop does: the title, tools, day tabs and day card
+  // under it take about 410pt, Save and its margin about 150, so whatever is left of the screen is
+  // the map's, between a quarter and two-fifths of it. On an iPhone SE it was a fixed two-fifths,
+  // and the first stop sat entirely under Save.
+  const MAP_H = Math.max(Math.round(H * 0.26), Math.min(Math.round(H * 0.4), H - 560));
   const points = stops.map((s) => s.place.map);
   const fitRect = { top: insets.top + 56, bottom: 44 };
   const fit = fitCameraToRect(points.length ? points : [[500, 700]], { w: W, h: MAP_H }, fitRect, 120);
@@ -1001,14 +1005,17 @@ function StopRow({
           <Animated.View style={[styles.stopReached, reached]} />
           <Text style={styles.stopNumberText}>{number}</Text>
         </View>
-        {/* Only the photo fades for stops away from where you are: faded words failed AA contrast. */}
-        <Animated.View style={dim}>
-          <Image source={stop.place.photo} style={styles.thumb} contentFit="cover" transition={0} />
-        </Animated.View>
+        {/* Only the photo fades for stops away from where you are: faded words failed AA contrast.
+            While editing the photo steps aside: the arrows need the room, and the name needs it more. */}
+        {editing ? null : (
+          <Animated.View style={dim}>
+            <Image source={stop.place.photo} style={styles.thumb} contentFit="cover" transition={0} />
+          </Animated.View>
+        )}
         <View style={styles.stopText}>
           <View style={styles.nameRow}>
             {stop.pinned ? <Feather name="lock" size={12} color={skyInk.soft} accessibilityLabel="Locked" /> : null}
-            <Text variant="bodyStrong" numberOfLines={1} style={styles.name}>
+            <Text variant="bodyStrong" numberOfLines={editing ? 2 : 1} style={styles.name}>
               {stop.place.name}
             </Text>
           </View>

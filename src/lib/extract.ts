@@ -23,8 +23,14 @@ import type {
 // then one match per place, all at once. Each link's result is kept on the phone, so pasting it
 // again costs nothing.
 
+/**
+ * A name whose lookup didn't finish, by its lower-cased name: today's map limit was used up, or the
+ * lookup failed on our side. Unlike a name Google has no match for, the place may well exist.
+ */
+export type Unchecked = Record<string, 'limit' | 'failed'>;
+
 export type LinkOutcome =
-  | { kind: 'done'; extraction: Extraction }
+  | { kind: 'done'; extraction: Extraction; unchecked: Unchecked }
   /** Read, but nothing in it could be placed on a map. `region` is the city it's about, if known. */
   | { kind: 'empty'; reel: Reel | null; region: string | null }
   /** An Instagram reel we couldn't read for places; the person adds them by search instead. */
@@ -50,7 +56,7 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
     const extraction = inKnownCity(saved.extraction);
     // The places' coordinates are as old as the saved result, not as old as this paste.
     register(extraction, saved.at);
-    return { kind: 'done', extraction };
+    return { kind: 'done', extraction, unchecked: {} };
   }
 
   const res = await post<ExtractResult>('/api/extract', { url }, EXTRACT_MS);
@@ -69,9 +75,12 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
   onFound?.(reel, res.places);
 
   const failures: ApiFailure[] = [];
+  const unchecked: Unchecked = {};
   const matched = await eachAtOnce(res.places, MATCH_AT_ONCE, (p) =>
     matchFound(p, res.region).catch((e: unknown) => {
-      failures.push(e instanceof ApiFailure ? e : new ApiFailure('upstream', 'Something went wrong on our side. Try again.', true));
+      const failure = e instanceof ApiFailure ? e : new ApiFailure('upstream', 'Something went wrong on our side. Try again.', true);
+      failures.push(failure);
+      unchecked[p.name.toLowerCase()] = failure.code === 'quota' ? 'limit' : 'failed';
       return null;
     }),
   );
@@ -88,8 +97,9 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
   const city = toCity(cityId, where, state, places, reel, res.terrain ?? undefined);
   const extraction = inKnownCity({ reel, city, places });
   register(extraction);
-  cache.write(key, extraction);
-  return { kind: 'done', extraction };
+  // Kept only when every name was looked up: pasting it again should try the ones that didn't finish.
+  if (failures.length === 0) cache.write(key, extraction);
+  return { kind: 'done', extraction, unchecked };
 }
 
 // ── One city, one collection ────────────────────────────────────────────────────────────────────

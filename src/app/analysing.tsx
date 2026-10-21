@@ -32,7 +32,7 @@ import { SAMPLE_LINK } from '@/data/catalog';
 import type { Extraction, Place, Reel } from '@/data/types';
 import { ApiFailure } from '@/lib/api';
 import { platformOfLink, track } from '@/lib/analytics';
-import { CHECK_AS_LIST_FROM, lengthLabel, readLink } from '@/lib/extract';
+import { CHECK_AS_LIST_FROM, lengthLabel, readLink, type Unchecked } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
 import { useOffline } from '@/lib/online';
 import { sound } from '@/lib/sound';
@@ -141,7 +141,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   // Whether whoever pasted is still here: leaving (Keep browsing, or back) lets the reading finish
   // and wait on Home; the ✕ stops it.
   const away = useRef<Away>('here');
-  const { preview, names, result, failure } = useReading(url, away);
+  const { preview, names, result, unchecked, failure } = useReading(url, away);
   const [shown, setShown] = useState(0);
   const link = useMemo(() => parseLink(url), [url]);
   const script = isSampleLink(url) ? SAMPLE : link?.platform === 'instagram' ? INSTAGRAM : YOUTUBE;
@@ -327,15 +327,22 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
         <ScrollView style={styles.creditsScroll} contentContainerStyle={styles.credits} showsVerticalScrollIndicator={false}>
           {found.slice(0, Math.min(shown, CREDITS_SHOWN)).map((p) => {
             const missing = !!result && !placed.has(p.name.toLowerCase());
+            // Not faded: faded words fail contrast. An empty ring in place of the pin says it instead.
             return (
-              <Animated.View key={p.id} entering={CREDIT_IN} style={[styles.creditRow, missing && styles.missing]}>
-                {missing ? <View style={styles.pin} /> : <PinDrop />}
+              <Animated.View key={p.id} entering={CREDIT_IN} style={styles.creditRow}>
+                {missing ? (
+                  <View style={styles.pin}>
+                    <View style={styles.pinEmpty} />
+                  </View>
+                ) : (
+                  <PinDrop />
+                )}
                 <View style={styles.creditName}>
                   <Text variant="title" numberOfLines={1}>
                     {p.name}
                   </Text>
                   <Text variant="label" ink="faint" numberOfLines={1}>
-                    {missing ? 'Couldn’t find it on the map' : p.area}
+                    {missing ? notPlaced(unchecked[p.name.toLowerCase()]) : p.area}
                   </Text>
                 </View>
                 {/* Where in the video it was said: the same moment its marker sits at above. */}
@@ -345,7 +352,9 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
               </Animated.View>
             );
           })}
-          {shown > CREDITS_SHOWN ? <MoreCredits rest={found.slice(CREDITS_SHOWN, shown)} placed={placed} done={!!result} /> : null}
+          {shown > CREDITS_SHOWN ? (
+            <MoreCredits rest={found.slice(CREDITS_SHOWN, shown)} placed={placed} unchecked={unchecked} done={!!result} />
+          ) : null}
         </ScrollView>
         {/* Last in the card, so its bottom edge crops them; the finds roll in above. */}
         {scene === 'gone' ? null : (
@@ -454,6 +463,7 @@ function useReading(url: string, away: RefObject<Away>) {
   const [preview, setPreview] = useState<Reel | null>(null);
   const [names, setNames] = useState<Credit[]>([]);
   const [result, setResult] = useState<Extraction | null>(null);
+  const [unchecked, setUnchecked] = useState<Unchecked>({});
   const [failure, setFailure] = useState<Failure | null>(null);
 
   useEffect(() => {
@@ -490,7 +500,10 @@ function useReading(url: string, away: RefObject<Away>) {
       })
         .then((outcome) => {
           if (cancelled) return;
-          if (outcome.kind === 'done') done(outcome.extraction);
+          if (outcome.kind === 'done') {
+            setUnchecked(outcome.unchecked);
+            done(outcome.extraction);
+          }
           else if (outcome.kind === 'empty') {
             failed('empty');
             setFailure({ kind: 'empty', reel: outcome.reel, region: outcome.region });
@@ -514,12 +527,27 @@ function useReading(url: string, away: RefObject<Away>) {
     };
   }, [url, away, dispatch]);
 
-  return { preview, names, result, failure };
+  return { preview, names, result, unchecked, failure };
 }
 
-/** The names past the first few, as one line: "+9 more places", and how many weren't found. */
-function MoreCredits({ rest, placed, done }: { rest: Credit[]; placed: Set<string>; done: boolean }) {
-  const missing = done ? rest.filter((p) => !placed.has(p.name.toLowerCase())).length : 0;
+/**
+ * Why a name isn't on the map, in its row. Only "couldn't find it" when Google really has no match:
+ * a lookup that hit today's limit or failed on our side says so, since that place may well exist.
+ */
+function notPlaced(why: Unchecked[string] | undefined): string {
+  if (why === 'limit') return 'Not looked up: today’s limit reached';
+  if (why === 'failed') return 'Not looked up. Paste the link again';
+  return 'Couldn’t find it on the map';
+}
+
+/** The names past the first few, as one line: "+9 more places", and how many aren't on the map. */
+function MoreCredits({ rest, placed, unchecked, done }: { rest: Credit[]; placed: Set<string>; unchecked: Unchecked; done: boolean }) {
+  const off = done ? rest.filter((p) => !placed.has(p.name.toLowerCase())) : [];
+  const notLooked = off.filter((p) => unchecked[p.name.toLowerCase()]).length;
+  const missing = off.length - notLooked;
+  const summary = [missing > 0 ? `${missing} not found on the map` : '', notLooked > 0 ? `${notLooked} not looked up yet` : '']
+    .filter(Boolean)
+    .join(', ');
   return (
     <Animated.View entering={CREDIT_IN} style={styles.creditRow}>
       <View style={styles.moreDot}>
@@ -532,8 +560,8 @@ function MoreCredits({ rest, placed, done }: { rest: Credit[]; placed: Set<strin
           {rest.length} more {rest.length === 1 ? 'place' : 'places'}
         </Text>
         <Text variant="label" ink="faint" numberOfLines={1}>
-          {missing > 0
-            ? `${missing} couldn’t be found on the map`
+          {summary
+            ? summary
             : rest
                 .slice(0, 3)
                 .map((p) => p.name)
@@ -782,6 +810,7 @@ const styles = StyleSheet.create({
   creditName: { flex: 1, gap: 1 },
   moreDot: { minWidth: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: skyInk.line },
   pin: { width: 14, alignItems: 'center' },
+  pinEmpty: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.5, borderColor: skyInk.outline },
   status: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   glyph: { width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
   bars: { flexDirection: 'row', gap: 2 },
@@ -791,7 +820,6 @@ const styles = StyleSheet.create({
   center: { textAlign: 'center', paddingBottom: 12 },
   statusText: { flexShrink: 1 },
   scanner: { position: 'absolute', pointerEvents: 'none' },
-  missing: { opacity: 0.45 },
   expect: { paddingTop: 8 },
   // An Instagram reel before anything of it is known: the card's shape, its platform's mark faint in it.
   blankCard: { overflow: 'hidden', borderRadius: radii.card, backgroundColor: colors.basalt },

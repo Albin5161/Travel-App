@@ -61,8 +61,8 @@ export function pinCss(f: PinFonts): string {
 .xp-pin.xp-been .xp-photo img { filter: grayscale(1); opacity: 0.6; }
 .xp-tail { width: 12px; height: 0; margin-top: -2px; background: ${white}; clip-path: polygon(0 0, 100% 0, 50% 100%); transition: height 200ms ease-out; }
 .xp-pin[data-size="l"] .xp-tail { height: 9px; }
-.xp-sticker { position: absolute; left: 50%; top: -31px; width: 100px; height: 58px; margin-left: -50px; overflow: visible; pointer-events: none; opacity: 0; transform: rotate(var(--tilt, 0deg)) scale(0.6); transform-origin: 50px 54px; transition: opacity 160ms ease-out, transform 280ms cubic-bezier(0.34, 1.4, 0.64, 1); filter: drop-shadow(0 1px 1.5px rgba(17,17,17,0.28)); }
-.xp-pin[data-size="l"] .xp-sticker { opacity: 1; transform: rotate(var(--tilt, 0deg)) scale(1); }
+.xp-sticker { position: absolute; left: 50%; top: -31px; width: 100px; height: 58px; margin-left: -50px; overflow: visible; pointer-events: none; opacity: 0; transform: scale(0.6); transform-origin: 50px 54px; transition: opacity 160ms ease-out, transform 280ms cubic-bezier(0.34, 1.4, 0.64, 1); filter: drop-shadow(0 1px 1.5px rgba(17,17,17,0.28)); }
+.xp-pin[data-size="l"] .xp-sticker { opacity: 1; transform: scale(1); }
 .xp-sticker text { ${font(f.extraBold, 12, 12)} letter-spacing: 0.2px; fill: ${ink}; stroke: ${white}; stroke-width: 5px; stroke-linejoin: round; paint-order: stroke; }
 .xp-num, .xp-tick { position: absolute; bottom: -4px; height: 20px; border-radius: 10px; border: 2px solid ${white}; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
 .xp-num { left: -6px; min-width: 20px; padding: 0 5px; background: ${ink}; color: ${light.ctaInk}; ${font(f.semi, 10, 12)} }
@@ -72,7 +72,7 @@ export function pinCss(f: PinFonts): string {
 .xp-pin.xp-pressed .xp-body { transform: scale(1.16); }
 .xp-pin.xp-active.xp-pressed .xp-body { transform: scale(1.4); }
 .xp-pin.xp-open .xp-body { transform: scale(0.9); }
-.xp-pin.xp-quiet .xp-sticker, .xp-pin.xp-open .xp-sticker { opacity: 0; transform: rotate(var(--tilt, 0deg)) scale(0.6); }
+.xp-pin.xp-quiet .xp-sticker, .xp-pin.xp-open .xp-sticker { opacity: 0; transform: scale(0.6); }
 
 .xp-card-wrap { position: relative; transform-origin: 50% 100%; transition: transform 440ms cubic-bezier(0.32, 0.72, 0, 1), opacity 160ms ease-out; cursor: default; }
 .xp-card-wrap.xp-enter { transform: scale(0.14); opacity: 0; }
@@ -155,20 +155,12 @@ export const PIN_SCRIPT = `
   }
   var sizeOf = function (zoom) { return zoom >= 14 ? 'l' : zoom >= 11 ? 'm' : 's'; };
   var pinHeight = function (size) { return size === 'l' ? 54 : 44; };
-  // The same place always leans the same way, so stickers look stuck on by hand, not shuffled.
-  function tilt(id) {
-    var h = 0;
-    for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-    return ((Math.abs(h) % 13) - 6) + 'deg';
-  }
-
   // The word over the photo, set along an arc round its top, white-edged like a cut-out sticker.
-  function sticker(word, id) {
+  function sticker(word) {
     var s = document.createElementNS(SVG, 'svg');
     s.setAttribute('class', 'xp-sticker');
     s.setAttribute('viewBox', '0 0 100 58');
     s.setAttribute('aria-hidden', 'true');
-    s.style.setProperty('--tilt', tilt(id));
     var pid = 'xp-arc-' + (++arcs);
     var r = 30, a = 75 * Math.PI / 180, cx = 50, cy = 54;
     var path = document.createElementNS(SVG, 'path');
@@ -196,7 +188,7 @@ export const PIN_SCRIPT = `
     if (p.photo) { var img = el('img'); img.alt = ''; img.src = p.photo; img.decoding = 'async'; photo.appendChild(img); }
     body.appendChild(photo);
     body.appendChild(el('div', 'xp-tail'));
-    if (p.card && p.card.kind) body.appendChild(sticker(p.card.kind, p.id));
+    if (p.card && p.card.kind) body.appendChild(sticker(p.card.kind));
     if (p.been) { var t = el('div', 'xp-tick'); t.appendChild(icon('check', 10, 3.5)); body.appendChild(t); }
     if (p.number) body.appendChild(el('div', 'xp-num', String(p.number)));
     root.appendChild(body);

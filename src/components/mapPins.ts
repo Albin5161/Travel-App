@@ -1,5 +1,5 @@
 import { ON_PAPER } from '@/theme/semantic';
-import { light, shadows } from '@/theme/tokens';
+import { light } from '@/theme/tokens';
 
 // The Google map's photo pins and the place card that grows out of one, written once for both
 // maps: the website (GoogleMap.web.tsx) adds this script and style to its page, and the phone
@@ -7,10 +7,12 @@ import { light, shadows } from '@/theme/tokens';
 // because the phone page is a web page, not React; one copy means the two maps can't drift apart.
 //
 // What it does:
-// - Pins grow with the zoom: a small photo far out; up close a bigger one with a tail to the exact
-//   spot and a sticker word over it ("Cafe", "Beach"), arched like a sticker cut round the photo.
-// - A finger on a pin swells it; letting go grows the place's card out of it, its tail on the pin.
-// - Tapping the card turns it over (in 3D, or a fade with reduced motion) to the place's details.
+// - Each pin is a postage stamp: the place's photo inside a perforated edge, its word ("Beach",
+//   "Cafe") stamped under it like a postmark, and an ember dot on the exact spot. Our own family with
+//   the passport stamp a planned city gets. The stamp grows with the zoom; its word shows at every
+//   zoom, unless it would land on another's.
+// - A finger on a pin swells it; letting go grows the place's ticket out of it, its tail on the stamp.
+// - Tapping the ticket turns it over (in 3D, or a fade with reduced motion) to the place's details.
 // - Tapping the map, the pin again or Escape folds the card back into its pin.
 // - "Open place" hands the id back to the app (`onOpen`), which opens the place's page.
 // Every string from the app goes in as text, never as markup: place names come from a model.
@@ -18,9 +20,13 @@ import { light, shadows } from '@/theme/tokens';
 
 /** What the card shows. Built from a Place by lib/pinCard.ts. */
 export type PinCard = {
-  /** The sticker word: what kind of place, in a word ("Cafe", "Beach", "Stay"). */
+  /** The postmark word: what kind of place, in a word ("Cafe", "Beach", "Stay"). */
   kind: string;
+  /** When to go, for the ticket's front ("Best at sunset"). */
+  best: string;
   area: string;
+  /** Time there and price, for the ticket's front ("1 hr 30 min · Free"). */
+  meta: string;
   /** Why it's worth going, from the video. */
   line: string;
   /** The back of the card: a few facts, each with its icon. */
@@ -51,37 +57,43 @@ export function pinCss(f: PinFonts): string {
   const white = light.panel;
   const ink = light.ink;
   return `
-.xp-pin { width: 44px; height: 44px; display: flex; align-items: flex-end; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-.xp-pin[data-size="l"] { height: 54px; }
+.xp-pin { --stamp: 38px; --h: 58px; width: 44px; height: var(--h); display: flex; align-items: flex-end; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.xp-pin[data-size="s"] { --stamp: 30px; --h: 50px; }
+.xp-pin[data-size="l"] { --stamp: 48px; --h: 68px; }
 .xp-body { position: relative; display: flex; flex-direction: column; align-items: center; transform-origin: 50% 100%; transition: transform 260ms cubic-bezier(0.23, 1, 0.32, 1); }
-.xp-photo { --d: 36px; --ring: 2.5px; width: var(--d); height: var(--d); border-radius: 50%; border: var(--ring) solid ${white}; background: ${light.canvasTop}; box-shadow: ${shadows.pin}; overflow: hidden; box-sizing: border-box; transition: width 240ms cubic-bezier(0.23, 1, 0.32, 1), height 240ms cubic-bezier(0.23, 1, 0.32, 1); }
-.xp-pin[data-size="s"] .xp-photo { --d: 26px; --ring: 2px; }
-.xp-pin[data-size="l"] .xp-photo { --d: 46px; --ring: 3px; }
+.xp-stamp { position: relative; width: var(--stamp); height: var(--stamp); padding: 4px; box-sizing: border-box; filter: drop-shadow(0 3px 4px rgba(17,17,17,0.26)); transition: width 240ms cubic-bezier(0.23, 1, 0.32, 1), height 240ms cubic-bezier(0.23, 1, 0.32, 1); }
+.xp-pin[data-size="l"] .xp-stamp { padding: 5px; }
+.xp-stamp::before { content: ''; position: absolute; inset: 0; background: ${white};
+  -webkit-mask: radial-gradient(circle 2.4px, transparent 96%, #000 100%) -3.5px -3.5px / 7px 7px, linear-gradient(#000, #000) 3px 3px / calc(100% - 6px) calc(100% - 6px) no-repeat;
+  mask: radial-gradient(circle 2.4px, transparent 96%, #000 100%) -3.5px -3.5px / 7px 7px, linear-gradient(#000, #000) 3px 3px / calc(100% - 6px) calc(100% - 6px) no-repeat; }
+.xp-photo { position: relative; width: 100%; height: 100%; overflow: hidden; background: ${light.canvasTop}; }
 .xp-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .xp-pin.xp-been .xp-photo img { filter: grayscale(1); opacity: 0.6; }
-.xp-tail { width: 12px; height: 0; margin-top: -2px; background: ${white}; clip-path: polygon(0 0, 100% 0, 50% 100%); transition: height 200ms ease-out; }
-.xp-pin[data-size="l"] .xp-tail { height: 9px; }
-.xp-sticker { position: absolute; left: 50%; top: -31px; width: 100px; height: 58px; margin-left: -50px; overflow: visible; pointer-events: none; opacity: 0; transform: scale(0.6); transform-origin: 50px 54px; transition: opacity 160ms ease-out, transform 280ms cubic-bezier(0.34, 1.4, 0.64, 1); filter: drop-shadow(0 1px 1.5px rgba(17,17,17,0.28)); }
-.xp-pin[data-size="l"] .xp-sticker { opacity: 1; transform: scale(1); }
-.xp-sticker text { ${font(f.extraBold, 12, 12)} letter-spacing: 0.2px; fill: ${ink}; stroke: ${white}; stroke-width: 5px; stroke-linejoin: round; paint-order: stroke; }
-.xp-num, .xp-tick { position: absolute; bottom: -4px; height: 20px; border-radius: 10px; border: 2px solid ${white}; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+.xp-mark { position: relative; margin-top: -9px; padding: 2px 6px 1px; border: 1.5px solid ${ink}; border-radius: 999px; background: ${white}; color: ${ink}; white-space: nowrap; ${font(f.extraBold, 10, 12)} transition: opacity 160ms ease-out, transform 220ms cubic-bezier(0.23, 1, 0.32, 1); }
+.xp-pin[data-size="s"] .xp-mark { margin-top: -7px; padding: 1px 5px 0; ${font(f.extraBold, 9, 11)} }
+.xp-dot { width: 7px; height: 7px; margin-top: 3px; border-radius: 50%; background: ${ON_PAPER.accent}; box-shadow: 0 0 0 2px ${white}; }
+.xp-num, .xp-tick { position: absolute; top: -6px; height: 20px; border-radius: 10px; border: 2px solid ${white}; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
 .xp-num { left: -6px; min-width: 20px; padding: 0 5px; background: ${ink}; color: ${light.ctaInk}; ${font(f.semi, 10, 12)} }
 .xp-tick { right: -6px; width: 20px; background: ${ink}; color: ${white}; }
-.xp-pin[data-size="l"] .xp-num, .xp-pin[data-size="l"] .xp-tick { bottom: 5px; }
 .xp-pin.xp-active .xp-body { transform: scale(1.27); }
-.xp-pin.xp-pressed .xp-body { transform: scale(1.16); }
-.xp-pin.xp-active.xp-pressed .xp-body { transform: scale(1.4); }
-.xp-pin.xp-open .xp-body { transform: scale(0.9); }
-.xp-pin.xp-quiet .xp-sticker, .xp-pin.xp-open .xp-sticker { opacity: 0; transform: scale(0.6); }
+.xp-pin.xp-pressed .xp-body { transform: scale(1.14); }
+.xp-pin.xp-active.xp-pressed .xp-body { transform: scale(1.38); }
+.xp-pin.xp-open .xp-body { transform: scale(0.92); }
+.xp-pin.xp-quiet .xp-mark, .xp-pin.xp-open .xp-mark { opacity: 0; transform: scale(0.7); }
 
 .xp-card-wrap { position: relative; transform-origin: 50% 100%; transition: transform 440ms cubic-bezier(0.32, 0.72, 0, 1), opacity 160ms ease-out; cursor: default; }
 .xp-card-wrap.xp-enter { transform: scale(0.14); opacity: 0; }
 .xp-card-wrap.xp-leave { transform: scale(0.14); opacity: 0; transition: transform 220ms cubic-bezier(0.4, 0, 1, 1), opacity 160ms ease-in 60ms; }
-.xp-card { position: relative; width: 248px; height: 300px; perspective: 1000px; }
+.xp-card { position: relative; width: 248px; height: 300px; perspective: 1000px; filter: drop-shadow(0 12px 22px rgba(17,17,17,0.2)) drop-shadow(0 2px 4px rgba(17,17,17,0.08)); }
 .xp-flip { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 600ms cubic-bezier(0.2, 0.9, 0.25, 1); }
 .xp-card.xp-flipped .xp-flip { transform: rotateY(180deg); }
-.xp-face { position: absolute; inset: 0; box-sizing: border-box; border-radius: 22px; background: ${white}; box-shadow: 0 14px 34px rgba(17,17,17,0.2), 0 2px 6px rgba(17,17,17,0.08); overflow: hidden; -webkit-backface-visibility: hidden; backface-visibility: hidden; cursor: pointer; }
-.xp-back { transform: rotateY(180deg); padding: 16px 16px 0; }
+.xp-face { position: absolute; inset: 0; display: flex; flex-direction: column; -webkit-backface-visibility: hidden; backface-visibility: hidden; cursor: pointer; }
+.xp-back { transform: rotateY(180deg); }
+.xp-ticket-top { flex: 1; min-height: 0; overflow: hidden; padding: 10px 10px 0; background: ${white}; border-radius: 20px 20px 0 0; }
+.xp-back .xp-ticket-top { padding: 16px 16px 0; }
+.xp-tear { position: relative; height: 18px; flex: none; background: radial-gradient(circle 9px at 0 50%, transparent 96%, ${white} 100%) left / 50% 100% no-repeat, radial-gradient(circle 9px at 100% 50%, transparent 96%, ${white} 100%) right / 50% 100% no-repeat; }
+.xp-tear::after { content: ''; position: absolute; left: 14px; right: 14px; top: 50%; border-top: 1.5px dashed ${light.lineStrong}; }
+.xp-stub { flex: none; display: flex; gap: 8px; align-items: center; padding: 4px 14px 14px; background: ${white}; border-radius: 0 0 20px 20px; }
 .xp-reduced .xp-flip, .xp-reduced .xp-card.xp-flipped .xp-flip { transition: none; transform: none; }
 .xp-reduced .xp-face { transition: opacity 200ms ease-out; }
 .xp-reduced .xp-back { transform: none; opacity: 0; pointer-events: none; }
@@ -89,19 +101,19 @@ export function pinCss(f: PinFonts): string {
 .xp-reduced .xp-card.xp-flipped .xp-front { opacity: 0; pointer-events: none; }
 .xp-card-wrap.xp-reduced { transition: opacity 180ms ease-out; }
 .xp-card-wrap.xp-reduced.xp-enter, .xp-card-wrap.xp-reduced.xp-leave { transform: none; }
-.xp-card-tail { position: absolute; left: 50%; width: 18px; height: 10px; margin-left: -9px; background: ${white}; clip-path: polygon(0 0, 100% 0, 50% 100%); }
-.xp-card-photo { position: relative; height: 128px; background: ${light.canvasTop}; }
+.xp-card-tail { position: absolute; left: 50%; width: 18px; height: 10px; margin-left: -9px; filter: drop-shadow(0 4px 3px rgba(17,17,17,0.12)); background: ${white}; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.xp-card-photo { position: relative; height: 126px; border-radius: 12px; overflow: hidden; background: ${light.canvasTop}; }
 .xp-card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.xp-chip { position: absolute; left: 12px; top: 12px; padding: 5px 11px 4px; border-radius: 999px; background: ${white}; color: ${ink}; ${font(f.extraBold, 12, 14)} box-shadow: 0 2px 6px rgba(17,17,17,0.22); }
-.xp-card-body { padding: 12px 16px 0; }
-.xp-name { color: ${ink}; ${font(f.bold, 16, 20)} letter-spacing: -0.25px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.xp-area { margin-top: 2px; color: ${light.inkSoft}; ${font(f.medium, 12, 16)} white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.xp-line { margin-top: 6px; color: ${ink}; ${font(f.regular, 14, 20)} display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.xp-back .xp-line { -webkit-line-clamp: 3; color: ${light.inkSoft}; margin-top: 12px; }
-.xp-facts { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.xp-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 10px 4px 6px; }
+.xp-kind { color: ${ON_PAPER.accentText}; ${font(f.semi, 12, 16)} }
+.xp-best { color: ${light.inkSoft}; ${font(f.medium, 12, 16)} white-space: nowrap; }
+.xp-name { padding: 0 4px; color: ${ink}; ${font(f.extraBold, 16, 20)} letter-spacing: -0.25px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.xp-back .xp-name { padding: 0; }
+.xp-area { margin-top: 2px; padding: 0 4px; color: ${light.inkSoft}; ${font(f.medium, 12, 16)} display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.xp-line { margin-top: 10px; color: ${light.inkSoft}; ${font(f.regular, 14, 20)} display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.xp-facts { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .xp-facts li { display: flex; align-items: center; gap: 8px; color: ${ink}; ${font(f.regular, 14, 20)} }
 .xp-facts svg { flex: none; color: ${light.inkSoft}; }
-.xp-actions { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 8px; }
 .xp-go, .xp-turn { height: 44px; border: 0; border-radius: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; -webkit-tap-highlight-color: transparent; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); }
 .xp-go { flex: 1; background: ${light.cta}; color: ${light.ctaInk}; ${font(f.semi, 14, 20)} }
 .xp-turn { width: 44px; flex: none; background: ${ON_PAPER.fill.raised}; color: ${ink}; }
@@ -125,9 +137,7 @@ export const PIN_SCRIPT = `
     turn: '<path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><polyline points="21 3 21 8 16 8"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><polyline points="3 21 3 16 8 16"/>',
     check: '<polyline points="20 6 9 17 4 12"/>'
   };
-  var PX = { s: 26, m: 36, l: 46 };
   var CARD_H = 300, CARD_W = 248, TAIL = 10;
-  var arcs = 0;
   // Focus follows the card only for someone on a keyboard; a finger shouldn't leave a focus ring.
   var keys = false;
   document.addEventListener('keydown', function () { keys = true; }, true);
@@ -154,41 +164,21 @@ export const PIN_SCRIPT = `
     return s;
   }
   var sizeOf = function (zoom) { return zoom >= 14 ? 'l' : zoom >= 11 ? 'm' : 's'; };
-  var pinHeight = function (size) { return size === 'l' ? 54 : 44; };
-  // The word over the photo, set along an arc round its top, white-edged like a cut-out sticker.
-  function sticker(word) {
-    var s = document.createElementNS(SVG, 'svg');
-    s.setAttribute('class', 'xp-sticker');
-    s.setAttribute('viewBox', '0 0 100 58');
-    s.setAttribute('aria-hidden', 'true');
-    var pid = 'xp-arc-' + (++arcs);
-    var r = 30, a = 75 * Math.PI / 180, cx = 50, cy = 54;
-    var path = document.createElementNS(SVG, 'path');
-    path.setAttribute('id', pid);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('d', 'M ' + (cx - r * Math.sin(a)) + ' ' + (cy - r * Math.cos(a)) + ' A ' + r + ' ' + r + ' 0 0 1 ' + (cx + r * Math.sin(a)) + ' ' + (cy - r * Math.cos(a)));
-    var text = document.createElementNS(SVG, 'text');
-    var tp = document.createElementNS(SVG, 'textPath');
-    tp.setAttribute('href', '#' + pid);
-    tp.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#' + pid);
-    tp.setAttribute('startOffset', '50%');
-    tp.setAttribute('text-anchor', 'middle');
-    tp.textContent = word;
-    text.appendChild(tp);
-    s.appendChild(path);
-    s.appendChild(text);
-    return s;
-  }
+  // Each size's whole pin, stamp to dot: what a card stands on, and what can't overlap.
+  var PIN_H = { s: 50, m: 58, l: 68 };
+  var pinHeight = function (size) { return PIN_H[size]; };
 
   function pinElement(p, size) {
     var root = el('div', 'xp-pin' + (p.been ? ' xp-been' : ''));
     root.dataset.size = size;
     var body = el('div', 'xp-body');
+    var stamp = el('div', 'xp-stamp');
     var photo = el('div', 'xp-photo');
     if (p.photo) { var img = el('img'); img.alt = ''; img.src = p.photo; img.decoding = 'async'; photo.appendChild(img); }
-    body.appendChild(photo);
-    body.appendChild(el('div', 'xp-tail'));
-    if (p.card && p.card.kind) body.appendChild(sticker(p.card.kind));
+    stamp.appendChild(photo);
+    body.appendChild(stamp);
+    if (p.card && p.card.kind) body.appendChild(el('div', 'xp-mark', p.card.kind));
+    body.appendChild(el('div', 'xp-dot'));
     if (p.been) { var t = el('div', 'xp-tick'); t.appendChild(icon('check', 10, 3.5)); body.appendChild(t); }
     if (p.number) body.appendChild(el('div', 'xp-num', String(p.number)));
     root.appendChild(body);
@@ -216,31 +206,38 @@ export const PIN_SCRIPT = `
     var wrap = el('div', 'xp-card-wrap xp-enter' + (reduced ? ' xp-reduced' : ''));
     wrap.setAttribute('role', 'dialog');
     wrap.setAttribute('aria-label', p.name);
-    // The card stands on its pin: its tail ends at the top of the photo.
+    // The ticket stands on its pin: its tail ends at the top of the stamp.
     wrap.style.paddingBottom = (pinH + TAIL - 2) + 'px';
     wrap.style.transformOrigin = '50% calc(100% - ' + Math.round(pinH / 2) + 'px)';
     var card = el('div', 'xp-card');
     var flip = el('div', 'xp-flip');
 
+    // One of our tickets: the photo, its kind and best time, the name; a torn line; then the stub.
     var front = el('div', 'xp-face xp-front');
+    var top = el('div', 'xp-ticket-top');
     var photo = el('div', 'xp-card-photo');
     if (p.photo) { var img = el('img'); img.alt = ''; img.src = p.photo; photo.appendChild(img); }
-    photo.appendChild(el('span', 'xp-chip', c.kind));
-    front.appendChild(photo);
-    var body = el('div', 'xp-card-body');
-    body.appendChild(el('div', 'xp-name', p.name));
-    if (c.area) body.appendChild(el('div', 'xp-area', c.area));
-    if (c.line) body.appendChild(el('div', 'xp-line', c.line));
-    front.appendChild(body);
-    var fa = el('div', 'xp-actions');
+    top.appendChild(photo);
+    var row = el('div', 'xp-row');
+    row.appendChild(el('span', 'xp-kind', c.kind));
+    if (c.best) row.appendChild(el('span', 'xp-best', c.best));
+    top.appendChild(row);
+    top.appendChild(el('div', 'xp-name', p.name));
+    var where = [c.area, c.meta].filter(Boolean).join(' · ');
+    if (where) top.appendChild(el('div', 'xp-area', where));
+    front.appendChild(top);
+    front.appendChild(el('div', 'xp-tear'));
+    var fa = el('div', 'xp-stub');
     var go = button('xp-go', 'Open ' + p.name, 'arrow', 'Open place');
     var more = button('xp-turn', 'More about ' + p.name, 'turn');
     fa.appendChild(go);
     fa.appendChild(more);
     front.appendChild(fa);
 
+    // The back of the ticket: the facts, and why it's worth going.
     var back = el('div', 'xp-face xp-back');
-    back.appendChild(el('div', 'xp-name', p.name));
+    var btop = el('div', 'xp-ticket-top');
+    btop.appendChild(el('div', 'xp-name', p.name));
     var list = el('ul', 'xp-facts');
     (c.facts || []).forEach(function (f) {
       var li = el('li');
@@ -248,9 +245,11 @@ export const PIN_SCRIPT = `
       li.appendChild(el('span', null, f.text));
       list.appendChild(li);
     });
-    back.appendChild(list);
-    if (c.line) back.appendChild(el('div', 'xp-line', c.line));
-    var ba = el('div', 'xp-actions');
+    btop.appendChild(list);
+    if (c.line) btop.appendChild(el('div', 'xp-line', c.line));
+    back.appendChild(btop);
+    back.appendChild(el('div', 'xp-tear'));
+    var ba = el('div', 'xp-stub');
     var go2 = button('xp-go', 'Open ' + p.name, 'arrow', 'Open place');
     var turnBack = button('xp-turn', 'Back to the photo', 'turn');
     ba.appendChild(go2);
@@ -308,11 +307,12 @@ export const PIN_SCRIPT = `
       Object.keys(markers).forEach(function (id) { markers[id].content.dataset.size = size; });
     }
 
-    // Stickers that would land on each other: the stop in focus keeps its word, then the rest in
-    // order; one that has no room goes quiet until a zoom or a pan makes room.
+    // Postmarks that would land on each other: the stop in focus keeps its word, then the rest in
+    // order; one that has no room goes quiet (its stamp stays) until a zoom or a pan makes room.
     function declutter() {
       var pr = overlay.getProjection();
-      if (!pr || size !== 'l') return;
+      if (!pr) return;
+      var stampW = size === 'l' ? 48 : size === 'm' ? 38 : 30;
       var kept = [];
       var ids = order.slice();
       if (focusId && data[focusId]) ids = [focusId].concat(ids.filter(function (id) { return id !== focusId; }));
@@ -321,7 +321,9 @@ export const PIN_SCRIPT = `
         if (!m || !p) return;
         var pt = pr.fromLatLngToContainerPixel(new google.maps.LatLng(p.lat, p.lng));
         if (!pt) return;
-        var box = { l: pt.x - 36, r: pt.x + 36, t: pt.y - 88, b: pt.y - 50 };
+        var word = p.card && p.card.kind ? p.card.kind.length * 6.4 + 16 : 0;
+        var half = Math.max(stampW, word) / 2 + 2;
+        var box = { l: pt.x - half, r: pt.x + half, t: pt.y - pinHeight(size), b: pt.y };
         var clash = kept.some(function (k) { return box.l < k.r && box.r > k.l && box.t < k.b && box.b > k.t; });
         m.content.classList.toggle('xp-quiet', clash);
         if (!clash) kept.push(box);

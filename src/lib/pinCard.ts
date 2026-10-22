@@ -4,7 +4,7 @@ import { getReel } from '@/data/api';
 import type { Place } from '@/data/types';
 import { formatDuration } from '@/lib/geo';
 
-// What a place's pin and card on the Google map say, from what's already saved about it: no lookup,
+// What a place's stamp and ticket on the Google map say, from what's already saved about it: no lookup,
 // so nothing is paid for. Ratings aren't shown because we don't keep any.
 
 // Words in a place's name that say what it is better than its kind does. First match wins.
@@ -25,7 +25,7 @@ const NAMED: [RegExp, string][] = [
   [/\b(view ?point|peak|point|hill|top)\b/i, 'View'],
 ];
 
-/** The sticker word: what kind of place, in one short word. */
+/** The postmark word: what kind of place, in one short word. */
 export function kindWord(place: Place): string {
   const named = NAMED.find(([re]) => re.test(place.name));
   if (named) return named[1];
@@ -47,6 +47,8 @@ const BEST: Record<Place['bestTime'], string> = {
   evening: 'Best in the evening',
 };
 
+const bestOf = (place: Place) => (place.facts?.window === 'sunset' ? 'Best at sunset' : BEST[place.bestTime]);
+
 /** The card for a place. `stop` adds where it sits in a day's plan. */
 export function pinCardOf(place: Place, stop?: { number: number; time: string }): PinCard {
   const facts: PinCard['facts'] = [];
@@ -54,10 +56,11 @@ export function pinCardOf(place: Place, stop?: { number: number; time: string })
   facts.push({ icon: 'clock', text: `${formatDuration(place.minutes)} there` });
   const cost = costLabel(place.cost);
   if (cost) facts.push({ icon: 'tag', text: cost === 'Free' ? 'Free to visit' : cost });
-  facts.push({ icon: 'sun', text: place.facts?.window === 'sunset' ? 'Go for the sunset' : BEST[place.bestTime] });
+  facts.push({ icon: 'sun', text: bestOf(place) });
   if (place.source.kind === 'reel') {
     const creator = getReel(place.source.reelId)?.creator;
     if (creator) facts.push({ icon: 'film', text: place.source.timestamp ? `From ${creator} · ${place.source.timestamp}` : `From ${creator}` });
   }
-  return { kind: kindWord(place), area: place.area, line: place.why, facts };
+  const meta = [formatDuration(place.minutes), cost].filter(Boolean).join(' · ');
+  return { kind: kindWord(place), best: bestOf(place), area: place.area, meta, line: place.why, facts };
 }

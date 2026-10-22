@@ -1,14 +1,13 @@
-import { AdvancedMarker, APIProvider, Map, RenderingType, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, RenderingType, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import { Component, useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
-import type { ImageSourcePropType } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/Text';
 import { arcRoute, type LatLng } from '@/lib/geo';
-import { skyCta } from '@/theme/sky';
-import { colors, fonts, fontSize, light, shadows } from '@/theme/tokens';
+import { colors, fonts, light } from '@/theme/tokens';
 
-import type { GoogleMapProps } from './GoogleMap';
+import type { GoogleMapPin, GoogleMapProps } from './GoogleMap';
+import { PIN_SCRIPT, pinCss, type PinData } from './mapPins';
 
 // Places that came from Google go on a Google map; its terms don't allow them on anyone else's. The
 // browser key is public by nature, so it only works on our own web addresses (restricted in Google
@@ -55,6 +54,7 @@ function GoogleMapOrPanel({
   route,
   padding,
   onPinPress,
+  cards = true,
   focusId,
   unavailable,
 }: GoogleMapProps & { unavailable: ReactNode }) {
@@ -99,17 +99,7 @@ function GoogleMapOrPanel({
         disableDefaultUI
         clickableIcons={false}
       >
-        {pins.map((p) => (
-          <AdvancedMarker
-            key={p.id}
-            position={p.coords}
-            title={p.number ? `Stop ${p.number}, ${p.name}` : p.name}
-            zIndex={p.id === focusId ? 2 : 1}
-            onClick={() => onPinPress?.(p.id)}
-          >
-            <PhotoPin photo={p.photo} number={p.number} active={p.id === focusId} been={p.been} />
-          </AdvancedMarker>
-        ))}
+        <Pins pins={pins} focusId={focusId ?? null} cards={cards} padding={pad} onOpen={onPinPress} />
         {route && pins.length > 1 ? (
           <Route path={pins.map((p) => p.coords)} reached={pins.findIndex((p) => p.id === focusId)} />
         ) : null}
@@ -117,6 +107,99 @@ function GoogleMapOrPanel({
       </Map>
     </APIProvider>
   );
+}
+
+type PinsController = {
+  setPins: (pins: PinData[], focusId: string | null) => void;
+  setOptions: (o: { cards?: boolean; reduced?: boolean; padding?: GoogleMapProps['padding'] }) => void;
+  destroy: () => void;
+};
+type PinsWindow = Window & {
+  XplorePins?: { create: (o: Record<string, unknown>) => PinsController };
+};
+
+// The phone page loads the fonts by their Google Fonts names; here they're the app's own.
+const PIN_FONTS = {
+  extraBold: [fonts.display, 'normal'],
+  bold: [fonts.displayBold, 'normal'],
+  regular: [fonts.sans, 'normal'],
+  medium: [fonts.sansMedium, 'normal'],
+  semi: [fonts.sansSemi, 'normal'],
+} as const satisfies Parameters<typeof pinCss>[0];
+
+/** Adds the shared pin script and its style to the page, once. */
+function pinScript(): PinsWindow['XplorePins'] {
+  const w = window as PinsWindow;
+  if (!w.XplorePins) {
+    const style = document.createElement('style');
+    style.textContent = pinCss(PIN_FONTS);
+    document.head.appendChild(style);
+    const script = document.createElement('script');
+    script.textContent = PIN_SCRIPT;
+    document.head.appendChild(script);
+  }
+  return w.XplorePins;
+}
+
+/** A photo the pin can show: a web address, or a bundled picture's own. */
+function photoUri(photo: GoogleMapPin['photo']): string | null {
+  if (typeof photo === 'string') return photo;
+  return typeof photo === 'object' && photo && 'uri' in photo && typeof photo.uri === 'string' ? photo.uri : null;
+}
+
+/**
+ * The photo pins, drawn by the script the phone map runs too (mapPins.ts): they grow with the zoom
+ * and a tap grows the place's card out of its pin.
+ */
+function Pins({
+  pins,
+  focusId,
+  cards,
+  padding,
+  onOpen,
+}: {
+  pins: GoogleMapPin[];
+  focusId: string | null;
+  cards: boolean;
+  padding: { top: number; bottom: number; left: number; right: number };
+  onOpen?: (id: string) => void;
+}) {
+  const map = useMap();
+  const marker = useMapsLibrary('marker');
+  const controller = useRef<PinsController | null>(null);
+  // The latest handler, so a new one never means taking the pins down and drawing them again.
+  const open = useRef(onOpen);
+  useEffect(() => {
+    open.current = onOpen;
+  }, [onOpen]);
+
+  useEffect(() => {
+    if (!map || !marker) return;
+    const XplorePins = pinScript();
+    if (!XplorePins) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    const c = XplorePins.create({ map, Marker: marker.AdvancedMarkerElement, cards, reduced, padding, onOpen: (id: string) => open.current?.(id) });
+    controller.current = c;
+    return () => {
+      c.destroy();
+      controller.current = null;
+    };
+    // Made once per map; later changes go through setOptions and setPins below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, marker]);
+
+  useEffect(() => {
+    controller.current?.setOptions({ cards, padding });
+  }, [cards, padding.top, padding.bottom, padding.left, padding.right]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    controller.current?.setPins(
+      pins.map((p) => ({ id: p.id, name: p.name, lat: p.coords.lat, lng: p.coords.lng, photo: photoUri(p.photo), number: p.number, been: p.been, card: p.card })),
+      focusId,
+    );
+  }, [pins, focusId, map, marker]);
+
+  return null;
 }
 
 /** Anything thrown by the map or by taking it down stays here, instead of blanking the app. */
@@ -308,94 +391,6 @@ function Journey({
   }, [map, key, focusId, width, height, padding.top, padding.bottom, padding.left, padding.right]);
 
   return null;
-}
-
-/** The same white-rimmed photo pin as the drawn maps, with the stop number on it for a plan. */
-function PhotoPin({ photo, number, active, been }: { photo: ImageSourcePropType; number?: number; active?: boolean; been?: boolean }) {
-  const uri = typeof photo === 'object' && photo && 'uri' in photo ? photo.uri : undefined;
-  const size = number ? 34 : 40;
-  return (
-    <div
-      style={{
-        position: 'relative',
-        width: size,
-        height: size,
-        cursor: 'pointer',
-        // The stop the plan is on stands a little larger, like the painted map's.
-        transform: active ? 'scale(1.27)' : 'scale(1)',
-        transformOrigin: '50% 100%',
-        transition: 'transform 300ms cubic-bezier(0.23, 1, 0.32, 1)',
-      }}
-    >
-      <div
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          border: `2.5px solid ${light.panel}`,
-          background: light.canvasTop,
-          boxShadow: shadows.pin,
-          overflow: 'hidden',
-          boxSizing: 'border-box',
-        }}
-      >
-        {uri ? (
-          <img
-            src={uri}
-            alt=""
-            // Been there: greyed back, so what's still to see stands out on the map.
-            style={{ width: '100%', height: '100%', objectFit: 'cover', filter: been ? 'grayscale(1)' : undefined, opacity: been ? 0.6 : 1 }}
-          />
-        ) : null}
-      </div>
-      {been ? (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: -4,
-            right: -4,
-            width: 18,
-            height: 18,
-            borderRadius: 9,
-            background: skyCta,
-            border: `2px solid ${light.panel}`,
-            boxSizing: 'border-box',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={skyCta} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-      ) : null}
-      {number ? (
-        <div
-          style={{
-            position: 'absolute',
-            top: -6,
-            right: -6,
-            minWidth: 20,
-            height: 20,
-            padding: '0 5px',
-            borderRadius: 10,
-            background: light.ink,
-            border: `2px solid ${light.panel}`,
-            boxSizing: 'border-box',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: fonts.sansSemi,
-            fontSize: fontSize.tag,
-            color: light.ctaInk,
-          }}
-        >
-          {number}
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 const styles = StyleSheet.create({

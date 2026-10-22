@@ -1,16 +1,21 @@
-import { skyCta } from '@/theme/sky';
-import { colors, light, shadows } from '@/theme/tokens';
+import { colors, light } from '@/theme/tokens';
+
+import { PIN_SCRIPT, pinCss, type PinData, type PinFonts } from './mapPins';
 
 // The page the phone apps show their Google map in (GoogleMap.tsx puts it in a web view). It draws
-// what GoogleMap.web.tsx draws, with Google's own script instead of React: the photo pins, the day's
-// route, and the camera that tilts and glides from stop to stop. Change one, change the other.
+// what GoogleMap.web.tsx draws, with Google's own script instead of React: the day's route, and the
+// camera that tilts and glides from stop to stop. Change one, change the other. The pins and their
+// cards are one shared script (mapPins.ts) that both maps run.
 //
-// The app talks to it by calling `apply(state)`; it answers with messages: ready, failed, pin.
+// The app talks to it by calling `apply(state)`; it answers with messages: ready, failed, and pin
+// (open that place).
 
 /** What the app sends each time something about the map changes. */
 export type MapPageState = {
-  pins: { id: string; name: string; lat: number; lng: number; photo: string | null; number?: number; been?: boolean }[];
+  pins: PinData[];
   route: boolean;
+  /** Pins grow their place's card when tapped; without, a tap opens the place. */
+  cards: boolean;
   /** The route as drawn: arcs between the stops (lib/geo arcRoute), and where each stop sits along them. */
   line?: { lat: number; lng: number }[];
   lineAt?: number[];
@@ -24,10 +29,14 @@ export type MapPageState = {
 
 export type MapPageMessage = { type: 'ready' } | { type: 'failed' } | { type: 'pin'; id: string };
 
-const TICK =
-  '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="' +
-  skyCta +
-  '" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+// The page loads the app's two fonts from Google Fonts: it has no way to reach the app's own files.
+const FONTS: PinFonts = {
+  extraBold: ["'Plus Jakarta Sans'", '800'],
+  bold: ["'Plus Jakarta Sans'", '700'],
+  regular: ['Geist', '400'],
+  medium: ['Geist', '500'],
+  semi: ['Geist', '600'],
+};
 
 export function googleMapPage(key: string, mapId: string): string {
   return `<!doctype html>
@@ -35,72 +44,31 @@ export function googleMapPage(key: string, mapId: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap">
 <style>
+${pinCss(FONTS)}
   html, body, #map { height: 100%; margin: 0; background: ${light.canvasTop}; }
   body { -webkit-user-select: none; -webkit-touch-callout: none; overflow: hidden; }
-  .pin { position: relative; cursor: pointer; transform-origin: 50% 100%; transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1); }
-  .pin.active { transform: scale(1.27); }
-  .pin .photo { width: 100%; height: 100%; border-radius: 50%; border: 2.5px solid ${light.panel}; background: ${light.canvasTop}; box-shadow: ${shadows.pin}; overflow: hidden; box-sizing: border-box; }
-  .pin img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .pin.been img { filter: grayscale(1); opacity: 0.6; }
-  .pin .tick { position: absolute; bottom: -4px; right: -4px; width: 18px; height: 18px; border-radius: 9px; background: ${skyCta}; border: 2px solid ${light.panel}; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
-  .pin .number { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: ${light.ink}; border: 2px solid ${light.panel}; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font: 600 11px -apple-system, system-ui, sans-serif; color: ${light.ctaInk}; }
 </style>
 </head>
 <body>
 <div id="map"></div>
+<script>${PIN_SCRIPT}</script>
 <script>
 (function () {
   var post = function (m) { window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify(m)); };
   // Google turns the key down by calling this; the app then shows its plain panel instead.
   window.gm_authFailure = function () { post({ type: 'failed' }); };
 
-  var map = null, Marker = null, pending = null, state = null;
-  var markers = {}, baseLine = null, reachedLine = null, frame = 0, dragStop = null;
+  var map = null, Marker = null, pins = null, pending = null, state = null;
+  var baseLine = null, reachedLine = null, frame = 0, dragStop = null;
 
   var TILE = 256, JOURNEY_TILT = 55, JOURNEY_HEADING = 25;
   var toWorld = function (p) { var s = Math.sin(p.lat * Math.PI / 180); return { x: (p.lng + 180) / 360, y: 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI) }; };
   var fromWorld = function (x, y) { return { lng: x * 360 - 180, lat: Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI }; };
   var easeInOut = function (u) { return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; };
   var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
-
-  // The same white-rimmed photo pin as the web's, with the stop number on it for a plan.
-  function pinElement(p, active) {
-    var size = p.number ? 34 : 40;
-    var el = document.createElement('div');
-    el.className = 'pin' + (active ? ' active' : '') + (p.been ? ' been' : '');
-    el.style.width = size + 'px';
-    el.style.height = size + 'px';
-    var photo = document.createElement('div');
-    photo.className = 'photo';
-    if (p.photo) { var img = document.createElement('img'); img.alt = ''; img.src = p.photo; photo.appendChild(img); }
-    el.appendChild(photo);
-    if (p.been) { var tick = document.createElement('div'); tick.className = 'tick'; tick.innerHTML = '${TICK}'; el.appendChild(tick); }
-    if (p.number) { var n = document.createElement('div'); n.className = 'number'; n.textContent = String(p.number); el.appendChild(n); }
-    return el;
-  }
-  var look = function (p, active) { return [p.photo, p.number, p.been, active].join('|'); };
-
-  function drawPins(s) {
-    var seen = {};
-    s.pins.forEach(function (p) {
-      seen[p.id] = true;
-      var active = p.id === s.focusId;
-      var m = markers[p.id];
-      if (!m) {
-        m = markers[p.id] = { marker: new Marker({ map: map, gmpClickable: true }), look: '' };
-        m.marker.addListener('click', function () { post({ type: 'pin', id: p.id }); });
-      }
-      m.marker.position = { lat: p.lat, lng: p.lng };
-      m.marker.title = p.number ? 'Stop ' + p.number + ', ' + p.name : p.name;
-      m.marker.zIndex = active ? 2 : 1;
-      var now = look(p, active);
-      if (m.look !== now) { m.marker.content = pinElement(p, active); m.look = now; }
-    });
-    Object.keys(markers).forEach(function (id) {
-      if (!seen[id]) { markers[id].marker.map = null; delete markers[id]; }
-    });
-  }
 
   // The day's stops joined in order by a dotted trail of arcs, in the app's ink; the way so far, up
   // to the stop in focus, as a solid ember line over it.
@@ -178,9 +146,13 @@ export function googleMapPage(key: string, mapId: string): string {
   var journeyKey = '';
   window.apply = function (s) {
     if (!Marker) { pending = s; return; }
-    if (!map) open(s);
+    if (!map) {
+      open(s);
+      pins = window.XplorePins.create({ map: map, Marker: Marker, cards: s.cards, reduced: s.reduced, padding: s.padding, onOpen: function (id) { post({ type: 'pin', id: id }); } });
+    }
     state = s;
-    drawPins(s);
+    pins.setOptions({ cards: s.cards, reduced: s.reduced, padding: s.padding });
+    pins.setPins(s.pins, s.focusId);
     drawRoute(s);
     // The camera moves only when the stops, the stop in focus or the room around them change.
     var key = JSON.stringify([s.pins.map(function (p) { return [p.id, p.lat, p.lng]; }), s.focusId === undefined ? 'none' : s.focusId, s.width, s.height, s.padding]);

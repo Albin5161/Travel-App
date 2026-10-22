@@ -10,6 +10,7 @@ import { PLAN_LINK_BASE } from '@/lib/share';
 import { light } from '@/theme/tokens';
 
 import { googleMapPage, type MapPageMessage, type MapPageState } from './googleMapPage';
+import type { PinCard } from './mapPins';
 
 export type GoogleMapPin = {
   id: string;
@@ -20,6 +21,8 @@ export type GoogleMapPin = {
   number?: number;
   /** Somewhere you've already been: the pin goes grey, with a tick. */
   been?: boolean;
+  /** Its sticker word and the card a tap grows out of it (lib/pinCard.ts). */
+  card?: PinCard;
 };
 
 export type GoogleMapProps = {
@@ -30,7 +33,13 @@ export type GoogleMapProps = {
   route?: boolean;
   /** Room kept clear around the pins, for panels that sit over the map. */
   padding?: { top?: number; bottom?: number; left?: number; right?: number };
+  /** Opens a place: from its card's "Open place", or straight from the pin when there are no cards. */
   onPinPress?: (id: string) => void;
+  /**
+   * Whether a tap on a pin grows its card (default) or opens the place at once. Off where the map is
+   * too short to hold a card, like the plan's.
+   */
+  cards?: boolean;
   /**
    * The stop the plan is on, as someone scrolls it. The map tilts and glides to it, and the route
    * so far lights up; null goes back to the whole day, flat.
@@ -55,7 +64,7 @@ function photoUri(photo: ImageSourcePropType): string | null {
   return uri && uri.startsWith('https://') ? uri : null;
 }
 
-export function GoogleMap({ pins, width, height, route, padding, onPinPress, focusId }: GoogleMapProps) {
+export function GoogleMap({ pins, width, height, route, padding, onPinPress, cards = true, focusId }: GoogleMapProps) {
   const web = useRef<WebView>(null);
   const reduced = useReducedMotion();
   const [ready, setReady] = useState(false);
@@ -74,8 +83,10 @@ export function GoogleMap({ pins, width, height, route, padding, onPinPress, foc
         photo: photoUri(p.photo),
         number: p.number,
         been: p.been,
+        card: p.card,
       })),
       route: !!route,
+      cards,
       ...(arc ? { line: arc.points, lineAt: arc.at } : {}),
       padding: pad,
       focusId,
@@ -84,7 +95,7 @@ export function GoogleMap({ pins, width, height, route, padding, onPinPress, foc
       reduced,
     } satisfies MapPageState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pins, route, pad.top, pad.bottom, pad.left, pad.right, focusId, width, height, reduced]);
+  }, [pins, route, cards, pad.top, pad.bottom, pad.left, pad.right, focusId, width, height, reduced]);
 
   useEffect(() => {
     if (ready) web.current?.injectJavaScript(`window.apply(${state}); true;`);

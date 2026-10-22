@@ -32,6 +32,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { ErrorNote } from '@/components/ErrorNote';
 import { Text } from '@/components/Text';
 import { GoogleMap, type GoogleMapProps } from '@/components/GoogleMap';
+import { pinCardOf } from '@/lib/pinCard';
 import { getCity, getLocalPicks, isLiveCity } from '@/data/api';
 import {
   addStop,
@@ -384,10 +385,13 @@ export default function PlanScreen() {
               coords: s.place.coords,
               photo: s.place.photo,
               number: i + 1,
+              card: pinCardOf(s.place, { number: i + 1, time: formatClock(s.startMinutes) }),
             }))}
             width={W}
             height={MAP_H}
             route
+            // Too short to hold a card: a pin opens the place, as before. It still wears its sticker.
+            cards={false}
             padding={{ top: insets.top + 60, bottom: 40 }}
             onPinPress={(pid) => router.push({ pathname: '/place/[id]', params: { id: pid } })}
           />

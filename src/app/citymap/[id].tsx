@@ -18,6 +18,7 @@ import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
 import { GoogleMap } from '@/components/GoogleMap';
+import { pinCardOf } from '@/lib/pinCard';
 import { getCity, getReel, isLiveCity } from '@/data/api';
 import { haptic } from '@/lib/haptics';
 import { EASE_OUT, SPRING_SHEET } from '@/lib/motion';
@@ -112,7 +113,7 @@ export default function CityMapScreen() {
       <Animated.View style={[StyleSheet.absoluteFill, mapStyle]}>
         {live ? (
           <GoogleMap
-            pins={collected.map((p) => ({ id: p.id, name: p.name, coords: p.coords, photo: p.photo }))}
+            pins={collected.map((p) => ({ id: p.id, name: p.name, coords: p.coords, photo: p.photo, card: pinCardOf(p) }))}
             width={W}
             height={H}
             padding={{ top: insets.top + 64, bottom: panelBottom }}

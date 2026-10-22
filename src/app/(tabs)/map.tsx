@@ -24,6 +24,7 @@ import { getDistrict } from '@/data/regions';
 import type { Place } from '@/data/types';
 import { haptic } from '@/lib/haptics';
 import { DURATION, FADE_IN, fadeUp, project, SPRING_DRAG } from '@/lib/motion';
+import { pinCardOf } from '@/lib/pinCard';
 import { KIND_LABEL, clusterSpots, DAY_TRIP_MINUTES, driveMinutes, kmAway, matchesKind, weekendRoutes, type SpotKind } from '@/lib/spots';
 import { useArrivalTargets, useSpotStatus, useSpotsByDistrict, useTrips } from '@/state/trips';
 import { useWhereIAm } from '@/state/where';
@@ -81,7 +82,7 @@ export default function SpotsMap() {
 
   // Google's map on the web and on phones alike: every spot has a place on it, wherever it is.
   const pins = useMemo(
-    () => visible.map((p) => ({ id: p.id, name: p.name, coords: p.coords, photo: p.photo, been: statusOf(p.id) === 'been' })),
+    () => visible.map((p) => ({ id: p.id, name: p.name, coords: p.coords, photo: p.photo, been: statusOf(p.id) === 'been', card: pinCardOf(p) })),
     [visible, statusOf],
   );
 

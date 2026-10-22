@@ -32,7 +32,13 @@ import { EASE_IN_OUT, EASE_OUT, SPRING_DRAG } from '@/lib/motion';
 // Android keeps it flat (15 Oct 2026): a card that is never quite still, turned in 3D, is redrawn
 // soft there, and the shine over it made the ticket hard to read on testers' phones. It still deals
 // in, and keeps its shadow; it doesn't tilt, sway or shine, so its text stays sharp.
+//
+// An iPhone does the same to a turned card (22 Oct 2026): a sensor never reads perfectly still, so the
+// card was always a hair off flat and drawn soft, under a standing haze of shine. So a steady hand now
+// rests it fully flat, drawn plainly, with no shine on it; it turns and shines only while it moves.
 const FLAT = Platform.OS === 'android';
+// Tilt below this (on the −1…1 scale, about half a degree) counts as still.
+const REST = 0.05;
 
 /** Tilt, normalised to −1…1 on each axis. x > 0: the right edge recedes. y > 0: the top edge recedes. */
 export type Tilt = { x: SharedValue<number>; y: SharedValue<number> };
@@ -144,16 +150,19 @@ export function TiltCard({ width, height, radius = 28, delay = 0, faceRef, child
     });
 
   const tx = useDerivedValue(() =>
-    soft(Math.tanh(sensorX.get() * SENSOR_GAIN) + dragX.get() + swayAmp.get() * 0.45 * (sway.get() * 2 - 1)),
+    still(soft(Math.tanh(sensorX.get() * SENSOR_GAIN) + dragX.get() + swayAmp.get() * 0.45 * (sway.get() * 2 - 1))),
   );
   const ty = useDerivedValue(() =>
-    soft(Math.tanh(sensorY.get() * SENSOR_GAIN) + dragY.get() + swayAmp.get() * 0.2 * (1 - sway.get() * 2)),
+    still(soft(Math.tanh(sensorY.get() * SENSOR_GAIN) + dragY.get() + swayAmp.get() * 0.2 * (1 - sway.get() * 2))),
   );
 
   const body = useAnimatedStyle(() => {
     const e = enter.get();
     // Flat: rising into place is all; no turn at all, not even a 0° one, so nothing is drawn in 3D.
     if (FLAT) return { opacity: e, transform: [{ translateY: (1 - e) * 70 }, { scale: 0.92 + 0.08 * e }] };
+    // Landed and held still: no transform at all, so the phone draws the ticket flat and sharp.
+    // Turned 0°, it looks the same either way, so stepping in and out of this shows no jump.
+    if (e === 1 && Math.abs(deal.get()) < 0.05 && tx.get() === 0 && ty.get() === 0) return { opacity: 1, transform: [] };
     return {
       opacity: e,
       transform: [
@@ -183,12 +192,13 @@ export function TiltCard({ width, height, radius = 28, delay = 0, faceRef, child
     const s = sweep.get();
     const tilted = Math.min(1, Math.hypot(x, y) * 1.3);
     return {
-      opacity: reduced ? 0.35 : 0.3 + 0.55 * tilted + 0.6 * Math.sin(Math.PI * s),
+      // Only while it turns, and the one pass as it lands: a standing haze over the text blurs it.
+      opacity: reduced ? 0 : 0.55 * tilted + 0.6 * Math.sin(Math.PI * s),
       transform: [{ translateX: -x * width * 0.9 + (s * 2 - 1) * width * 1.1 }, { translateY: y * height * 0.35 }],
     };
   });
   const glare = useAnimatedStyle(() => ({
-    opacity: 0.55 + 0.45 * Math.min(1, Math.hypot(tx.get(), ty.get()) * 1.5),
+    opacity: Math.min(1, Math.hypot(tx.get(), ty.get()) * 1.5),
     transform: [{ translateX: -tx.get() * width * 0.55 }, { translateY: ty.get() * height * 0.45 }],
   }));
 
@@ -269,6 +279,13 @@ const FOIL_AT = [0.3, 0.38, 0.44, 0.5, 0.56, 0.62, 0.7] as const;
 function soft(v: number) {
   'worklet';
   return Math.max(-1, Math.min(1, v));
+}
+
+/** Within REST of flat is flat; past it, the tilt starts from zero, so it never jumps. */
+function still(v: number) {
+  'worklet';
+  const a = Math.abs(v);
+  return a <= REST ? 0 : (Math.sign(v) * (a - REST)) / (1 - REST);
 }
 
 // Gravity from the UI-thread sensor on a phone. The web has no sensor worth asking for (Reanimated

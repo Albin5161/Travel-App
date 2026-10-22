@@ -92,7 +92,7 @@ export function pinCss(f: PinFonts): string {
 .xp-card-tail { position: absolute; left: 50%; width: 18px; height: 10px; margin-left: -9px; background: ${white}; clip-path: polygon(0 0, 100% 0, 50% 100%); }
 .xp-card-photo { position: relative; height: 128px; background: ${light.canvasTop}; }
 .xp-card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.xp-chip { position: absolute; left: 12px; top: 12px; padding: 5px 11px 4px; border-radius: 999px; background: ${white}; color: ${ink}; ${font(f.extraBold, 12, 14)} box-shadow: 0 2px 6px rgba(17,17,17,0.22); transform: rotate(-4deg); }
+.xp-chip { position: absolute; left: 12px; top: 12px; padding: 5px 11px 4px; border-radius: 999px; background: ${white}; color: ${ink}; ${font(f.extraBold, 12, 14)} box-shadow: 0 2px 6px rgba(17,17,17,0.22); }
 .xp-card-body { padding: 12px 16px 0; }
 .xp-name { color: ${ink}; ${font(f.bold, 16, 20)} letter-spacing: -0.25px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .xp-area { margin-top: 2px; color: ${light.inkSoft}; ${font(f.medium, 12, 16)} white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -6,7 +6,7 @@ import type { Getting, LatLng, Terrain, TravelMode } from '@/lib/geo';
 
 import { build } from './planner/build';
 import { overnightOffer, type NightsOffer } from './planner/nights';
-import { dayCtx, PACE_HOURS, PACE_STOPS, sunFor, timeOrder, type Ends, type Night, type Trip } from './planner/schedule';
+import { bestDays, dayCtx, PACE_HOURS, PACE_STOPS, sunFor, timeOrder, type Ends, type Night, type Trip } from './planner/schedule';
 import type { DayPart, Place } from './types';
 
 export type { Night, NightsOffer };
@@ -177,6 +177,28 @@ export function formatRange(start: string, days: number) {
 // ── Timing ───────────────────────────────────────────────────────────────────────────────────────
 
 type Placed = { place: Place; pinned: boolean; suggested: boolean };
+type Sleeps = { from: Night | null; to: Night | null };
+
+/** A day's map and clock: these places, the pace, the sun, and where the day sets out from and ends. */
+function ctxOfDay(stops: Placed[], prefs: TripPrefs, date: string | null, sleeps?: Sleeps) {
+  const t = tripOf(prefs);
+  // The day runs from last night's place to tonight's; both are the base unless a night is away.
+  const ends: Ends = { from: sleeps?.from?.coords ?? t.base, to: sleeps?.to?.coords ?? t.base };
+  const ctx = dayCtx(stops.map((s) => s.place), t, prefs.pace, sunFor(ends.from ?? stops[0]?.place.coords ?? null, date), ends);
+  return { ctx, ends };
+}
+
+/**
+ * A day's stops in the order the planner would give them, weighing each place's good time against
+ * the driving. Used when a stop is swapped in, added or moved here: the new place would otherwise
+ * keep the old one's slot or go last, and a morning viewpoint lands at 2:45 PM.
+ */
+function inBestOrder<T extends Placed>(plan: TripPlan, day: number, stops: T[]): T[] {
+  if (stops.length < 2) return stops;
+  const { ctx } = ctxOfDay(stops, plan.prefs, plan.days[day].date, sleepsOf(plan.nights, day, plan.days.length));
+  const best = bestDays(ctx, stops.map((_, i) => i), false)[0];
+  return best ? best.order.map((i) => stops[i]) : stops;
+}
 
 /**
  * Put clock times on a day's stops, in the order given: the planner's, or the traveller's own after
@@ -184,11 +206,8 @@ type Placed = { place: Place; pinned: boolean; suggested: boolean };
  * only where waiting is better than being early (lunch, a sunset). Nothing is dropped here, however
  * long the day gets: an edit is the traveller's choice.
  */
-export function timeDay(stops: Placed[], prefs: TripPrefs, date: string | null, sleeps?: { from: Night | null; to: Night | null }): TripDay {
-  const t = tripOf(prefs);
-  // The day runs from last night's place to tonight's; both are the base unless a night is away.
-  const ends: Ends = { from: sleeps?.from?.coords ?? t.base, to: sleeps?.to?.coords ?? t.base };
-  const ctx = dayCtx(stops.map((s) => s.place), t, prefs.pace, sunFor(ends.from ?? stops[0]?.place.coords ?? null, date), ends);
+export function timeDay(stops: Placed[], prefs: TripPrefs, date: string | null, sleeps?: Sleeps): TripDay {
+  const { ctx, ends } = ctxOfDay(stops, prefs, date, sleeps);
   const day = timeOrder(ctx, stops.map((_, i) => i));
   let totalKm = 0;
   const timed = stops.map((s, i) => {
@@ -343,7 +362,7 @@ export function removeStop(plan: TripPlan, day: number, placeId: string): TripPl
 export function moveToDay(plan: TripPlan, from: number, placeId: string, to: number): TripPlan {
   const { stop, days } = withoutStop(plan, from, placeId);
   if (!stop || from === to) return plan;
-  days[to] = { ...days[to], stops: [...days[to].stops, stop] };
+  days[to] = { ...days[to], stops: inBestOrder(plan, to, [...days[to].stops, stop]) };
   return retime({ ...plan, days });
 }
 
@@ -359,7 +378,11 @@ export function reorder(plan: TripPlan, day: number, placeId: string, by: -1 | 1
 export function swapStop(plan: TripPlan, day: number, placeId: string, next: Place, suggested: boolean): TripPlan {
   const old = plan.days[day].stops.find((s) => s.place.id === placeId);
   if (!old) return plan;
-  const stops = plan.days[day].stops.map((s) => (s.place.id === placeId ? { ...s, place: next, pinned: false, suggested } : s));
+  const stops = inBestOrder(
+    plan,
+    day,
+    plan.days[day].stops.map((s) => (s.place.id === placeId ? { ...s, place: next, pinned: false, suggested } : s)),
+  );
   return retime({
     ...plan,
     days: plan.days.map((d, k) => (k === day ? { ...d, stops } : d)),
@@ -369,7 +392,7 @@ export function swapStop(plan: TripPlan, day: number, placeId: string, next: Pla
 }
 
 export function addStop(plan: TripPlan, day: number, place: Place, suggested: boolean): TripPlan {
-  const stops = [...plan.days[day].stops, { place, startMinutes: 0, pinned: false, suggested }];
+  const stops = inBestOrder(plan, day, [...plan.days[day].stops, { place, startMinutes: 0, pinned: false, suggested }]);
   return retime({
     ...plan,
     days: plan.days.map((d, k) => (k === day ? { ...d, stops } : d)),

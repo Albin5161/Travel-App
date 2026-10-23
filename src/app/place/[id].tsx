@@ -28,16 +28,14 @@ export default function PlaceSheet() {
   const { info, loading } = usePlaceInfo(place);
   const { frame, ...scrollProps } = useReveal();
   const reduced = useReducedMotion();
-  // The photo card eases back as the sheet scrolls up: it drifts a little slower than the page
-  // and settles smaller, so what's below comes forward.
+  // The photo card eases back as the sheet scrolls up: it settles smaller and fainter where it is,
+  // so what's below comes forward. It used to drift down slower than the page too, and slid under
+  // the buttons below it.
   const cardStyle = useAnimatedStyle(() => {
     if (reduced) return {};
     const y = frame.scrollY.get();
     return {
-      transform: [
-        { translateY: interpolate(y, [0, 320], [0, 90], Extrapolation.CLAMP) },
-        { scale: interpolate(y, [0, 320], [1, 0.92], Extrapolation.CLAMP) },
-      ],
+      transform: [{ scale: interpolate(y, [0, 320], [1, 0.92], Extrapolation.CLAMP) }],
       opacity: interpolate(y, [0, 360], [1, 0.55], Extrapolation.CLAMP),
     };
   });

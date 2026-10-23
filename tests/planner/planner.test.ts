@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { addCustomStop, moveToDay, pinsOf, planNow, removeStop, reorder, togglePin, type PlannerInput, type TripPlan } from '@/data/planner';
+import { addCustomStop, addStop, moveToDay, pinsOf, planNow, removeStop, reorder, swapStop, togglePin, type PlannerInput, type TripPlan } from '@/data/planner';
 import { ceilingMinutes, kindOf, LATEST_END, LUNCH_WINDOW, DINNER_WINDOW, roadLimit, sunFor } from '@/data/planner/schedule';
 import type { Place } from '@/data/types';
 import { sunTimes } from '@/lib/sun';
@@ -246,6 +246,47 @@ test('editing still works: reorder, move, remove, lock and typed-in stops keep a
   const again = planNow({ cityId: 'test', saved: [...kochi, typed], suggestions: [], prefs: p.prefs, pins: pinsOf(p), removed: p.removed, seed: 2 });
   assert.equal(find(again, kochi.find((k) => k.id === first)!.name)!.day, 1);
   assert.ok(!stopsOf(again).some((s) => s.place.id === gone));
+});
+
+test('a place swapped in, added or moved to a day goes at its good time, not the old slot or the end', () => {
+  // Albin's Palakkad day on 23 Oct: Seethargundu View Point (best in the morning) swapped in for
+  // the day's second stop took that stop's 2:45 PM slot.
+  const [temple, beach, kudle, cafe, paradise, halfMoon] = gokarna;
+  const afternoon = [kudle, paradise, halfMoon];
+  const one = (saved: Place[]) => plan(saved, { prefs: prefs({ days: 1 }) });
+  const morningOf = (p: TripPlan, id: string, day = 0) => {
+    const s = p.days[day].stops.find((x) => x.place.id === id);
+    assert.ok(s, `${id} is on day ${day + 1}`);
+    return s.startMinutes;
+  };
+  const timed = (p: TripPlan) =>
+    p.days.forEach((d) => d.stops.forEach((s, k) => k > 0 && assert.ok(s.startMinutes >= d.stops[k - 1].startMinutes + d.stops[k - 1].place.minutes, 'stops overlap')));
+
+  // Swapped in for the day's last stop.
+  let p = one(afternoon);
+  const last = p.days[0].stops[p.days[0].stops.length - 1];
+  assert.ok(last.startMinutes >= 12 * 60, `the last stop is in the afternoon (${last.startMinutes})`);
+  p = swapStop(p, 0, last.place.id, temple, false);
+  assert.ok(morningOf(p, temple.id) < 12 * 60, `the temple at ${morningOf(p, temple.id)}`);
+  assert.equal(p.days[0].stops.length, 3);
+  assert.ok(p.left.some((l) => l.id === last.place.id), 'the stop swapped out waits in “not in this plan”');
+  timed(p);
+
+  // Added from "not in this plan".
+  p = addStop(one(afternoon), 0, beach, false);
+  assert.ok(morningOf(p, beach.id) < 12 * 60, `the beach at ${morningOf(p, beach.id)}`);
+  assert.notEqual(p.days[0].stops[p.days[0].stops.length - 1].place.id, beach.id, 'not simply put last');
+  timed(p);
+
+  // Moved to another day.
+  p = plan([temple, ...afternoon, cafe], { prefs: prefs({ days: 2 }) });
+  const from = p.days.findIndex((d) => d.stops.some((s) => s.place.id === temple.id));
+  const to = 1 - from;
+  if (p.days[to].stops.length > 0) {
+    p = moveToDay(p, from, temple.id, to);
+    assert.ok(morningOf(p, temple.id, to) < 12 * 60, `the temple at ${morningOf(p, temple.id, to)} after the move`);
+    timed(p);
+  }
 });
 
 test('a place with no location is never scheduled, and says so', () => {

@@ -755,18 +755,22 @@ function Build({
           <PlanningScene script={script} finale={finale} prop={prop} ready={!!plan} width={sceneW} onCheered={cheer} />
         </View>
       </Glass>
+      {/* Once tapped it says so and takes no more taps: the plan may still be on its way, and a
+          second tap would land on the plan screen as it opens. */}
       <PressableScale
         onPress={() => {
           haptic.light();
           setSkipped(true);
         }}
+        disabled={skipped}
         containerStyle={styles.skipTap}
         style={styles.skip}
         accessibilityRole="button"
-        accessibilityLabel="Skip to the plan"
+        accessibilityLabel={skipped ? 'Almost ready' : 'Skip to the plan'}
+        accessibilityState={{ disabled: skipped, busy: skipped }}
       >
         <Text variant="label" color={skyInk.soft}>
-          Skip
+          {skipped ? 'Almost ready…' : 'Skip'}
         </Text>
       </PressableScale>
     </View>

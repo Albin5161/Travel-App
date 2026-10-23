@@ -1,8 +1,8 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   useAnimatedProps,
@@ -84,6 +84,9 @@ const JOURNEY_TILT = 40;
 const REGENERATE_MS = 900;
 // Seeds tried before admitting the places only fit one way.
 const REGENERATE_TRIES = 6;
+// The tools wait this long after the plan comes into view: a second tap on Skip, on the screen
+// before, lands where Reshuffle sits on some heights, and shouldn't swap out the plan it opened.
+const TOOLS_SETTLE_MS = 500;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default function PlanScreen() {
@@ -233,6 +236,16 @@ export default function PlanScreen() {
     const t = setTimeout(() => setUndo(null), 5000);
     return () => clearTimeout(t);
   }, [undo]);
+  // Counted from each time the plan comes into view: opened from the questions, or back from Adjust.
+  const shownAt = useRef(0);
+  useFocusEffect(
+    useCallback(() => {
+      shownAt.current = Date.now();
+    }, []),
+  );
+  const settled = (fn: () => void) => () => {
+    if (Date.now() - shownAt.current >= TOOLS_SETTLE_MS) fn();
+  };
 
   if (!city || !plan || !today) return null;
 
@@ -450,13 +463,13 @@ export default function PlanScreen() {
           </Text>
 
           <View style={styles.tools}>
-            <Tool icon={editing ? 'check' : 'edit-2'} label={editing ? 'Done' : 'Edit'} on={editing} onPress={() => setEditing((e) => !e)} />
-            <Tool icon="refresh-cw" label={busy ? 'Shuffling…' : 'Reshuffle'} a11y="Reshuffle the plan" onPress={regenerate} />
+            <Tool icon={editing ? 'check' : 'edit-2'} label={editing ? 'Done' : 'Edit'} on={editing} onPress={settled(() => setEditing((e) => !e))} />
+            <Tool icon="refresh-cw" label={busy ? 'Shuffling…' : 'Reshuffle'} a11y="Reshuffle the plan" onPress={settled(regenerate)} />
             <Tool
               icon="sliders"
               label="Adjust"
               a11y="Change your answers"
-              onPress={() => router.push({ pathname: '/trip/[id]', params: { id, from: 'plan' } })}
+              onPress={settled(() => router.push({ pathname: '/trip/[id]', params: { id, from: 'plan' } }))}
             />
           </View>
           {failure ? (

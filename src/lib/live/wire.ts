@@ -28,6 +28,8 @@ type WireStop = {
   leg?: TripStop['legBefore'];
   pinned: boolean;
   suggested: boolean;
+  /** Moved by hand with the arrows (missing on plans saved before 30 Oct 2026). */
+  moved?: boolean;
   custom?: WireCustom;
 };
 
@@ -65,6 +67,7 @@ export function toWire(plan: TripPlan): WirePlan {
         leg: s.legBefore,
         pinned: s.pinned,
         suggested: s.suggested,
+        ...(s.moved ? { moved: true } : {}),
         custom:
           s.place.source.kind === 'custom'
             ? {
@@ -124,7 +127,7 @@ export function fromWire(wire: WirePlan): TripPlan {
       ...(d.sleep ? { sleep: d.sleep } : {}),
       stops: d.stops.flatMap((s, i) => {
         const place = placeOf(s, d.stops, i);
-        return place ? [{ place, startMinutes: s.start, legBefore: s.leg, pinned: s.pinned, suggested: s.suggested }] : [];
+        return place ? [{ place, startMinutes: s.start, legBefore: s.leg, pinned: s.pinned, suggested: s.suggested, ...(s.moved ? { moved: true } : {}) }] : [];
       }),
     })),
     left: wire.left.map((id) => getPlace(id)).filter((p): p is Place => !!p),

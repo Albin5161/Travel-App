@@ -224,6 +224,25 @@ test('a dinner place moved to the top does not push the day into the night', () 
   assert.ok(last.startMinutes + last.place.minutes <= 18 * 60, `the day ends at ${last.startMinutes + last.place.minutes}`);
 });
 
+test('a stop moved by hand is marked moved, so its line says so and not "better in the evening"', () => {
+  // Albin's Leh day on 29 Oct: Leh Market (best in the evening) moved up to the morning still read
+  // "Better in the evening", as if the planner had put it there. (why.ts reads `moved`; it loads the
+  // app's photos, so it can't run here.)
+  const day = [
+    P('Shanti Stupa', 'sight', 'morning', 60, 34.1736, 77.5747, '', 'Leh'),
+    P('Leh Palace', 'sight', 'afternoon', 60, 34.1652, 77.5854, '', 'Leh'),
+    P('Leh Market', 'experience', 'evening', 120, 34.1642, 77.5848, '', 'Leh'),
+  ];
+  let p = plan(day, { prefs: prefs({ days: 1 }) });
+  const market = find(p, 'Leh Market')!.place.id;
+  while (p.days[0].stops[0].place.id !== market) p = reorder(p, 0, market, -1);
+  assert.equal(p.days[0].stops[0].moved, true);
+  assert.ok(p.days[0].stops.slice(1).every((s) => !s.moved), 'only the stop that was moved');
+  // Put back by the planner (a stop added to the day orders it again), it's the planner's reason again.
+  p = addStop(p, 0, P('Hall of Fame', 'sight', 'afternoon', 45, 34.1500, 77.5700, '', 'Leh'), false);
+  assert.ok(stopsOf(p).every((s) => !s.moved));
+});
+
 test('editing still works: reorder, move, remove, lock and typed-in stops keep a timed plan', () => {
   let p = plan(kochi, { prefs: prefs({ days: 2 }) });
   const all = stopsOf(p).length;

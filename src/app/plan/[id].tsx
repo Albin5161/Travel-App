@@ -485,7 +485,7 @@ export default function PlanScreen() {
           ) : editing || firstVisit ? (
             // The how-to once, on the first plan; in Edit mode, every time, since that's when it's needed.
             <Text variant="label" color={skyInk.faint} style={styles.note}>
-              {editing ? 'Move stops with the arrows. Tap ⋯ to lock one in place, swap or remove it.' : 'Love a stop? Tap Edit to lock it. Reshuffle keeps locked stops and changes the rest.'}
+              {editing ? 'Move stops with the arrows. Tap ⋯ to lock, swap or remove one. Changes are kept as you go.' : 'Love a stop? Tap Edit to lock it. Reshuffle keeps locked stops and changes the rest.'}
             </Text>
           ) : null}
 
@@ -723,12 +723,19 @@ export default function PlanScreen() {
               </PressableScale>
             </Animated.View>
           ) : null}
-          <Button
-            trailingArrow
-            label={n === 1 ? 'Save this day' : `Save this ${n}-day plan`}
-            onPress={save}
-            disabled={plan.days.every((d) => d.stops.length === 0) || stamping || busy}
-          />
+          {/* While editing, the big button ends the edit: changes are kept as they're made, so there's
+              nothing to confirm, and "Save" mid-edit would leave edit mode behind the stamp. It sits
+              where the thumb already is, not only up at the top "Done". */}
+          {editing ? (
+            <Button label="Done editing" onPress={() => setEditing(false)} accessibilityHint="Your changes are already kept" />
+          ) : (
+            <Button
+              trailingArrow
+              label={n === 1 ? 'Save this day' : `Save this ${n}-day plan`}
+              onPress={save}
+              disabled={plan.days.every((d) => d.stops.length === 0) || stamping || busy}
+            />
+          )}
         </View>
       </Glass>
 

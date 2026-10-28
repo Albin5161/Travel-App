@@ -53,6 +53,8 @@ export interface TripStop {
   pinned: boolean;
   /** Not one the traveller saved: a local pick filling a gap. */
   suggested: boolean;
+  /** Put at this point in the day by the traveller with the arrows, not by the planner. */
+  moved?: boolean;
 }
 
 export interface TripDay {
@@ -176,7 +178,7 @@ export function formatRange(start: string, days: number) {
 
 // ── Timing ───────────────────────────────────────────────────────────────────────────────────────
 
-type Placed = { place: Place; pinned: boolean; suggested: boolean };
+type Placed = { place: Place; pinned: boolean; suggested: boolean; moved?: boolean };
 type Sleeps = { from: Night | null; to: Night | null };
 
 /** A day's map and clock: these places, the pace, the sun, and where the day sets out from and ends. */
@@ -191,13 +193,14 @@ function ctxOfDay(stops: Placed[], prefs: TripPrefs, date: string | null, sleeps
 /**
  * A day's stops in the order the planner would give them, weighing each place's good time against
  * the driving. Used when a stop is swapped in, added or moved here: the new place would otherwise
- * keep the old one's slot or go last, and a morning viewpoint lands at 2:45 PM.
+ * keep the old one's slot or go last, and a morning viewpoint lands at 2:45 PM. The order is the
+ * planner's again afterwards, so no stop counts as moved by hand.
  */
 function inBestOrder<T extends Placed>(plan: TripPlan, day: number, stops: T[]): T[] {
   if (stops.length < 2) return stops;
   const { ctx } = ctxOfDay(stops, plan.prefs, plan.days[day].date, sleepsOf(plan.nights, day, plan.days.length));
   const best = bestDays(ctx, stops.map((_, i) => i), false)[0];
-  return best ? best.order.map((i) => stops[i]) : stops;
+  return best ? best.order.map((i) => ({ ...stops[i], moved: false })) : stops;
 }
 
 /**
@@ -371,7 +374,7 @@ export function reorder(plan: TripPlan, day: number, placeId: string, by: -1 | 1
   const i = stops.findIndex((s) => s.place.id === placeId);
   const j = i + by;
   if (i < 0 || j < 0 || j >= stops.length) return plan;
-  [stops[i], stops[j]] = [stops[j], stops[i]];
+  [stops[i], stops[j]] = [stops[j], { ...stops[i], moved: true }];
   return retime({ ...plan, days: plan.days.map((d, k) => (k === day ? { ...d, stops } : d)) });
 }
 

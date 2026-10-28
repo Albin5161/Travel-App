@@ -158,7 +158,16 @@ export function stopWhy(plan: TripPlan, day: number, index: number): StopWhy | n
     if (s.startMinutes < 10 * 60 && index === 0) return why('Breakfast', 'Breakfast, to start the day.');
     return kindOf(p) === 'cafe' ? why('A break', 'A break between stops.') : null;
   }
-  // Away from its best part of the day: it fitted the rest of the day better here, or was moved by hand.
+  // Away from its best part of the day. Moved there by hand, it's the traveller's choice: saying
+  // "better in the evening" then argues with them, so the line owns the move instead.
+  if (RANK[p.bestTime] !== RANK[part] && s.moved) {
+    return why('Moved by you', `You moved it to the ${part}. Lock it from ⋯ to keep it here when you reshuffle.`);
+  }
+  // Pushed there by another stop moved by hand: that's what moved it, not the planner.
+  if (RANK[p.bestTime] !== RANK[part] && stops.some((x) => x.moved)) {
+    return why(`Better in the ${p.bestTime}`, `Best in the ${p.bestTime}; your changes to the day pushed it to the ${part}.`);
+  }
+  // Otherwise the planner put it there: it fitted the rest of the day better.
   if (RANK[p.bestTime] !== RANK[part]) return why(`Better in the ${p.bestTime}`, `Best in the ${p.bestTime}; it’s here to keep the day’s route short and without long waits.`);
   if (index === 0) {
     if (plan.prefs.stay && (s.legBefore?.minutes ?? 99) <= 15) return why('Near your stay', `First: close to ${plan.prefs.stay.name}.`);

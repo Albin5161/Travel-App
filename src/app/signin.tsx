@@ -1,6 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import * as Clipboard from 'expo-clipboard';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type TextStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -16,7 +16,7 @@ import { Wordmark } from '@/components/Wordmark';
 import { track } from '@/lib/analytics';
 import { suggestEmail } from '@/lib/emailTypos';
 import { haptic } from '@/lib/haptics';
-import { sendEmailCode, usedCode, verifyEmailCode } from '@/lib/live/account';
+import { sendEmailCode, skipSignIn, usedCode, verifyEmailCode } from '@/lib/live/account';
 import { fadeUp } from '@/lib/motion';
 import { useOffline } from '@/lib/online';
 import { skyDanger, skyFill, skyInk } from '@/theme/sky';
@@ -36,7 +36,9 @@ const codeIn = (text: string) => text.match(/(^|\D)(\d{6})(\D|$)/)?.[2] ?? (/^\d
  * Signing in with an email: the step after the intro, before the name, and asked of everyone
  * (Albin's choice for the testing group). An email, then the 6-digit code sent to it; no password.
  * Signed in, the phone's saved places are backed up to the account and come back on any other phone
- * (lib/live/account). The tabs send anyone here who isn't signed in yet.
+ * (lib/live/account). The tabs send anyone here who isn't signed in yet. "Skip for now" carries on
+ * without it (the places stay on this phone only); Profile opens it again with `?from=profile`,
+ * where the same button is "Not now" and signing in goes back there.
  *
  * Laid out as sign-ups usually are (Booking.com, Luma, Strava on Mobbin): the words and the field
  * at the top where the keyboard can't cover them, the button just above the keyboard, the code in
@@ -45,6 +47,8 @@ const codeIn = (text: string) => text.match(/(^|\D)(\d{6})(\D|$)/)?.[2] ?? (/^\d
 export default function SignIn() {
   const insets = useSafeAreaInsets();
   const offline = useOffline();
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  const fromProfile = from === 'profile';
   const [stage, setStage] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -113,6 +117,19 @@ export default function SignIn() {
     haptic.success();
     if (pasted.current === value) void Clipboard.setStringAsync('').catch(() => {});
     track('signed in', { with: 'email' });
+    if (fromProfile) router.back();
+    else router.replace('/');
+  };
+
+  // On with the anonymous account every phone has: everything works, only the backup waits.
+  const skip = () => {
+    haptic.light();
+    if (fromProfile) {
+      router.back();
+      return;
+    }
+    skipSignIn();
+    track('sign in skipped');
     router.replace('/');
   };
 
@@ -287,7 +304,24 @@ export default function SignIn() {
 
           <View style={styles.actions}>
             {onEmail ? (
-              <Button trailingArrow label="Continue" onPress={send} disabled={!email.trim()} />
+              <>
+                <Button trailingArrow label="Continue" onPress={send} disabled={!email.trim()} />
+                <PressableScale
+                  onPress={skip}
+                  containerStyle={styles.skipTap}
+                  style={styles.skip}
+                  accessibilityRole="button"
+                >
+                  <Text variant="bodyStrong" color={skyInk.soft}>
+                    {fromProfile ? 'Not now' : 'Skip for now'}
+                  </Text>
+                </PressableScale>
+                {fromProfile ? null : (
+                  <Text variant="label" color={skyInk.faint} style={styles.skipNote}>
+                    Your places stay on this phone only.
+                  </Text>
+                )}
+              </>
             ) : (
               <Button
                 trailingArrow
@@ -405,4 +439,8 @@ const styles = StyleSheet.create({
   // Right under the field it's about, as on the name step: 8 from it, not the body's 24.
   noteSlot: { minHeight: 20, marginTop: -16 },
   actions: { gap: 4 },
+  // Quiet, under the main button: a way on, not a second choice of the same weight.
+  skipTap: { alignSelf: 'center' },
+  skip: { minHeight: 44, minWidth: 88, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  skipNote: { textAlign: 'center', marginTop: -8 },
 });

@@ -7,10 +7,10 @@ import { ensureUser, getSupabase, liveEnabled } from '@/lib/live/client';
 import { canon, mergeTrips, parse, type SavedTrips } from '@/lib/live/backupMerge';
 import { deviceStorage } from '@/lib/live/storage';
 
-// Signing in, with an email and a 6-digit code (app/signin), asked of everyone. What it buys is a
-// backup: the saved places and plans this phone keeps (state/trips) are also kept with the account,
-// in the saved_collections table (supabase/api.sql, one row a person, only theirs), and come back on
-// a new phone or browser after signing in there.
+// Signing in, with an email and a 6-digit code (app/signin), asked of everyone, who may skip it.
+// What it buys is a backup: the saved places and plans this phone keeps (state/trips) are also
+// kept with the account, in the saved_collections table (supabase/api.sql, one row a person, only
+// theirs), and come back on a new phone or browser after signing in there.
 //
 // The anonymous account every phone already has is turned into the email one rather than replaced
 // (an email change), so the same person stays a member of the trips they share. When that email is
@@ -19,13 +19,22 @@ import { deviceStorage } from '@/lib/live/storage';
 
 export type Account = { email: string; name: string | null; avatar: string | null };
 type Status = 'idle' | 'syncing' | 'error';
-type Snapshot = { account: Account | null; status: Status; backedUpAt: number | null; error: string | null };
+type Snapshot = {
+  account: Account | null;
+  /** Signing in was skipped on this phone: the app works on the anonymous account, without a backup. */
+  skipped: boolean;
+  status: Status;
+  backedUpAt: number | null;
+  error: string | null;
+};
 
 /** Where the trips are saved on this phone (state/trips). The backup is a copy of exactly that. */
 const TRIPS_KEY = 'xplore.trips.v1';
 const NAME_KEY = 'xplore.name';
 /** Who is signed in, kept so the app knows at start without loading anything. */
 const ACCOUNT_KEY = 'xplore.account';
+/** Set when "Skip for now" was chosen, so the email isn't asked again; cleared on signing in. */
+const SKIPPED_KEY = 'xplore.signin.skipped';
 /** Codes this phone has already sent off: each works once, and a newer email replaces it anyway. */
 const USED_CODES_KEY = 'xplore.usedCodes';
 /** When a restore last restarted the app, so two phones' copies can never restart it in a loop. */
@@ -75,7 +84,7 @@ const saved = (() => {
     return null;
   }
 })();
-let snap: Snapshot = { account: saved, status: 'idle', backedUpAt: null, error: null };
+let snap: Snapshot = { account: saved, skipped: read(SKIPPED_KEY) === '1', status: 'idle', backedUpAt: null, error: null };
 const listeners = new Set<() => void>();
 const set = (next: Partial<Snapshot>) => {
   snap = { ...snap, ...next };
@@ -93,6 +102,16 @@ export function useAccount(): Snapshot {
   return useSyncExternalStore(subscribe, () => snap, () => snap);
 }
 
+/**
+ * "Skip for now" on the sign-in screen: the phone carries on with its anonymous account, which the
+ * API accepts, so reading videos, planning and shared trips all still work; only the backup waits.
+ * Profile offers signing in again (Backup).
+ */
+export function skipSignIn() {
+  write(SKIPPED_KEY, '1');
+  set({ skipped: true });
+}
+
 /** A real account (an email), as against the anonymous one every phone starts with. */
 const isPermanent = (user: User | null | undefined) => !!user && !user.is_anonymous && !!user.email;
 const accountOf = (user: User): Account => ({
@@ -106,7 +125,8 @@ async function signedIn(supabase: SupabaseClient, user: User | null) {
   if (!user || !isPermanent(user)) throw new Error('Not signed in');
   const account = accountOf(user);
   write(ACCOUNT_KEY, JSON.stringify(account));
-  set({ account, status: 'idle', error: null });
+  write(SKIPPED_KEY, null);
+  set({ account, skipped: false, status: 'idle', error: null });
   await restore(supabase, user.id);
 }
 

@@ -13,7 +13,7 @@ export default function TabsLayout() {
   // Held here so the geofences and the notification listeners live as long as the app does.
   useArrivalWatch();
   const { state } = useTrips();
-  const { account } = useAccount();
+  const { account, skipped } = useAccount();
 
   // Gated on the whole tab group, not just Home: restoring to /map or /profile, or following a
   // notification into a district, would otherwise walk straight past onboarding. Declarative, so
@@ -21,8 +21,9 @@ export default function TabsLayout() {
   if (!state.onboarded) return <Redirect href="/onboarding" />;
   // Then an email, asked of everyone (signin): it's how their places are backed up. Only where the
   // backend is set up; without it there's nothing to sign in to. It comes before the name, as in
-  // most sign-ups: someone back on a new phone gets their name with their backup.
-  if (liveEnabled && !account) return <Redirect href="/signin" />;
+  // most sign-ups: someone back on a new phone gets their name with their backup. "Skip for now"
+  // isn't asked again; Profile offers it from then on.
+  if (liveEnabled && !account && !skipped) return <Redirect href="/signin" />;
   // The name, asked once and alone when the account has none (someone new, or who skipped it before
   // it was required).
   if (!state.myName) return <Redirect href={{ pathname: '/onboarding', params: { step: 'name' } }} />;

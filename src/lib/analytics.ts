@@ -83,6 +83,7 @@ export type AnalyticsEvent =
   | 'paste failed'
   | 'email code sent'
   | 'signed in'
+  | 'sign in skipped'
   | 'app crashed';
 
 export function track(event: AnalyticsEvent, properties?: Record<string, string | number | boolean>) {

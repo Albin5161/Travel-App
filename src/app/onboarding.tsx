@@ -78,8 +78,8 @@ export default function Onboarding() {
   const { state, dispatch } = useTrips();
   const { step: asked, then, again } = useLocalSearchParams<{ step?: string; then?: string; again?: string }>();
   const replay = again === '1';
-  const { account } = useAccount();
-  const emailNext = liveEnabled && !account && !replay;
+  const { account, skipped: emailSkipped } = useAccount();
+  const emailNext = liveEnabled && !account && !emailSkipped && !replay;
   const toEmail = () => {
     dispatch({ type: 'finishOnboarding' });
     track('intro finished', { skipped: skipped.current });

@@ -372,8 +372,19 @@ function BackupSection() {
   const { account, status, backedUpAt, error } = useAccount();
   const [confirming, setConfirming] = useState(false);
   if (!liveEnabled) return null;
-  // Everyone past the tabs has signed in with their email (app/signin), so there's always an account.
-  if (!account) return null;
+  // Past the tabs without an account means signing in was skipped: the way back to it.
+  if (!account) {
+    return (
+      <Section title="Backup" footer="Your places and plans are only on this phone. Sign in with your email to keep them safe if you change phone.">
+        <Row
+          icon="cloud"
+          label="Back up your places"
+          detail="With a 6-digit code, no password"
+          onPress={() => router.push({ pathname: '/signin', params: { from: 'profile' } })}
+        />
+      </Section>
+    );
+  }
   const when = status === 'syncing' ? 'Backing up…' : backedUpAt ? `Backed up ${ago(backedUpAt)}` : 'Backed up';
   return (
     <Section title="Backup" footer={error ?? 'Signing out keeps everything on this phone, and asks for your email again. Your backup stays with your account.'} footerError={!!error}>

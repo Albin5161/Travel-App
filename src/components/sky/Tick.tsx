@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -25,7 +25,7 @@ export function Tick({ on }: { on: boolean }) {
   return (
     <View style={styles.ring}>
       <Animated.View style={[styles.disc, disc]}>
-        <Feather name="check" size={14} color={skyOnInk} />
+        <Icon name="check" size={14} color={skyOnInk} />
       </Animated.View>
     </View>
   );

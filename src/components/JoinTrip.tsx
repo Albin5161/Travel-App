@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
@@ -106,7 +106,7 @@ export function JoinTrip({ linkCode }: { linkCode?: string }) {
 
         {!liveEnabled ? (
           <Animated.View entering={ENTER[1]} style={styles.offline}>
-            <Feather name="cloud-off" size={16} color={skyInk.soft} />
+            <Icon name="cloud-off" size={16} color={skyInk.soft} />
             <Text variant="label" ink="soft" tabular style={styles.flex}>
               Joining needs Xplore&rsquo;s server, and this build isn&rsquo;t connected to one yet.
             </Text>

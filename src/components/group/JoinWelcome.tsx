@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon, type IconName } from '@/components/Icon';
 import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
@@ -17,7 +17,7 @@ type Props = {
   onDismiss: () => void;
 };
 
-const STEPS: { icon: keyof typeof Feather.glyphMap; title: string; body: (owner: string) => string }[] = [
+const STEPS: { icon: IconName; title: string; body: (owner: string) => string }[] = [
   { icon: 'check-circle', title: 'Vote on each stop', body: () => 'Keep it, swap it for something nearby, or drop it. Add a note to say why.' },
   { icon: 'plus-circle', title: 'Suggest your own', body: () => 'Add a stop you’d like: lunch at a café, a viewpoint, a place from your own reels.' },
   { icon: 'lock', title: 'Then it’s settled', body: (owner) => `When everyone has voted, ${owner} locks in the plan you agreed on.` },
@@ -41,7 +41,7 @@ export function JoinWelcome({ ownerName, cityName, stops, days, onStart, onDismi
         {STEPS.map((s) => (
           <View key={s.title} style={styles.step}>
             <View style={styles.icon}>
-              <Feather name={s.icon} size={18} color={skyInk.strong} />
+              <Icon name={s.icon} size={18} color={skyInk.strong} />
             </View>
             <View style={styles.stepText}>
               <Text variant="bodyStrong">{s.title}</Text>

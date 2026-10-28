@@ -1,7 +1,7 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon, type IconName } from '@/components/Icon';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { Children, isValidElement, useState, type ComponentProps, type ReactNode } from 'react';
+import { Children, isValidElement, useState, type ReactNode } from 'react';
 import { Linking, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,7 +25,6 @@ import { useSavedSpots, useTrips } from '@/state/trips';
 import { skyOnInk, skyFill, skyInk } from '@/theme/sky';
 import { fonts, fontSize, radii, space, textSize } from '@/theme/tokens';
 
-type IconName = ComponentProps<typeof Feather>['name'];
 
 const ENTER = [0, 1, 2, 3, 4, 5].map((i) => fadeUp(60 + i * 50));
 const GUTTER = space.screen;
@@ -334,7 +333,7 @@ function Row({
   const body = (
     <View style={[styles.row, dimmed && styles.dimmed]}>
       <View style={styles.icon}>
-        <Feather name={icon} size={16} color={skyInk.strong} />
+        <Icon name={icon} size={16} color={skyInk.strong} />
       </View>
       <View style={styles.rowText}>
         <Text variant="bodyStrong" numberOfLines={1}>
@@ -352,7 +351,7 @@ function Row({
         </Text>
       ) : null}
       {children}
-      {onPress ? <Feather name={chevron} size={16} color={skyInk.faint} /> : null}
+      {onPress ? <Icon name={chevron} size={16} color={skyInk.faint} /> : null}
     </View>
   );
   return onPress ? (
@@ -435,7 +434,7 @@ function Choice({ label, detail, on, onPress }: { label: string; detail: string;
         </View>
         {on ? (
           <View style={styles.check}>
-            <Feather name="check" size={12} color={skyOnInk} />
+            <Icon name="check" size={12} color={skyOnInk} />
           </View>
         ) : null}
       </View>
@@ -471,7 +470,7 @@ function PermissionRow({
     <Row icon={icon} label={label} detail={granted ? undefined : why} dimmed={dimmed}>
       {granted ? (
         <View style={styles.granted}>
-          <Feather name="check" size={13} color={skyInk.soft} />
+          <Icon name="check" size={13} color={skyInk.soft} />
           <Text variant="label" ink="soft" tabular>Allowed</Text>
         </View>
       ) : (

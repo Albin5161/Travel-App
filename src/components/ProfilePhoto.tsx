@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 
@@ -25,7 +25,7 @@ export function ProfilePhoto({ size = 64, editable = true }: { size?: number; ed
       {initial ? (
         <Text style={[styles.initial, { fontSize: size * 0.42, lineHeight: size * 0.52 }]}>{initial}</Text>
       ) : (
-        <Feather name="user" size={size * 0.42} color={light.inkFaint} />
+        <Icon name="user" size={size * 0.42} color={light.inkFaint} />
       )}
     </View>
   );
@@ -44,7 +44,7 @@ export function ProfilePhoto({ size = 64, editable = true }: { size?: number; ed
     >
       {face}
       <View style={[styles.badge, { right: size * 0.02, bottom: size * 0.02 }]}>
-        <Feather name="camera" size={12} color={light.ctaInk} />
+        <Icon name="camera" size={12} color={light.ctaInk} />
       </View>
     </PressableScale>
   );

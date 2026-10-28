@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon, type IconName } from '@/components/Icon';
 import { BlurView } from 'expo-blur';
 import type { ReactNode } from 'react';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
@@ -64,10 +64,10 @@ export function Glass({ tint: asked, radius = radii.glass, blur = false, style, 
 }
 
 /** A card's caption: small caps and an icon, over a hairline, as a weather app heads its panels. */
-export function GlassLabel({ icon, children }: { icon: React.ComponentProps<typeof Feather>['name']; children: string }) {
+export function GlassLabel({ icon, children }: { icon: IconName; children: string }) {
   return (
     <View style={styles.label}>
-      <Feather name={icon} size={12} color={skyInk.faint} />
+      <Icon name={icon} size={12} color={skyInk.faint} />
       <Text variant="label" ink="faint" color={skyInk.faint}>
         {children}
       </Text>

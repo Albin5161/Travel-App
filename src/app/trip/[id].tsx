@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
@@ -482,7 +482,7 @@ function StaySearch({ cityName, near, onPick }: { cityName: string; near: LatLng
           accessibilityRole="button"
           accessibilityLabel={`${s.name}, ${s.where}`}
         >
-          <Feather name="map-pin" size={15} color={skyInk.soft} />
+          <Icon name="map-pin" size={15} color={skyInk.soft} />
           <View style={styles.optionText}>
             <Text variant="bodyStrong" numberOfLines={1}>
               {s.name}
@@ -688,7 +688,7 @@ function MonthStep({ icon, label, disabled, onPress }: { icon: 'chevron-left' | 
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
     >
-      <Feather name={icon} size={20} color={skyInk.strong} />
+      <Icon name={icon} size={20} color={skyInk.strong} />
     </PressableScale>
   );
 }

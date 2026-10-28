@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 
@@ -109,7 +109,7 @@ export function CityHeroContent({
             accessibilityLabel={stats.planned ? 'See your day' : 'Start planning'}
           >
             <Text style={styles.ctaLabel}>{stats.planned ? 'See your day' : 'Start planning'}</Text>
-            <Feather name="arrow-right" size={22} color="#FFFFFF" style={styles.ctaArrow} />
+            <Icon name="arrow-right" size={22} color="#FFFFFF" style={styles.ctaArrow} />
           </PressableScale>
         </View>
 

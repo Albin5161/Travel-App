@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -20,7 +20,7 @@ export function UnsentNote({ cityId }: { cityId: string }) {
   if (!count) return null;
   return (
     <Glass style={styles.note}>
-      <Feather name="wifi-off" size={18} color={skyInk.soft} />
+      <Icon name="wifi-off" size={18} color={skyInk.soft} />
       <View style={styles.words}>
         <Text variant="label">{count === 1 ? '1 change not sent yet' : `${count} changes not sent yet`}</Text>
         <Text variant="label" ink="soft" tabular>Saved on this phone. The others see them once you’re back online.</Text>

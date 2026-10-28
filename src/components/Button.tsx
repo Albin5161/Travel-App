@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTone } from '@/theme/tone';
@@ -69,7 +69,7 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
         >
           {text}
         </Text>
-        {skyArrow ? <Feather name="arrow-right" size={22} color={skyOnCta} style={styles.arrow} /> : null}
+        {skyArrow ? <Icon name="arrow-right" size={22} color={skyOnCta} style={styles.arrow} /> : null}
       </PressableScale>
     </View>
   );

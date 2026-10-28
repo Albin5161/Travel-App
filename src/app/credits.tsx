@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -56,7 +56,7 @@ export default function Credits() {
                 <Text variant="label" style={styles.link}>
                   View on Wikimedia Commons
                 </Text>
-                <Feather name="arrow-up-right" size={12} color={skyInk.strong} />
+                <Icon name="arrow-up-right" size={12} color={skyInk.strong} />
               </Pressable>
             </View>
           </View>

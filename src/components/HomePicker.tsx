@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/PressableScale';
@@ -52,7 +52,7 @@ export function HomePicker({ visible, onClose }: { visible: boolean; onClose: ()
                 </View>
                 {on ? (
                   <View style={styles.check}>
-                    <Feather name="check" size={12} color={skyOnInk} />
+                    <Icon name="check" size={12} color={skyOnInk} />
                   </View>
                 ) : null}
               </View>

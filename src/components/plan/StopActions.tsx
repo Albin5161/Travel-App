@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon, type IconName } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -112,7 +112,7 @@ export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap
               </View>
               {candidates.length >= SEARCH_FROM ? (
                 <View style={styles.search}>
-                  <Feather name="search" size={16} color={skyInk.soft} />
+                  <Icon name="search" size={16} color={skyInk.soft} />
                   <TextInput
                     value={query}
                     onChangeText={setQuery}
@@ -126,7 +126,7 @@ export function StopActions({ stop, days, day, candidates, onPin, onMove, onSwap
                   />
                   {query ? (
                     <Pressable onPress={() => setQuery('')} style={dims(styles.clear)} accessibilityRole="button" accessibilityLabel="Clear search">
-                      <Feather name="x" size={14} color={skyInk.soft} />
+                      <Icon name="x" size={14} color={skyInk.soft} />
                     </Pressable>
                   ) : null}
                 </View>
@@ -200,7 +200,7 @@ function Action({
   danger,
   more,
 }: {
-  icon: React.ComponentProps<typeof Feather>['name'];
+  icon: IconName;
   label: string;
   detail?: string;
   onPress: () => void;
@@ -211,7 +211,7 @@ function Action({
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.action, pressed && styles.pressed]} accessibilityRole="button">
       <View style={styles.actionIcon}>
-        <Feather name={icon} size={16} color={danger ? skySignal.down : skyInk.strong} />
+        <Icon name={icon} size={16} color={danger ? skySignal.down : skyInk.strong} />
       </View>
       <View style={styles.headText}>
         <Text variant="bodyStrong" color={danger ? skySignal.down : skyInk.strong}>
@@ -223,7 +223,7 @@ function Action({
           </Text>
         ) : null}
       </View>
-      {more ? <Feather name="chevron-right" size={18} color={skyInk.soft} /> : null}
+      {more ? <Icon name="chevron-right" size={18} color={skyInk.soft} /> : null}
     </Pressable>
   );
 }

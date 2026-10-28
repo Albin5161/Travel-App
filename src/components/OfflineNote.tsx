@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
@@ -19,7 +19,7 @@ export function OfflineNote() {
   return (
     <Animated.View entering={FADE_IN} exiting={FADE_OUT} style={styles.wrap} pointerEvents="none" accessibilityRole="alert" accessibilityLiveRegion="polite">
       <Glass blur radius={18} style={styles.note}>
-        <Feather name="wifi-off" size={14} color={skyInk.strong} />
+        <Icon name="wifi-off" size={14} color={skyInk.strong} />
         <View style={styles.words}>
           <Text variant="label" numberOfLines={1}>
             You’re offline

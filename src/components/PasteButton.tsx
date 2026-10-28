@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import * as Clipboard from 'expo-clipboard';
 import { Platform, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
@@ -68,7 +68,7 @@ export function PasteButton({ onText, onUnreadable, shape = 'pill', quiet = fals
       accessibilityLabel="Paste"
     >
       {circle ? (
-        <Feather name="clipboard" size={size < CIRCLE ? 16 : 18} color={quiet ? quietFg : fg} />
+        <Icon name="clipboard" size={size < CIRCLE ? 16 : 18} color={quiet ? quietFg : fg} />
       ) : (
         <Text variant="label" color={quiet ? quietFg : fg}>
           Paste

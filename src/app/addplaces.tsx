@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -160,7 +160,7 @@ export default function AddPlaces() {
                   ) : null}
                 </View>
                 <View style={styles.watch}>
-                  <Feather name="play" size={14} color={skyOnInk} />
+                  <Icon name="play" size={14} color={skyOnInk} />
                   <Text variant="label" color={skyOnInk}>
                     {instagram ? 'Watch on Instagram' : 'Watch on YouTube'}
                   </Text>

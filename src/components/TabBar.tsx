@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon, type IconName } from '@/components/Icon';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -17,7 +17,6 @@ import { useHomeSky } from '@/state/sky';
 import { SKY, skyInk } from '@/theme/sky';
 import { fonts, fontSize, light, shadows } from '@/theme/tokens';
 
-type IconName = React.ComponentProps<typeof Feather>['name'];
 
 /**
  * Only the part of the navigator's tab-bar props this bar actually reads. Typed here rather than
@@ -91,7 +90,8 @@ function Tab({ name, focused, sky, onPress }: { name: string; focused: boolean; 
       accessibilityLabel={LABELS[name] ?? name}
     >
       <Animated.View style={iconStyle}>
-        <Feather name={ICONS[name] ?? 'circle'} size={20} color={on} />
+        {/* The tab you're on is filled; the others are outlines. */}
+        <Icon name={ICONS[name] ?? 'circle'} size={22} color={on} weight={focused ? 'fill' : 'regular'} />
       </Animated.View>
       <Animated.Text style={[styles.label, { color: on }, labelStyle]}>
         {LABELS[name] ?? name}

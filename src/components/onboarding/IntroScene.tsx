@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image, type ImageProps } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useState } from 'react';
@@ -418,7 +418,7 @@ function SavedCard({
         <LinearGradient colors={['rgba(8,14,30,0)', 'rgba(8,14,30,0.78)']} style={styles.cardShade} pointerEvents="none" />
         {k.video ? (
           <View style={styles.play}>
-            <Feather name="play" size={16} color="#FFFFFF" />
+            <Icon name="play" size={16} color="#FFFFFF" />
           </View>
         ) : (
           <View style={styles.dots}>

@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -63,7 +63,7 @@ export default function TripsScreen() {
           </Text>
         </View>
         <PressableScale onPress={() => router.push('/join')} style={styles.joinPill} accessibilityRole="button" accessibilityLabel="Join a trip with a code">
-          <Feather name="user-plus" size={14} color={skyInk.strong} />
+          <Icon name="user-plus" size={14} color={skyInk.strong} />
           <Text variant="label">Join</Text>
         </PressableScale>
       </View>
@@ -71,7 +71,7 @@ export default function TripsScreen() {
       {trips.length === 0 ? (
         <View style={styles.empty}>
           <View style={styles.emptyIcon}>
-            <Feather name="compass" size={26} color={skyInk.soft} />
+            <Icon name="compass" size={26} color={skyInk.soft} />
           </View>
           <Text variant="title">No trips yet</Text>
           <Text variant="body" style={styles.center}>
@@ -196,7 +196,7 @@ function StatusChip({ status }: { status: Status }) {
   }[status.tone];
   return (
     <View style={[styles.chip, { backgroundColor: tone.bg }]}>
-      {status.label === 'Locked in' ? <Feather name="check" size={12} color={tone.ink} /> : null}
+      {status.label === 'Locked in' ? <Icon name="check" size={12} color={tone.ink} /> : null}
       <Text style={[styles.chipText, { color: tone.ink }]}>{status.label}</Text>
     </View>
   );

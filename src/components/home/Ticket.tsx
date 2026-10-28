@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image, type ImageProps } from 'expo-image';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -54,7 +54,7 @@ export function Ticket({ photo, onPress, accessibilityLabel, children, stub, onD
         </PressableScale>
         {onDismiss ? (
           <Pressable onPress={onDismiss} style={dims(styles.dismiss)} accessibilityRole="button" accessibilityLabel={dismissLabel}>
-            <Feather name="x" size={14} color={light.inkSoft} />
+            <Icon name="x" size={14} color={light.inkSoft} />
           </Pressable>
         ) : null}
       </View>

@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
@@ -97,7 +97,7 @@ export function FromThisToThis({ active, width, height }: { active: boolean; wid
         <Animated.View style={[StyleSheet.absoluteFill, mapFloat]}>
           <MapArt w={mapW} h={mapH} route={route} />
           <View style={styles.place}>
-            <Feather name="map-pin" size={10} color={INK} />
+            <Icon name="map-pin" size={10} color={INK} />
             <Text style={styles.placeText}>GOKARNA</Text>
           </View>
           {STOPS.map((p, i) => (
@@ -137,7 +137,7 @@ export function FromThisToThis({ active, width, height }: { active: boolean; wid
       {/* What came of it, on a pill across both cards. */}
       <View style={[styles.result, { bottom: H * 0.02, right: W * 0.02 }]}>
         <View style={styles.resultTick}>
-          <Feather name="check" size={11} color="#FFFFFF" />
+          <Icon name="check" size={11} color="#FFFFFF" />
         </View>
         <Text style={styles.resultStrong}>3 places found</Text>
         <Text style={styles.resultSoft}> · Day 1 planned</Text>

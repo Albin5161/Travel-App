@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -168,7 +168,7 @@ export default function SpotsMap() {
         </Text>
         {where.at ? (
           <View style={styles.wherePill}>
-            <Feather
+            <Icon
               name={where.source === 'device' ? 'navigation' : 'home'}
               size={12}
               color={skyInk.soft}
@@ -179,9 +179,10 @@ export default function SpotsMap() {
           </View>
         ) : (
           // No home and no position: nothing to measure from, so ask rather than guess.
-          <PressableScale onPress={() => setPickingHome(true)} style={styles.setHome} accessibilityRole="button" accessibilityLabel="Set your home">
-            <View style={styles.wherePill}>
-              <Feather name="home" size={12} color={skyInk.strong} />
+          <PressableScale onPress={() => setPickingHome(true)} containerStyle={styles.setHome} accessibilityRole="button" accessibilityLabel="Set your home">
+            {/* The tap area already holds it to 55% of the row: the pill takes all of that. */}
+            <View style={[styles.wherePill, styles.wherePillInTap]}>
+              <Icon name="home" size={12} color={skyInk.strong} />
               <Text variant="label" ink="soft" tabular color={skyInk.strong} numberOfLines={1}>
                 {where.label}
               </Text>
@@ -241,7 +242,7 @@ export default function SpotsMap() {
                   accessibilityLabel="Search your saved places"
                 >
                   <View style={styles.searchChip}>
-                    <Feather name="search" size={15} color={skyInk.strong} />
+                    <Icon name="search" size={15} color={skyInk.strong} />
                   </View>
                 </PressableScale>
               }
@@ -324,7 +325,7 @@ function Fold({
             <Text variant="label" ink="soft" tabular>{detail}</Text>
           </View>
           <Animated.View style={[fold.chevron, open && fold.chevronOpen]}>
-            <Feather name="chevron-down" size={18} color={skyInk.soft} />
+            <Icon name="chevron-down" size={18} color={skyInk.soft} />
           </Animated.View>
         </PressableScale>
         {action}
@@ -502,7 +503,7 @@ function AwayScope({
                 accessibilityRole="button"
                 accessibilityLabel={`Open the ${getCity(cityId)?.name ?? g.name} map`}
               >
-                <Feather name="map" size={15} color={skyInk.strong} />
+                <Icon name="map" size={15} color={skyInk.strong} />
               </PressableScale>
             }
           >
@@ -581,6 +582,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: skyInk.rim,
   },
+  wherePillInTap: { maxWidth: '100%' },
   panel: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   panelGlass: {
     flex: 1,

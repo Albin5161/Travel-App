@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { useRef, useState } from 'react';
 import { Keyboard, Platform, ScrollView, TextInput, View, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { css, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
@@ -157,7 +157,7 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
         accessibilityRole="button"
         accessibilityLabel={links.length > 1 ? `Go: find the places in these ${links.length} videos` : 'Go: find the places in this video'}
       >
-        <Feather name="arrow-right" size={20} color={light.ctaInk} />
+        <Icon name="arrow-right" size={20} color={light.ctaInk} />
       </PressableScale>
     </Animated.View>
   ) : (
@@ -190,7 +190,7 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
                 />
               </Animated.View>
             ) : (
-              <Feather name="link" size={16} color={ink.faint} />
+              <Icon name="link" size={16} color={ink.faint} />
             )}
           </View>
           <TextInput
@@ -228,7 +228,7 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
                   Video {i + 1}
                 </Text>
                 <PressableScale onPress={() => remove(url)} hitSlop={10} style={styles.chipClose} accessibilityRole="button" accessibilityLabel={`Remove video ${i + 1}`}>
-                  <Feather name="x" size={14} color={ink.soft} />
+                  <Icon name="x" size={14} color={ink.soft} />
                 </PressableScale>
               </Animated.View>
             ))}

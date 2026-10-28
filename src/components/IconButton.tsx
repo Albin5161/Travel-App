@@ -1,14 +1,13 @@
-import Feather from '@expo/vector-icons/Feather';
-import type { ComponentProps } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
+import { Icon, type IconName } from '@/components/Icon';
 import { PressableScale } from '@/components/PressableScale';
 import { skyFill, skyInk } from '@/theme/sky';
 import { useTone } from '@/theme/tone';
 import { light, shadows } from '@/theme/tokens';
 
 type Props = {
-  icon: ComponentProps<typeof Feather>['name'];
+  icon: IconName;
   onPress: () => void;
   accessibilityLabel: string;
   style?: StyleProp<ViewStyle>;
@@ -34,7 +33,7 @@ export function IconButton({ icon, onPress, accessibilityLabel, style }: Props) 
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
     >
-      <Feather name={icon} size={icon === 'chevron-left' ? 22 : 18} color={sky ? skyInk.strong : light.ink} />
+      <Icon name={icon} size={icon === 'chevron-left' ? 22 : 18} color={sky ? skyInk.strong : light.ink} />
     </PressableScale>
   );
 }

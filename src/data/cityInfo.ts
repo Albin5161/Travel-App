@@ -1,12 +1,8 @@
 // Canned Plan-mode data. SAMPLE DATA for the demo: shaped like what Google Places (ratings, reviews)
 // and our own estimates (cost, safety facts) would return, so a real service can replace it.
 
-import type Feather from '@expo/vector-icons/Feather';
-import type { ComponentProps } from 'react';
-
+import type { IconName } from '@/components/Icon';
 import type { SafetyIconName } from '@/components/SafetyIcon';
-
-type FeatherName = ComponentProps<typeof Feather>['name'];
 
 export interface CostLine {
   label: string;
@@ -15,8 +11,8 @@ export interface CostLine {
 }
 
 export interface SafetyFact {
-  /** One of our own safety icons where one fits, otherwise a Feather icon. */
-  icon: SafetyIconName | FeatherName;
+  /** One of our own safety icons where one fits, otherwise one of the app's icons (components/Icon). */
+  icon: SafetyIconName | IconName;
   title: string;
   detail: string;
 }

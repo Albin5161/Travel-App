@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -57,7 +57,7 @@ export function RecapCard() {
           accessibilityRole="button"
           accessibilityLabel={`Don’t ask about ${city.name}`}
         >
-          <Feather name="x" size={14} color={skyInk.faint} />
+          <Icon name="x" size={14} color={skyInk.faint} />
         </Pressable>
       </Glass>
     </Animated.View>

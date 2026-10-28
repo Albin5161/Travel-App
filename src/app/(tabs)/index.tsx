@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import * as Clipboard from 'expo-clipboard';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -360,7 +360,7 @@ function SearchButton() {
       accessibilityRole="button"
       accessibilityLabel="Search your saved places"
     >
-      <Feather name="search" size={16} color={skyInk.strong} />
+      <Icon name="search" size={16} color={skyInk.strong} />
     </PressableScale>
   );
 }
@@ -393,7 +393,7 @@ function HereChip({ maxWidth }: { maxWidth: number }) {
       accessibilityHint={here.status === 'unknown' ? 'Asks to use your location. It stays on your phone.' : undefined}
     >
       <View style={styles.herePill}>
-        <Feather name="map-pin" size={13} color={quiet ? skyInk.faint : skyInk.strong} />
+        <Icon name="map-pin" size={13} color={quiet ? skyInk.faint : skyInk.strong} />
         <Text variant="label" color={quiet ? skyInk.faint : skyInk.strong} numberOfLines={1} style={styles.hereText}>
           {label}
         </Text>

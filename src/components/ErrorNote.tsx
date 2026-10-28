@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Text } from '@/components/Text';
@@ -21,7 +21,7 @@ export function ErrorNote({ children, style }: { children: string; style?: Style
   const icon = onPaper ? red[700] : red[400];
   return (
     <View style={[styles.note, style]} accessibilityRole="alert" accessibilityLiveRegion="polite">
-      <Feather name="alert-circle" size={15} color={icon} style={styles.icon} />
+      <Icon name="alert-circle" size={15} color={icon} style={styles.icon} />
       <Text variant="label" color={ink} style={[styles.text, !onPaper && styles.onSky]}>
         {children}
       </Text>

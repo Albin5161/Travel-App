@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon, type IconName } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -512,7 +512,7 @@ export default function PlanScreen() {
               accessibilityRole="button"
               accessibilityLabel={`Sleeping away: ${awayNights.join(', ')}. Stay in ${prefs.stay?.name ?? 'one place'} every night instead`}
             >
-              <Feather name="moon" size={14} color={skyInk.soft} />
+              <Icon name="moon" size={14} color={skyInk.soft} />
               <Text variant="label" color={skyInk.soft} style={styles.thinText}>
                 {`Sleeping away: ${awayNights.join(', ')}. `}
                 <Text variant="label" style={styles.thinLink}>
@@ -525,7 +525,7 @@ export default function PlanScreen() {
 
           {emptyDays > 0 && n > 1 ? (
             <View style={styles.thin}>
-              <Feather name="info" size={14} color={skyInk.soft} />
+              <Icon name="info" size={14} color={skyInk.soft} />
               <Text variant="label" color={skyInk.soft} style={styles.thinText}>
                 {`Your ${placed} ${placed === 1 ? 'place fills' : 'places fill'} ${n - emptyDays} of ${n} days. Save more places here, or `}
                 <Text variant="label" style={styles.thinLink} onPress={() => router.push({ pathname: '/trip/[id]', params: { id, from: 'plan' } })}>
@@ -627,7 +627,7 @@ export default function PlanScreen() {
               accessibilityRole="button"
               accessibilityLabel="Add your own stop"
             >
-              <Feather name="plus" size={16} color={skyInk.strong} />
+              <Icon name="plus" size={16} color={skyInk.strong} />
               <Text variant="label">Add your own stop</Text>
             </PressableScale>
 
@@ -780,7 +780,7 @@ function Tool({
   on,
   onPress,
 }: {
-  icon: React.ComponentProps<typeof Feather>['name'];
+  icon: IconName;
   label: string;
   a11y?: string;
   on?: boolean;
@@ -789,7 +789,7 @@ function Tool({
   return (
     <PressableScale onPress={onPress} containerStyle={styles.toolSlot} accessibilityRole="button" accessibilityLabel={a11y ?? label}>
       <View style={[styles.tool, on && styles.toolOn]}>
-        <Feather name={icon} size={13} color={skyInk.strong} />
+        <Icon name={icon} size={13} color={skyInk.strong} />
         <Text variant="label" color={skyInk.strong} numberOfLines={1}>
           {label}
         </Text>
@@ -894,7 +894,7 @@ function Leg({
       <View style={styles.legLine}>
         <Animated.View style={[styles.legLineOn, travelled]} />
       </View>
-      <Feather name={leg.mode === 'walk' ? 'navigation' : 'truck'} size={12} color={skyInk.faint} />
+      <Icon name={leg.mode === 'walk' ? 'walk' : 'car'} size={14} color={skyInk.faint} />
       <Text variant="label" ink="soft" tabular>{label}</Text>
     </View>
   );
@@ -923,18 +923,18 @@ function WhyCard({ reasons }: { reasons: Reason[] }) {
       accessibilityState={{ expanded: open }}
     >
       <View style={styles.whyHead}>
-        <Feather name="compass" size={13} color={skyInk.soft} />
+        <Icon name="compass" size={13} color={skyInk.soft} />
         <Text variant="label" ink="faint" color={skyInk.soft} style={styles.whyTitle}>
           Why this day works
         </Text>
         <Animated.View style={turn}>
-          <Feather name="chevron-down" size={18} color={skyInk.strong} />
+          <Icon name="chevron-down" size={18} color={skyInk.strong} />
         </Animated.View>
       </View>
       {open ? (
         reasons.map((r) => (
           <Animated.View key={r.lead} entering={FADE_IN} style={styles.whyRow}>
-            <Feather name="check" size={13} color={skyInk.soft} style={styles.whyTick} />
+            <Icon name="check" size={13} color={skyInk.soft} style={styles.whyTick} />
             <Text variant="label" color={skyInk.soft} style={styles.whyText}>
               <Text variant="label">{r.lead}. </Text>
               {r.text}
@@ -1031,7 +1031,7 @@ function StopRow({
         )}
         <View style={styles.stopText}>
           <View style={styles.nameRow}>
-            {stop.pinned ? <Feather name="lock" size={12} color={skyInk.soft} accessibilityLabel="Locked" /> : null}
+            {stop.pinned ? <Icon name="lock" size={12} color={skyInk.soft} accessibilityLabel="Locked" /> : null}
             <Text variant="bodyStrong" numberOfLines={editing ? 2 : 1} style={styles.name}>
               {stop.place.name}
             </Text>
@@ -1071,7 +1071,7 @@ function StopRow({
             accessibilityLabel={`Why ${stop.place.name} is here`}
             accessibilityState={{ expanded: open }}
           >
-            <Feather name={open ? 'x' : 'info'} size={16} color={open ? skyInk.strong : skyInk.faint} />
+            <Icon name={open ? 'x' : 'info'} size={16} color={open ? skyInk.strong : skyInk.faint} />
           </PressableScale>
         ) : null}
       </View>
@@ -1093,7 +1093,7 @@ function SmallButton({
   disabled,
   onPress,
 }: {
-  icon: React.ComponentProps<typeof Feather>['name'];
+  icon: IconName;
   label: string;
   on?: boolean;
   disabled?: boolean;
@@ -1110,7 +1110,7 @@ function SmallButton({
       accessibilityLabel={label}
       accessibilityState={{ selected: on, disabled }}
     >
-      <Feather name={icon} size={15} color={on ? skyOnInk : skyInk.strong} />
+      <Icon name={icon} size={15} color={on ? skyOnInk : skyInk.strong} />
     </PressableScale>
   );
 }

@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { router } from 'expo-router';
 import Animated from 'react-native-reanimated';
 
@@ -106,7 +106,7 @@ export function ContinueCard() {
         accessibilityLabel={`Carry on with ${named ? name : 'your video'}. ${step}`}
         onDismiss={draft.stop}
         dismissLabel={`Stop planning ${named ? name : 'your video'}`}
-        stub={<Feather name="arrow-right" size={20} color={light.ink} />}
+        stub={<Icon name="arrow-right" size={20} color={light.ink} />}
       >
         <Text variant="title" numberOfLines={1}>
           {name}

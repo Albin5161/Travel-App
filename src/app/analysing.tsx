@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon, type IconName } from '@/components/Icon';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
@@ -669,7 +669,7 @@ function cityOf(region: string | null): string | null {
   return first || null;
 }
 
-function failureCopy(f: Failure): { icon: keyof typeof Feather.glyphMap; title: string; body: string } {
+function failureCopy(f: Failure): { icon: IconName; title: string; body: string } {
   const city = f.kind === 'assist' || f.kind === 'empty' ? cityOf(f.region) : null;
   // Shown or said to be about a city, with no places named in it: say so, and offer the city.
   if (city && (f.kind === 'empty' || (f.kind === 'assist' && f.reason === 'no_places'))) {
@@ -716,7 +716,7 @@ function StageGlyph({ kind }: { kind: Glyph }) {
   const name = kind === 'play' ? 'play' : kind === 'caption' ? 'align-left' : kind === 'done' ? 'check' : 'map-pin';
   return (
     <View style={styles.glyph}>
-      <Feather name={name} size={13} color={kind === 'done' ? skyAccentText : skyInk.soft} />
+      <Icon name={name} size={13} color={kind === 'done' ? skyAccentText : skyInk.soft} />
     </View>
   );
 }
@@ -764,7 +764,7 @@ function PinDrop() {
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }));
   return (
     <Animated.View style={[styles.pin, style]}>
-      <Feather name="map-pin" size={13} color={skyAccentText} />
+      <Icon name="map-pin" size={13} color={skyAccentText} />
     </Animated.View>
   );
 }

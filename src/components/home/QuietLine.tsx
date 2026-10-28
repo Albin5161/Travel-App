@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/PressableScale';
@@ -20,7 +20,7 @@ export function QuietLine({ lead, rest, onPress }: { lead: string; rest: string;
         </Text>{' '}
         {rest}
       </Text>
-      <Feather name="chevron-right" size={16} color={skyInk.faint} />
+      <Icon name="chevron-right" size={16} color={skyInk.faint} />
     </PressableScale>
   );
 }

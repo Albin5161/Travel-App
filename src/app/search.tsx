@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -62,7 +62,7 @@ export default function Search() {
       <View style={styles.bar}>
         <IconButton icon="chevron-left" onPress={close} accessibilityLabel="Back" style={styles.back} />
         <Glass style={styles.field} radius={radii.field}>
-          <Feather name="search" size={16} color={skyInk.soft} />
+          <Icon name="search" size={16} color={skyInk.soft} />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -77,7 +77,7 @@ export default function Search() {
           />
           {typed ? (
             <Pressable onPress={() => setQuery('')} style={dims(styles.clear)} accessibilityRole="button" accessibilityLabel="Clear search">
-              <Feather name="x" size={14} color={skyInk.soft} />
+              <Icon name="x" size={14} color={skyInk.soft} />
             </Pressable>
           ) : null}
         </Glass>
@@ -222,7 +222,7 @@ function Row({
           {detail}
         </Text>
       </View>
-      <Feather name="chevron-right" size={16} color={skyInk.faint} />
+      <Icon name="chevron-right" size={16} color={skyInk.faint} />
     </PressableScale>
   );
 }

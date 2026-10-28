@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -101,7 +101,7 @@ export function PlaceSearchSheet({ visible, wrong, cityName, candidates, live, o
         </View>
 
         <View style={styles.field}>
-          <Feather name="search" size={16} color={skyInk.faint} />
+          <Icon name="search" size={16} color={skyInk.faint} />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -152,7 +152,7 @@ export function PlaceSearchSheet({ visible, wrong, cityName, candidates, live, o
                     {typeLine(p)}
                   </Text>
                 </View>
-                <Feather name="plus" size={18} color={skyInk.soft} />
+                <Icon name="plus" size={18} color={skyInk.soft} />
               </Pressable>
             ))
           )}
@@ -290,7 +290,7 @@ function GoogleResults({
           accessibilityLabel={`${s.name}, ${s.where}`}
         >
           <View style={[styles.thumb, styles.pinThumb]}>
-            <Feather name="map-pin" size={18} color={skyInk.soft} />
+            <Icon name="map-pin" size={18} color={skyInk.soft} />
           </View>
           <View style={styles.rowText}>
             <Text variant="bodyStrong" numberOfLines={1}>
@@ -303,7 +303,7 @@ function GoogleResults({
           {picking === s.placeId ? (
             <ActivityIndicator color={skyInk.soft} />
           ) : (
-            <Feather name="plus" size={18} color={skyInk.soft} />
+            <Icon name="plus" size={18} color={skyInk.soft} />
           )}
         </Pressable>
       ))}

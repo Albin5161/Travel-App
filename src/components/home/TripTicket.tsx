@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -94,7 +94,7 @@ export function TripTicket({ ahead }: { ahead: TripAhead }) {
           <Text variant="label" color="#FFFFFF">
             {cta}
           </Text>
-          <Feather name="arrow-right" size={14} color="#FFFFFF" />
+          <Icon name="arrow-right" size={14} color="#FFFFFF" />
         </View>
       </Ticket>
     </Animated.View>

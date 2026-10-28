@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -42,7 +42,7 @@ export function WeekendRoute({ active, width, homeName }: { active: boolean; wid
       <View style={{ height: STRIP_H }}>
         <Road t={t} road={road} />
         <View style={[styles.home, { left: road.home.x - HOME / 2, top: road.home.y - HOME / 2 }]}>
-          <Feather name="home" size={14} color={light.ctaInk} />
+          <Icon name="home" size={14} color={light.ctaInk} />
         </View>
         {STOPS.map((p, i) => (
           <Stop key={p.id} t={t} at={road.stops[i]} reach={road.reach[i]} photo={smallPhoto(p)} />

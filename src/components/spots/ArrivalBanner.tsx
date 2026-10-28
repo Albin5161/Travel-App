@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
@@ -29,7 +29,7 @@ export function ArrivalBanner({
   return (
     <Animated.View entering={NUDGE_IN} exiting={FADE_OUT} style={styles.wrap}>
       <View style={styles.icon}>
-        <Feather name="map-pin" size={15} color={light.ctaInk} />
+        <Icon name="map-pin" size={15} color={light.ctaInk} />
       </View>
       <View style={styles.body}>
         <Text variant="bodyStrong">You&rsquo;re in {district}</Text>
@@ -50,7 +50,7 @@ export function ArrivalBanner({
         accessibilityRole="button"
         accessibilityLabel="Dismiss"
       >
-        <Feather name="x" size={16} color={skyInk.faint} />
+        <Icon name="x" size={16} color={skyInk.faint} />
       </Pressable>
     </Animated.View>
   );

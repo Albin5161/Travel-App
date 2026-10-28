@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
@@ -150,7 +150,7 @@ export function PlacesSection({
       />
       {searchable ? (
         <View style={styles.search}>
-          <Feather name="search" size={16} color={skyInk.faint} />
+          <Icon name="search" size={16} color={skyInk.faint} />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -167,7 +167,7 @@ export function PlacesSection({
           />
           {query ? (
             <PressableScale onPress={() => setQuery('')} style={styles.searchClear} accessibilityRole="button" accessibilityLabel="Clear search">
-              <Feather name="x" size={16} color={skyInk.soft} />
+              <Icon name="x" size={16} color={skyInk.soft} />
             </PressableScale>
           ) : null}
         </View>
@@ -441,7 +441,7 @@ export function GoodToKnowSection({
               {isSafetyIcon(f.icon) ? (
                 <SafetyIcon name={f.icon} size={20} color={skyInk.strong} />
               ) : (
-                <Feather name={f.icon} size={16} color={skyInk.strong} />
+                <Icon name={f.icon} size={16} color={skyInk.strong} />
               )}
             </View>
             <View style={styles.factText}>

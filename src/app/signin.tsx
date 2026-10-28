@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState, type RefObject } from 'react';
@@ -170,7 +170,7 @@ export default function SignIn() {
               <Wordmark />
             ) : (
               <PressableScale onPress={backToEmail} style={styles.back} accessibilityRole="button" accessibilityLabel="Use a different email">
-                <Feather name="chevron-left" size={18} color={skyInk.soft} />
+                <Icon name="chevron-left" size={18} color={skyInk.soft} />
                 <Text variant="label" color={skyInk.soft}>
                   Back
                 </Text>

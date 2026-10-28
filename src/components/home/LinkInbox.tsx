@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -143,7 +143,7 @@ function Row({ item, active, onOpen, onRemove }: { item: InboxItem; active: bool
         accessibilityRole="button"
         accessibilityLabel={item.status === 'queued' ? `Stop reading this ${kind}` : `Remove ${title}`}
       >
-        <Feather name="x" size={14} color={skyInk.faint} />
+        <Icon name="x" size={14} color={skyInk.faint} />
       </Pressable>
     </View>
   );
@@ -238,7 +238,7 @@ export function FoundSheet() {
             <View style={styles.names}>
               {first.places.slice(0, NAMES_SHOWN).map((p) => (
                 <View key={p.id} style={styles.nameRow}>
-                  <Feather name="map-pin" size={13} color={skyInk.soft} />
+                  <Icon name="map-pin" size={13} color={skyInk.soft} />
                   <Text variant="bodyStrong" numberOfLines={1} style={styles.name}>
                     {p.name}
                   </Text>
@@ -272,7 +272,7 @@ export function FoundSheet() {
                       {[places(item.extraction!.places.length), item.extraction!.reel.creator].filter(Boolean).join(' · ')}
                     </Text>
                   </View>
-                  <Feather name="chevron-right" size={18} color={skyInk.soft} />
+                  <Icon name="chevron-right" size={18} color={skyInk.soft} />
                 </PressableScale>
               ))}
             </View>

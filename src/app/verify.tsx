@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon, type IconName } from '@/components/Icon';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
@@ -384,7 +384,7 @@ function CheckList({
                 accessibilityLabel={`${p.name}, ${p.area || city}`}
               >
                 <View style={[styles.thumb, !on && styles.thumbOff]}>
-                  <Feather name={TYPE_ICON[p.type]} size={20} color={skyInk.soft} />
+                  <Icon name={TYPE_ICON[p.type]} size={20} color={skyInk.soft} />
                   <Image source={p.photo} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
                 </View>
                 <View style={styles.rowText}>
@@ -415,7 +415,7 @@ function CheckList({
 }
 
 const TYPE: Record<Place['type'], string> = { food: 'Food', stay: 'Stay', sight: 'Sight', experience: 'Experience' };
-const TYPE_ICON: Record<Place['type'], React.ComponentProps<typeof Feather>['name']> = {
+const TYPE_ICON: Record<Place['type'], IconName> = {
   food: 'coffee',
   stay: 'home',
   sight: 'eye',
@@ -515,7 +515,7 @@ function Done({
                     </Text>
                   </Pressable>
                 ) : (
-                  <Feather name="check" size={16} color={skyInk.soft} />
+                  <Icon name="check" size={16} color={skyInk.soft} />
                 )}
               </View>
             );

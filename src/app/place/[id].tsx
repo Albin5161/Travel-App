@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { useLocalSearchParams } from 'expo-router';
 import { Linking, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, useReducedMotion } from 'react-native-reanimated';
@@ -126,7 +126,7 @@ function OnGoogle({ info, onOpen }: { info: Info; onOpen: () => void }) {
           <Text variant="headline" accessibilityLabel={`Rated ${info.rating.toFixed(1)} out of 5`}>
             {info.rating.toFixed(1)}
           </Text>
-          <Feather name="star" size={16} color={skyInk.strong} />
+          <Icon name="star" size={16} color={skyInk.strong} />
           {info.ratingCount !== null ? (
             <Text variant="label" color={skyInk.soft}>
               {info.ratingCount.toLocaleString('en-IN')} {info.ratingCount === 1 ? 'review' : 'reviews'}

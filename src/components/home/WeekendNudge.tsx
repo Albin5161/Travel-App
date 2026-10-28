@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon } from '@/components/Icon';
 import { StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/PressableScale';
@@ -30,7 +30,7 @@ export function WeekendNudge({ count, onPress }: { count: number; onPress: () =>
             {line}
           </Text>
         </View>
-        <Feather name="arrow-right" size={18} color={skyInk.soft} />
+        <Icon name="arrow-right" size={18} color={skyInk.soft} />
       </PressableScale>
     </Glass>
   );

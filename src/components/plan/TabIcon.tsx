@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Icon, type IconName } from '@/components/Icon';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
@@ -16,7 +16,7 @@ import { skyInk } from '@/theme/sky';
 
 export type TabIconName = 'overview' | 'places' | 'plan' | 'safety';
 
-const GLYPH: Record<TabIconName, React.ComponentProps<typeof Feather>['name']> = {
+const GLYPH: Record<TabIconName, IconName> = {
   overview: 'book-open',
   places: 'map-pin',
   plan: 'calendar',
@@ -77,7 +77,7 @@ export function TabIcon({ name, active, size = 19 }: Props) {
       {name === 'safety' ? <Ring active={active} reduced={reduced} size={size + 12} /> : null}
       <Animated.View style={colourStyle}>
         <Animated.View style={glyphStyle}>
-          <Feather name={GLYPH[name]} size={size} color={active ? skyInk.strong : skyInk.faint} />
+          <Icon name={GLYPH[name]} size={size} color={active ? skyInk.strong : skyInk.faint} weight={active ? 'fill' : 'regular'} />
         </Animated.View>
       </Animated.View>
     </View>

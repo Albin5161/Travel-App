@@ -129,7 +129,12 @@ export type ModelResult = {
   usage: { model: string; inputTokens: number; outputTokens: number };
 };
 
-const RETRYABLE = new Set([429, 500, 503]);
+// Busy, rate-limited, or a gateway that gave up on it: worth asking again, or asking the other model.
+const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+// How long one try may take, and all of them together: the app waits 100 s for a whole read, and
+// the video or reel has to be fetched in that time too.
+const TRY_MS = 28000;
+const ALL_TRIES_MS = 55000;
 
 export type Source =
   | { kind: 'youtube'; video: VideoDetails }
@@ -204,6 +209,8 @@ export async function bestKnown(region: string, key: string, model: string, fall
  * One JSON answer from Gemini: a fixed instruction, the text as data, and the schema the answer must
  * follow. Free-tier calls are the first turned away when a model is busy (503) or a per-model limit
  * is hit (429), so the chosen model is tried twice, then the lighter fallback, before giving up.
+ * A try that gets no answer in time, or loses its connection, goes straight to the other model.
+ * Never more than three tries: each is an outgoing call, and the hosting allows ten a request.
  * `pictures` go in after the text, as links Gemini fetches itself, for it to read the words on them.
  */
 export async function generate(
@@ -221,17 +228,29 @@ export async function generate(
     generationConfig: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.2 },
   });
   const attempts = [model, model, ...(fallback && fallback !== model ? [fallback] : [])];
+  const deadline = Date.now() + ALL_TRIES_MS;
   let res: Response | null = null;
   let used = model;
-  for (const [i, m] of attempts.entries()) {
+  for (let i = 0; i < attempts.length; i++) {
+    const m = attempts[i];
     used = m;
-    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: request,
-      // Text alone takes 2 to 5 s; ten slides naming dozens of places, most of this.
-      signal: AbortSignal.timeout(28000),
-    });
+    try {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: request,
+        // Text alone takes 2 to 5 s; ten slides naming dozens of places, most of this.
+        signal: AbortSignal.timeout(Math.max(1000, Math.min(TRY_MS, deadline - Date.now()))),
+      });
+    } catch (e) {
+      // No answer in time, or the connection dropped: the other model may still answer, but this
+      // one isn't asked again. The hosting's call limit isn't a network fault, so it isn't retried.
+      const next = attempts.findIndex((n, k) => k > i && n !== m);
+      if (next < 0 || deadline - Date.now() < 3000 || /subrequests/i.test(String(e))) throw e;
+      console.warn(`[gemini] ${m} ${e instanceof Error ? e.name : 'failed'}; trying ${attempts[next]}`);
+      i = next - 1;
+      continue;
+    }
     if (res.ok || !RETRYABLE.has(res.status) || i === attempts.length - 1) break;
     console.warn(`[gemini] ${m} answered ${res.status}; trying ${attempts[i + 1]}`);
     await res.body?.cancel();

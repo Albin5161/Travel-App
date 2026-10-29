@@ -99,14 +99,18 @@ function Half<K extends string>({
       accessibilityLabel={o.count != null ? `${o.label}, ${o.count}` : o.label}
     >
       {o.icon != null ? <Icon3D source={o.icon} size={ICON} story={o.story} pressed={held} played={played} style={!on && styles.iconOff} /> : null}
-      <Text variant="label" color={sky ? (on ? skyInk.strong : skyInk.faint) : on ? light.ink : light.inkSoft}>
-        {o.label}
-      </Text>
-      {o.count != null ? (
-        <Text variant="label" ink="soft" tabular color={sky ? skyInk.faint : on ? light.inkSoft : light.inkFaint}>
-          {o.count}
+      {/* One line, whatever the count: the count sits close after its label, and on a narrow phone
+          with a long label and a three-figure count the label gives way with "…" instead of wrapping. */}
+      <View style={styles.words}>
+        <Text variant="label" numberOfLines={1} style={styles.label} color={sky ? (on ? skyInk.strong : skyInk.faint) : on ? light.ink : light.inkSoft}>
+          {o.label}
         </Text>
-      ) : null}
+        {o.count != null ? (
+          <Text variant="label" ink="soft" tabular numberOfLines={1} color={sky ? skyInk.faint : on ? light.inkSoft : light.inkFaint}>
+            {o.count}
+          </Text>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -133,6 +137,8 @@ const styles = StyleSheet.create({
   // there it is the white pane with its small shadow.
   thumbSky: isLight ? { backgroundColor: light.panel, boxShadow: shadows.button } : { backgroundColor: skyFill.pressed, boxShadow: 'none' },
   option: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  words: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  label: { flexShrink: 1 },
   // The half you're not on is a step quieter, picture and all.
   iconOff: { opacity: 0.7 },
 });

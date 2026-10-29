@@ -41,6 +41,7 @@ import { FADE_IN, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips, type HomeTab } from '@/state/trips';
 import { useHomeSky } from '@/state/sky';
 import { useHere } from '@/state/where';
+import { isLight } from '@/theme/mode';
 import { SKY, skyChip, skyInk, skyWash, withAlpha } from '@/theme/sky';
 import { fonts, space, textSize } from '@/theme/tokens';
 
@@ -56,7 +57,7 @@ const STRIP_TUCK = 22;
  */
 const STICK_AIR = 10;
 /** How far under the stuck box the cards fade out, instead of being cut by a hard line. */
-const FROST_FADE = 20;
+const FROST_FADE = 28;
 /** How far down the warm wash behind the header reaches, below the status bar. */
 const WASH_H = 380;
 // First-run strip: one striking place from each sample video, so the promise is visual.
@@ -267,8 +268,18 @@ export default function Home() {
 
           <Animated.View entering={ENTER[1]} style={[styles.sticky, heroPad === null && styles.hidden]} onLayout={measure('link')}>
             <Animated.View style={[styles.frost, frostStyle]} pointerEvents="none">
-              <Glass blur tint={look.glass} radius={0} style={styles.frostFill} />
-              <LinearGradient colors={[withAlpha(look.stops[0], 0.9), withAlpha(look.stops[0], 0)]} style={styles.frostFade} />
+              {/* On paper, the page's own white, so the strip doesn't read as a box: no blur or tint
+                  for its edges to show against the photos. The sky keeps its frosted glass. */}
+              {isLight ? (
+                <View style={[styles.frostFill, styles.frostPaper, { backgroundColor: look.stops[0] }]} />
+              ) : (
+                <Glass blur tint={look.glass} radius={0} style={styles.frostFill} />
+              )}
+              <LinearGradient
+                colors={[look.stops[0], withAlpha(look.stops[0], 0.6), withAlpha(look.stops[0], 0)]}
+                locations={[0, 0.45, 1]}
+                style={styles.frostFade}
+              />
             </Animated.View>
             <LinkBox key={boxKey} onSubmit={start} onSubmitMany={startMany} offerMore={collections.length > 0} clipboardHasLink={hasLink} />
           </Animated.View>
@@ -557,6 +568,8 @@ const styles = StyleSheet.create({
   sticky: { paddingHorizontal: GUTTER, paddingTop: STICK_AIR },
   frost: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   frostFill: { flex: 1, borderWidth: 0, boxShadow: 'none' },
+  // Reaches up past the box's top air, so nothing peeks through between the strip and the screen's top.
+  frostPaper: { marginTop: -STICK_AIR * 2 },
   frostFade: { position: 'absolute', left: 0, right: 0, bottom: -FROST_FADE, height: FROST_FADE },
   // Straight on the sky, no card: the caption, the switch and the tiles, like a weather app's list.
   panelWrap: { marginTop: 16, paddingHorizontal: GUTTER, gap: 16 },

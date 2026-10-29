@@ -41,6 +41,7 @@ const MATCH_AT_ONCE = 5;
 /** Reading a reel can take a while when its transcript is needed; one place is quick. */
 const EXTRACT_MS = 100_000;
 const MATCH_MS = 15_000;
+const PEEK_MS = 8000;
 
 /**
  * Reads a link. `onFound` fires as soon as the place names are known, before they're matched, so
@@ -100,6 +101,28 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
   // Kept only when every name was looked up: pasting it again should try the ones that didn't finish.
   if (failures.length === 0) cache.write(key, extraction);
   return { kind: 'done', extraction, unchecked };
+}
+
+/**
+ * An Instagram link's cover picture and poster, asked for alongside the read (which takes 20 s or
+ * more), so the loading screen shows the video early. Null for YouTube, whose thumbnail needs no
+ * call, and whenever Instagram didn't hand it over.
+ */
+export async function peekLink(url: string): Promise<Reel | null> {
+  const link = parseLink(url);
+  if (link?.platform !== 'instagram') return null;
+  const res = await post<{ thumbnail: string | null; owner: string | null }>('/api/peek', { url }, PEEK_MS).catch(() => null);
+  if (!res?.thumbnail) return null;
+  return {
+    id: `ig:${link.shortcode}`,
+    platform: 'instagram',
+    creator: res.owner ? `@${res.owner}` : 'Instagram reel',
+    title: '',
+    duration: '',
+    thumbnail: { uri: res.thumbnail },
+    cityId: '',
+    placeIds: [],
+  };
 }
 
 // ── One city, one collection ────────────────────────────────────────────────────────────────────

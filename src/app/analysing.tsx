@@ -32,7 +32,7 @@ import { SAMPLE_LINK } from '@/data/catalog';
 import type { Extraction, Place, Reel } from '@/data/types';
 import { ApiFailure } from '@/lib/api';
 import { platformOfLink, track } from '@/lib/analytics';
-import { CHECK_AS_LIST_FROM, lengthLabel, readLink, type Unchecked } from '@/lib/extract';
+import { CHECK_AS_LIST_FROM, lengthLabel, peekLink, readLink, type Unchecked } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
 import { useOffline } from '@/lib/online';
 import { sound } from '@/lib/sound';
@@ -493,6 +493,8 @@ function useReading(url: string, away: RefObject<Away>) {
       getLinkPreview(url).then((p) => !cancelled && setPreview(p));
       extractPlaces(url).then(done);
     } else {
+      // An Instagram reel's picture, ahead of the read; the read's own details win if they come first.
+      peekLink(url).then((p) => !cancelled && p && setPreview((now) => now ?? p));
       readLink(url, (reel, found) => {
         if (cancelled) return;
         setPreview(reel);

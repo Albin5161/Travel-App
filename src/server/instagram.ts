@@ -117,6 +117,31 @@ export function slidePictures(urls: string[]): Picture[] {
   });
 }
 
+/**
+ * A reel's cover picture and its poster's handle, from Instagram's public embed page: one quick
+ * call, so the loading screen can show the video while Apify is still reading it. Null when the page
+ * can't be had (Instagram turns some servers away) or doesn't hold a picture; the card waits then.
+ */
+export async function peekReel(shortcode: string): Promise<{ thumbnail: string; owner: string | null } | null> {
+  try {
+    const res = await fetch(`https://www.instagram.com/p/${shortcode}/embed/`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    const tag = (await res.text()).match(/<img[^>]*class="EmbeddedMediaImage"[^>]*>/)?.[0];
+    const src = tag?.match(/src="([^"]+)"/)?.[1]?.replace(/&amp;/g, '&');
+    if (!src) return null;
+    const url = new URL(src);
+    if (url.protocol !== 'https:' || !SLIDE_HOST.test(url.hostname)) return null;
+    // alt reads "Instagram post shared by &#064;handle".
+    const owner = tag?.match(/alt="[^"]*?(?:@|&#064;)([A-Za-z0-9._]+)/)?.[1] ?? null;
+    return { thumbnail: url.href, owner };
+  } catch {
+    return null;
+  }
+}
+
 /** One Apify API call. Run objects come wrapped in `data`; dataset items come as a bare array. */
 async function apify<T>(path: string | URL, token: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {

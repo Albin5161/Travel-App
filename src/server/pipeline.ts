@@ -3,7 +3,7 @@ import { callsForRequest, hostCalls, take } from './calls';
 import { env } from './env';
 import { ApiError } from './errors';
 import { bestKnown, findPlaces } from './gemini';
-import { getReel, slidePictures, TRANSCRIPT_MAX_SECONDS, type Picture, type ReelDetails } from './instagram';
+import { getReel, peekReel, slidePictures, TRANSCRIPT_MAX_SECONDS, type Picture, type ReelDetails } from './instagram';
 import { wikimediaPhoto } from './commons';
 import { allowCityNotes, allowExtract, allowFeedback, allowPhoto, allowPlaceInfo, allowReel, allowSearch, beginMatch } from './limits';
 import { parseLink, type ParsedLink } from './links';
@@ -405,6 +405,13 @@ export async function feedback(req: Partial<FeedbackRequest>, who: Caller): Prom
  * lookup or from a free photos-only one. Past the cap, or with photos off, the app shows its
  * fallback card.
  */
+/** An Instagram link's cover and poster, ahead of the read, for the loading screen's card. */
+export async function peek(req: { url?: unknown }): Promise<{ thumbnail: string | null; owner: string | null }> {
+  const link = typeof req.url === 'string' ? parseLink(req.url) : null;
+  if (link?.platform !== 'instagram') throw new ApiError(400, 'bad_request', 'Send {"url": "<an Instagram link>"}.');
+  return (await peekReel(link.shortcode)) ?? { thumbnail: null, owner: null };
+}
+
 /** The video's frames on their own, for readings saved before frames came with them. */
 export async function frames(req: { videoId?: unknown }): Promise<{ frames: string[] }> {
   const id = typeof req.videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(req.videoId) ? req.videoId : null;

@@ -18,6 +18,8 @@ import { CityTile } from '@/components/CityTile';
 import { LinkBox } from '@/components/LinkBox';
 import { PressableScale } from '@/components/PressableScale';
 import { Segmented } from '@/components/Segmented';
+import { ICONS_3D } from '@/components/icons3d';
+import { Icon3D } from '@/components/Icon3D';
 import { Text } from '@/components/Text';
 import { Wordmark } from '@/components/Wordmark';
 import { Glass } from '@/components/sky/Glass';
@@ -74,9 +76,8 @@ const PEEK = 110;
 const GAP = 10;
 /** Two across: the photo does the work, as on Airbnb (30 Oct 2026; it was three). */
 const COLUMNS = 2;
-/** The 3D pictures over Near Home and Cities (made in Figma, 30 Oct 2026; see docs/mockups/3d). */
-const NEAR_ICON = require('@/assets/images/icons3d/near.png');
-const CITIES_ICON = require('@/assets/images/icons3d/cities.png');
+/** The 3D picture over an empty tab. */
+const EMPTY_ICON = 64;
 
 // Home is Collect mode: paste a video, check what it found, watch your collections fill up. The
 // collections split the way the app does: Near Home (weekends) and Cities (trips). Tapping a card
@@ -297,8 +298,8 @@ export default function Home() {
                 value={tab}
                 onChange={(t) => dispatch({ type: 'setHomeTab', tab: t })}
                 options={[
-                  { key: 'near', label: 'Near Home', count: near.length, icon: NEAR_ICON },
-                  { key: 'cities', label: 'Cities', count: away.length, icon: CITIES_ICON },
+                  { key: 'near', label: 'Near Home', count: near.length, icon: ICONS_3D.near.source, story: ICONS_3D.near.story },
+                  { key: 'cities', label: 'Cities', count: away.length, icon: ICONS_3D.cities.source, story: ICONS_3D.cities.story },
                 ]}
               />
               <Animated.View key={tab} entering={FADE_IN} style={styles.grid}>
@@ -446,6 +447,7 @@ function Empty({ tab, homeName, onSetHome }: { tab: HomeTab; homeName: string | 
   if (tab === 'near' && !homeName) {
     return (
       <View style={styles.empty}>
+        <Icon3D source={ICONS_3D.near.source} size={EMPTY_ICON} story={ICONS_3D.near.story} tappable playOnShow />
         <Text variant="headline" accessibilityRole="header">Where’s home?</Text>
         <Text variant="body">
           Tell us, and places within reach of it land here, ready for a free Saturday.
@@ -456,6 +458,7 @@ function Empty({ tab, homeName, onSetHome }: { tab: HomeTab; homeName: string | 
   }
   return (
     <View style={styles.empty}>
+      <Icon3D source={ICONS_3D[tab === 'near' ? 'near' : 'cities'].source} size={EMPTY_ICON} story={ICONS_3D[tab === 'near' ? 'near' : 'cities'].story} tappable playOnShow />
       <Text variant="headline" accessibilityRole="header">{tab === 'near' ? 'Nothing near home yet' : 'No cities yet'}</Text>
       <Text variant="body">
         {tab === 'near'

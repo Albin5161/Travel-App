@@ -1,11 +1,13 @@
 import { Icon, type IconName } from '@/components/Icon';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { Children, isValidElement, useState, type ReactNode } from 'react';
+import { Children, isValidElement, useEffect, useState, type ReactNode } from 'react';
 import { Linking, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Icon3D, type Story } from '@/components/Icon3D';
+import { ICONS_3D } from '@/components/icons3d';
 import { PressableScale } from '@/components/PressableScale';
 import { ProfilePhoto } from '@/components/ProfilePhoto';
 import { Glass } from '@/components/sky/Glass';
@@ -28,6 +30,8 @@ import { fonts, fontSize, radii, shadows, space, textSize } from '@/theme/tokens
 
 const ENTER = [0, 1, 2, 3, 4, 5].map((i) => fadeUp(60 + i * 50));
 const GUTTER = space.screen;
+/** The 3D icon in each count's corner. */
+const STAT_ICON = 34;
 
 // Background geofencing is not in Expo Go, so "Try it" is the only way to see an arrival there.
 // Detected rather than assumed, so a development build drops the caveat.
@@ -93,9 +97,9 @@ export default function Profile() {
       </Animated.View>
 
       <Animated.View entering={ENTER[1]} style={styles.stats}>
-        <Stat value={spots.length} label="Spots" onPress={() => router.navigate('/map')} />
-        <Stat value={trips} label="Trips" onPress={() => router.navigate('/trips')} />
-        <Stat value={been} label="Been" onPress={() => router.navigate('/map')} />
+        <Stat value={spots.length} label="Spots" icon={ICONS_3D.spots} order={0} onPress={() => router.navigate('/map')} />
+        <Stat value={trips} label="Trips" icon={ICONS_3D.trips} order={1} onPress={() => router.navigate('/trips')} />
+        <Stat value={been} label="Been" icon={ICONS_3D.been} order={2} onPress={() => router.navigate('/map')} />
       </Animated.View>
 
       <Animated.View entering={ENTER[2]}>
@@ -265,9 +269,28 @@ export default function Profile() {
   );
 }
 
-function Stat({ value, label, onPress }: { value: number; label: string; onPress: () => void }) {
+/**
+ * One of the three counts, with its 3D icon in the corner. A tap opens the tab straight away, so
+ * the icons play when Profile opens instead, one after another; pressing a tile squashes its icon.
+ */
+function Stat({ value, label, icon, order, onPress }: { value: number; label: string; icon: { source: number; story: Story }; order: number; onPress: () => void }) {
+  const [held, setHeld] = useState(false);
+  const [played, setPlayed] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => setPlayed(1), 450 + order * 160);
+    return () => clearTimeout(t);
+  }, [order]);
   return (
-    <PressableScale onPress={onPress} containerStyle={styles.statSlot} style={styles.stat} accessibilityRole="button" accessibilityLabel={`${value} ${label}`}>
+    <PressableScale
+      onPress={onPress}
+      onPressIn={() => setHeld(true)}
+      onPressOut={() => setHeld(false)}
+      containerStyle={styles.statSlot}
+      style={styles.stat}
+      accessibilityRole="button"
+      accessibilityLabel={`${value} ${label}`}
+    >
+      <Icon3D source={icon.source} size={STAT_ICON} story={icon.story} pressed={held} played={played} style={styles.statIcon} />
       <Text style={styles.statValue}>{value}</Text>
       <Text variant="label" color={skyInk.soft}>
         {label}
@@ -512,6 +535,7 @@ const styles = StyleSheet.create({
   },
   stats: { flexDirection: 'row', gap: 8, paddingHorizontal: GUTTER, marginTop: 16 },
   statSlot: { flex: 1 },
+  statIcon: { position: 'absolute', top: 10, right: 10 },
   stat: {
     gap: 2,
     paddingVertical: 16,

@@ -9,6 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Avatar } from '@/components/group/Avatar';
+import { Icon3D } from '@/components/Icon3D';
+import { ICONS_3D } from '@/components/icons3d';
 import { PressableScale } from '@/components/PressableScale';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
@@ -70,9 +72,7 @@ export default function TripsScreen() {
 
       {trips.length === 0 ? (
         <View style={styles.empty}>
-          <View style={styles.emptyIcon}>
-            <Icon name="compass" size={26} color={skyInk.soft} />
-          </View>
+          <Icon3D source={ICONS_3D.trips.source} size={72} story={ICONS_3D.trips.story} tappable playOnShow style={styles.emptyIcon} />
           <Text variant="title">No trips yet</Text>
           <Text variant="body" style={styles.center}>
             Plan a trip from any city you’ve saved. It lands here, with everyone who’s coming.
@@ -270,14 +270,6 @@ const styles = StyleSheet.create({
   track: { height: 3, backgroundColor: skyInk.line },
   trackFill: { ...StyleSheet.absoluteFill, backgroundColor: skyAccent, transformOrigin: 'left' },
   empty: { alignItems: 'center', gap: 8, marginTop: 60 },
-  emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: skyFill.raised,
-    marginBottom: 8,
-  },
+  emptyIcon: { marginBottom: 8 },
   emptyButton: { marginTop: 8 },
 });

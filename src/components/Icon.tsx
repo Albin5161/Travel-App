@@ -4,7 +4,9 @@ import { ArrowElbowDownRightIcon } from 'phosphor-react-native/src/icons/ArrowEl
 import { ArrowRightIcon } from 'phosphor-react-native/src/icons/ArrowRight';
 import { ArrowsClockwiseIcon } from 'phosphor-react-native/src/icons/ArrowsClockwise';
 import { ArrowUpRightIcon } from 'phosphor-react-native/src/icons/ArrowUpRight';
+import { BedIcon } from 'phosphor-react-native/src/icons/Bed';
 import { BellIcon } from 'phosphor-react-native/src/icons/Bell';
+import { BinocularsIcon } from 'phosphor-react-native/src/icons/Binoculars';
 import { BookmarkSimpleIcon } from 'phosphor-react-native/src/icons/BookmarkSimple';
 import { BookOpenIcon } from 'phosphor-react-native/src/icons/BookOpen';
 import { CalendarBlankIcon } from 'phosphor-react-native/src/icons/CalendarBlank';
@@ -29,6 +31,7 @@ import { ExportIcon } from 'phosphor-react-native/src/icons/Export';
 import { EyeIcon } from 'phosphor-react-native/src/icons/Eye';
 import { FileTextIcon } from 'phosphor-react-native/src/icons/FileText';
 import { FilmStripIcon } from 'phosphor-react-native/src/icons/FilmStrip';
+import { ForkKnifeIcon } from 'phosphor-react-native/src/icons/ForkKnife';
 import { HouseIcon } from 'phosphor-react-native/src/icons/House';
 import { ImageIcon } from 'phosphor-react-native/src/icons/Image';
 import { InfoIcon } from 'phosphor-react-native/src/icons/Info';
@@ -36,6 +39,7 @@ import { InstagramLogoIcon } from 'phosphor-react-native/src/icons/InstagramLogo
 import { LinkSimpleIcon } from 'phosphor-react-native/src/icons/LinkSimple';
 import { LinkSimpleHorizontalIcon } from 'phosphor-react-native/src/icons/LinkSimpleHorizontal';
 import { LockSimpleIcon } from 'phosphor-react-native/src/icons/LockSimple';
+import { LockSimpleOpenIcon } from 'phosphor-react-native/src/icons/LockSimpleOpen';
 import { MagnifyingGlassIcon } from 'phosphor-react-native/src/icons/MagnifyingGlass';
 import { MapPinIcon } from 'phosphor-react-native/src/icons/MapPin';
 import { MapTrifoldIcon } from 'phosphor-react-native/src/icons/MapTrifold';
@@ -51,12 +55,13 @@ import { RepeatIcon } from 'phosphor-react-native/src/icons/Repeat';
 import { ShieldCheckIcon } from 'phosphor-react-native/src/icons/ShieldCheck';
 import { SignOutIcon } from 'phosphor-react-native/src/icons/SignOut';
 import { SlidersHorizontalIcon } from 'phosphor-react-native/src/icons/SlidersHorizontal';
+import { SquaresFourIcon } from 'phosphor-react-native/src/icons/SquaresFour';
 import { StarIcon } from 'phosphor-react-native/src/icons/Star';
 import { SunIcon } from 'phosphor-react-native/src/icons/Sun';
-import { LockSimpleOpenIcon } from 'phosphor-react-native/src/icons/LockSimpleOpen';
 import { TagIcon } from 'phosphor-react-native/src/icons/Tag';
 import { TextAlignLeftIcon } from 'phosphor-react-native/src/icons/TextAlignLeft';
 import { ThermometerIcon } from 'phosphor-react-native/src/icons/Thermometer';
+import { TicketIcon } from 'phosphor-react-native/src/icons/Ticket';
 import { UserIcon } from 'phosphor-react-native/src/icons/User';
 import { UserPlusIcon } from 'phosphor-react-native/src/icons/UserPlus';
 import { WarningCircleIcon } from 'phosphor-react-native/src/icons/WarningCircle';
@@ -73,7 +78,9 @@ const GLYPHS = {
   'align-left': TextAlignLeftIcon,
   'arrow-right': ArrowRightIcon,
   'arrow-up-right': ArrowUpRightIcon,
+  bed: BedIcon,
   bell: BellIcon,
+  binoculars: BinocularsIcon,
   'book-open': BookOpenIcon,
   bookmark: BookmarkSimpleIcon,
   calendar: CalendarBlankIcon,
@@ -97,6 +104,8 @@ const GLYPHS = {
   eye: EyeIcon,
   'file-text': FileTextIcon,
   film: FilmStripIcon,
+  'fork-knife': ForkKnifeIcon,
+  grid: SquaresFourIcon,
   home: HouseIcon,
   image: ImageIcon,
   info: InfoIcon,
@@ -126,6 +135,7 @@ const GLYPHS = {
   sun: SunIcon,
   tag: TagIcon,
   thermometer: ThermometerIcon,
+  ticket: TicketIcon,
   unlock: LockSimpleOpenIcon,
   user: UserIcon,
   'user-plus': UserPlusIcon,

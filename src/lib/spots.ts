@@ -1,6 +1,7 @@
 // Saved spots, organised. Geography is the index here, never the filter UI: every spot already
 // knows its district through its city, so the only split anyone sees is Near home / Away.
 
+import type { IconName } from '@/components/Icon';
 import { getCity } from '@/data/api';
 import { allDistricts } from '@/data/regions';
 import type { District, Place, PlaceType } from '@/data/types';
@@ -39,6 +40,15 @@ export const KIND_LABEL: Record<SpotKind, string> = {
   sight: 'Places to see',
   experience: 'Things to do',
   stay: 'Stays',
+};
+
+/** A line icon for each kind, on the map's filter chips. */
+export const KIND_ICON: Record<SpotKind, IconName> = {
+  all: 'grid',
+  food: 'fork-knife',
+  sight: 'binoculars',
+  experience: 'ticket',
+  stay: 'bed',
 };
 
 export const matchesKind = (p: Place, kind: SpotKind) => kind === 'all' || (p.type as PlaceType) === kind;

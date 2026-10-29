@@ -25,7 +25,7 @@ import type { Place } from '@/data/types';
 import { haptic } from '@/lib/haptics';
 import { DURATION, FADE_IN, fadeUp, project, SPRING_DRAG } from '@/lib/motion';
 import { pinCardOf } from '@/lib/pinCard';
-import { KIND_LABEL, clusterSpots, DAY_TRIP_MINUTES, driveMinutes, kmAway, matchesKind, weekendRoutes, type SpotKind } from '@/lib/spots';
+import { KIND_ICON, KIND_LABEL, clusterSpots, DAY_TRIP_MINUTES, driveMinutes, kmAway, matchesKind, weekendRoutes, type SpotKind } from '@/lib/spots';
 import { useArrivalTargets, useSpotStatus, useSpotsByDistrict, useTrips } from '@/state/trips';
 import { useWhereIAm } from '@/state/where';
 import { deepGlass, skyFill, skyInk, skyVeil } from '@/theme/sky';
@@ -232,7 +232,7 @@ export default function SpotsMap() {
             <Chips
               value={kind}
               onChange={setKind}
-              options={KINDS.map((k) => ({ key: k, label: KIND_LABEL[k] }))}
+              options={KINDS.map((k) => ({ key: k, label: KIND_LABEL[k], icon: KIND_ICON[k] }))}
               lead={
                 // Search leads the filters: another way of narrowing the same list.
                 <PressableScale

@@ -23,6 +23,7 @@ import { allDistricts } from '@/data/regions';
 import type { Place } from '@/data/types';
 import { bestKnownSpots, cityFromWhere, lengthLabel, placeFromPick, sendVerdicts, townOf, type Suggestion } from '@/lib/extract';
 import { track } from '@/lib/analytics';
+import { dressOfRegion } from '@/lib/dress';
 import { haptic } from '@/lib/haptics';
 import { fadeUp } from '@/lib/motion';
 import { useTrips } from '@/state/trips';
@@ -189,6 +190,7 @@ export default function AddPlaces() {
                     { who: 'amma', text: 'Let me list the best bits.' },
                   ]}
                   width={Math.min(cardW - 28, 320)}
+                  dress={dressOfRegion(region)}
                   about={`Amma and the child look up ${city}’s best-known spots.`}
                 />
               </Glass>

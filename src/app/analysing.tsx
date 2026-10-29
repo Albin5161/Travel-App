@@ -32,6 +32,7 @@ import { SAMPLE_LINK } from '@/data/catalog';
 import type { Extraction, Place, Reel } from '@/data/types';
 import { ApiFailure } from '@/lib/api';
 import { platformOfLink, track } from '@/lib/analytics';
+import { dressOfRegion, dressOfState } from '@/lib/dress';
 import { CHECK_AS_LIST_FROM, lengthLabel, peekLink, readLink, type Unchecked } from '@/lib/extract';
 import { haptic } from '@/lib/haptics';
 import { useOffline } from '@/lib/online';
@@ -365,7 +366,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
               !reduced && fold.scene,
             ]}
           >
-            <ReadingScene topic={topic} count={names.length} width={sceneW} onCheered={stepAside} />
+            <ReadingScene topic={topic} count={names.length} width={sceneW} dress={dressOfState(result?.city.state)} onCheered={stepAside} />
           </Animated.View>
         )}
         </Glass>
@@ -619,7 +620,13 @@ function ReadFailed({
       <Animated.View entering={fadeUp(0)} style={styles.failed}>
         {/* Amma and the child say what happened, the same two who kept the wait company. */}
         <Glass style={styles.failedScene}>
-          <MascotMoment lines={failureLines(failure, city)} width={Math.min(W - space.screen * 2 - 28, 320)} worried about="Amma and the child look at the video." />
+          <MascotMoment
+            lines={failureLines(failure, city)}
+            width={Math.min(W - space.screen * 2 - 28, 320)}
+            worried
+            dress={failure.kind === 'error' ? null : dressOfRegion(failure.region)}
+            about="Amma and the child look at the video."
+          />
         </Glass>
         <Text variant="headline" accessibilityRole="header">{copy.title}</Text>
         <Text variant="body">

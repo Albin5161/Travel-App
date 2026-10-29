@@ -14,6 +14,7 @@ import { GlassSheet } from '@/components/sky/GlassSheet';
 import { Text } from '@/components/Text';
 import { dims } from '@/components/pressed';
 import { detectPlatform } from '@/data/api';
+import { dressOfState } from '@/lib/dress';
 import { haptic } from '@/lib/haptics';
 import { fadeUp, REFLOW } from '@/lib/motion';
 import { parseLink } from '@/server/links';
@@ -223,7 +224,7 @@ export function FoundSheet() {
       {first ? (
         <View style={styles.sheet}>
           <View style={styles.scene}>
-            <MascotMoment lines={lines} width={Math.min(W - space.screen * 2 - 28, 300)} about="Amma and the child look at what the links turned into." />
+            <MascotMoment lines={lines} width={Math.min(W - space.screen * 2 - 28, 300)} dress={one ? dressOfState(first?.city.state) : null} about="Amma and the child look at what the links turned into." />
           </View>
           <Text variant="headline" accessibilityRole="header">
             {one ? `${places(first.places.length)} in ${first.city.name}` : `${fresh.length} links read, ${places(total)} found`}

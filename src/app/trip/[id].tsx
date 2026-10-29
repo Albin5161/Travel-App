@@ -38,6 +38,7 @@ import {
 } from '@/data/planner';
 import { haptic } from '@/lib/haptics';
 import { findStay, newSearchSession, searchPlaces, stayFromPick, type Suggestion } from '@/lib/extract';
+import { dressOfState } from '@/lib/dress';
 import { terrainOf, type Getting, type LatLng } from '@/lib/geo';
 import { DURATION, EASE_OUT, FADE_IN, FADE_OUT, fadeUp } from '@/lib/motion';
 import { isNearHome, useCityPlaces, useTrips } from '@/state/trips';
@@ -190,6 +191,7 @@ export default function TripSetup() {
       {step === 'build' ? (
         <Build
           cityName={city.name}
+          state={city.state}
           count={collected.length}
           prefs={prefs}
           nearHome={nearHome}
@@ -700,6 +702,7 @@ function MonthStep({ icon, label, disabled, onPress }: { icon: 'chevron-left' | 
  */
 function Build({
   cityName,
+  state,
   count,
   prefs,
   nearHome,
@@ -707,6 +710,8 @@ function Build({
   onDone,
 }: {
   cityName: string;
+  /** The city's state, for what the mascots wear. */
+  state: string;
   count: number;
   prefs: TripPrefs;
   nearHome: boolean;
@@ -752,7 +757,7 @@ function Build({
       {/* The scene on glass, cut off by the card's foot, as on the reading screen. */}
       <Glass style={styles.buildCard}>
         <View style={styles.buildScene}>
-          <PlanningScene script={script} finale={finale} prop={prop} ready={!!plan} width={sceneW} onCheered={cheer} />
+          <PlanningScene script={script} finale={finale} prop={prop} ready={!!plan} width={sceneW} dress={dressOfState(state)} onCheered={cheer} />
         </View>
       </Glass>
       {/* Once tapped it says so and takes no more taps: the plan may still be on its way, and a

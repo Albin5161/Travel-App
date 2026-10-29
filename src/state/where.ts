@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { getDistrict } from '@/data/regions';
 import { nearestTown } from '@/data/towns';
 import { track } from '@/lib/analytics';
+import { rememberDressHere } from '@/lib/dress';
 import type { LatLng } from '@/lib/geo';
 
 import { useTrips } from './trips';
@@ -35,6 +36,7 @@ export function useWhereIAm(): Where {
       // Last known first: it answers instantly and is plenty for a drive-time estimate.
       const last = await Location.getLastKnownPositionAsync().catch(() => null);
       const fix = last ?? (await Location.getCurrentPositionAsync().catch(() => null));
+      if (fix) rememberDressHere({ lat: fix.coords.latitude, lng: fix.coords.longitude });
       if (alive && fix) setDevice({ lat: fix.coords.latitude, lng: fix.coords.longitude });
     })();
     return () => {
@@ -67,6 +69,8 @@ export function useHere(): { here: Here; find: () => void } {
     const last = await Location.getLastKnownPositionAsync({ maxAge: 10 * 60 * 1000 }).catch(() => null);
     const fix = last ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }).catch(() => null));
     const town = fix ? nearestTown({ lat: fix.coords.latitude, lng: fix.coords.longitude }) : null;
+    // Which part of India you are in, for what the mascots wear (lib/dress).
+    if (fix) rememberDressHere({ lat: fix.coords.latitude, lng: fix.coords.longitude });
     setHere(fix ? { status: 'found', town } : { status: 'off' });
     return fix ? (town ? 'town' : 'no town') : 'no fix';
   };

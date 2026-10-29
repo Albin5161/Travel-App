@@ -1,28 +1,15 @@
-import { memo, useEffect, useId, useMemo, useState } from 'react';
+import { Image } from 'expo-image';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useReducedMotion } from 'react-native-reanimated';
-import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
 
 import { Text } from '@/components/Text';
+import { dressFor, type Dress } from '@/lib/dress';
 import { radii } from '@/theme/tokens';
 
-import {
-  AMMA_BODY,
-  AMMA_HEAD_BOX,
-  AmmaBody,
-  KID_BODY,
-  KID_HEAD_BOX,
-  KidArm,
-  KidBody,
-  Phone,
-  SceneProp,
-  ammaHead,
-  kidHead,
-  type HeadLayers,
-  type Mood,
-  type Prop,
-} from './figures';
+import type { Prop } from './figures';
 import { BUBBLE, BUBBLE_INK, motion } from './motion';
+import { PICTURES, type Pose } from './pictures';
 
 /** What the reading is doing, as the scene tells it: the status line's steps, a long wait, the finds. */
 export type Topic = 'play' | 'caption' | 'pin' | 'listen' | 'wait' | 'found';
@@ -105,9 +92,11 @@ export const CHEER_MS = 2200;
 // The scene is drawn on a 300 × 185 grid and scaled to the width it's given.
 const W = 300;
 const H = 185;
-const AMMA = { x: 96, y: 92 };
-const KID = { x: 222, y: 118 };
-const PHONE = { x: 166, y: 150 };
+/** Where the picture sits: below the line of talk, its lower edge cut off by the card's. */
+const PICTURE = { x: 18, y: 40, w: 264 };
+/** Where their heads are, across the picture, for the bubbles' tails. */
+const AMMA = { x: 112 };
+const KID = { x: 186 };
 const EDGE = 10;
 /** The scene's height at a width. */
 export const sceneHeight = (width: number) => (H * width) / W;
@@ -122,21 +111,22 @@ export const ReadingScene = memo(function ReadingScene({
   topic,
   count,
   width,
+  dress,
   onCheered,
 }: {
   topic: Topic;
   count: number;
   width: number;
+  /** The video's part of India, once its places are known (lib/dress). */
+  dress?: Dress | null;
   onCheered: () => void;
 }) {
   const { line, n, prev, current } = useChat(topic, count);
   // The scene's own step, which trails the reading's so every exchange is finished.
   const cheer = current === 'found';
   useCheer(cheer, onCheered);
-  // Now and then a glass of chai beside them: the same two, a different afternoon.
-  const [chai] = useState(() => Math.random() < 0.5);
   return (
-    <Scene width={width} line={line} n={n} prev={prev} cheer={cheer} waiting={current === 'wait'} screen="play" prop={chai ? 'chai' : undefined} about="Amma and a child watch the video together." />
+    <Scene width={width} line={line} n={n} prev={prev} cheer={cheer} pose={current === 'wait' ? 'idle' : 'reading'} dress={dress} about="Amma and a child watch the video together." />
   );
 });
 
@@ -148,21 +138,24 @@ export const ReadingScene = memo(function ReadingScene({
 export const PlanningScene = memo(function PlanningScene({
   script,
   finale,
-  prop,
   ready,
   width,
+  dress,
   onCheered,
 }: {
   script: Line[];
   finale: Line;
+  /** What the drawn pair had beside them; the 3D pictures carry their own. */
   prop?: Prop;
   ready: boolean;
   width: number;
+  /** The trip's part of India (lib/dress). */
+  dress?: Dress | null;
   onCheered: () => void;
 }) {
   const { line, n, prev, cheer } = useScript(script, finale, ready);
   useCheer(cheer, onCheered);
-  return <Scene width={width} line={line} n={n} prev={prev} cheer={cheer} waiting={false} screen="map" prop={prop} about="Amma and a child plan the trip together." />;
+  return <Scene width={width} line={line} n={n} prev={prev} cheer={cheer} pose="reading" dress={dress} about="Amma and a child plan the trip together." />;
 });
 
 /**
@@ -174,18 +167,21 @@ export const MascotMoment = memo(function MascotMoment({
   lines,
   width,
   worried = false,
+  dress,
   about,
 }: {
   lines: Line[];
   width: number;
   worried?: boolean;
+  /** The video's part of India, when it was read far enough to know (lib/dress). */
+  dress?: Dress | null;
   about: string;
 }) {
   const script = useMemo(() => lines.slice(0, -1), [lines]);
   const last = lines[lines.length - 1];
   // The last line is the script's finale; its cheer is left out, and the line simply stays up.
   const { line, n, prev } = useScript(script, last, true);
-  return <Scene width={width} line={line} n={n} prev={prev} cheer={false} waiting={worried} screen="play" about={about} />;
+  return <Scene width={width} line={line} n={n} prev={prev} cheer={false} pose={worried ? 'worried' : 'idle'} dress={dress} about={about} />;
 });
 
 /** The cheer holds CHEER_MS, then the scene steps aside. */
@@ -197,16 +193,19 @@ function useCheer(cheer: boolean, onCheered: () => void) {
   }, [cheer, onCheered]);
 }
 
-/** The drawing: Amma, the phone, the child, and whoever is talking. */
+/**
+ * The picture: Amma and the child in 3D, dressed for the video's part of India (or yours), in the
+ * pose for the moment, with whoever is talking in a bubble above them. Unlike the drawn pair they
+ * don't blink or talk; they breathe, and hop when the places come back.
+ */
 function Scene({
   width,
   line,
   n,
   prev,
   cheer,
-  waiting,
-  screen,
-  prop,
+  pose,
+  dress,
   about,
 }: {
   width: number;
@@ -214,25 +213,13 @@ function Scene({
   n: number;
   prev: Said | null;
   cheer: boolean;
-  waiting: boolean;
-  screen: 'play' | 'map';
-  prop?: Prop;
+  pose: Exclude<Pose, 'found'>;
+  dress?: Dress | null;
   about: string;
 }) {
   const reduced = useReducedMotion();
   const k = width / W;
-  const glowId = `mascotGlow${useId().replace(/:/g, '')}`;
-  const talking = useTalking(line, n);
-
-  const ammaMood: Mood = cheer ? 'cheer' : 'idle';
-  const kidMood: Mood = cheer ? 'cheer' : waiting ? 'wait' : 'idle';
-  const ammaTalks = talking?.who === 'amma';
-  const kidTalks = talking?.who === 'kid';
-  // Heads lean in to the phone, lift a little to speak, and tip back to cheer.
-  const ammaTilt = cheer ? -4 : ammaTalks ? 3 : 7;
-  const kidTilt = cheer ? 6 : kidTalks ? -4 : waiting ? -2 : -9;
-  const ammaFace = useMemo(() => ammaHead(ammaMood, 1.5), [ammaMood]);
-  const kidFace = useMemo(() => kidHead(kidMood, -1.5), [kidMood]);
+  const picture = PICTURES[dressFor(dress)][cheer ? 'found' : pose];
 
   const said = line ? `${line.who === 'amma' ? 'Amma' : 'The child'} says: ${line.text}` : '';
   return (
@@ -242,45 +229,16 @@ function Scene({
       accessibilityRole="image"
       accessibilityLabel={`${about} ${said}`}
     >
-      <Animated.View style={[StyleSheet.absoluteFill, !reduced && motion.glow]}>
-        <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`}>
-          <Defs>
-            <RadialGradient id={glowId} cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor="#FFD6BE" stopOpacity={0.55} />
-              <Stop offset="1" stopColor="#FFD6BE" stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Ellipse cx={PHONE.x - 6} cy={PHONE.y - 10} rx={46} ry={40} fill={`url(#${glowId})`} />
-        </Svg>
-      </Animated.View>
-
-      {/* What they've brought, on the ground behind them. */}
-      {prop ? (
-        <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} style={StyleSheet.absoluteFill}>
-          <SceneProp kind={prop} />
-        </Svg>
-      ) : null}
-      {/* Amma, then the phone in her hand, then the child leaning in to point at it. */}
-      <Animated.View style={[StyleSheet.absoluteFill, !reduced && motion.ammaBreath]}>
-        <Body at={AMMA} box={AMMA_BODY} k={k}>
-          <AmmaBody />
-        </Body>
-        <Head layers={ammaFace} at={AMMA} box={AMMA_HEAD_BOX} k={k} tilt={ammaTilt} talking={ammaTalks} who="amma" reduced={reduced} cheer={cheer} />
-      </Animated.View>
-      <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} style={StyleSheet.absoluteFill}>
-        <Phone x={PHONE.x} y={PHONE.y} screen={screen} />
-      </Svg>
       <Animated.View style={[StyleSheet.absoluteFill, !reduced && cheer && motion.hop]}>
-        <Animated.View style={[StyleSheet.absoluteFill, !reduced && motion.kidBreath]}>
-          <Body at={KID} box={KID_BODY} k={k}>
-            <KidBody />
-          </Body>
-          <Head layers={kidFace} at={KID} box={KID_HEAD_BOX} k={k} tilt={kidTilt} talking={kidTalks} who="kid" reduced={reduced} cheer={cheer} />
-          {cheer ? null : (
-            <Body at={KID} box={KID_BODY} k={k}>
-              <KidArm />
-            </Body>
-          )}
+        <Animated.View style={[StyleSheet.absoluteFill, !reduced && motion.ammaBreath]}>
+          <Image
+            source={picture}
+            // One pose eases into the next rather than cutting.
+            transition={reduced ? 0 : 220}
+            contentFit="contain"
+            style={{ position: 'absolute', left: PICTURE.x * k, top: PICTURE.y * k, width: PICTURE.w * k, height: ((PICTURE.w * 2) / 3) * k }}
+            accessible={false}
+          />
         </Animated.View>
       </Animated.View>
 
@@ -367,66 +325,6 @@ function useScript(script: Line[], finale: Line, ready: boolean): { line: Line |
   return { line: at?.line ?? null, n: at?.n ?? 0, prev: at?.prev ?? null, cheer: !!at && at.i === script.length };
 }
 
-/** Who is mid-sentence: the speaker's mouth moves for about as long as the line takes to say. */
-function useTalking(line: Line | null, n: number): Line | null {
-  const [finished, setFinished] = useState(0);
-  useEffect(() => {
-    if (!line) return;
-    const t = setTimeout(() => setFinished(n), Math.min(1800, Math.max(700, line.text.length * 55)));
-    return () => clearTimeout(t);
-  }, [line, n]);
-  return line && finished !== n ? line : null;
-}
-
-function Body({ at, box, k, children }: { at: { x: number; y: number }; box: { x: number; y: number; w: number; h: number }; k: number; children: React.ReactNode }) {
-  return (
-    <View style={{ position: 'absolute', left: (at.x + box.x) * k, top: (at.y + box.y) * k, width: box.w * k, height: box.h * k }}>
-      {children}
-    </View>
-  );
-}
-
-function Head({
-  layers,
-  at,
-  box,
-  k,
-  tilt,
-  talking,
-  who,
-  reduced,
-  cheer,
-}: {
-  layers: HeadLayers;
-  at: { x: number; y: number };
-  box: number;
-  k: number;
-  tilt: number;
-  talking: boolean;
-  who: 'amma' | 'kid';
-  reduced: boolean;
-  cheer: boolean;
-}) {
-  const size = box * k;
-  return (
-    <Animated.View
-      style={[
-        { position: 'absolute', left: (at.x - box / 2) * k, top: (at.y - box / 2) * k, width: size, height: size, transform: [{ rotate: `${tilt}deg` }] },
-        !reduced && motion.tilt,
-      ]}
-    >
-      {layers.base}
-      {/* A cheer's eyes are already shut with joy; otherwise they blink every few seconds. */}
-      <Animated.View style={[StyleSheet.absoluteFill, !reduced && !cheer && (who === 'amma' ? motion.ammaOpen : motion.kidOpen)]}>{layers.eyes}</Animated.View>
-      {cheer ? null : (
-        <Animated.View style={[StyleSheet.absoluteFill, styles.hidden, !reduced && (who === 'amma' ? motion.ammaShut : motion.kidShut)]}>{layers.shut}</Animated.View>
-      )}
-      {layers.mouth}
-      {talking && !reduced && !cheer ? <Animated.View style={[StyleSheet.absoluteFill, motion.flap]}>{layers.open}</Animated.View> : null}
-    </Animated.View>
-  );
-}
-
 /** A speech bubble over whoever is talking, its tail pointing at them. */
 function Bubble({ line, k, reduced, leaving }: { line: Line; k: number; reduced: boolean; leaving?: boolean }) {
   const amma = line.who === 'amma';
@@ -455,7 +353,6 @@ const styles = StyleSheet.create({
   // Straight on the glass, no panel of its own: its bottom edge is the card's, so the two are cut
   // off by the card like figures behind a window sill.
   scene: { alignSelf: 'center', overflow: 'hidden' },
-  hidden: { opacity: 0 },
   bubble: {
     position: 'absolute',
     paddingVertical: 8,

@@ -67,6 +67,7 @@ export type AnalyticsEvent =
   | 'intro finished'
   | 'link pasted'
   | 'links pasted'
+  | 'link field added'
   | 'link shared in'
   | 'places found'
   | 'link failed'

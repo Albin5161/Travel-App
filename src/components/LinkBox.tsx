@@ -1,8 +1,9 @@
 import { Icon } from '@/components/Icon';
 import { useRef, useState } from 'react';
-import { Keyboard, Platform, ScrollView, TextInput, View, type TextStyle, type ViewStyle } from 'react-native';
+import { Keyboard, Platform, TextInput, View, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { css, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
+import { Button } from '@/components/Button';
 import { ErrorNote } from '@/components/ErrorNote';
 import Ionicons from '@/components/Ionicons';
 import { CIRCLE, PasteButton } from '@/components/PasteButton';
@@ -11,7 +12,7 @@ import { Text } from '@/components/Text';
 import { detectPlatform } from '@/data/api';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
-import { LINKS_AT_ONCE, linksIn } from '@/lib/links';
+import { LINKS_AT_ONCE, linkKey, linksIn } from '@/lib/links';
 import { FADE_IN, FADE_OUT } from '@/lib/motion';
 import { isLight } from '@/theme/mode';
 import { skyCta, skyDanger, skyFill, skyInk } from '@/theme/sky';
@@ -23,9 +24,9 @@ type Props = {
   /** Several links at once: they're read in the background instead of on a screen of their own. */
   onSubmitMany?: (urls: string[]) => void;
   /**
-   * Say, with one link in the box, that more can go in with it. Off for someone who hasn't read a
-   * video yet: their first time is one link and one arrow, nothing else to weigh. Several links
-   * pasted together are still taken either way.
+   * Offer "Add another video" once a link is in. Off for someone who hasn't read a video yet: their
+   * first time is one link and one arrow, nothing else to weigh. Several links pasted together
+   * still fill a field each either way.
    */
   offerMore?: boolean;
   /** A link is on the clipboard (checked without reading it, so no iOS alert). */
@@ -36,6 +37,8 @@ const HEIGHT = 48;
 /** Over the sky the field is taller, to hold the paste button inside it. */
 const SKY_HEIGHT = 58;
 const GAP = 10;
+/** The Paste button inside an empty extra field: smaller, so the field keeps its height. */
+const SMALL_CIRCLE = 36;
 /** Width the paste button and its gap take from the row: the field is the rest. */
 export const FIELD_TRAILING = CIRCLE + GAP;
 // Says what a good link looks like, since "not a link" alone leaves you guessing.
@@ -44,23 +47,22 @@ const UNREADABLE = 'Tap and hold the box, then Paste.';
 const ALREADY = 'That video is already in.';
 
 // The home screen's link field: type or paste a video link, or tap the system Paste button beside it.
-// It takes several links too (pasted together, or one after another): those are read in the
-// background, one by one.
+// Up to three at once: with one link in, "Add another video" opens a field under it for the next,
+// and one button reads them all. On phones the Paste pill that used to offer this drew blank, and
+// the hint above it looked like a button that did nothing.
 export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHasLink }: Props) {
-  // What's in the field: a link being typed, or the one link pasted.
-  const [value, setValue] = useState('');
-  // Links added beyond the first: each is a chip under the field, and the field is free for the
-  // next. Run together in the field as one long line, a second link couldn't be seen to be there.
-  const [added, setAdded] = useState<string[]>([]);
-  const [focused, setFocused] = useState(false);
+  // One entry a field: a link being typed, or one pasted. The first is the field that was always here.
+  const [values, setValues] = useState<string[]>(['']);
+  const [focused, setFocused] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   // The paste button couldn't read the clipboard: the field is focused and says how to paste by hand.
   const [unreadable, setUnreadable] = useState(false);
-  const input = useRef<TextInput>(null);
-  // Every video waiting to be read, each once, chips first.
-  const links = linksIn([...added, value].join(' '));
-  const typed = linksIn(value);
-  const platform = typed.length ? detectPlatform(typed[0]) : null;
+  const inputs = useRef<(TextInput | null)[]>([]);
+  // A field just opened takes the keyboard as soon as it's drawn.
+  const focusAt = useRef<number | null>(null);
+  // Every video waiting to be read, each once, in field order.
+  const links = linksIn(values.join(' '));
+  const many = values.length > 1;
   const sky = useTone() === 'sky';
   const ink = sky ? SKY_INK : PAPER_INK;
 
@@ -82,7 +84,7 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
   };
 
   const submit = () => {
-    if (!value.trim() && !added.length) return;
+    if (!values.some((v) => v.trim())) return;
     // A forwarded message ("Check this reel https://www.instagram.com/reel/…") carries words around
     // the link: only the links are read.
     if (links.length === 0) {
@@ -90,8 +92,7 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
       return;
     }
     Keyboard.dismiss();
-    setValue('');
-    setAdded([]);
+    setValues(['']);
     setError(null);
     setUnreadable(false);
     if (links.length > 1 && onSubmitMany) onSubmitMany(links.slice(0, LINKS_AT_ONCE));
@@ -99,19 +100,20 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
   };
 
   // Pasting only fills the box. Nothing is read until Go: a wrong paste costs nothing, and the
-  // person decides when to start.
-  const fill = (text: string) => {
+  // person decides when to start. Several links pasted together fill a field each, up to three.
+  const fill = (at: number) => (text: string) => {
     const pasted = text.trim();
     if (!pasted) return;
     setUnreadable(false);
     const found = linksIn(pasted);
     if (!found.length) {
-      if (!links.length) setValue(pasted);
+      if (!values[at]) setValues((vs) => vs.map((v, i) => (i === at ? pasted : v)));
       reject();
       return;
     }
-    const all = linksIn([...links, ...found].join(' '));
-    if (all.length === links.length) {
+    const others = linksIn(values.filter((_, i) => i !== at).join(' '));
+    const fresh = linksIn([...others, ...found].join(' ')).slice(others.length);
+    if (!fresh.length) {
       // The same video again: nothing was added, and saying nothing looked like a paste that failed.
       setError(ALREADY);
       haptic.light();
@@ -121,142 +123,190 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
     }
     setError(null);
     haptic.light();
-    // One link sits in the field, as it always has. From the second on, each is a chip.
-    if (all.length === 1 || !onSubmitMany) setValue(all[0]);
-    else {
-      setAdded(all);
-      setValue('');
-    }
+    const room = onSubmitMany ? LINKS_AT_ONCE : 1;
+    setValues((vs) => {
+      const next = [...vs];
+      next[at] = fresh[0];
+      // The rest go into the empty fields after this one, then into new ones, while there's room.
+      for (const url of fresh.slice(1)) {
+        const free = next.findIndex((v, i) => i > at && !v.trim());
+        if (free >= 0) next[free] = url;
+        else if (next.length < room) next.push(url);
+      }
+      return next;
+    });
   };
 
-  const remove = (url: string) => {
+  const type = (at: number) => (t: string) => {
+    setValues((vs) => vs.map((v, i) => (i === at ? t : v)));
+    setError(null);
+  };
+
+  const addField = () => {
     haptic.light();
     setError(null);
-    const left = added.filter((l) => l !== url);
-    // Back to one, with nothing being typed: it returns to the field, where one link lives.
-    if (left.length === 1 && !value.trim()) {
-      setValue(left[0]);
-      setAdded([]);
-    } else setAdded(left);
+    setValues((vs) => [...vs, '']);
+    focusAt.current = values.length;
+    track('link field added', { fields: values.length + 1 });
   };
 
-  const pasteByHand = () => {
+  const remove = (at: number) => {
+    haptic.light();
+    setError(null);
+    setValues((vs) => {
+      const left = vs.filter((_, i) => i !== at);
+      return left.length ? left : [''];
+    });
+  };
+
+  const pasteByHand = (at: number) => () => {
     haptic.light();
     setUnreadable(true);
-    input.current?.focus();
+    inputs.current[at]?.focus();
     track('paste failed');
   };
 
-  // Paste until there's a link, then Go: one button, always the next step. Over the sky it rides
-  // inside the field's right end; on paper it sits beside it.
-  const action = links.length ? (
+  // One field: paste until there's a link, then Go, one button always the next step. Over the sky it
+  // rides inside the field's right end; on paper it sits beside it.
+  const single = links.length ? (
     <Animated.View key="go" entering={FADE_IN}>
       <PressableScale
         onPress={submit}
         style={[styles.go, sky && styles.goSky]}
         accessibilityRole="button"
-        accessibilityLabel={links.length > 1 ? `Go: find the places in these ${links.length} videos` : 'Go: find the places in this video'}
+        accessibilityLabel="Go: find the places in this video"
       >
         <Icon name="arrow-right" size={20} color={light.ctaInk} />
       </PressableScale>
     </Animated.View>
   ) : (
-    <PasteButton shape="circle" onText={fill} onUnreadable={pasteByHand} />
+    <PasteButton shape="circle" onText={fill(0)} onUnreadable={pasteByHand(0)} />
   );
 
-  const chips = added.slice(0, LINKS_AT_ONCE);
-  const canAdd = !!onSubmitMany && links.length < LINKS_AT_ONCE;
-  // One link in the box: the moment to say more can go in with it.
-  const more = links.length === 1 && canAdd && offerMore && !error;
+  // Several fields: each holds its own video, with a way to take it out or to paste into it. The
+  // one button under them reads them all, so there's no guessing which field's arrow to press.
+  const trailing = (at: number) =>
+    values[at].trim() ? (
+      <PressableScale
+        onPress={() => remove(at)}
+        hitSlop={8}
+        style={styles.clear}
+        accessibilityRole="button"
+        accessibilityLabel={`Remove video ${at + 1}`}
+      >
+        <Icon name="x" size={16} color={ink.soft} />
+      </PressableScale>
+    ) : (
+      <PasteButton shape="circle" size={SMALL_CIRCLE} quiet onText={fill(at)} onUnreadable={pasteByHand(at)} />
+    );
+
+  const full = links.length >= LINKS_AT_ONCE;
+  // A video typed into a second field that's already in another: it's read once, and said so.
+  const keys = values.map((v) => {
+    const l = linksIn(v)[0];
+    return l ? linkKey(l) : null;
+  });
+  const repeated = keys.some((k, i) => k !== null && keys.indexOf(k) < i);
+  // Another field once every field holds a video, for someone who has read one before.
+  const canAdd = !!onSubmitMany && offerMore && !full && values.length < LINKS_AT_ONCE && values.every((v) => linksIn(v).length > 0);
   const hint =
     error ??
-    (more ? 'Another video to add?' : null) ??
-    (unreadable && !value ? UNREADABLE : null) ??
-    (clipboardHasLink && !value && !added.length ? 'You copied a link. Tap paste to add it.' : null);
+    (repeated ? ALREADY : null) ??
+    (unreadable && !values.some((v) => v.trim()) ? UNREADABLE : null) ??
+    (clipboardHasLink && !many && !values[0] ? 'You copied a link. Tap paste to add it.' : null);
 
   return (
     <View>
-      <View style={styles.row}>
-        <Animated.View
-          style={[styles.field, focused && styles.fieldFocused, sky && styles.fieldSky, sky && WEB_FROST, sky && focused && styles.fieldSkyFocused, !!error && styles.fieldError, shakeStyle]}
-        >
-          <View style={styles.icon}>
-            {platform ? (
-              <Animated.View key={platform} entering={FADE_IN}>
-                <Ionicons
-                  name={platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'}
-                  size={18}
-                  color={ink.strong}
+      <Animated.View style={[styles.fields, shakeStyle]}>
+        {values.map((value, at) => {
+          const platform = linksIn(value).length ? detectPlatform(linksIn(value)[0]) : null;
+          return (
+            <Animated.View key={at} entering={at > 0 ? FADE_IN : undefined} style={styles.row}>
+              <View
+                style={[
+                  styles.field,
+                  focused === at && styles.fieldFocused,
+                  sky && styles.fieldSky,
+                  sky && WEB_FROST,
+                  sky && focused === at && styles.fieldSkyFocused,
+                  many && styles.fieldMany,
+                  !!error && styles.fieldError,
+                ]}
+              >
+                <View style={styles.icon}>
+                  {platform ? (
+                    <Animated.View key={platform} entering={FADE_IN}>
+                      <Ionicons name={platform === 'youtube' ? 'logo-youtube' : 'logo-instagram'} size={18} color={ink.strong} />
+                    </Animated.View>
+                  ) : (
+                    <Icon name="link" size={16} color={ink.faint} />
+                  )}
+                </View>
+                <TextInput
+                  ref={(r) => {
+                    inputs.current[at] = r;
+                    if (r && focusAt.current === at) {
+                      focusAt.current = null;
+                      r.focus();
+                    }
+                  }}
+                  value={value}
+                  onChangeText={type(at)}
+                  onFocus={() => setFocused(at)}
+                  onBlur={() => setFocused((f) => (f === at ? null : f))}
+                  onSubmitEditing={submit}
+                  placeholder={at === 0 ? 'Paste a video link' : 'Paste the next link'}
+                  placeholderTextColor={ink.faint}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  returnKeyType="go"
+                  selectionColor={ink.strong}
+                  style={[styles.input, sky && styles.inputSky, { color: ink.strong }, NO_FOCUS_RING]}
+                  accessibilityLabel={at === 0 ? 'Link to an Instagram reel or post, or a YouTube video' : `Link to video ${at + 1}`}
                 />
-              </Animated.View>
+                {many ? trailing(at) : sky ? single : null}
+              </View>
+              {many || sky ? null : single}
+            </Animated.View>
+          );
+        })}
+      </Animated.View>
+
+      <View style={styles.under}>
+        {canAdd ? (
+          <Animated.View entering={FADE_IN}>
+            <PressableScale onPress={addField} style={styles.add} accessibilityRole="button" accessibilityLabel="Add another video">
+              <Icon name="plus" size={16} color={ink.strong} />
+              <Text variant="label" color={ink.strong} style={styles.addText}>
+                Add another video
+              </Text>
+            </PressableScale>
+          </Animated.View>
+        ) : null}
+        {many ? (
+          <Animated.View entering={FADE_IN} style={styles.findWrap}>
+            <Button
+              trailingArrow
+              label={links.length === 1 ? 'Find places in this video' : `Find places in ${links.length} videos`}
+              onPress={submit}
+              disabled={links.length === 0}
+            />
+            <Text variant="label" color={ink.soft} style={styles.most}>
+              {full ? `${LINKS_AT_ONCE} is the most at once. Add more once these are read.` : `Up to ${LINKS_AT_ONCE} at a time.`}
+            </Text>
+          </Animated.View>
+        ) : null}
+        {hint ? (
+          <Animated.View key={hint} entering={FADE_IN} exiting={FADE_OUT} style={styles.hint}>
+            {error ? (
+              <ErrorNote>{hint}</ErrorNote>
             ) : (
-              <Icon name="link" size={16} color={ink.faint} />
-            )}
-          </View>
-          <TextInput
-            ref={input}
-            value={value}
-            onChangeText={(t) => {
-              setValue(t);
-              setError(null);
-            }}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            onSubmitEditing={submit}
-            placeholder={added.length ? `${added.length} videos ready. Add another?` : 'Paste a video link'}
-            placeholderTextColor={added.length ? ink.soft : ink.faint}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            returnKeyType="go"
-            selectionColor={ink.strong}
-            style={[styles.input, sky && styles.inputSky, { color: ink.strong }, NO_FOCUS_RING]}
-            accessibilityLabel="Link to an Instagram reel or post, or a YouTube video"
-          />
-          {sky ? action : null}
-        </Animated.View>
-        {sky ? null : action}
-      </View>
-      <View style={styles.hintSlot}>
-        {!chips.length ? null : (
-          // One chip a video, so a second paste is seen to have landed, and any of them can go.
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.chips}>
-            {chips.map((url, i) => (
-              <Animated.View key={url} entering={FADE_IN} style={[styles.chip, { backgroundColor: sky ? skyFill.raised : light.field, borderColor: sky ? skyInk.rim : light.line }]}>
-                <Ionicons name={detectPlatform(url) === 'youtube' ? 'logo-youtube' : 'logo-instagram'} size={15} color={ink.strong} />
-                <Text variant="label" color={ink.strong}>
-                  Video {i + 1}
-                </Text>
-                <PressableScale onPress={() => remove(url)} hitSlop={10} style={styles.chipClose} accessibilityRole="button" accessibilityLabel={`Remove video ${i + 1}`}>
-                  <Icon name="x" size={14} color={ink.soft} />
-                </PressableScale>
-              </Animated.View>
-            ))}
-            {canAdd ? (
-              // Round and small here, so two videos and the way to add a third fit one line.
-              <PasteButton shape="circle" size={40} quiet onText={fill} onUnreadable={pasteByHand} />
-            ) : (
-              <Text variant="label" color={ink.soft} style={styles.most}>
-                {LINKS_AT_ONCE} at a time
+              <Text variant="label" color={ink.soft}>
+                {hint}
               </Text>
             )}
-          </ScrollView>
-        )}
-        {hint ? (
-          <View style={styles.hintRow}>
-            <Animated.View key={hint} entering={FADE_IN} exiting={FADE_OUT} style={styles.hint}>
-              {error ? (
-                <ErrorNote>{hint}</ErrorNote>
-              ) : (
-                <Text variant="label" color={ink.soft}>
-                  {hint}
-                </Text>
-              )}
-            </Animated.View>
-            {/* Outside the fade: Apple's paste button draws itself blank while anything over it is
-                part-way see-through, and stayed blank after. */}
-            {more ? <PasteButton shape="pill" quiet onText={fill} onUnreadable={pasteByHand} /> : null}
-          </View>
+          </Animated.View>
         ) : null}
       </View>
     </View>
@@ -326,15 +376,18 @@ const styles = css.create({
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: fontSize.title, color: light.ink },
   // The button rides inside the field here: a long link stops short of it instead of touching it.
   inputSky: { marginRight: 8 },
-  // The row under the field (a hint, or the videos added): close under it, so the hint reads as
-  // the field's own (on a phone it sat a third of the way to the next card), and air before the
-  // card below. With nothing to say it is only that air, not an empty band.
-  hintSlot: { paddingTop: 6, paddingBottom: 12, gap: 8 },
-  // Tall enough for the Paste pill only when it's there: a bare hint sits right under the field.
-  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  hint: { flex: 1, marginLeft: 4 },
-  chips: { alignItems: 'center', gap: 8, paddingRight: 4 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 12, paddingRight: 8, borderRadius: 18, borderWidth: 1 },
-  chipClose: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
+  fields: { gap: 8 },
+  // Several fields stack tighter: the same field, less tall, so three and the button fit the screen.
+  fieldMany: { height: HEIGHT, paddingRight: (HEIGHT - SMALL_CIRCLE) / 2 },
+  clear: { width: SMALL_CIRCLE, height: SMALL_CIRCLE, alignItems: 'center', justifyContent: 'center' },
+  // What's under the fields (Add, the button, a hint): close under them, so it reads as the field's
+  // own (on a phone the hint sat a third of the way to the next card), and air before the card
+  // below. With nothing to say it is only that air, not an empty band.
+  under: { paddingTop: 6, paddingBottom: 12, gap: 10 },
+  // A 44pt tap round the words, which line up with the field's own icon.
+  add: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, paddingLeft: 16, alignSelf: 'flex-start', paddingRight: 12 },
+  addText: { fontFamily: fonts.sansSemi },
+  findWrap: { gap: 8 },
+  hint: { marginLeft: 4 },
   most: { marginLeft: 4 },
 });

@@ -7,8 +7,8 @@ import { parseLink } from '@/server/links';
 /** An Instagram or YouTube link in a piece of text, with or without https:// and www. */
 const LINK = /(?:https?:\/\/)?(?:www\.|m\.)?(?:instagram\.com|instagr\.am|youtube\.com|youtu\.be)\/[^\s<>"]+/gi;
 
-/** The most links read from one paste: each costs a real read, and a wall of text shouldn't spend the day's allowance. */
-export const LINKS_AT_ONCE = 5;
+/** The most links read at once: each costs a real read (20–45 s and lookups), and a wall of text shouldn't spend the day's allowance. */
+export const LINKS_AT_ONCE = 3;
 
 /** What makes two links the same video, however each was copied: "yt:<id>" or "ig:<shortcode>". */
 export function linkKey(url: string): string {

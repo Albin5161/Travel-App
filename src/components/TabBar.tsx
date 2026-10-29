@@ -14,6 +14,7 @@ import { Glass } from '@/components/sky/Glass';
 import { haptic } from '@/lib/haptics';
 import { DURATION, EASE_OUT, SPRING_SETTLE } from '@/lib/motion';
 import { useHomeSky } from '@/state/sky';
+import { isLight } from '@/theme/mode';
 import { SKY, skyInk } from '@/theme/sky';
 import { fonts, fontSize, light, shadows } from '@/theme/tokens';
 
@@ -110,7 +111,10 @@ const styles = StyleSheet.create({
     borderColor: light.line,
     boxShadow: shadows.card,
   },
-  barSky: { flexDirection: 'row', height: 60, boxShadow: '0 10px 30px rgba(4,10,30,0.25)' },
+  // On paper the bar floats on its shadow alone; a grey rim as well drew it as a box on the page.
+  barSky: isLight
+    ? { flexDirection: 'row', height: 60, borderColor: 'transparent', boxShadow: shadows.bar }
+    : { flexDirection: 'row', height: 60, boxShadow: '0 10px 30px rgba(4,10,30,0.25)' },
   // The chosen tab is told by its filled icon and dark label; a dot under it said it a third time.
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
   label: { fontFamily: fonts.sansMedium, fontSize: fontSize.tag },

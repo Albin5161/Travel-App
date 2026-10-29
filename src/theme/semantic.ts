@@ -1,6 +1,7 @@
 import type { SkyPhase } from '@/lib/sun';
 
 import { black, ember, green, grey, ink, navy, paper, red, white } from './primitives';
+import { shadows } from './tokens';
 
 // Tier two of the design system, as plain data: what each colour is for, in each of the app's two
 // looks. Nothing here knows which look is on (theme/sky picks), so this file can also be read by
@@ -109,6 +110,13 @@ export type Semantic = {
    * the border of the field at fault and the alert icon. Words only, never a filled box.
    */
   danger: { ink: string; line: string };
+  /**
+   * A small control sitting on the page (a header chip, a round icon button). On the sky it's a
+   * pane of glass with a rim; on paper it's white, lifted by a shadow instead of edged in grey.
+   */
+  chip: { fill: string; rim: string; shadow: string };
+  /** A warm light behind Home's header, fading to the page: the sky's warmth, toned right down. */
+  wash: string | null;
 };
 
 export const ON_SKY: Semantic = {
@@ -140,6 +148,9 @@ export const ON_SKY: Semantic = {
   signal: { up: green[300], down: red[300] },
   // The most saturated reds that still pass on every sky: words 4.5:1, border and icon 3:1.
   danger: { ink: red[200], line: red[400] },
+  chip: { fill: white(0.16), rim: white(0.22), shadow: 'none' },
+  // The sky is its own light.
+  wash: null,
 };
 
 export const ON_PAPER: Semantic = {
@@ -169,5 +180,8 @@ export const ON_PAPER: Semantic = {
   signal: { up: green[700], down: red[700] },
   // Red 700 on paper is 6.6:1.
   danger: { ink: red[700], line: red[700] },
+  // A grey fill read as "switched off" (30 Oct 2026); white on a shadow reads as a thing to press.
+  chip: { fill: paper[0], rim: 'transparent', shadow: shadows.chip },
+  wash: ember[50],
 };
 

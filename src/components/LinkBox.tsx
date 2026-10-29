@@ -351,11 +351,12 @@ const styles = css.create({
     height: SKY_HEIGHT,
     borderRadius: radii.field,
     paddingRight: (SKY_HEIGHT - CIRCLE) / 2,
-    // In the light look the field is the page's own white inside a grey line, lifted by a faint
-    // shadow: a grey slab on a white page read as a box of another colour set into it.
+    // In the light look the field is a white pill floating on its shadow, like Airbnb's search bar:
+    // it's the main thing on Home, so it sits highest. A grey line round it drew it flat.
     backgroundColor: isLight ? light.panel : skyFill.raised,
-    borderColor: skyInk.rim,
-    boxShadow: isLight ? '0 2px 12px rgba(0,0,0,0.06)' : 'none',
+    borderColor: isLight ? 'transparent' : skyInk.rim,
+    boxShadow: isLight ? shadows.float : 'none',
+    ...(isLight ? { borderRadius: 999 } : null),
   },
   // A link that isn't one (or is already in): the border takes the error red.
   fieldError: { borderColor: skyDanger.line, borderWidth: 2 },

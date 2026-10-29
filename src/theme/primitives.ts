@@ -37,6 +37,7 @@ export const ink = {
 
 /** The one warm note. 300 and 200 are for small type on a dark sky; 600 and 700 for type on paper. */
 export const ember = {
+  50: '#FBF3EA',
   200: '#FFD6BE',
   300: '#FFA877',
   500: '#E2763C',

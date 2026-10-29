@@ -39,7 +39,7 @@ import { FADE_IN, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips, type HomeTab } from '@/state/trips';
 import { useHomeSky } from '@/state/sky';
 import { useHere } from '@/state/where';
-import { SKY, skyFill, skyInk, withAlpha } from '@/theme/sky';
+import { SKY, skyChip, skyInk, skyWash, withAlpha } from '@/theme/sky';
 import { fonts, space, textSize } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
@@ -55,6 +55,8 @@ const STRIP_TUCK = 22;
 const STICK_AIR = 10;
 /** How far under the stuck box the cards fade out, instead of being cut by a hard line. */
 const FROST_FADE = 20;
+/** How far down the warm wash behind the header reaches, below the status bar. */
+const WASH_H = 380;
 // First-run strip: one striking place from each sample video, so the promise is visual.
 const INSPIRATION = ['meg-dawki', 'kochi-mural', 'gok-om', 'meg-falls', 'gok-halfmoon']
   .map((id) => places[id])
@@ -70,8 +72,8 @@ const MAX_PAD = 200;
 /** How much of what's below the fold (collections, a plan to continue) the first screen shows. */
 const PEEK = 110;
 const GAP = 10;
-/** Three across. Tighter than two, and the grid reads as a collection rather than a shortlist. */
-const COLUMNS = 3;
+/** Two across: the photo does the work, as on Airbnb (30 Oct 2026; it was three). */
+const COLUMNS = 2;
 
 // Home is Collect mode: paste a video, check what it found, watch your collections fill up. The
 // collections split the way the app does: Near Home (weekends) and Cities (trips). Tapping a card
@@ -111,6 +113,8 @@ export default function Home() {
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.set(e.contentOffset.y);
   });
+  // The wash moves with the page, so it has gone by the time the link box sticks and frosts.
+  const washStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, scrollY.get()) }] }));
   const frostStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.get(), [stickAt, stickAt + 24], [0, 1], Extrapolation.CLAMP),
   }));
@@ -181,6 +185,11 @@ export default function Home() {
 
   return (
     <SkyScreen>
+      {skyWash ? (
+        <Animated.View style={[styles.wash, { height: insets.top + WASH_H }, washStyle]} pointerEvents="none">
+          <LinearGradient colors={[skyWash, withAlpha(skyWash, 0.4), withAlpha(skyWash, 0)]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
+        </Animated.View>
+      ) : null}
       <View style={[styles.fill, { paddingTop: insets.top }]}>
         <Animated.ScrollView
           ref={scroll}
@@ -482,6 +491,7 @@ function useStartFromLink() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  wash: { position: 'absolute', top: 0, left: 0, right: 0 },
   header: { paddingHorizontal: GUTTER },
   // The strip's lower edge runs under the sticky link box below it (a later sibling, so it draws
   // on top), which is what makes the prints read as tucked behind the field.
@@ -500,8 +510,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: skyInk.rim,
-    backgroundColor: skyFill.raised,
+    borderColor: skyChip.rim,
+    backgroundColor: skyChip.fill,
+    boxShadow: skyChip.shadow,
   },
   hereText: { flexShrink: 1 },
   // The chip's glass, round: 44pt, the size of every tap.
@@ -512,8 +523,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: skyInk.rim,
-    backgroundColor: skyFill.raised,
+    borderColor: skyChip.rim,
+    backgroundColor: skyChip.fill,
+    boxShadow: skyChip.shadow,
   },
   // Two weights, one colour: a quiet Medium lead-in, then the name and the ask in ExtraBold. The
   // weight does the emphasis; a second colour on the last line is every generated landing page.
@@ -538,7 +550,7 @@ const styles = StyleSheet.create({
   // Clear at rest, so the prints disappear behind the field rather than behind a flat band.
   sticky: { paddingHorizontal: GUTTER, paddingTop: STICK_AIR },
   frost: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  frostFill: { flex: 1, borderWidth: 0 },
+  frostFill: { flex: 1, borderWidth: 0, boxShadow: 'none' },
   frostFade: { position: 'absolute', left: 0, right: 0, bottom: -FROST_FADE, height: FROST_FADE },
   // Straight on the sky, no card: the caption, the switch and the tiles, like a weather app's list.
   panelWrap: { marginTop: 16, paddingHorizontal: GUTTER, gap: 16 },

@@ -22,8 +22,8 @@ import { MODE, SKY_AVAILABLE, isLight, setMode } from '@/theme/mode';
 import { fadeUp, REFLOW } from '@/lib/motion';
 import { useArrivalWatch, type Permissions } from '@/state/arrival';
 import { useSavedSpots, useTrips } from '@/state/trips';
-import { skyOnInk, skyFill, skyInk } from '@/theme/sky';
-import { fonts, fontSize, radii, space, textSize } from '@/theme/tokens';
+import { skyChip, skyOnInk, skyFill, skyInk } from '@/theme/sky';
+import { fonts, fontSize, radii, shadows, space, textSize } from '@/theme/tokens';
 
 
 const ENTER = [0, 1, 2, 3, 4, 5].map((i) => fadeUp(60 + i * 50));
@@ -517,9 +517,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderRadius: radii.glass,
-    backgroundColor: skyFill.pane,
+    // White and lifted on paper, like the panels below it.
+    backgroundColor: skyChip.fill,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: skyInk.rim,
+    borderColor: skyChip.rim,
+    boxShadow: isLight ? shadows.card : undefined,
   },
   statValue: {
     fontFamily: fonts.display,

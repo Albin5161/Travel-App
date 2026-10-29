@@ -44,9 +44,17 @@ export const light = {
   mapSeaLabel: 'rgba(40,70,80,0.30)',
 } as const;
 
+// Depth the way Airbnb does it (Albin, 30 Oct 2026: the light look "feels flat"): every lifted
+// thing gets two shadows, a tight one that draws its edge and a wide faint one that lifts it.
 export const shadows = {
   field: '0 6px 20px rgba(17,17,17,0.06)',
-  card: '0 10px 24px rgba(17,17,17,0.14)',
+  card: '0 1px 2px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.10)',
+  /** The link box: the main thing on Home, so it floats highest. */
+  float: '0 1px 2px rgba(0,0,0,0.06), 0 6px 20px rgba(0,0,0,0.12)',
+  /** Small white controls on the page: a chip, a round icon button. */
+  chip: '0 1px 2px rgba(0,0,0,0.08), 0 3px 10px rgba(0,0,0,0.08)',
+  /** The floating tab bar. */
+  bar: '0 1px 2px rgba(0,0,0,0.06), 0 10px 30px rgba(0,0,0,0.14)',
   panel: '0 -8px 30px rgba(17,17,17,0.05)',
   cta: '0 8px 20px rgba(17,17,17,0.22)',
   pin: '0 4px 10px rgba(17,17,17,0.25)',

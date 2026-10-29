@@ -6,7 +6,8 @@ import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'reac
 import { Text } from '@/components/Text';
 import { useReduceTransparency } from '@/lib/transparency';
 import { deepGlass, skyInk } from '@/theme/sky';
-import { radii } from '@/theme/tokens';
+import { isLight } from '@/theme/mode';
+import { radii, shadows } from '@/theme/tokens';
 
 import { useScreenSky } from './SkyScreen';
 
@@ -76,10 +77,12 @@ export function GlassLabel({ icon, children }: { icon: IconName; children: strin
 }
 
 const styles = StyleSheet.create({
+  // On paper a panel is white paper lifted off the page by a shadow, not a box drawn in grey.
   card: {
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: skyInk.rim,
+    borderColor: isLight ? 'transparent' : skyInk.rim,
+    boxShadow: isLight ? shadows.card : undefined,
   },
   label: {
     flexDirection: 'row',

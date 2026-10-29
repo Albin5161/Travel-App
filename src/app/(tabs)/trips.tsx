@@ -22,7 +22,7 @@ import { EASE_OUT, fadeUp } from '@/lib/motion';
 import { summarize } from '@/state/group';
 import { useTrips } from '@/state/trips';
 import { Tone } from '@/theme/tone';
-import { skyAccent, skyAccentText, skyAccentWash, skyFill, skyInk, skyOnInk } from '@/theme/sky';
+import { skyAccent, skyAccentText, skyAccentWash, skyChip, skyFill, skyInk, skyOnInk } from '@/theme/sky';
 import { colors, fonts, light, space, textSize } from '@/theme/tokens';
 
 const CARD_IN = [0, 1, 2, 3, 4, 5].map((i) => fadeUp(80 + i * 60));
@@ -235,8 +235,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: skyInk.rim,
-    backgroundColor: skyFill.raised,
+    borderColor: skyChip.rim,
+    backgroundColor: skyChip.fill,
+    boxShadow: skyChip.shadow,
   },
   flex: { flex: 1 },
   center: { textAlign: 'center' },

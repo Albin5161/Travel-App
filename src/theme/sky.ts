@@ -48,6 +48,8 @@ export const skyDanger = NOW.danger;
 export const skyAccentWash = NOW.accentWash;
 export const skyAccentRim = NOW.accentRim;
 export const skySignal = NOW.signal;
+export const skyChip = NOW.chip;
+export const skyWash = NOW.wash;
 /**
  * A fade laid over a map or a photo's top edge so the title and the status bar read on it: the
  * sky's night on the sky, paper in the light look. `alpha` is how much it hides.

@@ -31,7 +31,7 @@ import { fonts, fontSize, radii, shadows, space, textSize } from '@/theme/tokens
 const ENTER = [0, 1, 2, 3, 4, 5].map((i) => fadeUp(60 + i * 50));
 const GUTTER = space.screen;
 /** The 3D icon in each count's corner. */
-const STAT_ICON = 34;
+const STAT_ICON = 40;
 
 // Background geofencing is not in Expo Go, so "Try it" is the only way to see an arrival there.
 // Detected rather than assumed, so a development build drops the caveat.
@@ -270,7 +270,8 @@ export default function Profile() {
 }
 
 /**
- * One of the three counts, with its 3D icon in the corner. A tap opens the tab straight away, so
+ * One of the three counts: its 3D icon on top, then the number, then the word, on one left edge.
+ * (In the corner, each icon sat differently against numbers of different widths.) A tap opens the tab straight away, so
  * the icons play when Profile opens instead, one after another; pressing a tile squashes its icon.
  */
 function Stat({ value, label, icon, order, onPress }: { value: number; label: string; icon: { source: number; story: Story }; order: number; onPress: () => void }) {
@@ -535,7 +536,8 @@ const styles = StyleSheet.create({
   },
   stats: { flexDirection: 'row', gap: 8, paddingHorizontal: GUTTER, marginTop: 16 },
   statSlot: { flex: 1 },
-  statIcon: { position: 'absolute', top: 10, right: 10 },
+  // The picture has a little air round the object: nudged so the object lines up with the number.
+  statIcon: { marginLeft: -3, marginBottom: 6 },
   stat: {
     gap: 2,
     paddingVertical: 16,

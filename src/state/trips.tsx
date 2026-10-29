@@ -834,13 +834,13 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       p.id.startsWith('g:') &&
       p.source.kind === 'reel' &&
       (uriOf(p.photo) === thumbOf(p) || (!!p.photoFromVideo && Date.now() - p.photoFromVideo > COORDS_DAYS * 86400_000));
-    // Covers need no credit (data/covers.ts): our photo of the city, else a frame of its first video,
-    // never a place's Google photo. Set directly: register keeps a known city's cover on purpose. Says
+    // Covers need no credit (data/covers.ts): our photo of the city, else its state's pattern, never a
+    // place's Google photo or a frame of the video. Set directly: register keeps a known city's cover on purpose. Says
     // whether any cover changed.
     const fixCovers = () => {
       let changed = false;
       for (const city of Object.values(live.cities)) {
-        const next = withCover(city, Object.values(live.reels).find((r) => r.cityId === city.id));
+        const next = withCover(city);
         if (next === city) continue;
         live.cities[city.id] = next;
         changed = true;

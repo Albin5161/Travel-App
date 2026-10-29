@@ -505,20 +505,17 @@ function toPlaces(pairs: { found: FoundPlace; match: MatchedPlace }[], reel: Ree
 }
 
 function toCity(id: string, name: string, state: string, reel: Reel, terrain?: Terrain): City {
-  // The cover needs no credit (data/covers.ts): our own photo of the city, else a frame of this video.
-  return withCover(
-    {
-      id,
-      name,
-      state,
-      // Our districts are only mapped for the sample regions; the city stands in for its own.
-      district: name,
-      hero: framePhoto(reel, 1),
-      map: { roads: [], hills: [], labels: [] },
-      terrain,
-    },
-    reel,
-  );
+  // The cover needs no credit (data/covers.ts): our own photo of the city, else its state's pattern.
+  return withCover({
+    id,
+    name,
+    state,
+    // Our districts are only mapped for the sample regions; the city stands in for its own.
+    district: name,
+    hero: framePhoto(reel, 1),
+    map: { roads: [], hills: [], labels: [] },
+    terrain,
+  });
 }
 
 /** "Munsiyari, Uttarakhand, India" → Munsiyari, Uttarakhand. Without a region, the commonest area. */

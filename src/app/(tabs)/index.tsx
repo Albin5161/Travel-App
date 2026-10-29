@@ -299,7 +299,7 @@ export default function Home() {
                 onChange={(t) => dispatch({ type: 'setHomeTab', tab: t })}
                 options={[
                   { key: 'near', label: 'Near Home', count: near.length, icon: ICONS_3D.near.source, story: ICONS_3D.near.story },
-                  { key: 'cities', label: 'Cities', count: away.length, icon: ICONS_3D.cities.source, story: ICONS_3D.cities.story },
+                  { key: 'cities', label: 'Away from home', count: away.length, icon: ICONS_3D.away.source, story: ICONS_3D.away.story },
                 ]}
               />
               <Animated.View key={tab} entering={FADE_IN} style={styles.grid}>
@@ -458,8 +458,8 @@ function Empty({ tab, homeName, onSetHome }: { tab: HomeTab; homeName: string | 
   }
   return (
     <View style={styles.empty}>
-      <Icon3D source={ICONS_3D[tab === 'near' ? 'near' : 'cities'].source} size={EMPTY_ICON} story={ICONS_3D[tab === 'near' ? 'near' : 'cities'].story} tappable playOnShow />
-      <Text variant="headline" accessibilityRole="header">{tab === 'near' ? 'Nothing near home yet' : 'No cities yet'}</Text>
+      <Icon3D source={ICONS_3D[tab === 'near' ? 'near' : 'away'].source} size={EMPTY_ICON} story={ICONS_3D[tab === 'near' ? 'near' : 'away'].story} tappable playOnShow />
+      <Text variant="headline" accessibilityRole="header">{tab === 'near' ? 'Nothing near home yet' : 'Nothing away from home yet'}</Text>
       <Text variant="body">
         {tab === 'near'
           ? `Save a video of a café, a waterfall or a drive around ${homeName}. It lands here, ready for a free Saturday.`

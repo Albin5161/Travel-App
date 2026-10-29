@@ -8,6 +8,7 @@ import type { Group, GroupState, Member, Vote } from '@/data/group';
 import { fromIso, isoDay, type TripPlan, type TripPrefs } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
 import { cityName } from '@/data/cityNames';
+import { hasOurCover } from '@/data/covers';
 import { betterPhoto, framePhoto, refreshPlace, sameCity } from '@/lib/extract';
 import { distanceKm } from '@/lib/geo';
 import { linkKey } from '@/lib/links';
@@ -840,6 +841,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       let changed = false;
       const landmark = (p: Place) => p.type === 'sight' || p.type === 'experience';
       for (const city of Object.values(live.cities)) {
+        // Our own photo stays (data/covers.ts): it's picked for the place, and needs no credit.
+        if (hasOurCover(city)) continue;
         const inCity = Object.values(live.places).filter((p) => p.cityId === city.id && p.photoCredit);
         const best = inCity.find(landmark);
         const reel = Object.values(live.reels).find((r) => r.cityId === city.id && uriOf(r.thumbnail) === uriOf(city.hero));

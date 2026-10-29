@@ -1,3 +1,4 @@
+import { withCover } from './covers';
 import type { City, Place, Reel } from './types';
 
 // Places, cities and videos that came from the API rather than the catalog. The lookups in api.ts
@@ -16,14 +17,15 @@ export function register(items: { places?: Place[]; city?: City; reel?: Reel }, 
     live.places[p.id] = p;
     live.placedAt[p.id] ??= at;
   });
-  if (items.city) live.cities[items.city.id] = keepCover(live.cities[items.city.id], items.city);
+  if (items.city) live.cities[items.city.id] = withCover(keepCover(live.cities[items.city.id], items.city));
   if (items.reel) live.reels[items.reel.id] = items.reel;
 }
 
 /**
  * A city read again (a second video of Mumbai, say) keeps the cover it had: the share ticket and
  * the Home card shouldn't change photo because another video was pasted. A cover that is still a
- * video's frame (no photo credit) gives way to a real photo when one arrives.
+ * video's frame (no photo credit) gives way to a real photo when one arrives. Either way, a city we
+ * have our own photo for wears that (covers.ts).
  */
 function keepCover(known: City | undefined, next: City): City {
   if (!known || (!known.heroCredit && next.heroCredit)) return next;
@@ -50,7 +52,8 @@ export function snapshot(placeIds: Iterable<string>, cityIds: Iterable<string>, 
 
 export function restore(s: LiveSnapshot) {
   s.places.forEach((p) => (live.places[p.id] = p));
-  s.cities.forEach((c) => (live.cities[c.id] = c));
+  // Saved before our own photos existed, a city still wears a Google photo and its credit: swapped here.
+  s.cities.forEach((c) => (live.cities[c.id] = withCover(c)));
   s.reels.forEach((r) => (live.reels[r.id] = r));
   Object.assign(live.placedAt, s.placedAt);
 }

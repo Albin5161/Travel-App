@@ -1,6 +1,7 @@
 import type { ImageSourcePropType } from 'react-native';
 
 import { cityName, sameCityName } from '@/data/cityNames';
+import { withCover } from '@/data/covers';
 import type { Stay } from '@/data/planner';
 import { live, register } from '@/data/registry';
 import type { City, DayPart, Extraction, Place, PlaceFacts, PlaceType, Reel } from '@/data/types';
@@ -508,7 +509,8 @@ function toCity(id: string, name: string, state: string, places: Place[], reel: 
   // hotel lobby), then any place with one, then a frame from the video.
   const covered =
     places.find((p) => p.photoCredit && (p.type === 'sight' || p.type === 'experience')) ?? places.find((p) => p.photoCredit);
-  return {
+  // Our own photo of the place wins when we have one (data/covers.ts); these are the fallback.
+  return withCover({
     id,
     name,
     state,
@@ -518,7 +520,7 @@ function toCity(id: string, name: string, state: string, places: Place[], reel: 
     heroCredit: covered?.photoCredit,
     map: { roads: [], hills: [], labels: [] },
     terrain,
-  };
+  });
 }
 
 /** "Munsiyari, Uttarakhand, India" → Munsiyari, Uttarakhand. Without a region, the commonest area. */

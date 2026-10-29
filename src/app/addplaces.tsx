@@ -2,14 +2,13 @@ import { Icon } from '@/components/Icon';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { Linking, Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { IconButton } from '@/components/IconButton';
 import Ionicons from '@/components/Ionicons';
-import { MascotMoment } from '@/components/mascots/ReadingScene';
 import { PhotoCard } from '@/components/PhotoCard';
 import { PressableScale } from '@/components/PressableScale';
 import { Glass } from '@/components/sky/Glass';
@@ -23,13 +22,12 @@ import { allDistricts } from '@/data/regions';
 import type { Place } from '@/data/types';
 import { bestKnownSpots, cityFromWhere, lengthLabel, placeFromPick, sendVerdicts, townOf, type Suggestion } from '@/lib/extract';
 import { track } from '@/lib/analytics';
-import { dressOfRegion } from '@/lib/dress';
 import { haptic } from '@/lib/haptics';
 import { fadeUp } from '@/lib/motion';
 import { useTrips } from '@/state/trips';
 import { Tone } from '@/theme/tone';
 import { skyOnInk, skyFill, skyInk } from '@/theme/sky';
-import { colors, radii, space } from '@/theme/tokens';
+import { colors, fonts, radii, space, textSize } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2].map((i) => fadeUp(i * 60));
 
@@ -125,6 +123,64 @@ export default function AddPlaces() {
   };
   const instagram = reel.platform === 'instagram';
 
+  // The city's best-known spots: rows that fill in while they load, each marked as a suggestion.
+  const spotList = (
+    <Animated.View entering={ENTER[2]} style={styles.list}>
+      {spots === 'loading' ? (
+        <>
+          <Glass radius={radii.pane} style={styles.spots}>
+            {[0.62, 0.5, 0.68].map((w, i) => (
+              <View key={i} style={styles.spot} accessible={false}>
+                <Loading style={styles.thumb} />
+                <View style={styles.rowText}>
+                  <Loading style={[styles.bar, { width: `${w * 100}%` }]} />
+                  <Loading style={[styles.bar, { width: `${w * 60}%` }]} />
+                </View>
+              </View>
+            ))}
+          </Glass>
+          <Text variant="label" color={skyInk.soft} accessibilityLiveRegion="polite">
+            {`Finding ${city}’s best-known spots… about 10 seconds`}
+          </Text>
+        </>
+      ) : Array.isArray(spots) ? (
+        <Glass radius={radii.pane} style={styles.spots}>
+          {spots.map((place) => {
+            const on = added.some((a) => a.place.id === place.id);
+            return (
+              <Pressable
+                key={place.id}
+                onPress={() => toggleSpot(place)}
+                style={({ pressed }) => [styles.spot, pressed && styles.spotPressed]}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on }}
+                accessibilityLabel={[place.name, place.area, 'suggested'].filter(Boolean).join(', ')}
+              >
+                <Image source={place.photo} style={[styles.thumb, !on && styles.thumbOff]} contentFit="cover" transition={0} />
+                <View style={styles.rowText}>
+                  <View style={styles.nameRow}>
+                    <Text variant="bodyStrong" numberOfLines={1} style={styles.nameShrink}>
+                      {place.name}
+                    </Text>
+                    <View style={styles.chip}>
+                      <Text variant="label" color={skyInk.soft} style={styles.chipText}>
+                        Suggested
+                      </Text>
+                    </View>
+                  </View>
+                  <Text variant="label" color={skyInk.soft} numberOfLines={2}>
+                    {place.why || place.area}
+                  </Text>
+                </View>
+                <Tick on={on} />
+              </Pressable>
+            );
+          })}
+        </Glass>
+      ) : null}
+    </Animated.View>
+  );
+
   const cardW = W - space.screen * 2;
   return (
     <SkyScreen style={{ paddingTop: insets.top + 8 }}>
@@ -133,14 +189,27 @@ export default function AddPlaces() {
         <Animated.View entering={ENTER[0]} style={styles.titles}>
           <Text variant="label" ink="faint">{[instagram ? 'Instagram reel' : 'YouTube video', city].filter(Boolean).join(' · ')}</Text>
           <Text variant="display" accessibilityRole="header">
-            {city ? `Your ${city} spots` : 'Add the places yourself'}
+            {city ? `${city}’s best-known spots` : 'Add the places yourself'}
           </Text>
-          <Text variant="body">
-            {city
-              ? `Tick ${city}’s best-known spots you want, or watch the ${instagram ? 'reel' : 'video'} and search for the places you spot.`
-              : 'Watch the reel, then search for each place you spot.'}
-          </Text>
+          {city ? (
+            // Said before the list arrives, so suggestions never look like the video's own finds.
+            <View style={styles.notice}>
+              <Icon name="info" size={16} color={skyInk.strong} />
+              <View style={styles.noticeText}>
+                <Text variant="label" color={skyInk.strong} style={styles.noticeTitle}>
+                  {`The ${instagram ? 'reel' : 'video'} doesn’t name any places.`}
+                </Text>
+                <Text variant="label" color={skyInk.soft}>
+                  {`So here are ${city}’s best-known spots instead, suggested by Xplore’s AI (it can make mistakes). Tick the ones you want, or add places you spot in the ${instagram ? 'reel' : 'video'}.`}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <Text variant="body">Watch the reel, then search for each place you spot.</Text>
+          )}
         </Animated.View>
+
+        {city && spots ? spotList : null}
 
         <Animated.View entering={ENTER[1]}>
           <PressableScale onPress={watch} accessibilityRole="link" accessibilityLabel={instagram ? 'Watch the reel on Instagram' : 'Watch the video on YouTube'}>
@@ -171,59 +240,6 @@ export default function AddPlaces() {
           </PressableScale>
         </Animated.View>
 
-        {spots ? (
-          <Animated.View entering={ENTER[2]} style={styles.list}>
-            <View style={styles.spotsHead}>
-              <Text variant="label" ink="faint" accessibilityRole="header">
-                Well known in {city}
-              </Text>
-              <Text variant="label" color={skyInk.soft}>
-                Suggested by Xplore’s AI, not seen in the {instagram ? 'reel' : 'video'}. It can make mistakes.
-              </Text>
-            </View>
-            {spots === 'loading' ? (
-              // The wait gets Amma and the child, as every wait does.
-              <Glass radius={radii.pane} style={styles.spotsWait}>
-                <MascotMoment
-                  lines={[
-                    { who: 'kid', text: `What’s good in ${city}, Amma?` },
-                    { who: 'amma', text: 'Let me list the best bits.' },
-                  ]}
-                  width={Math.min(cardW - 28, 320)}
-                  dress={dressOfRegion(region)}
-                  about={`Amma and the child look up ${city}’s best-known spots.`}
-                />
-              </Glass>
-            ) : (
-              <Glass radius={radii.pane} style={styles.spots}>
-                {spots.map((place) => {
-                  const on = added.some((a) => a.place.id === place.id);
-                  return (
-                    <Pressable
-                      key={place.id}
-                      onPress={() => toggleSpot(place)}
-                      style={({ pressed }) => [styles.spot, pressed && styles.spotPressed]}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: on }}
-                      accessibilityLabel={[place.name, place.area].filter(Boolean).join(', ')}
-                    >
-                      <Image source={place.photo} style={[styles.thumb, !on && styles.thumbOff]} contentFit="cover" transition={0} />
-                      <View style={styles.rowText}>
-                        <Text variant="bodyStrong" numberOfLines={1}>
-                          {place.name}
-                        </Text>
-                        <Text variant="label" color={skyInk.soft} numberOfLines={2}>
-                          {place.why || place.area}
-                        </Text>
-                      </View>
-                      <Tick on={on} />
-                    </Pressable>
-                  );
-                })}
-              </Glass>
-            )}
-          </Animated.View>
-        ) : null}
 
         <Animated.View entering={ENTER[2]} style={styles.list}>
           {city && added.some((a) => !Array.isArray(spots) || !spots.some((s) => s.id === a.place.id)) ? (
@@ -279,6 +295,18 @@ export default function AddPlaces() {
   );
 }
 
+/** A grey block where a row's words and picture will be, breathing gently while the list loads. */
+function Loading({ style }: { style: StyleProp<ViewStyle> }) {
+  const reduced = useReducedMotion();
+  const glow = useSharedValue(1);
+  useEffect(() => {
+    if (reduced) return;
+    glow.set(withRepeat(withTiming(0.45, { duration: 700 }), -1, true));
+  }, [glow, reduced]);
+  const pulse = useAnimatedStyle(() => ({ opacity: glow.get() }));
+  return <Animated.View style={[style, pulse]} />;
+}
+
 const styles = StyleSheet.create({
   close: { marginLeft: space.screen },
   body: { paddingHorizontal: space.screen, paddingTop: 20, gap: 24 },
@@ -301,8 +329,14 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8 },
   thumb: { width: 48, height: 48, borderRadius: 12, backgroundColor: skyFill.pane },
   thumbOff: { opacity: 0.55 },
-  spotsWait: { alignItems: 'center', paddingTop: 8, overflow: 'hidden' },
-  spotsHead: { gap: 4 },
+  notice: { flexDirection: 'row', gap: 10, padding: 12, borderRadius: radii.pane, backgroundColor: skyFill.pane },
+  noticeText: { flex: 1, gap: 2 },
+  noticeTitle: { fontFamily: fonts.sansSemi },
+  bar: { height: 12, borderRadius: 6, backgroundColor: skyFill.pane },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  nameShrink: { flexShrink: 1 },
+  chip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radii.pill, backgroundColor: skyFill.pane },
+  chipText: { ...textSize.tag },
   spots: { padding: 8, gap: 2 },
   // A whole row is the tap, at least 44pt tall.
   spot: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, minHeight: 64, borderRadius: radii.pane },

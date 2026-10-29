@@ -26,7 +26,7 @@ import { GlassRim, PhotoCard } from '@/components/PhotoCard';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { Text } from '@/components/Text';
-import { extractPlaces, getLinkPreview, isSampleLink } from '@/data/api';
+import { detectPlatform, extractPlaces, getLinkPreview, isSampleLink } from '@/data/api';
 import { register } from '@/data/registry';
 import { SAMPLE_LINK } from '@/data/catalog';
 import type { Extraction, Place, Reel } from '@/data/types';
@@ -148,6 +148,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   const script = isSampleLink(url) ? SAMPLE : link?.platform === 'instagram' ? INSTAGRAM : YOUTUBE;
   const early = useMemo(() => earlyReel(url), [url]);
   const card = preview ?? early;
+  const heading = useMemo(() => headingFor(url), [url]);
   // Names land in the order the video mentions them, so the list and the timeline agree.
   const found = useMemo(() => [...names].sort((a, b) => seconds(a.stamp) - seconds(b.stamp)), [names]);
   const markers = useMemo(() => {
@@ -230,7 +231,9 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
   };
 
   const cardW = W - space.screen * 2;
-  const sceneW = Math.min(cardW - 28, 360);
+  // A little smaller than the full width, so with the heading above them they still stand in the card.
+  const sceneW = Math.min(cardW - 28, 300);
+  const cardH = cardW * 0.54;
 
   return (
     <SkyScreen style={{ paddingTop: insets.top + 8 }}>
@@ -246,6 +249,16 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
         style={styles.close}
       />
 
+      {/* What this screen is doing, in the link's own words: a reel, a post, a video or a Short. */}
+      <Animated.View entering={FADE_IN} style={styles.heading}>
+        <Text variant="headline" accessibilityRole="header">
+          {heading.title}
+        </Text>
+        <Text variant="label" color={skyInk.soft}>
+          {heading.lede}
+        </Text>
+      </Animated.View>
+
       {/* While reading, the card under the video runs to the foot of the screen, Amma and the child
           standing at its base; once there's a button, it stops above it. */}
       <View style={[styles.body, phase !== 'done' && { paddingBottom: insets.bottom + 12 }]}>
@@ -253,7 +266,7 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
           {card ? (
             <Animated.View entering={CARD_IN}>
               <Tone value="dark">
-                <ReelCard reel={card} width={cardW} height={cardW * 0.62}>
+                <ReelCard reel={card} width={cardW} height={cardH}>
                   <View style={styles.previewText}>
                     <View style={styles.sourceRow}>
                       <Ionicons
@@ -286,9 +299,9 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
               </Tone>
             </Animated.View>
           ) : (
-            <View style={{ width: cardW, height: cardW * 0.62 }} />
+            <View style={{ width: cardW, height: cardH }} />
           )}
-          <View style={[styles.scanner, { left: cardW - ORB_INSET - SCANNER / 2, top: cardW * 0.62 - SCANNER / 2 }]}>
+          <View style={[styles.scanner, { left: cardW - ORB_INSET - SCANNER / 2, top: cardH - SCANNER / 2 }]}>
             <ReelScanner done={phase === 'done'} size={SCANNER} />
           </View>
         </View>
@@ -394,6 +407,29 @@ function Reading({ url, onRetry }: { url: string; onRetry: () => void }) {
       ) : null}
     </SkyScreen>
   );
+}
+
+/**
+ * The reading screen's heading, from the link alone (before anything is read): what kind of video it
+ * is, and in a line, what's done with it. A /p/ link is usually a photo post; /reel/ a reel.
+ */
+function headingFor(url: string): { title: string; lede: string } {
+  const pin = 'then pin every spot on a map.';
+  if (isSampleLink(url)) {
+    const yt = detectPlatform(url) === 'youtube';
+    return yt
+      ? { title: 'Finding the places in this video', lede: `We read the title and description, ${pin}` }
+      : { title: 'Finding the places in this reel', lede: `We read the caption and listen to the reel, ${pin}` };
+  }
+  const link = parseLink(url);
+  if (link?.platform === 'youtube') {
+    const short = /\/shorts\//i.test(url);
+    return { title: `Finding the places in this ${short ? 'Short' : 'video'}`, lede: `We read the title and description, ${pin}` };
+  }
+  if (/instagram\.com\/(?:[^/]+\/)?p\//i.test(url)) {
+    return { title: 'Finding the places in this post', lede: `We read the caption and look at the photos, ${pin}` };
+  }
+  return { title: 'Finding the places in this reel', lede: `We read the caption and listen to the reel, ${pin}` };
 }
 
 /** Whether whoever pasted is still on the screen, left it to carry on, or stopped the read. */
@@ -780,13 +816,14 @@ function PinDrop() {
 
 const styles = StyleSheet.create({
   close: { marginLeft: space.screen },
-  body: { flex: 1, minHeight: 0, paddingHorizontal: space.screen, paddingTop: 28 },
+  heading: { paddingHorizontal: space.screen, paddingTop: 12, gap: 4 },
+  body: { flex: 1, minHeight: 0, paddingHorizontal: space.screen, paddingTop: 16 },
   // Right padding leaves room for the scanner sitting on the card's bottom-right edge.
   previewText: { position: 'absolute', left: 18, right: ORB_INSET + 28, bottom: 36, gap: 8 },
   timeline: { position: 'absolute', left: 18, bottom: 14 },
   sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   // Shrinks to the room left above the button; its list scrolls inside.
-  found: { marginTop: 24, padding: 16, flexGrow: 1, flexShrink: 1, minHeight: 0 },
+  found: { marginTop: 16, padding: 16, flexGrow: 1, flexShrink: 1, minHeight: 0 },
   creditsScroll: { flexShrink: 1 },
   // Down to the card's edge, through its padding. On a short screen it gives up its lower part (the
   // bodies; faces and words are at the top) well before the finds do.

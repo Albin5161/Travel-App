@@ -17,9 +17,9 @@ import { CityOpenOverlay, useCityOpen } from '@/components/CityOpenOverlay';
 import { CityTile } from '@/components/CityTile';
 import { LinkBox } from '@/components/LinkBox';
 import { PressableScale } from '@/components/PressableScale';
+import { Segmented } from '@/components/Segmented';
 import { Text } from '@/components/Text';
 import { Wordmark } from '@/components/Wordmark';
-import { Segmented } from '@/components/Segmented';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { EXAMPLE_LINKS, getCity, getReel } from '@/data/api';
@@ -74,6 +74,9 @@ const PEEK = 110;
 const GAP = 10;
 /** Two across: the photo does the work, as on Airbnb (30 Oct 2026; it was three). */
 const COLUMNS = 2;
+/** The 3D pictures over Near Home and Cities (made in Figma, 30 Oct 2026; see docs/mockups/3d). */
+const NEAR_ICON = require('@/assets/images/icons3d/near.png');
+const CITIES_ICON = require('@/assets/images/icons3d/cities.png');
 
 // Home is Collect mode: paste a video, check what it found, watch your collections fill up. The
 // collections split the way the app does: Near Home (weekends) and Cities (trips). Tapping a card
@@ -294,8 +297,8 @@ export default function Home() {
                 value={tab}
                 onChange={(t) => dispatch({ type: 'setHomeTab', tab: t })}
                 options={[
-                  { key: 'near', label: 'Near Home', count: near.length },
-                  { key: 'cities', label: 'Cities', count: away.length },
+                  { key: 'near', label: 'Near Home', count: near.length, icon: NEAR_ICON },
+                  { key: 'cities', label: 'Cities', count: away.length, icon: CITIES_ICON },
                 ]}
               />
               <Animated.View key={tab} entering={FADE_IN} style={styles.grid}>

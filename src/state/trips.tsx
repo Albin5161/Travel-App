@@ -8,8 +8,8 @@ import type { Group, GroupState, Member, Vote } from '@/data/group';
 import { fromIso, isoDay, type TripPlan, type TripPrefs } from '@/data/planner';
 import type { Extraction, Place, SpotStatus } from '@/data/types';
 import { cityName } from '@/data/cityNames';
-import { hasOurCover } from '@/data/covers';
-import { betterPhoto, framePhoto, refreshPlace, sameCity } from '@/lib/extract';
+import { withCover } from '@/data/covers';
+import { betterPhoto, refreshPlace, sameCity } from '@/lib/extract';
 import { distanceKm } from '@/lib/geo';
 import { linkKey } from '@/lib/links';
 import { deviceStorage } from '@/lib/live/storage';
@@ -834,27 +834,16 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       p.id.startsWith('g:') &&
       p.source.kind === 'reel' &&
       (uriOf(p.photo) === thumbOf(p) || (!!p.photoFromVideo && Date.now() - p.photoFromVideo > COORDS_DAYS * 86400_000));
-    // A cover that is a video's thumbnail, or a café's or a hotel's photo while the city has a
-    // sight with one: a sight's real photo, then any place's, else a frame. Set directly: register
-    // keeps a known city's cover on purpose. Says whether any cover changed.
+    // Covers need no credit (data/covers.ts): our photo of the city, else a frame of its first video,
+    // never a place's Google photo. Set directly: register keeps a known city's cover on purpose. Says
+    // whether any cover changed.
     const fixCovers = () => {
       let changed = false;
-      const landmark = (p: Place) => p.type === 'sight' || p.type === 'experience';
       for (const city of Object.values(live.cities)) {
-        // Our own photo stays (data/covers.ts): it's picked for the place, and needs no credit.
-        if (hasOurCover(city)) continue;
-        const inCity = Object.values(live.places).filter((p) => p.cityId === city.id && p.photoCredit);
-        const best = inCity.find(landmark);
-        const reel = Object.values(live.reels).find((r) => r.cityId === city.id && uriOf(r.thumbnail) === uriOf(city.hero));
-        const coverOf = inCity.find((p) => uriOf(p.photo) === uriOf(city.hero));
-        if (reel) {
-          const withPhoto = best ?? inCity[0];
-          live.cities[city.id] = { ...city, hero: withPhoto?.photo ?? framePhoto(reel, 1), heroCredit: withPhoto?.photoCredit };
-          changed = true;
-        } else if (best && coverOf && !landmark(coverOf)) {
-          live.cities[city.id] = { ...city, hero: best.photo, heroCredit: best.photoCredit };
-          changed = true;
-        }
+        const next = withCover(city, Object.values(live.reels).find((r) => r.cityId === city.id));
+        if (next === city) continue;
+        live.cities[city.id] = next;
+        changed = true;
       }
       return changed;
     };

@@ -96,7 +96,7 @@ export async function readLink(url: string, onFound?: (reel: Reel, names: FoundP
 
   const places = toPlaces(pairs, reel, cityId);
   reel.placeIds = places.map((p) => p.id);
-  const city = toCity(cityId, where, state, places, reel, res.terrain ?? undefined);
+  const city = toCity(cityId, where, state, reel, res.terrain ?? undefined);
   const extraction = inKnownCity({ reel, city, places });
   register(extraction);
   // Kept only when every name was looked up: pasting it again should try the ones that didn't finish.
@@ -345,7 +345,7 @@ export function townOf(where: string): { id: string; name: string; state: string
 export function cityFromWhere(where: string, reel: Reel, places: Place[]): City {
   const town = townOf(where);
   const known = live.cities[town.id] ? null : knownCity(town.name, places);
-  return known ?? toCity(town.id, town.name, town.state, places, reel);
+  return known ?? toCity(town.id, town.name, town.state, reel);
 }
 
 /**
@@ -504,23 +504,21 @@ function toPlaces(pairs: { found: FoundPlace; match: MatchedPlace }[], reel: Ree
   });
 }
 
-function toCity(id: string, name: string, state: string, places: Place[], reel: Reel, terrain?: Terrain): City {
-  // The cover: a sight or an experience with its own photo (a fort says "Mumbai" better than a
-  // hotel lobby), then any place with one, then a frame from the video.
-  const covered =
-    places.find((p) => p.photoCredit && (p.type === 'sight' || p.type === 'experience')) ?? places.find((p) => p.photoCredit);
-  // Our own photo of the place wins when we have one (data/covers.ts); these are the fallback.
-  return withCover({
-    id,
-    name,
-    state,
-    // Our districts are only mapped for the sample regions; the city stands in for its own.
-    district: name,
-    hero: covered?.photo ?? framePhoto(reel, 1),
-    heroCredit: covered?.photoCredit,
-    map: { roads: [], hills: [], labels: [] },
-    terrain,
-  });
+function toCity(id: string, name: string, state: string, reel: Reel, terrain?: Terrain): City {
+  // The cover needs no credit (data/covers.ts): our own photo of the city, else a frame of this video.
+  return withCover(
+    {
+      id,
+      name,
+      state,
+      // Our districts are only mapped for the sample regions; the city stands in for its own.
+      district: name,
+      hero: framePhoto(reel, 1),
+      map: { roads: [], hills: [], labels: [] },
+      terrain,
+    },
+    reel,
+  );
 }
 
 /** "Munsiyari, Uttarakhand, India" → Munsiyari, Uttarakhand. Without a region, the commonest area. */

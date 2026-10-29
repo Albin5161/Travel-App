@@ -2,12 +2,13 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import { cityName } from './cityNames';
-import type { City } from './types';
+import type { City, Reel } from './types';
 
-// Our own cover photos (30 Oct 2026): one picked by hand for each city people visit most, and one
-// for each state for every other town in it. All from Unsplash under its free licence, which asks for
-// no credit, so a tile carries only the place's name. They live with the website, in
-// public/city-photos, so they don't add to the app's size.
+// A city's cover, with no credit to show (30 Oct 2026). Our own photo for each city people visit most,
+// and for a video of a whole state ("Meghalaya", "Ladakh"): picked by hand from Unsplash under its free
+// licence, which asks for no credit, and kept with the website (public/city-photos) so they don't add
+// to the app's size. Any other town, here or abroad, shows a frame of its own video: a state's photo
+// would show Charminar for Warangal.
 
 /** Cities with their own photo, by the name the app files them under (lower case). */
 const CITY = new Set([
@@ -40,7 +41,7 @@ const CITY_ALSO: Record<string, string> = {
   'leh ladakh': 'leh',
 };
 
-/** States and union territories, each with its photo (some share one with their best-known city). */
+/** A video of a whole state or union territory: its photo (some share one with their best-known city). */
 const STATE: Record<string, string> = {
   'andhra pradesh': 's-andhra-pradesh',
   'arunachal pradesh': 's-arunachal-pradesh',
@@ -94,13 +95,12 @@ const STATE_ALSO: Record<string, string> = {
 
 const lower = (s: string | undefined) => (s ?? '').trim().toLowerCase();
 
-/** The photo's file name for a city: its own, else its state's, else none (abroad, say). */
-export function coverName(name: string, state: string): string | null {
+/** Our photo's file name for a city, or a state read as the place; none for any other town. */
+export function coverName(name: string): string | null {
   const city = lower(cityName(name));
   if (CITY.has(city)) return city;
   if (CITY_ALSO[city]) return CITY_ALSO[city];
-  const st = lower(state);
-  return STATE[STATE_ALSO[st] ?? st] ?? STATE[STATE_ALSO[city] ?? city] ?? null;
+  return STATE[STATE_ALSO[city] ?? city] ?? null;
 }
 
 // The web finds the photos beside the page. A phone asks the dev server it was loaded from while in
@@ -110,15 +110,20 @@ const BASE = Platform.OS === 'web' ? '' : __DEV__ && HOST ? `http://${HOST}` : '
 
 const coverUri = (file: string) => `${BASE}/city-photos/${file}.webp`;
 
-/** Whether this city already wears one of our photos. */
-export const hasOurCover = (city: City) =>
-  !!city.hero && typeof city.hero === 'object' && 'uri' in city.hero && String(city.hero.uri).includes('/city-photos/');
+const uriOf = (img: City['hero']) => (img && typeof img === 'object' && 'uri' in img ? String(img.uri) : null);
 
-/** The city wearing our photo, with no credit to show; a city we have none for comes back as it was. */
-export function withCover(city: City): City {
-  const file = coverName(city.name, city.state);
-  if (!file) return city;
-  const uri = coverUri(file);
-  if (hasOurCover(city) && (city.hero as { uri: string }).uri === uri) return city;
-  return { ...city, hero: { uri }, heroCredit: undefined };
+/** The same frame of the video as the city's first cover always was (extract's framePhoto, turn 1). */
+const frameOf = (reel: Reel): City['hero'] => (reel.frames?.length ? { uri: reel.frames[1 % reel.frames.length] } : reel.thumbnail);
+
+/**
+ * The city wearing its cover, with no credit to show: our photo, else a frame of its video (`reel`).
+ * Without the video at hand, a town comes back as it was.
+ */
+export function withCover(city: City, reel?: Reel): City {
+  const file = coverName(city.name);
+  const hero = file ? { uri: coverUri(file) } : reel ? frameOf(reel) : null;
+  if (!hero) return city;
+  const same = city.hero === hero || (uriOf(hero) !== null && uriOf(city.hero) === uriOf(hero));
+  if (same && !city.heroCredit) return city;
+  return { ...city, hero, heroCredit: undefined };
 }

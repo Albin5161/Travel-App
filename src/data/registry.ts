@@ -17,19 +17,24 @@ export function register(items: { places?: Place[]; city?: City; reel?: Reel }, 
     live.places[p.id] = p;
     live.placedAt[p.id] ??= at;
   });
-  if (items.city) live.cities[items.city.id] = withCover(keepCover(live.cities[items.city.id], items.city));
   if (items.reel) live.reels[items.reel.id] = items.reel;
+  if (items.city) live.cities[items.city.id] = withCover(keepCover(live.cities[items.city.id], items.city), firstReel(items.city.id));
 }
 
 /**
  * A city read again (a second video of Mumbai, say) keeps the cover it had: the share ticket and
  * the Home card shouldn't change photo because another video was pasted. A cover that is still a
- * video's frame (no photo credit) gives way to a real photo when one arrives. Either way, a city we
- * have our own photo for wears that (covers.ts).
+ * video's frame (no photo credit) gives way to a real photo when one arrives. Then withCover has the
+ * last word: our own photo of the city, or a frame of its first video (covers.ts), never a credit.
  */
 function keepCover(known: City | undefined, next: City): City {
   if (!known || (!known.heroCredit && next.heroCredit)) return next;
   return { ...next, hero: known.hero, heroCredit: known.heroCredit };
+}
+
+/** The first video saved for a city: the one its cover frame comes from. */
+function firstReel(cityId: string): Reel | undefined {
+  return Object.values(live.reels).find((r) => r.cityId === cityId);
 }
 
 export type LiveSnapshot = {
@@ -52,9 +57,9 @@ export function snapshot(placeIds: Iterable<string>, cityIds: Iterable<string>, 
 
 export function restore(s: LiveSnapshot) {
   s.places.forEach((p) => (live.places[p.id] = p));
-  // Saved before our own photos existed, a city still wears a Google photo and its credit: swapped here.
-  s.cities.forEach((c) => (live.cities[c.id] = withCover(c)));
   s.reels.forEach((r) => (live.reels[r.id] = r));
+  // Saved before covers were ours, a city may still wear a Google photo and its credit: swapped here.
+  s.cities.forEach((c) => (live.cities[c.id] = withCover(c, firstReel(c.id))));
   Object.assign(live.placedAt, s.placedAt);
 }
 

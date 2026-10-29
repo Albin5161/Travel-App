@@ -34,6 +34,8 @@ type Props = {
 };
 
 const HEIGHT = 48;
+/** Several fields and the button under them share one height, so the stack reads as one set. */
+const MANY_HEIGHT = 56;
 /** Over the sky the field is taller, to hold the paste button inside it. */
 const SKY_HEIGHT = 58;
 const GAP = 10;
@@ -184,20 +186,27 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
   );
 
   // Several fields: each holds its own video, with a way to take it out or to paste into it. The
-  // one button under them reads them all, so there's no guessing which field's arrow to press.
+  // one button under them reads them all, so there's no guessing which field's arrow to press. An
+  // empty field has both: Paste to fill it, and ✕ to take it away if it was opened by mistake.
+  const removeButton = (at: number) => (
+    <PressableScale
+      onPress={() => remove(at)}
+      hitSlop={8}
+      style={styles.clear}
+      accessibilityRole="button"
+      accessibilityLabel={`Remove video ${at + 1}`}
+    >
+      <Icon name="x" size={16} color={ink.soft} />
+    </PressableScale>
+  );
   const trailing = (at: number) =>
     values[at].trim() ? (
-      <PressableScale
-        onPress={() => remove(at)}
-        hitSlop={8}
-        style={styles.clear}
-        accessibilityRole="button"
-        accessibilityLabel={`Remove video ${at + 1}`}
-      >
-        <Icon name="x" size={16} color={ink.soft} />
-      </PressableScale>
+      removeButton(at)
     ) : (
-      <PasteButton shape="circle" size={SMALL_CIRCLE} quiet onText={fill(at)} onUnreadable={pasteByHand(at)} />
+      <View style={styles.trailingPair}>
+        <PasteButton shape="circle" size={SMALL_CIRCLE} quiet onText={fill(at)} onUnreadable={pasteByHand(at)} />
+        {removeButton(at)}
+      </View>
     );
 
   const full = links.length >= LINKS_AT_ONCE;
@@ -207,8 +216,9 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
     return l ? linkKey(l) : null;
   });
   const repeated = keys.some((k, i) => k !== null && keys.indexOf(k) < i);
-  // Another field once every field holds a video, for someone who has read one before.
-  const canAdd = !!onSubmitMany && offerMore && !full && values.length < LINKS_AT_ONCE && values.every((v) => linksIn(v).length > 0);
+  // Another field while there's room, once a first video is in, for someone who has read one before.
+  // Not only when every field is filled: with the second still empty, the way to a third vanished.
+  const canAdd = !!onSubmitMany && offerMore && !full && values.length < LINKS_AT_ONCE && links.length > 0;
   const hint =
     error ??
     (repeated ? ALREADY : null) ??
@@ -285,15 +295,22 @@ export function LinkBox({ onSubmit, onSubmitMany, offerMore = true, clipboardHas
           </Animated.View>
         ) : null}
         {many ? (
-          <Animated.View entering={FADE_IN} style={styles.findWrap}>
+          <Animated.View entering={FADE_IN} style={[styles.findWrap, !canAdd && styles.findAlone]}>
             <Button
               trailingArrow
-              label={links.length === 1 ? 'Find places in this video' : `Find places in ${links.length} videos`}
+              height={MANY_HEIGHT}
+              label={
+                links.length <= 1
+                  ? 'Find places in this video'
+                  : links.length >= LINKS_AT_ONCE
+                    ? `Find places in all ${links.length} videos`
+                    : `Find places in these ${links.length} videos`
+              }
               onPress={submit}
               disabled={links.length === 0}
             />
             <Text variant="label" color={ink.soft} style={styles.most}>
-              {full ? `${LINKS_AT_ONCE} is the most at once. Add more once these are read.` : `Up to ${LINKS_AT_ONCE} at a time.`}
+              {full ? `${LINKS_AT_ONCE} is the most at once.` : `Up to ${LINKS_AT_ONCE} at a time.`}
             </Text>
           </Animated.View>
         ) : null}
@@ -379,16 +396,20 @@ const styles = css.create({
   inputSky: { marginRight: 8 },
   fields: { gap: 8 },
   // Several fields stack tighter: the same field, less tall, so three and the button fit the screen.
-  fieldMany: { height: HEIGHT, paddingRight: (HEIGHT - SMALL_CIRCLE) / 2 },
+  fieldMany: { height: MANY_HEIGHT, paddingRight: (MANY_HEIGHT - SMALL_CIRCLE) / 2 },
+  trailingPair: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   clear: { width: SMALL_CIRCLE, height: SMALL_CIRCLE, alignItems: 'center', justifyContent: 'center' },
   // What's under the fields (Add, the button, a hint): close under them, so it reads as the field's
   // own (on a phone the hint sat a third of the way to the next card), and air before the card
   // below. With nothing to say it is only that air, not an empty band.
-  under: { paddingTop: 6, paddingBottom: 12, gap: 10 },
+  // Add sits right under the fields (its own 44pt tap is the air), the button straight under Add, or
+  // 12 under the fields when there's no Add; the line under the button is 8 below it, as the fields are.
+  under: { paddingBottom: 12 },
   // A 44pt tap round the words, which line up with the field's own icon.
-  add: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, paddingLeft: 16, alignSelf: 'flex-start', paddingRight: 12 },
+  add: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, paddingLeft: 18, alignSelf: 'flex-start', paddingRight: 12 },
   addText: { fontFamily: fonts.sansSemi },
   findWrap: { gap: 8 },
-  hint: { marginLeft: 4 },
+  findAlone: { marginTop: 12 },
+  hint: { marginLeft: 4, marginTop: 8 },
   most: { marginLeft: 4 },
 });

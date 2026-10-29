@@ -17,12 +17,14 @@ type Props = {
   disabled?: boolean;
   trailingArrow?: boolean;
   compact?: boolean;
+  /** A set height, to line up with the fields it sits under (the link box). */
+  height?: number;
   /** Layout only (flex, margins, alignment). The button owns its own look. */
   style?: StyleProp<ViewStyle>;
   accessibilityHint?: string;
 };
 
-export function Button({ label, onPress, kind = 'primary', disabled, trailingArrow, compact, style, accessibilityHint }: Props) {
+export function Button({ label, onPress, kind = 'primary', disabled, trailingArrow, compact, height, style, accessibilityHint }: Props) {
   const tone = useTone();
   const sky = tone === 'sky';
   // Over the sky the main button is a black pill with its arrow at the far end, not after the words.
@@ -60,6 +62,7 @@ export function Button({ label, onPress, kind = 'primary', disabled, trailingArr
           tone === 'light' && (primary ? styles.primaryLight : styles.secondaryLight),
           sky && (primary ? styles.primarySky : styles.secondarySky),
           skyArrow && styles.tall,
+          height != null && { height },
           disabled && styles.disabled,
         ]}
       >

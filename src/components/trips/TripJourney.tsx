@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
@@ -80,15 +81,41 @@ const PER_DAY = [6, 4, 3, 3];
 // Days beyond these fold into "+N days", so the strip fits a phone without scrolling.
 const MAX_DAYS_SHOWN = 4;
 const THUMB = 34;
+/** What one more overlapping photo adds to a cluster. */
+const STEP = THUMB - 8;
+/** The road between two days: its width and the air either side. */
+const ROAD = 14 + 4 * 2;
+/** Room a day's date takes under it ("Wed 25"), wider than one photo. */
+const DATE_W = 52;
+/** The "+3 days" at the end. */
+const MORE_W = ROAD + 56;
+
+/**
+ * As many days, and as many photos of each, as fit the width: four days of three photos is about
+ * 400pt, more than a phone's card holds, and the last day ran off the card under its status.
+ */
+function fit(width: number, total: number) {
+  for (let n = Math.min(total, MAX_DAYS_SHOWN); n >= 1; n--) {
+    const tail = total > n ? MORE_W : 0;
+    for (let k = PER_DAY[n - 1] + 1; k >= 1; k--) {
+      if (n * Math.max(THUMB + (k - 1) * STEP, DATE_W) + (n - 1) * ROAD + tail <= width) return { days: n, circles: k };
+    }
+  }
+  return { days: 1, circles: 1 };
+}
 
 /** The trip day by day: each day's first photos in a cluster, joined by the road between them. */
 export function DayStrip({ plan, today }: { plan: TripPlan; today?: number }) {
-  const days = plan.days.slice(0, MAX_DAYS_SHOWN);
+  // A phone card's inside width until the strip is measured.
+  const [width, setWidth] = useState(300);
+  const room = fit(width, plan.days.length);
+  const days = plan.days.slice(0, room.days);
   const more = plan.days.length - days.length;
   return (
-    <View style={styles.strip}>
+    <View style={styles.strip} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {days.map((day, d) => {
-        const shown = day.stops.slice(0, PER_DAY[days.length - 1]);
+        // Every circle a photo when they all fit; otherwise the last circle is the count of the rest.
+        const shown = day.stops.length <= room.circles ? day.stops : day.stops.slice(0, room.circles - 1);
         const extra = day.stops.length - shown.length;
         const on = today === d;
         return (
@@ -136,7 +163,7 @@ export function DayStrip({ plan, today }: { plan: TripPlan; today?: number }) {
 }
 
 const styles = StyleSheet.create({
-  strip: { flexDirection: 'row', alignItems: 'flex-start' },
+  strip: { flexDirection: 'row', alignItems: 'flex-start', overflow: 'hidden' },
   dayWrap: { flexDirection: 'row', alignItems: 'flex-start' },
   day: { alignItems: 'flex-start', gap: 8 },
   cluster: { flexDirection: 'row' },

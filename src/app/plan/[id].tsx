@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedProps,
   useAnimatedReaction,
@@ -12,6 +13,7 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withDelay,
+  withSpring,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -59,7 +61,7 @@ import { formatClock, formatDuration, smoothPath, smoothPathStops } from '@/lib/
 import { stopWhy, whyDay, type Reason, type StopWhy } from '@/data/why';
 import { track } from '@/lib/analytics';
 import { haptic } from '@/lib/haptics';
-import { EASE_IN_OUT, FADE_IN, FADE_OUT, fadeUp, REFLOW } from '@/lib/motion';
+import { EASE_IN_OUT, FADE_IN, FADE_OUT, fadeUp, project, REFLOW, SPRING_DRAG } from '@/lib/motion';
 import { customStops } from '@/data/custom';
 import { deviceStorage } from '@/lib/live/storage';
 import { usePlanWriter } from '@/state/live';
@@ -78,6 +80,17 @@ const PACE_LABEL = { relaxed: 'Relaxed', balanced: 'Balanced', packed: 'Packed' 
 const GETTING_LABEL = { local: 'Walking and autos', drive: 'Own vehicle', bus: 'By bus' } as const;
 const ROW_ENTER = fadeUp(0);
 const READING_LINE = 150;
+/**
+ * What the low sheet keeps above the Save button: the handle, the title, the trip's line and the
+ * tools, so Edit and Reshuffle stay in reach while the map has the screen.
+ */
+const LOW_SHOWS = 234;
+/** How far the sheet's rounded top lies over the map at the middle place. */
+const SHEET_OVERLAP = 28;
+/** How far the sheet gives when pulled past its tallest or lowest place. */
+const GIVE = 50;
+/** Low, middle (where it opens), tall. */
+type Rest = 0 | 1 | 2;
 // How far the painted map lays back while it follows the plan: a look ahead, not a plunge.
 const JOURNEY_TILT = 40;
 // A regenerate is a moment, not a wait: long enough to read as work, short enough not to stall.
@@ -130,13 +143,61 @@ export default function PlanScreen() {
   const today = plan?.days[dayIndex];
   const stops = today?.stops ?? [];
 
-  // The map gives up height before the first stop does: the title, tools, day tabs and day card
-  // under it take about 410pt, Save and its margin about 150, so whatever is left of the screen is
-  // the map's, between a quarter and two-fifths of it. On an iPhone SE it was a fixed two-fifths,
-  // and the first stop sat entirely under Save.
-  const MAP_H = Math.max(Math.round(H * 0.26), Math.min(Math.round(H * 0.4), H - 560));
+  // The plan is a sheet over the map, with three places to rest: low (the map has most of the
+  // screen, the title and tools stay in reach), middle (where it opens), and tall (the list has the
+  // screen). Testers found the fixed sheet left too little map. The map is the whole screen behind
+  // it and keeps the day clear of the sheet.
+  // At the middle the map gives up height before the first stop does: the title, tools, day tabs
+  // and day card take about 410pt, Save and its margin about 150, so whatever is left is the map's,
+  // between a quarter and two-fifths of the screen. On an iPhone SE the first stop sat under Save.
+  const MAP_H = H;
+  const tops = [
+    H - insets.bottom - LOW_SHOWS,
+    Math.max(Math.round(H * 0.26), Math.min(Math.round(H * 0.4), H - 560)) - SHEET_OVERLAP,
+    insets.top + 64,
+  ];
+  // The sheet is as tall as its tallest place and slid down to the others, so moving it is a
+  // transform and never a new layout. `down[r]` is how far it's slid at rest `r`.
+  const down = tops.map((t) => t - tops[2]);
+  const [rest, setRest] = useState<Rest>(1);
+  const slide = useSharedValue(down[1]);
+  const from = useSharedValue(0);
+  const step = () => {
+    const to = ((rest + 1) % 3) as Rest;
+    haptic.selection();
+    slide.set(withSpring(down[to], SPRING_DRAG));
+    setRest(to);
+  };
+  // The screen turned or resized: the sheet stays at the place it was resting.
+  useEffect(() => {
+    slide.set(down[rest]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [down[0], down[1]]);
+  const pull = Gesture.Pan()
+    .hitSlop({ top: 10, bottom: 6 })
+    .onStart(() => {
+      from.set(slide.get());
+    })
+    .onUpdate((e) => {
+      const y = from.get() + e.translationY;
+      // Past either end it gives less the further it goes, rather than stopping dead.
+      const over = y < 0 ? y : y > down[0] ? y - down[0] : 0;
+      slide.set(over === 0 ? y : (y < 0 ? 0 : down[0]) + over / (1 + Math.abs(over) / GIVE));
+    })
+    .onEnd((e) => {
+      // Where the pull would come to rest: a flick moves it a place as surely as a long drag.
+      const landing = slide.get() + project(e.velocityY);
+      let to: Rest = 0;
+      for (let r = 1; r < 3; r++) if (Math.abs(down[r] - landing) < Math.abs(down[to] - landing)) to = r as Rest;
+      slide.set(withSpring(down[to], { ...SPRING_DRAG, velocity: e.velocityY }));
+      scheduleOnRN(setRest, to);
+    });
+  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: slide.get() }] }));
+  // The map keeps the day clear of the sheet at low and middle; tall leaves no map to fit, so it
+  // keeps the middle's.
+  const sheetTop = tops[Math.min(rest, 1)];
   const points = stops.map((s) => s.place.map);
-  const fitRect = { top: insets.top + 56, bottom: 44 };
+  const fitRect = { top: insets.top + 56, bottom: H - sheetTop + 44 };
   const fit = fitCameraToRect(points.length ? points : [[500, 700]], { w: W, h: MAP_H }, fitRect, 120);
   const focusScale = fit.s * 1.6;
   const camera = useCamera(fit);
@@ -159,6 +220,14 @@ export default function PlanScreen() {
     flyTo(camera, fit);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeKey]);
+  // The sheet came to rest somewhere else: the day is fitted to the map left showing.
+  const settledTop = useRef(sheetTop);
+  useEffect(() => {
+    if (settledTop.current === sheetTop) return;
+    settledTop.current = sheetTop;
+    if (activeIdx.get() < 0) flyTo(camera, fit, 500);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetTop]);
 
   // Scroll-synced camera, the way a run's map follows it: at the top the whole day, flat; once the
   // plan moves, the map lays back and lands on the first stop, then glides on as each stop crosses
@@ -206,7 +275,7 @@ export default function PlanScreen() {
         { w: W, h: MAP_H },
       );
     },
-    [routeKey],
+    [routeKey, sheetTop],
   );
   const setRowY = (i: number, y: number) => {
     rowYsRef.current[i] = y;
@@ -388,7 +457,7 @@ export default function PlanScreen() {
     <SkyScreen>
       {/* The map is paper: it keeps the paper palette, route and labels. */}
       <Tone value="light">
-      <View style={{ height: MAP_H }}>
+      <View style={StyleSheet.absoluteFill}>
         {isLiveCity(city.id) ? (
           <LiveJourneyMap
             activeId={activeId}
@@ -405,7 +474,7 @@ export default function PlanScreen() {
             route
             // Too short to hold a card: a pin opens the place, as before. It still wears its sticker.
             cards={false}
-            padding={{ top: insets.top + 60, bottom: 40 }}
+            padding={{ top: insets.top + 60, bottom: H - sheetTop + 40 }}
             onPinPress={(pid) => router.push({ pathname: '/place/[id]', params: { id: pid } })}
           />
         ) : (
@@ -447,12 +516,27 @@ export default function PlanScreen() {
       </View>
 
       {/* Deep glass: its top edge lies over the pale map, where light glass would wash out the type. */}
+      <Animated.View style={[styles.sheet, { top: tops[2], height: H - tops[2] }, sheetStyle]}>
       <Glass blur tint={deepGlass(look)} radius={radii.sheet} style={styles.panel}>
+        <GestureDetector gesture={pull}>
+          <PressableScale
+            onPress={step}
+            pressedScale={1}
+            hitSlop={0}
+            style={styles.handle}
+            accessibilityRole="button"
+            accessibilityLabel={rest === 2 ? 'Lower the plan' : 'Raise the plan'}
+            accessibilityHint="Pull up or down to see more of the map or more of the plan"
+          >
+            <View style={styles.grabber} />
+          </PressableScale>
+        </GestureDetector>
         <Animated.ScrollView
           onScroll={onScroll}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: space.screen, paddingTop: 24, paddingBottom: insets.bottom + 130 }}
+          // The part of the sheet slid off the foot of the screen is given back as room to scroll.
+          contentContainerStyle={{ paddingHorizontal: space.screen, paddingTop: 4, paddingBottom: insets.bottom + 130 + down[rest] }}
         >
           <Text variant="display" accessibilityRole="header">
             {n === 1 ? `Your day in ${city.name}` : `Your ${n} days in ${city.name}`}
@@ -696,48 +780,52 @@ export default function PlanScreen() {
           </View>
         </Animated.ScrollView>
 
-        <LinearGradient
-          pointerEvents="none"
-          colors={[withAlpha(look.stops[2], 0), withAlpha(look.stops[2], 0.92)]}
-          style={[styles.bottomFade, { height: insets.bottom + 110 }]}
-        />
-        <View style={[styles.floating, { paddingBottom: insets.bottom + 16 }]}>
-          {undo ? (
-            <Animated.View entering={FADE_IN} exiting={FADE_OUT} style={styles.undo}>
-              <Text variant="label" color={skyInk.strong} numberOfLines={1} style={styles.undoText}>
-                {undo.label}
-              </Text>
-              <PressableScale
-                onPress={() => {
-                  haptic.selection();
-                  update(undo.plan);
-                  setUndo(null);
-                }}
-                containerStyle={styles.undoTap}
-                accessibilityRole="button"
-                accessibilityLabel={`Undo: ${undo.label}`}
-              >
-                <Text variant="label" color={skyInk.strong} style={styles.undoAction}>
-                  Undo
-                </Text>
-              </PressableScale>
-            </Animated.View>
-          ) : null}
-          {/* While editing, the big button ends the edit: changes are kept as they're made, so there's
-              nothing to confirm, and "Save" mid-edit would leave edit mode behind the stamp. It sits
-              where the thumb already is, not only up at the top "Done". */}
-          {editing ? (
-            <Button label="Done editing" onPress={() => setEditing(false)} accessibilityHint="Your changes are already kept" />
-          ) : (
-            <Button
-              trailingArrow
-              label={n === 1 ? 'Save this day' : `Save this ${n}-day plan`}
-              onPress={save}
-              disabled={plan.days.every((d) => d.stops.length === 0) || stamping || busy}
-            />
-          )}
-        </View>
       </Glass>
+      </Animated.View>
+
+      {/* Save stays at the foot of the screen wherever the sheet rests; the list melts into it. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[withAlpha(look.stops[2], 0), withAlpha(look.stops[2], 0.92)]}
+        style={[styles.bottomFade, { height: insets.bottom + 110 }]}
+      />
+      <View style={[styles.floating, { paddingBottom: insets.bottom + 16 }]}>
+        {undo ? (
+          <Animated.View entering={FADE_IN} exiting={FADE_OUT} style={styles.undo}>
+            <Text variant="label" color={skyInk.strong} numberOfLines={1} style={styles.undoText}>
+              {undo.label}
+            </Text>
+            <PressableScale
+              onPress={() => {
+                haptic.selection();
+                update(undo.plan);
+                setUndo(null);
+              }}
+              containerStyle={styles.undoTap}
+              accessibilityRole="button"
+              accessibilityLabel={`Undo: ${undo.label}`}
+            >
+              <Text variant="label" color={skyInk.strong} style={styles.undoAction}>
+                Undo
+              </Text>
+            </PressableScale>
+          </Animated.View>
+        ) : null}
+        {/* While editing, the big button ends the edit: changes are kept as they're made, so there's
+            nothing to confirm, and "Save" mid-edit would leave edit mode behind the stamp. It sits
+            where the thumb already is, not only up at the top "Done". */}
+        {editing ? (
+          <Button label="Done editing" onPress={() => setEditing(false)} accessibilityHint="Your changes are already kept" />
+        ) : (
+          <Button
+            trailingArrow
+            label={n === 1 ? 'Save this day' : `Save this ${n}-day plan`}
+            onPress={save}
+            disabled={plan.days.every((d) => d.stops.length === 0) || stamping || busy}
+          />
+        )}
+      </View>
+
 
       <StopActions
         stop={sheet}
@@ -1128,9 +1216,9 @@ const PAPER_INK = '#111111';
 const styles = StyleSheet.create({
   topFade: { position: 'absolute', left: 0, right: 0, top: 0 },
   topBar: { position: 'absolute', left: space.screen, top: 0 },
+  sheet: { position: 'absolute', left: 0, right: 0 },
   panel: {
     flex: 1,
-    marginTop: -28,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
     borderBottomWidth: 0,
@@ -1278,6 +1366,9 @@ const styles = StyleSheet.create({
   leftRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   leftThumb: { width: 44, height: 44, borderRadius: 12, backgroundColor: skyFill.pane },
   bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  // The whole strip takes the pull and the tap, not the 4pt bar drawn in it.
+  handle: { height: 28, alignItems: 'center', justifyContent: 'center' },
+  grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: skyInk.outline },
   floating: { position: 'absolute', left: space.screen, right: space.screen, bottom: 0 },
 });
 

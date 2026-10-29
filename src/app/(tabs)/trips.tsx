@@ -157,15 +157,22 @@ function TripCard({ city, plan }: { city: City; plan: TripPlan }) {
         </Tone>
       </View>
 
-      {/* Solo, the strip and the status share a row; a group trip has its people under it. */}
-      <View style={[styles.days, party === 'solo' && styles.daysSolo]}>
+      {/* The strip has the card's width to itself; who's going and the status go under it. Beside
+          the strip, the status sat on top of its last day on a phone. */}
+      <View style={styles.days}>
         <View style={styles.flex}>
           <DayStrip plan={plan} today={where.today} />
         </View>
-        {party === 'solo' && showStatus ? <StatusChip status={status} /> : null}
       </View>
 
-      {party === 'solo' ? null : (
+      {party === 'solo' ? (
+        <View style={styles.footer}>
+          <Text variant="label" color={skyInk.soft} numberOfLines={1} style={styles.flex}>
+            Just you
+          </Text>
+          {showStatus ? <StatusChip status={status} /> : null}
+        </View>
+      ) : (
       <View style={styles.footer}>
           <View style={styles.people}>
             {joined.length ? (
@@ -251,7 +258,6 @@ const styles = StyleSheet.create({
   whenText: { fontFamily: fonts.sansSemi, ...textSize.label, color: light.photoInk },
   whenTextNow: { color: colors.night },
   days: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 2 },
-  daysSolo: { paddingBottom: 16 },
   // A name on a photo card: the same size as Home's city tiles.
   city: { fontFamily: fonts.display, ...textSize.headline, letterSpacing: -0.6, color: light.photoInk },
   footer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12 },

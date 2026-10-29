@@ -78,7 +78,6 @@ function Tab({ name, focused, sky, onPress }: { name: string; focused: boolean; 
   const labelStyle = useAnimatedStyle(() => ({
     opacity: withTiming(focused ? 1 : 0.55, { duration: DURATION.small, easing: EASE_OUT }),
   }));
-  const dotStyle = useAnimatedStyle(() => ({ opacity: lit.get(), transform: [{ scale: 0.5 + 0.5 * lit.get() }] }));
 
   return (
     <Pressable
@@ -96,7 +95,6 @@ function Tab({ name, focused, sky, onPress }: { name: string; focused: boolean; 
       <Animated.Text style={[styles.label, { color: on }, labelStyle]}>
         {LABELS[name] ?? name}
       </Animated.Text>
-      <Animated.View style={[styles.dot, sky && styles.dotSky, dotStyle]} />
     </Pressable>
   );
 }
@@ -113,9 +111,7 @@ const styles = StyleSheet.create({
     boxShadow: shadows.card,
   },
   barSky: { flexDirection: 'row', height: 60, boxShadow: '0 10px 30px rgba(4,10,30,0.25)' },
-  // Icon and label sit a little high, leaving the foot of the tab to the dot.
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, paddingBottom: 8 },
+  // The chosen tab is told by its filled icon and dark label; a dot under it said it a third time.
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
   label: { fontFamily: fonts.sansMedium, fontSize: fontSize.tag },
-  dot: { position: 'absolute', bottom: 6, width: 4, height: 4, borderRadius: 2, backgroundColor: light.ink },
-  dotSky: { backgroundColor: skyInk.strong },
 });

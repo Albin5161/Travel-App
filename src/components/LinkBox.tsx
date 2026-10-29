@@ -326,10 +326,12 @@ const styles = css.create({
   input: { flex: 1, height: '100%', fontFamily: fonts.sans, fontSize: fontSize.title, color: light.ink },
   // The button rides inside the field here: a long link stops short of it instead of touching it.
   inputSky: { marginRight: 8 },
-  // The row under the field (a hint, or the videos added): air above it, and the same air under it
-  // before the card below. With nothing to say it is only that air, not an empty band.
-  hintSlot: { paddingTop: 12, paddingBottom: 12, gap: 8 },
-  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 36 },
+  // The row under the field (a hint, or the videos added): close under it, so the hint reads as
+  // the field's own (on a phone it sat a third of the way to the next card), and air before the
+  // card below. With nothing to say it is only that air, not an empty band.
+  hintSlot: { paddingTop: 6, paddingBottom: 12, gap: 8 },
+  // Tall enough for the Paste pill only when it's there: a bare hint sits right under the field.
+  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   hint: { flex: 1, marginLeft: 4 },
   chips: { alignItems: 'center', gap: 8, paddingRight: 4 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 12, paddingRight: 8, borderRadius: 18, borderWidth: 1 },

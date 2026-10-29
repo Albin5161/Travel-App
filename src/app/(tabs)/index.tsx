@@ -1,5 +1,6 @@
 import { Icon } from '@/components/Icon';
 import * as Clipboard from 'expo-clipboard';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform, StyleSheet, type LayoutChangeEvent, View, useWindowDimensions } from 'react-native';
@@ -38,7 +39,7 @@ import { FADE_IN, fadeUp } from '@/lib/motion';
 import { isNearHome, useTrips, type HomeTab } from '@/state/trips';
 import { useHomeSky } from '@/state/sky';
 import { useHere } from '@/state/where';
-import { SKY, skyFill, skyInk } from '@/theme/sky';
+import { SKY, skyFill, skyInk, withAlpha } from '@/theme/sky';
 import { fonts, space, textSize } from '@/theme/tokens';
 
 const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
@@ -47,6 +48,13 @@ const GUTTER = space.screen;
 const TOP_SIDE = 88;
 /** How far the photo strip tucks under the link box. */
 const STRIP_TUCK = 22;
+/**
+ * Air over the link box, so stuck at the top it isn't pressed against the screen's edge. At rest
+ * it's taken back from the gap above, so nothing moves there.
+ */
+const STICK_AIR = 10;
+/** How far under the stuck box the cards fade out, instead of being cut by a hard line. */
+const FROST_FADE = 20;
 // First-run strip: one striking place from each sample video, so the promise is visual.
 const INSPIRATION = ['meg-dawki', 'kochi-mural', 'gok-om', 'meg-falls', 'gok-halfmoon']
   .map((id) => places[id])
@@ -247,6 +255,7 @@ export default function Home() {
           <Animated.View entering={ENTER[1]} style={[styles.sticky, heroPad === null && styles.hidden]} onLayout={measure('link')}>
             <Animated.View style={[styles.frost, frostStyle]} pointerEvents="none">
               <Glass blur tint={look.glass} radius={0} style={styles.frostFill} />
+              <LinearGradient colors={[withAlpha(look.stops[0], 0.9), withAlpha(look.stops[0], 0)]} style={styles.frostFade} />
             </Animated.View>
             <LinkBox key={boxKey} onSubmit={start} onSubmitMany={startMany} offerMore={collections.length > 0} clipboardHasLink={hasLink} />
           </Animated.View>
@@ -476,7 +485,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: GUTTER },
   // The strip's lower edge runs under the sticky link box below it (a later sibling, so it draws
   // on top), which is what makes the prints read as tucked behind the field.
-  strip: { marginTop: 16, marginBottom: -STRIP_TUCK },
+  strip: { marginTop: 16, marginBottom: -STRIP_TUCK - STICK_AIR },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 44 },
   // Centred on the screen, not in the gap left over, whatever the two ends measure.
   hereSlot: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
@@ -522,14 +531,15 @@ const styles = StyleSheet.create({
   // One line, once there are places of your own below: the same two weights, a third of the room.
   questionSmall: { fontFamily: fonts.displayMedium, ...textSize.headline, color: skyInk.soft, letterSpacing: -0.35 },
   questionSmallStrong: { fontFamily: fonts.display, ...textSize.headline, color: skyInk.strong, letterSpacing: -0.55 },
-  compactGap: { height: 14 },
+  compactGap: { height: 14 - STICK_AIR },
   nudge: { marginTop: 12 },
   hidden: { opacity: 0 },
   continue: { paddingHorizontal: GUTTER },
   // Clear at rest, so the prints disappear behind the field rather than behind a flat band.
-  sticky: { paddingHorizontal: GUTTER },
+  sticky: { paddingHorizontal: GUTTER, paddingTop: STICK_AIR },
   frost: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   frostFill: { flex: 1, borderWidth: 0 },
+  frostFade: { position: 'absolute', left: 0, right: 0, bottom: -FROST_FADE, height: FROST_FADE },
   // Straight on the sky, no card: the caption, the switch and the tiles, like a weather app's list.
   panelWrap: { marginTop: 16, paddingHorizontal: GUTTER, gap: 16 },
   panelHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },

@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
@@ -31,7 +32,7 @@ import { terrainOf } from '@/lib/geo';
 import { haptic } from '@/lib/haptics';
 import { useHomeSky } from '@/state/sky';
 import { useCityPlaces, useTrips } from '@/state/trips';
-import { deepGlass, SKY } from '@/theme/sky';
+import { deepGlass, SKY, skyFill } from '@/theme/sky';
 import { radii, space } from '@/theme/tokens';
 
 // Top strip of photo that stays visible when the panel is fully up (holds the back button).
@@ -74,18 +75,33 @@ export default function CityScreen() {
     maxScroll.set(e.contentSize.height - e.layoutMeasurement.height);
   });
 
-  // Scroll-spy: the section under the tabs is the active tab. The last section is shorter than the
-  // screen, so its heading can never reach the tabs; scrolled to the end counts as reaching it.
+  // Scroll-spy: the section under the tabs is the active tab. A section counts as arrived once its
+  // heading has cleared the tabs, not its first pixel — otherwise the heading you are reading and
+  // the tab that is lit disagree. Plan and Good to know are short, so the page ends before either
+  // heading gets there and the light jumped from Places straight to Good to know. Sections that
+  // can't arrive share out the last stretch of scroll instead, in order, so each gets its turn and
+  // the end of the page is the last one.
   useAnimatedReaction(
     () => {
       const y = scrollY.get();
       const ys = sectionYs.get();
-      if (ys.length > 0 && y > rise && y >= maxScroll.get() - 24) return ys.length - 1;
-      // A section counts as arrived once its heading has cleared the tabs, not its first pixel —
-      // otherwise the heading you are reading and the tab that is lit disagree.
-      const line = y + PANEL_HEADER_H + 64;
+      const end = maxScroll.get() - 24;
+      const arrive: number[] = [];
+      for (let i = 0; i < ys.length; i++) arrive.push(ys[i] === undefined ? Infinity : ys[i] - PANEL_HEADER_H - 64);
+      let first = -1;
+      for (let i = 1; i < arrive.length; i++) {
+        if (arrive[i] > end) {
+          first = i;
+          break;
+        }
+      }
+      if (first > 0 && end > rise) {
+        const from = Math.max(arrive[first - 1], rise);
+        const late = arrive.length - first;
+        for (let i = first; i < arrive.length; i++) arrive[i] = from + ((end - from) * (i - first + 1)) / late;
+      }
       let idx = 0;
-      for (let i = 0; i < ys.length; i++) if (ys[i] !== undefined && ys[i] <= line) idx = i;
+      for (let i = 0; i < arrive.length; i++) if (arrive[i] <= y) idx = i;
       return idx;
     },
     (idx, prev) => {
@@ -167,6 +183,12 @@ export default function CityScreen() {
         <Image source={city.hero} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
         <HeroScrim />
       </Animated.View>
+      {/* Once the panel is up, the strip above it is a step of grey, so the white sheet's rounded
+          top stands out instead of melting into a white page; a faint shadow under the strip lifts
+          its edge. */}
+      <Animated.View style={[styles.strip, { height: top }, backingStyle]} pointerEvents="none">
+        <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.06)']} style={styles.edge} />
+      </Animated.View>
 
       <Animated.ScrollView
         ref={scrollRef}
@@ -201,15 +223,16 @@ export default function CityScreen() {
         </View>
 
         <View>
-          {/* Once the panel is up, a solid sky behind the glass tabs: what scrolls under them no
-              longer shows through the frost or in its rounded corners. At rest it's clear, over the photo. */}
-          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: look.stops[0] }, backingStyle]} pointerEvents="none" />
+          {/* Once the panel is up, the strip's grey behind the tabs: what scrolls under them no
+              longer shows through the frost, and the rounded corners show the strip, not the list.
+              At rest it's clear, over the photo. */}
+          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: skyFill.raised }, backingStyle]} pointerEvents="none" />
           <PanelTabs active={active} onTab={goToTab} />
         </View>
 
-        {/* Deep glass behind the reading: at rest the panel sits over the photo, and white body
-            text straight on a sharp photo failed contrast wherever the photo was light. */}
-        <View style={[styles.panelBody, { paddingBottom: insets.bottom + 120, minHeight: H - top, backgroundColor: deepGlass(look, 0.82) }]}>
+        {/* The page itself, solid, the same as the tabs: at 82% the photo showed through and the
+            body read grey under white tabs (Albin's phone, 31 Oct). */}
+        <View style={[styles.panelBody, { paddingBottom: insets.bottom + 120, minHeight: H - top, backgroundColor: look.stops[0] }]}>
           <OverviewSection
             cityName={city.name}
             info={info}
@@ -266,6 +289,8 @@ export default function CityScreen() {
 const styles = StyleSheet.create({
   scroll: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   hero: { position: 'absolute', left: 0 },
+  strip: { position: 'absolute', left: 0, right: 0, top: 0, backgroundColor: skyFill.raised },
+  edge: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 10 },
   // Clear: the sections are glass panes on the sky behind the page.
   panelBody: {},
   back: { position: 'absolute', left: 16 },

@@ -42,6 +42,10 @@ export const light = {
   mapTrail: 'rgba(17,17,17,0.28)',
   mapLabel: 'rgba(17,17,17,0.38)',
   mapSeaLabel: 'rgba(40,70,80,0.30)',
+  // You, on the map: the blue everyone's maps use for "you are here" (Albin's pick, 31 Oct 2026), so
+  // it never reads as one of the places, whose dots are ember.
+  mapYou: '#2F6BFF',
+  mapYouHalo: 'rgba(47,107,255,0.22)',
 } as const;
 
 // Depth the way Airbnb does it (Albin, 30 Oct 2026: the light look "feels flat"): every lifted

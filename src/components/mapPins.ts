@@ -119,6 +119,12 @@ export function pinCss(f: PinFonts): string {
 .xp-turn { width: 44px; flex: none; background: ${ON_PAPER.fill.raised}; color: ${ink}; }
 .xp-go:active, .xp-turn:active { transform: scale(0.96); }
 .xp-go:focus-visible, .xp-turn:focus-visible { outline: 2px solid ${ink}; outline-offset: 2px; }
+
+.xp-me { position: relative; width: 18px; height: 18px; transform: translateY(50%); pointer-events: none; }
+.xp-me::before { content: ''; position: absolute; inset: -14px; border-radius: 50%; background: ${light.mapYouHalo}; animation: xp-me-halo 2400ms cubic-bezier(0.23, 1, 0.32, 1) infinite; }
+.xp-me.xp-reduced::before { animation: none; }
+.xp-me-dot { position: relative; width: 18px; height: 18px; box-sizing: border-box; border-radius: 50%; border: 3px solid ${white}; background: ${light.mapYou}; box-shadow: 0 1px 4px rgba(17,17,17,0.3); }
+@keyframes xp-me-halo { 0% { transform: scale(0.5); opacity: 1; } 70%, 100% { transform: scale(1.15); opacity: 0; } }
 `;
 }
 
@@ -451,6 +457,39 @@ export const PIN_SCRIPT = `
     };
   }
 
-  window.XplorePins = { create: create };
+  // You, on the map: a blue dot with a soft halo where the phone is. It never takes taps, so a pin
+  // under it still opens. center() brings the map to you (the "from where you are" pill).
+  function me(map, Marker, reduced) {
+    var el = document.createElement('div');
+    el.className = 'xp-me' + (reduced ? ' xp-reduced' : '');
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', 'You are here');
+    var dot = document.createElement('div');
+    dot.className = 'xp-me-dot';
+    el.appendChild(dot);
+    var marker = new Marker({ content: el, zIndex: 0 });
+    var at = null;
+    return {
+      set: function (p) {
+        at = p;
+        marker.position = p;
+        marker.map = p ? map : null;
+      },
+      // Brings the map to you, in the middle of the part of the map the panels leave showing.
+      center: function (pad) {
+        if (!at) return;
+        var zoom = Math.max(map.getZoom() || 0, 9);
+        var scale = 256 * Math.pow(2, zoom);
+        var s = Math.sin(at.lat * Math.PI / 180);
+        var y = 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI) + ((pad ? pad.bottom - pad.top : 0) / 2) / scale;
+        var lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI;
+        if (zoom !== map.getZoom()) map.setZoom(zoom);
+        map.panTo({ lat: lat, lng: at.lng });
+      },
+      destroy: function () { marker.map = null; }
+    };
+  }
+
+  window.XplorePins = { create: create, me: me };
 })();
 `;

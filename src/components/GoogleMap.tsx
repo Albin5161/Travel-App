@@ -45,6 +45,10 @@ export type GoogleMapProps = {
    * so far lights up; null goes back to the whole day, flat.
    */
   focusId?: string | null;
+  /** Where you are, drawn as a blue dot; null or absent draws none. */
+  you?: LatLng | null;
+  /** Bumped to bring the map to you. */
+  findYou?: number;
 };
 
 // Places that came from Google go on a Google map; its terms don't allow them on anyone else's
@@ -64,7 +68,7 @@ function photoUri(photo: ImageSourcePropType): string | null {
   return uri && uri.startsWith('https://') ? uri : null;
 }
 
-export function GoogleMap({ pins, width, height, route, padding, onPinPress, cards = true, focusId }: GoogleMapProps) {
+export function GoogleMap({ pins, width, height, route, padding, onPinPress, cards = true, focusId, you = null, findYou = 0 }: GoogleMapProps) {
   const web = useRef<WebView>(null);
   const reduced = useReducedMotion();
   const [ready, setReady] = useState(false);
@@ -93,9 +97,11 @@ export function GoogleMap({ pins, width, height, route, padding, onPinPress, car
       width,
       height,
       reduced,
+      you,
+      findYou,
     } satisfies MapPageState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pins, route, cards, pad.top, pad.bottom, pad.left, pad.right, focusId, width, height, reduced]);
+  }, [pins, route, cards, pad.top, pad.bottom, pad.left, pad.right, focusId, width, height, reduced, you?.lat, you?.lng, findYou]);
 
   useEffect(() => {
     if (ready) web.current?.injectJavaScript(`window.apply(${state}); true;`);

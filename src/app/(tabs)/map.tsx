@@ -30,7 +30,7 @@ import { useArrivalTargets, useSpotStatus, useSpotsByDistrict, useTrips } from '
 import { useWhereIAm } from '@/state/where';
 import { deepGlass, skyFill, skyInk, skyVeil } from '@/theme/sky';
 import { Tone } from '@/theme/tone';
-import { radii, space } from '@/theme/tokens';
+import { light, radii, space } from '@/theme/tokens';
 
 const KINDS: SpotKind[] = ['all', 'food', 'sight', 'experience'];
 const GUTTER = space.screen;
@@ -62,6 +62,8 @@ export default function SpotsMap() {
   // row says how far it is: no separate switches for scope or distance.
   const [kind, setKind] = useState<SpotKind>('all');
   const [pickingHome, setPickingHome] = useState(false);
+  // Bumped by the "from where you are" pill: the map comes to you.
+  const [findYou, setFindYou] = useState(0);
   // Which headings are open. Until one is tapped, only the first is (or the district an arrival
   // notification points at): a long list starts as a short list of headings.
   const [opened, setOpened] = useState<Record<string, boolean>>({});
@@ -153,6 +155,8 @@ export default function SpotsMap() {
         padding={{ top: insets.top + 80, bottom: panelH + 24, left: 40, right: 40 }}
         focusId={null}
         onPinPress={(id) => router.push({ pathname: '/place/[id]', params: { id } })}
+        you={where.source === 'device' ? where.at : null}
+        findYou={findYou}
       />
       </Tone>
 
@@ -166,13 +170,28 @@ export default function SpotsMap() {
         <Text variant="display" accessibilityRole="header">
           Your map
         </Text>
-        {where.at ? (
+        {where.at && where.source === 'device' ? (
+          // Distances are measured from you, and you're the blue dot: the pill wears the same dot,
+          // and a tap brings the map to you.
+          <PressableScale
+            onPress={() => {
+              haptic.selection();
+              setFindYou((n) => n + 1);
+            }}
+            containerStyle={styles.setHome}
+            accessibilityRole="button"
+            accessibilityLabel="Show where you are on the map"
+          >
+            <View style={[styles.wherePill, styles.wherePillInTap]}>
+              <View style={styles.youDot} />
+              <Text variant="label" ink="soft" tabular numberOfLines={1}>
+                {where.label}
+              </Text>
+            </View>
+          </PressableScale>
+        ) : where.at ? (
           <View style={styles.wherePill}>
-            <Icon
-              name={where.source === 'device' ? 'navigation' : 'home'}
-              size={12}
-              color={skyInk.soft}
-            />
+            <Icon name="home" size={12} color={skyInk.soft} />
             <Text variant="label" ink="soft" tabular numberOfLines={1}>
               {where.label}
             </Text>
@@ -583,6 +602,7 @@ const styles = StyleSheet.create({
     borderColor: skyInk.rim,
   },
   wherePillInTap: { maxWidth: '100%' },
+  youDot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: light.panel, backgroundColor: light.mapYou, boxShadow: '0 0 0 1px rgba(17,17,17,0.12)' },
   panel: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   panelGlass: {
     flex: 1,

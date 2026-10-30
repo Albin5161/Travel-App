@@ -56,6 +56,8 @@ function GoogleMapOrPanel({
   onPinPress,
   cards = true,
   focusId,
+  you = null,
+  findYou = 0,
   unavailable,
 }: GoogleMapProps & { unavailable: ReactNode }) {
   const failed = useAuthFailed();
@@ -100,6 +102,7 @@ function GoogleMapOrPanel({
         clickableIcons={false}
       >
         <Pins pins={pins} focusId={focusId ?? null} cards={cards} padding={pad} onOpen={onPinPress} />
+        <You at={you} find={findYou} padding={pad} />
         {route && pins.length > 1 ? (
           <Route path={pins.map((p) => p.coords)} reached={pins.findIndex((p) => p.id === focusId)} />
         ) : null}
@@ -114,8 +117,12 @@ type PinsController = {
   setOptions: (o: { cards?: boolean; reduced?: boolean; padding?: GoogleMapProps['padding'] }) => void;
   destroy: () => void;
 };
+type YouController = { set: (p: LatLng | null) => void; center: (pad: { top: number; bottom: number }) => void; destroy: () => void };
 type PinsWindow = Window & {
-  XplorePins?: { create: (o: Record<string, unknown>) => PinsController };
+  XplorePins?: {
+    create: (o: Record<string, unknown>) => PinsController;
+    me: (map: unknown, Marker: unknown, reduced: boolean) => YouController;
+  };
 };
 
 // The phone page loads the fonts by their Google Fonts names; here they're the app's own.
@@ -145,6 +152,39 @@ function pinScript(): PinsWindow['XplorePins'] {
 function photoUri(photo: GoogleMapPin['photo']): string | null {
   if (typeof photo === 'string') return photo;
   return typeof photo === 'object' && photo && 'uri' in photo && typeof photo.uri === 'string' ? photo.uri : null;
+}
+
+/** You, as a blue dot (the shared script's me()); `find` changing brings the map to you. */
+function You({ at, find, padding }: { at: LatLng | null; find: number; padding: { top: number; bottom: number } }) {
+  const map = useMap();
+  const marker = useMapsLibrary('marker');
+  const controller = useRef<YouController | null>(null);
+  const found = useRef(find);
+
+  useEffect(() => {
+    if (!map || !marker) return;
+    const XplorePins = pinScript();
+    if (!XplorePins) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    const c = XplorePins.me(map, marker.AdvancedMarkerElement, reduced);
+    controller.current = c;
+    return () => {
+      c.destroy();
+      controller.current = null;
+    };
+  }, [map, marker]);
+
+  useEffect(() => {
+    controller.current?.set(at);
+  }, [at?.lat, at?.lng, map, marker]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (find === found.current) return;
+    found.current = find;
+    controller.current?.center(padding);
+  }, [find]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null;
 }
 
 /**

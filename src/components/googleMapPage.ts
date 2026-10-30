@@ -25,6 +25,10 @@ export type MapPageState = {
   width: number;
   height: number;
   reduced: boolean;
+  /** Where you are, as a blue dot; null draws none. */
+  you: { lat: number; lng: number } | null;
+  /** Changes when the map should come to you. */
+  findYou: number;
 };
 
 export type MapPageMessage = { type: 'ready' } | { type: 'failed' } | { type: 'pin'; id: string };
@@ -61,7 +65,7 @@ ${pinCss(FONTS)}
   // Google turns the key down by calling this; the app then shows its plain panel instead.
   window.gm_authFailure = function () { post({ type: 'failed' }); };
 
-  var map = null, Marker = null, pins = null, pending = null, state = null;
+  var map = null, Marker = null, pins = null, me = null, found = 0, pending = null, state = null;
   var baseLine = null, reachedLine = null, frame = 0, dragStop = null;
 
   var TILE = 256, JOURNEY_TILT = 55, JOURNEY_HEADING = 25;
@@ -149,7 +153,11 @@ ${pinCss(FONTS)}
     if (!map) {
       open(s);
       pins = window.XplorePins.create({ map: map, Marker: Marker, cards: s.cards, reduced: s.reduced, padding: s.padding, onOpen: function (id) { post({ type: 'pin', id: id }); } });
+      me = window.XplorePins.me(map, Marker, s.reduced);
+      found = s.findYou;
     }
+    me.set(s.you);
+    if (s.findYou !== found) { found = s.findYou; me.center(s.padding); }
     state = s;
     pins.setOptions({ cards: s.cards, reduced: s.reduced, padding: s.padding });
     pins.setPins(s.pins, s.focusId);

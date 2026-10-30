@@ -1,8 +1,9 @@
 import type { Dress } from '@/lib/dress';
 
-// Amma and the child in 3D (made with Figma's image tool, 30 Oct 2026; the prompts and the full-size
-// pictures are in docs/mockups/3d), one picture per outfit and pose, cut out of their white
-// background on the Mac. Amma is always on the left, framed from the hips up.
+// Amma and the child in 3D, one picture per outfit and pose, cut out of their white background on
+// the Mac. Amma is always on the left, framed from the hips up. Redrawn 30 Oct 2026 in the matte clay
+// style of the app's 3D icons (simple dot-eyed faces): the first set's film-like faces didn't sit
+// with the rest of the app. Full-size pictures in docs/mockups/mascot-clay/raw.
 
 export type Pose = 'reading' | 'found' | 'worried' | 'idle';
 

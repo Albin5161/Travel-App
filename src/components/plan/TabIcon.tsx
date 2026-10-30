@@ -1,120 +1,37 @@
-import { Icon, type IconName } from '@/components/Icon';
-import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useDerivedValue,
-  useReducedMotion,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet } from 'react-native';
 
-import { skyInk } from '@/theme/sky';
-
+import { ICONS_3D } from '@/components/icons3d';
+import { Icon3D } from '@/components/Icon3D';
 
 export type TabIconName = 'overview' | 'places' | 'plan' | 'safety';
 
-const GLYPH: Record<TabIconName, IconName> = {
-  overview: 'book-open',
-  places: 'map-pin',
+const PICTURE: Record<TabIconName, keyof typeof ICONS_3D> = {
+  overview: 'guide',
+  places: 'spots',
   plan: 'calendar',
   safety: 'shield',
 };
 
-// Enough overshoot to read as a gesture, not enough to wobble.
-const POP = { duration: 480, dampingRatio: 0.58 } as const;
-const SETTLE = { duration: 380, dampingRatio: 1 } as const;
-
-type Props = { name: TabIconName; active: boolean; size?: number };
+type Props = { name: TabIconName; active: boolean; pressed?: boolean; size?: number };
 
 /**
- * The active tab's icon performs the thing it depicts: the book opens, the pin drops, the calendar
- * ticks over, the shield sends out one ring. Each is a single spring on transform and opacity, so
- * four of them cost nothing — and because the motion differs per tab, the change of section is
- * legible from the corner of your eye without an underline.
+ * The city page's tabs as 3D pictures, like Home's switch (Albin, 31 Oct 2026): the chosen tab in
+ * full colour, the others faded. A finger squashes the picture, and whenever a tab becomes the
+ * section you're in — a tap or the scroll arriving — it hops and plays its story: the guidebook's
+ * page glints, the pin lands, the calendar's day is ringed, the shield's star glints.
  */
-export function TabIcon({ name, active, size = 19 }: Props) {
-  const reduced = useReducedMotion();
-  // Drives the resting difference between active and inactive.
-  const on = useDerivedValue(() => (reduced ? (active ? 1 : 0) : withSpring(active ? 1 : 0, SETTLE)));
-  // Fires once per activation, for the part that is a gesture rather than a state. Starts at 1, the
-  // resting pose: at 0 every icon that was never tapped sat mid-gesture (pin lifted 9pt, calendar
-  // tilted, book squeezed).
-  const kick = useSharedValue(1);
-
+export function TabIcon({ name, active, pressed = false, size = 28 }: Props) {
+  const [played, setPlayed] = useState(0);
+  const was = useRef(active);
   useEffect(() => {
-    if (!active || reduced) return;
-    kick.set(0);
-    kick.set(withSpring(1, POP));
-  }, [active, kick, reduced]);
-
-  const glyphStyle = useAnimatedStyle(() => {
-    const k = kick.get();
-    const lift = on.get();
-    switch (name) {
-      // The book opens: the spine stays, the pages widen.
-      case 'overview':
-        return { transform: [{ scaleX: 0.78 + 0.22 * k }, { scale: 1 + 0.06 * lift }] };
-      // The pin drops in and lands.
-      case 'places':
-        return { transform: [{ translateY: -9 * (1 - k) }, { scale: 1 + 0.06 * lift }] };
-      // The day turns over.
-      case 'plan':
-        return { transform: [{ rotate: `${-14 * (1 - k)}deg` }, { scale: (0.88 + 0.12 * k) * (1 + 0.06 * lift) }] };
-      // The shield just holds; its ring does the talking.
-      case 'safety':
-      default:
-        return { transform: [{ scale: (0.9 + 0.1 * k) * (1 + 0.06 * lift) }] };
-    }
-  });
-
-  const colourStyle = useAnimatedStyle(() => ({ opacity: 0.45 + 0.55 * on.get() }));
-
-  return (
-    <View style={[styles.slot, { width: size + 12, height: size + 12 }]}>
-      {name === 'safety' ? <Ring active={active} reduced={reduced} size={size + 12} /> : null}
-      <Animated.View style={colourStyle}>
-        <Animated.View style={glyphStyle}>
-          <Icon name={GLYPH[name]} size={size} color={active ? skyInk.strong : skyInk.faint} weight={active ? 'fill' : 'regular'} />
-        </Animated.View>
-      </Animated.View>
-    </View>
-  );
-}
-
-/** One ring out from the shield when Good to know becomes the section you're in. */
-function Ring({ active, reduced, size }: { active: boolean; reduced: boolean; size: number }) {
-  const t = useSharedValue(0);
-
-  useEffect(() => {
-    if (!active || reduced) return;
-    t.set(0);
-    t.set(withTiming(1, { duration: 720, easing: Easing.bezier(0.23, 1, 0.32, 1) }));
-  }, [active, reduced, t]);
-
-  const style = useAnimatedStyle(() => {
-    const v = t.get();
-    return {
-      opacity: v === 0 || v === 1 ? 0 : 0.42 * (1 - v),
-      transform: [{ scale: 0.55 + v * 0.85 }],
-    };
-  });
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.ring,
-        { width: size, height: size, borderRadius: size / 2 },
-        style,
-      ]}
-    />
-  );
+    if (active && !was.current) setPlayed((n) => n + 1);
+    was.current = active;
+  }, [active]);
+  const icon = ICONS_3D[PICTURE[name]];
+  return <Icon3D source={icon.source} size={size} story={icon.story} pressed={pressed} played={played} style={!active && styles.off} />;
 }
 
 const styles = StyleSheet.create({
-  slot: { alignItems: 'center', justifyContent: 'center' },
-  ring: { position: 'absolute', borderWidth: 1.5, borderColor: skyInk.strong },
+  off: { opacity: 0.55 },
 });

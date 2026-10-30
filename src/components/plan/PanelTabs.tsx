@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { css } from 'react-native-reanimated';
 
@@ -12,7 +13,7 @@ export const PLAN_TABS = ['Overview', 'Places', 'Plan', 'Good to know'] as const
 const TAB_ICONS: TabIconName[] = ['overview', 'places', 'plan', 'safety'];
 
 /** Grabber + tab row. */
-export const PANEL_HEADER_H = 78;
+export const PANEL_HEADER_H = 84;
 export const PANEL_RADIUS = radii.sheet;
 
 /** How much of the panel shows at rest, above the home indicator. */
@@ -25,9 +26,9 @@ type Props = {
 };
 
 // The top of the Plan panel: a grabber and the tabs. Still no underline — the active tab is its
-// ink, and its icon, which performs a small gesture of its own as the section arrives. Weight never
-// changes, so the tabs can't shift sideways. Scrolling the panel changes the active tab too
-// (scroll-spy, in the screen).
+// ink and its 3D picture in full colour, which hops and plays a small story as the section
+// arrives. Weight never changes, so the tabs can't shift sideways. Scrolling the panel changes the
+// active tab too (scroll-spy, in the screen).
 export function PanelTabs({ active, onTab }: Props) {
   return (
     <Tone value="sky">
@@ -35,28 +36,34 @@ export function PanelTabs({ active, onTab }: Props) {
         <View style={styles.grabber} />
         <View style={styles.row}>
           {PLAN_TABS.map((label, i) => (
-            <Pressable
-              key={label}
-              onPress={onTab ? () => onTab(i) : undefined}
-              disabled={!onTab}
-              style={styles.tab}
-              hitSlop={6}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: i === active }}
-            >
-              <TabIcon name={TAB_ICONS[i]} active={i === active} />
-              <Animated.Text
-                numberOfLines={1}
-                style={[styles.label, { color: i === active ? skyInk.strong : skyInk.faint }]}
-              >
-                {label}
-              </Animated.Text>
-            </Pressable>
+            <Tab key={label} label={label} icon={TAB_ICONS[i]} active={i === active} onPress={onTab ? () => onTab(i) : undefined} />
           ))}
         </View>
         <View style={styles.rule} />
       </Glass>
     </Tone>
+  );
+}
+
+function Tab({ label, icon, active, onPress }: { label: string; icon: TabIconName; active: boolean; onPress?: () => void }) {
+  // The picture squashes under the finger, as Home's switch does.
+  const [held, setHeld] = useState(false);
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => setHeld(true)}
+      onPressOut={() => setHeld(false)}
+      disabled={!onPress}
+      style={styles.tab}
+      hitSlop={6}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+    >
+      <TabIcon name={icon} active={active} pressed={held} />
+      <Animated.Text numberOfLines={1} style={[styles.label, { color: active ? skyInk.strong : skyInk.faint }]}>
+        {label}
+      </Animated.Text>
+    </Pressable>
   );
 }
 
@@ -75,7 +82,7 @@ const styles = css.create({
     borderRadius: 3,
     backgroundColor: skyInk.outline,
   },
-  row: { flexDirection: 'row', paddingHorizontal: 8, marginTop: 8, height: 52 },
+  row: { flexDirection: 'row', paddingHorizontal: 8, marginTop: 8, height: 58 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1 },
   label: {
     fontFamily: fonts.sansMedium,

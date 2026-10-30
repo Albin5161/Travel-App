@@ -18,6 +18,7 @@ import { allDistricts } from '@/data/regions';
 import { Segmented } from '@/components/Segmented';
 import { haptic } from '@/lib/haptics';
 import { nameProblem } from '@/lib/names';
+import { demoOn, setDemo } from '@/lib/demo';
 import { signOut, useAccount } from '@/lib/live/account';
 import { liveEnabled } from '@/lib/live/client';
 import { MODE, SKY_AVAILABLE, isLight, setMode } from '@/theme/mode';
@@ -234,6 +235,10 @@ export default function Profile() {
       </Animated.View>
 
       <Animated.View entering={ENTER[5]}>
+        <DemoSection />
+      </Animated.View>
+
+      <Animated.View entering={ENTER[5]}>
         <Section title="About" footer="Everything you save is kept on this phone, or in this browser, and backed up to your account while you’re signed in.">
           {/* Only while the Sky look is on offer (theme/mode). */}
           {SKY_AVAILABLE ? (
@@ -388,6 +393,43 @@ function Row({
 }
 
 /**
+ * Demo mode (lib/demo): Xplore starts empty, as for someone new, so a video can be read from the
+ * start on stage; off, everything comes back.
+ */
+function DemoSection() {
+  const [note, setNote] = useState<string | null>(null);
+  return (
+    <Section
+      title="Demo"
+      footer={
+        note ??
+        (demoOn
+          ? 'Your own places are put away until you switch this off. Anything saved during the demo goes when it ends.'
+          : 'Starts Xplore empty, as for someone new, to show it to others. Switch it off and your places come back. Nothing is backed up meanwhile.')
+      }
+    >
+      <Row icon="play-circle" label="Demo mode" detail={demoOn ? 'On: your places are put away' : undefined}>
+        <Switch
+          value={demoOn}
+          onValueChange={(on) => {
+            haptic.selection();
+            // The app starts again, empty or with everything back.
+            void setDemo(on).then((ok) => {
+              if (!ok) setNote('Done. Close Xplore and open it again to finish.');
+            });
+          }}
+          trackColor={{ true: isLight ? skyInk.strong : skyInk.outline, false: skyFill.pressed }}
+          thumbColor={demoOn ? skyOnInk : '#FFFFFF'}
+          {...({ activeThumbColor: skyOnInk } as object)}
+          ios_backgroundColor={skyFill.pressed}
+          accessibilityLabel="Demo mode"
+        />
+      </Row>
+    </Section>
+  );
+}
+
+/**
  * Who is signed in and when this phone last backed up, and a way out that keeps everything on the
  * phone.
  */
@@ -408,7 +450,7 @@ function BackupSection() {
       </Section>
     );
   }
-  const when = status === 'syncing' ? 'Backing up…' : backedUpAt ? `Backed up ${ago(backedUpAt)}` : 'Backed up';
+  const when = demoOn ? 'Paused for the demo' : status === 'syncing' ? 'Backing up…' : backedUpAt ? `Backed up ${ago(backedUpAt)}` : 'Backed up';
   return (
     <Section title="Backup" footer={error ?? 'Signing out keeps everything on this phone, and asks for your email again. Your backup stays with your account.'} footerError={!!error}>
       <Row icon="cloud" label={account.name ?? account.email} detail={account.name ? account.email : undefined} value={when} />

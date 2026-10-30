@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 import { ensureUser, getSupabase, liveEnabled } from '@/lib/live/client';
+import { demoOn } from '@/lib/demo';
 import { canon, mergeTrips, parse, type SavedTrips } from '@/lib/live/backupMerge';
 import { deviceStorage } from '@/lib/live/storage';
 
@@ -227,6 +228,8 @@ export async function signOut() {
 type Backup = { trips: SavedTrips | null; name: string | null; savedAt: number };
 
 async function push(supabase: SupabaseClient, userId: string) {
+  // Demo mode: the empty copy on the phone must never reach the account (lib/demo).
+  if (demoOn) return;
   const backup: Backup = { trips: parse(read(TRIPS_KEY)), name: read(NAME_KEY), savedAt: Date.now() };
   const { error } = await supabase.from('saved_collections').upsert({ user_id: userId, data: backup, updated_at: new Date().toISOString() });
   if (error) throw error;
@@ -240,6 +243,8 @@ async function push(supabase: SupabaseClient, userId: string) {
  * it (the saved copy is only read at start), at most once a minute.
  */
 async function restore(supabase: SupabaseClient, userId: string) {
+  // Demo mode: nor the account's copy reach the demo.
+  if (demoOn) return;
   set({ status: 'syncing' });
   try {
     const { data, error } = await supabase.from('saved_collections').select('data').eq('user_id', userId).maybeSingle();
@@ -276,7 +281,7 @@ let timer: ReturnType<typeof setTimeout> | null = null;
  * seconds after the last change, not on each one. Nothing happens when nobody is signed in.
  */
 export function scheduleBackup() {
-  if (!snap.account || !liveEnabled) return;
+  if (!snap.account || !liveEnabled || demoOn) return;
   if (timer) clearTimeout(timer);
   timer = setTimeout(() => {
     timer = null;

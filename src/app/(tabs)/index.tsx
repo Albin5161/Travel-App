@@ -25,12 +25,10 @@ import { Wordmark } from '@/components/Wordmark';
 import { Glass } from '@/components/sky/Glass';
 import { SkyScreen } from '@/components/sky/SkyScreen';
 import { EXAMPLE_LINKS, getCity, getReel } from '@/data/api';
-import { places, smallPhoto } from '@/data/catalog';
 import { Button } from '@/components/Button';
 import { FoundSheet } from '@/components/home/LinkInbox';
 import { HomePicker } from '@/components/HomePicker';
 import { GlassSheet } from '@/components/sky/GlassSheet';
-import { PhotoStrip } from '@/components/home/PhotoStrip';
 import { RightNow } from '@/components/home/RightNow';
 import { WeekendNudge, weekendIsNear } from '@/components/home/WeekendNudge';
 import { allDistricts } from '@/data/regions';
@@ -49,8 +47,6 @@ const ENTER = [0, 1, 2, 3].map((i) => fadeUp(120 + i * 60));
 const GUTTER = space.screen;
 /** Room kept clear at each end of the top row (the wordmark's width and a gap) for the centred chip. */
 const TOP_SIDE = 88;
-/** How far the photo strip tucks under the link box. */
-const STRIP_TUCK = 22;
 /**
  * Air over the link box, so stuck at the top it isn't pressed against the screen's edge. At rest
  * it's taken back from the gap above, so nothing moves there.
@@ -60,11 +56,8 @@ const STICK_AIR = 10;
 const FROST_FADE = 28;
 /** How far down the warm wash behind the header reaches, below the status bar. */
 const WASH_H = 380;
-// First-run strip: one striking place from each sample video, so the promise is visual.
-const INSPIRATION = ['meg-dawki', 'kochi-mural', 'gok-om', 'meg-falls', 'gok-halfmoon']
-  .map((id) => places[id])
-  .filter((p) => !!p)
-  .map((p) => ({ id: p.id, photo: smallPhoto(p) }));
+/** The house and the train over the first-run question. */
+const FIRST_ICON = 96;
 /** The floating tab bar sits over the scroll, so the last row of tiles has to clear it. */
 const TAB_BAR_CLEARANCE = 100;
 /** The hero's top space: never tighter than this, never emptier than that. */
@@ -140,18 +133,15 @@ export default function Home() {
     typedFirst && typedFirst.length > 1 && typedFirst === typedFirst.toUpperCase()
       ? typedFirst[0] + typedFirst.slice(1).toLowerCase()
       : typedFirst;
-  // The strip over the link box: always the same few bundled photos (credited on the Credits page).
-  // Your own places can't go here: their photos from Google and Wikimedia need a credit these small
-  // prints can't carry, and a video's frames or thumbnail made a strip that changed with every
-  // paste. Muted before the first save, when nothing is yours yet.
-  const inspiration = collections.length === 0;
-  // Once something is saved the greeting steps back to one line and the prints go, so your own
-  // things are on the first screen instead of below it.
-  const compact = !inspiration;
+  // Before the first save: the house and the train over the question, the two lists a new user's
+  // places will land in (Albin, 31 Oct 2026; they replaced a strip of sample photos). Once something
+  // is saved the greeting steps back to one line and they go, so your own things are on the first
+  // screen instead of below it.
+  const firstRun = collections.length === 0;
+  const compact = !firstRun;
   // Places near home, offered as a weekend out. Gone once Near Home is what's showing.
   const nearSpots = near.reduce((n, c) => n + c.placeIds.length, 0);
   const nudge = nearSpots > 0 && tab !== 'near' && weekendIsNear();
-  const stripPhotos = INSPIRATION;
   const fresh = state.freshCityId;
   const tileW = (W - GUTTER * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
 
@@ -227,6 +217,12 @@ export default function Home() {
               onLayout={measure('hero')}
               style={{ marginTop: heroPad ?? MIN_PAD, opacity: heroPad === null ? 0 : 1 }}
             >
+            {compact ? null : (
+              <Animated.View entering={ENTER[0]} style={styles.firstIcons}>
+                <Icon3D source={ICONS_3D.near.source} size={FIRST_ICON} story={ICONS_3D.near.story} tappable playOnShow />
+                <Icon3D source={ICONS_3D.away.source} size={FIRST_ICON} story={ICONS_3D.away.story} tappable playOnShow />
+              </Animated.View>
+            )}
             <Animated.View entering={ENTER[0]}>
               {compact ? (
                 <Text style={styles.questionSmall} accessibilityRole="header">
@@ -255,14 +251,7 @@ export default function Home() {
                 </Text>
               )}
             </Animated.View>
-            {compact ? (
-              <View style={styles.compactGap} />
-            ) : (
-              // Centred on the field, which now holds the paste button and runs the full width.
-              <View style={styles.strip}>
-                <PhotoStrip photos={stripPhotos} width={W - GUTTER * 2} muted />
-              </View>
-            )}
+            <View style={compact ? styles.compactGap : styles.firstGap} />
             </View>
           </View>
 
@@ -285,6 +274,11 @@ export default function Home() {
           </Animated.View>
 
           <View style={styles.continue}>
+            {firstRun ? (
+              <Text variant="label" ink="soft" style={styles.firstHint}>
+                Places near home and away land in their own lists.
+              </Text>
+            ) : null}
             <RightNow />
             {nudge ? (
               <Animated.View entering={ENTER[2]} style={styles.nudge}>
@@ -512,7 +506,9 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: GUTTER },
   // The strip's lower edge runs under the sticky link box below it (a later sibling, so it draws
   // on top), which is what makes the prints read as tucked behind the field.
-  strip: { marginTop: 16, marginBottom: -STRIP_TUCK - STICK_AIR },
+  firstIcons: { flexDirection: 'row', justifyContent: 'center', gap: 4, marginBottom: 16 },
+  firstGap: { height: 20 - STICK_AIR },
+  firstHint: { textAlign: 'center', marginTop: 12 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 44 },
   // Centred on the screen, not in the gap left over, whatever the two ends measure.
   hereSlot: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
